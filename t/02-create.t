@@ -19,8 +19,8 @@ my @db;
 my $tests = 0;
 
 my $shared_tests = 148;
-my $mysql_only_tests = 2;
-my $pg_only_tests = 1;
+my $mysql_only_tests = 7;
+my $pg_only_tests = 8;
 
 if ( eval { require DBD::mysql } && ! $@ )
 {
@@ -718,5 +718,57 @@ foreach my $db (@db)
                                    ) };
         ok( ! $@,
             "call add_relationship where column in table_to already exists" );
+    }
+
+    if ( $db eq 'MySQL' )
+    {
+        $t1->set_attributes( 'TYPE = INNODB' );
+
+        my @att = $t1->attributes;
+
+        is( @att, 1, 't1 has 1 attribute' );
+        is( $att[0], 'TYPE = INNODB', 'attribute is "TYPE = INNODB"' );
+
+        my $att_t = $s->make_table( name => 'has_attributes',
+                                    attributes =>
+                                    [ 'TYPE = INNODB',
+                                      'PACK_KEYS = 1 ' ],
+                                  );
+
+        @att = $att_t->attributes;
+
+        is( @att, 2, 't1 has 2 attributes' );
+        is( $att[0], 'TYPE = INNODB', 'first attribute is "TYPE = INNODB"' );
+        is( $att[1], 'PACK_KEYS = 1', 'second attribute is "PACK_KEYS = 1"' );
+    }
+    else
+    {
+        $t1->set_attributes( 'WITH OIDS' );
+
+        my @att = $t1->attributes;
+
+        is( @att, 1, 't1 has 1 attribute' );
+        is( $att[0], 'WITH OIDS', 'attribute is "WITH OIDS"' );
+
+        my $att_t = $s->make_table( name => 'has_attributes',
+                                    attributes =>
+                                    [ 'WITH OIDS',
+                                      'INHERITS footab' ],
+                                  );
+
+        @att = $att_t->attributes;
+
+        is( @att, 2, 't1 has 2 attributes' );
+        is( $att[0], 'WITH OIDS', 'first attribute is "WITH OIDS"' );
+        is( $att[1], 'INHERITS footab', 'second attribute is "INHERITS footab"' );
+
+        my $i;
+
+        eval_ok( sub { $i = $tc->make_index( columns  => [ $tc->column('non_pk') ],
+                                             function => 'LOWER(non_pk)',
+                                           ) },
+                 "make a function index" );
+
+        is( $i->function, 'LOWER(non_pk)', "index function is LOWER(non_pk)" );
     }
 }

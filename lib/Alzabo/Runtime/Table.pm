@@ -942,30 +942,28 @@ not be used outside of the context of a join>.
 
 =for pod_merge index
 
+=for pod_merge has_index
+
 =for pod_merge indexes
+
+=for pod_merge attributes
+
+=for pod_merge has_attribute
+
+=for pod_merge comment
 
 =head1 LAZY COLUMN LOADING
 
 This concept was taken directly from Michael Schwern's Class::DBI
 module (credit where it is due).
 
-This lazy loading is only done when caching is turned on.  Otherwise,
-Alzabo always fetches data from the database when it is requested and
-does not store it locally in memory at all.  In fact, B<trying to use
-lazy column loading without caching will simply slow things down>.
-
 By default, L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects
-only load data from the database as it is requested via the select
-method.  This is stored internally in the object after being fetched.
+load all data from the database except blob type columns (columns with
+an unbounded length).  This data is stored internally in the object
+after being fetched.
 
-This is good because it saves on memory and makes object creation
-quicker, but it is bad because you could potentially end up with one
-SQL call per column (excluding primary key columns, which are usually
-not fetched from the database).
-
-This class provides two method to help you handle this potential
-problem.  Basically these methods allow you to declare usage patterns
-for the table.
+If you want to change what data is prefetched, there are two methods
+you can use.
 
 The first method,
 L<C<set_prefetch>|Alzabo::Runtime::Table/set_prefetch (Alzabo::Column
@@ -987,9 +985,6 @@ Given a list of column objects, this makes sure that all
 L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects fetch this
 data as soon as they are created.
 
-This method is only effective when caching is turned on, as otherwise
-prefetched data may be stale and we would never know this.
-
 NOTE: It is pointless (though not an error) to give primary key column
 here as these are always prefetched (in a sense).
 
@@ -1004,9 +999,6 @@ method creates a group containing these columns.  This means that if
 any column in the group is fetched from the database, then they will
 all be fetched.  Otherwise column are always fetched singly.
 Currently, a column cannot be part of more than one group.
-
-This method is only effective when caching is turned on, as otherwise
-group-fetched data may be stale and we would never know this.
 
 NOTE: It is pointless to include a column that was given to the
 L<C<set_prefetch>|Alzabo::Runtime::Table/set_prefetch (Alzabo::Column

@@ -5,6 +5,7 @@ use vars qw($VERSION);
 
 use Alzabo;
 
+
 $VERSION = 2.0;
 
 1;
@@ -229,6 +230,12 @@ represents.
 Given a foreign key object, this returns true if the two objects
 represent the same relationship.  However, the two objects may
 represent the same relationship from different table's points of view.
+
+=head2 id
+
+=head3
+
+A string uniquely identifying the foreign key.
 
 =head2 comment
 

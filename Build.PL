@@ -210,15 +210,16 @@ sub default_prereq
 {
     return
         ( requires =>
-          { 'DBI' => minimum_dbi_version(),
-            'Storable' => 0.7,
-            'Tie::IxHash' => 0,
+          { 'Class::Factory::Util' => 1.3,
+            'DBI' => minimum_dbi_version(),
+            'Digest::MD5' => 0,
             'Exception::Class' => 0.97,
-            'Time::HiRes' => 0,
             'Params::Validate' => 0.58,
+            'Storable' => 0.7,
             'Test::Simple' => 0.47,
             'Test::Harness' => 1.26,
-            'Class::Factory::Util' => 1.3,
+            'Tie::IxHash' => 0,
+            'Time::HiRes' => 0,
             perl => 5.006,
           },
           recommends => {},
@@ -306,7 +307,7 @@ sub test_config
 		  pg => 'Postgres',
 		  oracle => 'Oracle' );
 
-    foreach my $t ( keys %$tests )
+    foreach my $t ( sort keys %$tests )
     {
 	my $name = $names{$t};
 

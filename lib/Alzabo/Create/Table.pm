@@ -25,6 +25,8 @@ sub new
 
     validate( @_, { schema => { isa => 'Alzabo::Create::Schema' },
 		    name => { type => SCALAR },
+                    attributes => { type => ARRAYREF,
+                                    optional => 1 },
 		    comment => { type => UNDEF | SCALAR,
 				 default => '' },
 		  } );
@@ -39,6 +41,11 @@ sub new
     $self->{columns} = Tie::IxHash->new;
     $self->{pk} = [];
     $self->{indexes} = Tie::IxHash->new;
+
+    my %attr;
+    tie %{ $self->{attributes} }, 'Tie::IxHash';
+
+    $self->set_attributes( @{ $p{attributes} } );
 
     $self->set_comment( $p{comment} );
 
@@ -285,6 +292,21 @@ sub add_foreign_key
     {
 	push @{ $self->{fk}{ $fk->table_to->name }{ $c->name } }, $fk;
     }
+
+    if ( ( $fk->is_one_to_one || $fk->is_one_to_many )
+         && !
+         ( $self->primary_key_size == grep { $_->is_primary_key } $fk->columns_from )
+       )
+    {
+        my $i = Alzabo::Create::Index->new( table   => $self,
+                                            columns => [ $fk->columns_from ],
+                                            unique  => 1 );
+
+        # could already have a non-unique index (grr, index id()
+        # method is somewhat broken)
+        $self->delete_index($i) if $self->has_index( $i->id );
+        $self->add_index($i);
+    }
 }
 
 sub delete_foreign_key
@@ -408,6 +430,49 @@ sub register_column_name_change
 	$i->register_column_name_change(%p);
 	$self->add_index($i);
     }
+}
+
+sub set_attributes
+{
+    my $self = shift;
+
+    validate_pos( @_, ( { type => SCALAR } ) x @_ );
+
+    %{ $self->{attributes} } = ();
+
+    foreach (@_)
+    {
+	$self->add_attribute($_);
+    }
+}
+
+sub add_attribute
+{
+    my $self = shift;
+
+    validate_pos( @_, { type => SCALAR } );
+    my $attr = shift;
+
+    $attr =~ s/^\s+//;
+    $attr =~ s/\s+$//;
+
+    $self->schema->rules->validate_table_attribute( table     => $self,
+                                                    attribute => $attr );
+
+    $self->{attributes}{$attr} = 1;
+}
+
+sub delete_attribute
+{
+    my $self = shift;
+
+    validate_pos( @_, { type => SCALAR } );
+    my $attr = shift;
+
+    params_exception "Table " . $self->name . " doesn't have attribute $attr"
+	unless exists $self->{attributes}{$attr};
+
+    delete $self->{attributes}{$attr};
 }
 
 sub set_comment { $_[0]->{comment} = defined $_[1] ? $_[1] : '' }
@@ -622,6 +687,10 @@ L<C<Alzabo::Create::ForeignKey-E<gt>new>|Alzabo::Create::ForeignKey/new>
 method except for the table parameter, which is automatically added.
 The foreign key object that is created is then added to the table.
 
+If the foreign key being made is 1..1 or 1..n, then a unique index
+will be created on the columns involved in the "1" side of the foreign
+key, unless they are the table's primary key.
+
 =head3 returns
 
 A new L<C<Alzabo::Create::ForeignKey>|Alzabo::Create::ForeignKey>
@@ -640,6 +709,8 @@ Deletes the given foreign key from the table
 L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =for pod_merge index
+
+=for pod_merge has_index
 
 =for pod_merge indexes
 
@@ -665,6 +736,28 @@ L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 =head2 delete_index (C<Alzabo::Create::Index> object)
 
 Deletes an index from the table.
+
+=head3 Throws
+
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+
+=for pod_merge attributes
+
+=for pod_merge has_attribute
+
+=head2 set_attributes (@attributes)
+
+Sets the tables's attributes.  These are strings describing the table
+(for example, valid attributes in MySQL are "TYPE = INNODB" or
+"AUTO_INCREMENT = 100").
+
+=head2 add_attribute ($attribute)
+
+Add an attribute to the column's list of attributes.
+
+=head2 delete_attribute ($attribute)
+
+Delete the given attribute from the column's list of attributes.
 
 =head3 Throws
 

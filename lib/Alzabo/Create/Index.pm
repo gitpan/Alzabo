@@ -23,8 +23,9 @@ sub new
 
     validate( @_, { table    => { isa => 'Alzabo::Create::Table' },
 		    columns  => { type => ARRAYREF },
-		    unique   => { optional => 1 },
-		    fulltext => { optional => 1 },
+		    unique   => { type => BOOLEAN, default => 0 },
+		    fulltext => { type => BOOLEAN, default => 0 },
+		    function => { type => UNDEF | SCALAR,  default => undef },
 		  } );
     my %p = @_;
 
@@ -33,6 +34,7 @@ sub new
     $self->{table} = $p{table};
     $self->{unique} = $p{unique} || 0;
     $self->{fulltext} = $p{fulltext} || 0;
+    $self->{function} = $p{function};
 
     $self->{columns} = Tie::IxHash->new;
 

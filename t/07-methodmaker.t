@@ -388,12 +388,12 @@ sub make_methodmaker_schema
 		       length => 50 );
 
     # self relation
-    $s->add_relation( columns_from => $loc->column('parent_location_id'),
-		      columns_to => $loc->column('location_id'),
-		      cardinality => [ 'n', 1 ],
-		      from_is_dependent => 0,
-		      to_is_dependent => 0,
-		    );
+    $s->add_relationship( columns_from => $loc->column('parent_location_id'),
+                          columns_to => $loc->column('location_id'),
+                          cardinality => [ 'n', 1 ],
+                          from_is_dependent => 0,
+                          to_is_dependent => 0,
+                        );
 
     my $toi = $s->make_table( name => 'Toilet' );
 
@@ -402,21 +402,21 @@ sub make_methodmaker_schema
 		       primary_key => 1 );
 
     # linking table
-    $s->add_relation( table_from => $toi,
-		      table_to => $loc,
-		      cardinality => [ 'n', 'n' ],
-		      from_is_dependent => 0,
-		      to_is_dependent => 0,
-		    );
+    $s->add_relationship( table_from => $toi,
+                          table_to => $loc,
+                          cardinality => [ 'n', 'n' ],
+                          from_is_dependent => 0,
+                          to_is_dependent => 0,
+                        );
 
     # not a linking table (for MethodMaker), because it will have an
     # extra column
-    $s->add_relation( table_from => $loc,
-		      table_to => $toi,
-		      cardinality => [ 'n', 'n' ],
-		      from_is_dependent => 0,
-		      to_is_dependent => 0,
-		    );
+    $s->add_relationship( table_from => $loc,
+                          table_to => $toi,
+                          cardinality => [ 'n', 'n' ],
+                          from_is_dependent => 0,
+                          to_is_dependent => 0,
+                        );
 
     $s->table('LocationToilet')->set_name('NotLinking');
     $s->table('NotLinking')->make_column( name => 'extra_column',
@@ -433,18 +433,18 @@ sub make_methodmaker_schema
                            primary_key => 1 );
 
     # linking table between Toilet & Toiler (self-linking)
-    $s->add_relation( columns_from => $toi->column('toilet_id'),
-		      columns_to   => $toi_toi->column('toilet_id'),
-		      cardinality  => [ '1', 'n' ],
-		      from_is_dependent => 0,
-		      to_is_dependent => 0,
-		    );
-    $s->add_relation( columns_from => $toi->column('toilet_id'),
-		      columns_to   => $toi_toi->column('toilet_id_2'),
-		      cardinality  => [ '1', 'n' ],
-		      from_is_dependent => 0,
-		      to_is_dependent => 0,
-		    );
+    $s->add_relationship( columns_from => $toi->column('toilet_id'),
+                          columns_to   => $toi_toi->column('toilet_id'),
+                          cardinality  => [ '1', 'n' ],
+                          from_is_dependent => 0,
+                          to_is_dependent => 0,
+                        );
+    $s->add_relationship( columns_from => $toi->column('toilet_id'),
+                          columns_to   => $toi_toi->column('toilet_id_2'),
+                          cardinality  => [ '1', 'n' ],
+                          from_is_dependent => 0,
+                          to_is_dependent => 0,
+                        );
 
     my $tt = $s->make_table( name => 'ToiletType' );
 
@@ -458,12 +458,12 @@ sub make_methodmaker_schema
 		      type => 'int',
 		      nullable => 1 );
     # lookup table
-    $s->add_relation( table_from => $toi,
-		      table_to => $tt,
-		      cardinality => [ 'n', 1 ],
-		      from_is_dependent => 0,
-		      to_is_dependent => 0,
-		    );
+    $s->add_relationship( table_from => $toi,
+                          table_to => $tt,
+                          cardinality => [ 'n', 1 ],
+                          from_is_dependent => 0,
+                          to_is_dependent => 0,
+                        );
 
     $s->save_to_file;
 

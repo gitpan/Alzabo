@@ -52,6 +52,11 @@ sub validate_column_length
     shift()->_virtual;
 }
 
+sub validate_table_attribute
+{
+    shift()->_virtual;
+}
+
 sub validate_column_attribute
 {
     shift()->_virtual;
@@ -190,7 +195,16 @@ sub index_sql
     my $sql = 'CREATE';
     $sql .= ' UNIQUE' if $index->unique;
     $sql .= " INDEX $index_name ON " . $index->table->name . ' ( ';
-    $sql .= join ', ', map { $_->name } $index->columns;
+
+    if ( defined $index->function )
+    {
+        $sql .= $index->function;
+    }
+    else
+    {
+        $sql .= join ', ', map { $_->name } $index->columns;
+    }
+
     $sql .= ' )';
 
     return $sql;
@@ -255,11 +269,6 @@ sub index_sql_diff
     }
 
     return @sql;
-}
-
-sub foreign_key_sql_diff
-{
-    shift()->_virtual;
 }
 
 sub alter_primary_key_sql
@@ -509,19 +518,7 @@ sub table_sql_diff
 
     foreach my $new_fk ( $p{new}->all_foreign_keys )
     {
-	my @fk = grep { $new_fk->id eq $_->id } $p{old}->all_foreign_keys;
-
-	if (@fk == 1)
-	{
-	    push @sql, $self->foreign_key_sql_diff( new => $new_fk,
-						    old => $fk[0] );
-	}
-	elsif (@fk > 1)
-	{
-	    Alzabo::Exception::RDBMSRules->throw
-                ( error => "More than one foreign key had the same id in " . $p{old}->name );
-	}
-	else
+        unless ( grep { $new_fk->id eq $_->id } $p{old}->all_foreign_keys )
 	{
 	    push @sql, $self->foreign_key_sql($new_fk)
 	}
@@ -529,15 +526,9 @@ sub table_sql_diff
 
     foreach my $old_fk ( $p{old}->all_foreign_keys )
     {
-	my @fk = grep { $old_fk->id eq $_->id } $p{new}->all_foreign_keys;
-
-	if (! @fk)
+        unless ( grep { $old_fk->id eq $_->id } $p{new}->all_foreign_keys )
 	{
 	    push @sql, $self->drop_foreign_key_sql($old_fk);
-	}
-	elsif (@fk > 1)
-	{
-	    Alzabo::Exception::RDBMSRules->throw( error => "More than one foreign key had the same id in " . $p{new}->name );
 	}
     }
 
@@ -569,6 +560,38 @@ sub table_sql_diff
             {
                 push @sql, $self->alter_primary_key_sql( new => $p{new},
                                                          old => $p{old} );
+
+                last;
+            }
+        }
+    }
+
+    my $alter_attributes;
+    foreach my $new_att ( $p{new}->attributes )
+    {
+        unless ( $p{old}->has_attribute( attribute => $new_att, case_sensitive => 1 ) )
+        {
+            $alter_attributes = 1;
+
+            push @sql, $self->change_table_attributes_sql( new => $p{new},
+                                                           old => $p{old},
+                                                         );
+
+            last;
+        }
+    }
+
+    unless ($alter_attributes)
+    {
+        foreach my $old_att ( $p{old}->attributes )
+        {
+            unless ( $p{new}->has_attribute( attribute => $old_att, case_sensitive => 1 ) )
+            {
+                $alter_attributes = 1;
+
+                push @sql, $self->change_table_attributes_sql( new => $p{new},
+                                                               old => $p{old},
+                                                             );
 
                 last;
             }
@@ -897,25 +920,6 @@ A list of SQL statements.
 
 Given two index objects, this method compares them and generates the
 SQL necessary to turn the 'old' one into the 'new' one.
-
-=head3 Returns
-
-A list of SQL statements.
-
-=head2 foreign_key_sql_diff
-
-=head3 Parameters
-
-=over 4
-
-=item * new => C<Alzabo::Create::ForeignKey> object
-
-=item * old => C<Alzabo::Create::ForeignKey> object
-
-=back
-
-Given two foreign key objects, this method compares them and generates
-the SQL necessary to turn the 'old' one into the 'new' one.
 
 =head3 Returns
 

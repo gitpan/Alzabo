@@ -23,7 +23,7 @@ unless (@rdbms_names)
 }
 
 
-my $tests_per_run = 1;
+my $tests_per_run = 2;
 
 plan tests => $tests_per_run * @rdbms_names;
 
@@ -35,12 +35,12 @@ foreach my $rdbms (@rdbms_names)
 {
     my $config = Alzabo::Test::Utils->test_config_for($rdbms);
 
-    my $driver = Alzabo::Driver->new( rdbms => $rdbms{ $config->{rdbms} } );
+    my $driver = Alzabo::Driver->new( rdbms => $rdbms{$rdbms} );
 
-    my @p = ( 'user', 'password', 'host', 'port' );
-
-    my %connect = map { $_ => $config->{$_} } grep { exists $rdbms{$_} } @p;
-
-    eval_ok( sub { $driver->schemas(%connect) },
+    my @schemas;
+    eval_ok( sub { @schemas =
+                       $driver->schemas( Alzabo::Test::Utils->connect_params_for($rdbms) ) },
              "Schema method for $rdbms{ $config->{rdbms} }" );
+
+    ok( scalar @schemas, 'schemas were found' );
 }

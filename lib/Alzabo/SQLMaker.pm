@@ -62,7 +62,7 @@ sub make_function
 
     if ( $p{quote} )
     {
-	my $quote .= '                                      quote => [';
+	my $quote .= '                                     quote => [';
 	$quote .= join ', ', @{ $p{quote} };
 	$quote .= ']';
 	push @args, $quote;

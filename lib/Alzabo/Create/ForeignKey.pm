@@ -217,6 +217,8 @@ Indicates whether or not the second table in the relationship is
 dependent on the other (i.e. whether the 'to' table is dependent on
 the 'from' table).
 
+=for pod_merge id
+
 =for pod_merge comment
 
 =head2 set_comment ($comment)

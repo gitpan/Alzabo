@@ -5,6 +5,8 @@ use vars qw($VERSION);
 
 use Alzabo::RDBMSRules;
 
+use Digest::MD5;
+
 use base qw(Alzabo::RDBMSRules);
 
 use Params::Validate qw( validate_pos );
@@ -146,6 +148,9 @@ sub validate_column_length
     }
 }
 
+# placeholder in case we decide to try to do something better later
+sub validate_table_attribute { 1 }
+
 sub validate_column_attribute
 {
     my $self = shift;
@@ -241,7 +246,7 @@ sub type_is_char
     my $col  = shift;
     my $type = uc $col->type;
 
-    return 1 if $type =~ /\A(?:(?:VAR)?CHAR|CHARACTER)\z/;
+    return 1 if $type =~ /(?:CHAR|CHARACTER|TEXT)\z/;
 }
 
 sub type_is_date
@@ -277,7 +282,7 @@ sub type_is_blob
     my $col  = shift;
     my $type = uc $col->type;
 
-    return 1 if $type =~ /\A(?:BYTEA|TEXT)\z/;
+    return 1 if $type =~ /\ABYTEA\z/;
 }
 
 sub blob_type { return 'BYTEA' }
@@ -315,6 +320,7 @@ sub column_types
 
 my %features = map { $_ => 1 } qw ( extended_column_types
                                     constraints
+                                    functional_indexes
 				  );
 sub feature
 {
@@ -342,7 +348,7 @@ sub schema_sql
     {
 	foreach my $fk ( $t->all_foreign_keys )
 	{
-	    push @sql, $self->_add_foreign_key_sql($fk);
+	    push @sql, $self->foreign_key_sql($fk);
 	}
     }
 
@@ -370,6 +376,11 @@ sub table_sql
 	$sql .= join ', ', map { '"' . $_->name . '"' } @pk;
 	$sql .= ")\n";
     }
+
+    my @att = $table->attributes;
+
+    $sql .= join ",\n", grep { /\s*(?:check|constraint)/i } @att;
+
     $sql .= ")\n";
 
     my @sql = ($sql);
@@ -379,12 +390,18 @@ sub table_sql
 	push @sql, $self->index_sql($i);
     }
 
-    foreach my $c ( $table->columns )
+    if ($create_sequence)
     {
-	if ($create_sequence)
+        foreach my $c ( grep { $_->sequenced } $table->columns )
 	{
-	    push @sql, $self->_sequence_sql($c) if $c->sequenced;
+	    push @sql, $self->_sequence_sql($c);
 	}
+    }
+
+    if (@att)
+    {
+        $sql .= ' ';
+        $sql .= join ' ', grep { ! /\s*(?:check|constraint)/i } @att;
     }
 
     $self->{state}{table_sql}{ $table->name } = 1;
@@ -455,22 +472,27 @@ sub column_sql
     return $sql;
 }
 
-sub _add_foreign_key_sql
+sub foreign_key_sql
 {
-    return; # temporarily disable
     my $self = shift;
     my $fk = shift;
 
-    return if grep { $_->is_primary_key } $fk->columns_from;
+    if ( grep { $_->is_primary_key } $fk->columns_from )
+    {
+        return unless $fk->from_is_dependent;
+    }
 
     my $sql = 'ALTER TABLE "';
     $sql .= $fk->table_from->name;
     $sql .= '" ADD CONSTRAINT ';
-    $sql .= $fk->id;
+    $sql .= $self->_fk_name($fk);
     $sql .= ' FOREIGN KEY ( ';
     $sql .= join ', ', map { '"' . $_->name . '"' } $fk->columns_from;
-    $sql .= ' ) REFERENCES ';
+    $sql .= ' ) REFERENCES "';
     $sql .= $fk->table_to->name;
+    $sql .= '" (';
+    $sql .= join ', ', map { '"' . $_->name . '"' } $fk->columns_to;
+    $sql .= ')';
     $sql .= ' ON DELETE ';
 
     if ( $fk->from_is_dependent )
@@ -479,8 +501,8 @@ sub _add_foreign_key_sql
     }
     else
     {
-	my @to = $fk->columns_to;
-	unless ( ( grep { $_->nullable } @to ) == @to )
+	my @from = $fk->columns_from;
+	unless ( ( grep { $_->nullable } @from ) == @from )
 	{
 	    $sql .= 'SET DEFAULT';
 	}
@@ -493,15 +515,27 @@ sub _add_foreign_key_sql
     return $sql;
 }
 
+sub _fk_name { 'fk_' . Digest::MD5::md5_hex( $_[1]->id ) }
+
 sub drop_table_sql
 {
     my $self = shift;
     my $table = shift;
-    my $keep_sequences = shift;
+    my $is_recreate = shift;
 
-    my @sql = $self->SUPER::drop_table_sql($table);
+    my @sql;
 
-    unless ($keep_sequences)
+    if ($is_recreate)
+    {
+        foreach my $fk ( $table->all_foreign_keys )
+        {
+            push @sql, $self->drop_foreign_key_sql( $fk->reverse );
+        }
+    }
+
+    push @sql, $self->SUPER::drop_table_sql($table);
+
+    unless ($is_recreate)
     {
 	foreach my $c ( $table->columns )
 	{
@@ -519,17 +553,11 @@ sub _drop_sequence_sql
     my $self = shift;
     my $col = shift;
 
+    return if $col->type =~ /^(?:SERIAL(?:4|8)?|BIGSERIAL)$/;
+
     my $seq_name = $self->_sequence_name($col);
 
     return "DROP SEQUENCE $seq_name;\n";
-}
-
-sub foreign_key_sql
-{
-    return; # temporarily disable
-    my $self = shift;
-    my $fk = shift;
-
 }
 
 sub drop_column_sql
@@ -540,6 +568,26 @@ sub drop_column_sql
     return $self->recreate_table_sql( new => $p{new_table},
                                       old => $p{old}->table,
                                     );
+}
+
+sub recreate_table_sql
+{
+    my $self = shift;
+    my %p = @_;
+
+    # This is a hack to prevent this SQL from being made multiple
+    # times (which would be pointless)
+    return () if $self->{state}{table_sql}{ $p{new}->name };
+
+    return ( $self->_temp_table_sql( $p{new}, $p{old} ),
+	     $self->drop_table_sql( $p{old}, 1 ),
+	     # the 0 param indicates that we should not create sequences
+	     $self->table_sql( $p{new}, 0 ),
+	     $self->_restore_table_data_sql( $p{new}, $p{old} ),
+             $self->_restore_foreign_key_sql( $p{new} ),
+	     $self->_drop_temp_table( $p{new} ),
+	   );
+
 }
 
 sub _temp_table_sql
@@ -594,9 +642,32 @@ sub _drop_temp_table
     return qq|DROP TABLE "$temp_name"|;
 }
 
+sub _restore_foreign_key_sql
+{
+    my $self = shift;
+    my $table = shift;
+
+    my @sql;
+    foreach my $fk ( $table->all_foreign_keys )
+    {
+        push @sql, $self->foreign_key_sql($fk);
+        push @sql, $self->foreign_key_sql( $fk->reverse );
+    }
+
+    return @sql;
+}
+
 sub drop_foreign_key_sql
 {
-    return;
+    my $self = shift;
+    my $fk = shift;
+
+    if ( grep { $_->is_primary_key } $fk->columns_from )
+    {
+        return unless $fk->from_is_dependent;
+    }
+
+    return 'ALTER TABLE "' . $fk->table_from->name . '" DROP CONSTRAINT ' . $self->_fk_name($fk);
 }
 
 sub drop_index_sql
@@ -652,11 +723,6 @@ sub column_sql_diff
     return;
 }
 
-sub foreign_key_sql_diff
-{
-    return;
-}
-
 sub alter_primary_key_sql
 {
     my $self = shift;
@@ -685,23 +751,12 @@ sub can_change_table_name
     0;
 }
 
-sub recreate_table_sql
+# Not sure if this is possible
+sub change_table_attributes_sql
 {
     my $self = shift;
-    my %p = @_;
 
-    # This is a hack to prevent this SQL from being made multiple
-    # times (which would be pointless)
-    return () if $self->{state}{table_sql}{ $p{new}->name };
-
-    return ( $self->_temp_table_sql( $p{new}, $p{old} ),
-	     $self->drop_table_sql( $p{old}, 1 ),
-	     # the 0 param indicates that we should not create sequences
-	     $self->table_sql( $p{new}, 0 ),
-	     $self->_restore_table_data_sql( $p{new}, $p{old} ),
-	     $self->_drop_temp_table( $p{new} ),
-	   );
-
+    return $self->recreate_table_sql(@_);
 }
 
 sub change_column_name_sql
@@ -747,6 +802,7 @@ EOF
         $sql .= ' ORDER BY attnum';
 
 
+        my %cols_by_number;
 	foreach my $row ( $driver->rows( sql => $sql,
 					 bind => $t_oid ) )
 	{
@@ -766,7 +822,7 @@ EOF
                 if ( $p{default} =~ /^nextval\(/ )
                 {
                     $p{sequenced} = 1;
-                    $p{type} =~ s/int(?:eger)?/serial/;
+                    $p{type} =~ s/(?:int(?:eger)?|numeric)/serial/;
                 }
 	    }
 
@@ -790,13 +846,15 @@ EOF
 
 	    $p{type} = 'char' if lc $p{type} eq 'bpchar';
 
-	    print STDERR "Adding $table column $row->[0] to schema\n"
+	    print STDERR "Adding $row->[0] column to $table\n"
 		if Alzabo::Debug::REVERSE_ENGINEER;
 
 	    $t->make_column( name => $row->[0],
 			     nullable => ! $row->[1],
 			     %p
 			   );
+
+            $cols_by_number{ $row->[3] } = $row->[0];
 	}
 
 
@@ -814,15 +872,14 @@ EOF
 	foreach my $col ( $driver->column( sql => $sql,
 					   bind => $t_oid ) )
 	{
-	    print STDERR "Adding $table primary key $col to schema\n"
+	    print STDERR "Setting $col as primary key for $table\n"
 		if Alzabo::Debug::REVERSE_ENGINEER;
 
 	    $t->add_primary_key( $t->column($col) );
 	}
 
-
 	$sql = <<'EOF';
-SELECT c.oid, a.attname, i.indisunique
+SELECT c.oid, a.attname, i.indisunique, i.indproc, i.indkey
 FROM pg_index i, pg_attribute a, pg_class c
 WHERE i.indrelid = ?
 AND NOT i.indisprimary
@@ -836,16 +893,77 @@ EOF
 	foreach my $row ( $driver->rows( sql => $sql,
 					 bind => $t_oid ) )
 	{
-	    push @{ $i{ $row->[0] }{cols} }, $t->column($row->[1]);
+            my $col_name;
+
+            my $function;
+            if ( $row->[3] && $row->[3] =~ /\w/ && $row->[3] ne '-' )
+            {
+                # some function names come out as "pg_catalog.foo"
+                $row->[3] =~ s/\w+\.(\w+)/$1/;
+                $function = uc $row->[3];
+                $function .= '(';
+
+                $col_name = $cols_by_number{ $row->[4] };
+
+                $function .= $col_name;
+
+                $function .= ')';
+            }
+            else
+            {
+                $col_name = $row->[1];
+            }
+
+	    push @{ $i{ $row->[0] }{cols} }, $t->column($col_name);
 	    $i{ $row->[0] }{unique} = $row->[2];
+
+            $i{ $row->[0] }{function} = $function;
 	}
 
 	foreach my $oid (keys %i)
 	{
 	    my @c = map { { column => $_ } } @{ $i{$oid}{cols} };
-	    $t->make_index( columns => \@c,
-			    unique => $i{$oid}{unique} );
+	    $t->make_index( columns  => \@c,
+			    unique   => $i{$oid}{unique},
+                            function => $i{$oid}{function},
+                          );
         }
+
+	$sql = <<'EOF';
+SELECT consrc, conkey
+FROM pg_constraint
+WHERE conrelid = ?
+AND contype = 'c'
+EOF
+
+        my @att;
+
+	foreach my $row ( $driver->rows( sql => $sql,
+                                         bind => $t_oid ) )
+	{
+            my ( $con, $cols ) = @$row;
+
+            # this stuff is not needed
+            $con =~ s/::(\w+)//g;
+
+            if ( $cols =~ /^\{(\d+)\}$/ )
+            {
+                my $column = $cols_by_number{$1};
+
+                print STDERR qq|Adding constraint "$con" to $table.$column\n|
+                    if Alzabo::Debug::REVERSE_ENGINEER;
+
+                $t->column($column)->add_attribute("CHECK $con");
+            }
+            else
+            {
+                print STDERR qq|Adding constraint "$con" to $table\n|
+                    if Alzabo::Debug::REVERSE_ENGINEER;
+
+                $t->add_attribute("CHECK $con");
+            }
+	}
+
     }
 
     # Foreign key info is available in PG 7.3.0 and higher (could fake
@@ -879,24 +997,12 @@ WHERE attrelid = ?
   AND attnum = ?
 EOF
 
-    my $unique_sql = <<'EOF';
-SELECT 1 FROM pg_constraint
-WHERE conrelid = ?
-  AND conkey = ?
-  AND ( contype = 'p' OR contype = 'u' )
-EOF
-
     foreach my $row ( $driver->rows( sql => $constraint_sql ) )
     {
 	my $from_table = $driver->one_row( sql => $table_sql,
 					   bind => $row->[0] );
 	my $to_table   = $driver->one_row( sql => $table_sql,
 					   bind => $row->[1] );
-
-	# If there's a unique constraint on the "from" columns, treat
-	# is as 1-to-1.  Otherwise treat it as n-to-1.
-	my $from_unique = $driver->one_row( sql => $unique_sql,
-					    bind => [$row->[0], $row->[2]] );
 
 	# Column numbers are given as strings like "{3,5}"
 	my @from_cols = $row->[2] =~ m/(\d+),?/g
@@ -926,12 +1032,44 @@ EOF
 	@from_cols = map { $from_table->column($_) } @from_cols;
 	@to_cols   = map {   $to_table->column($_) } @to_cols;
 
+	# If there's a unique constraint on the "from" columns, treat
+	# is as 1-to-1.  Otherwise treat it as n-to-1.
+	my $from_unique = 0;
+
+        # Only use PK as determination of uniqueness if the FK is from
+        # the _whole_ PK to something else.  If the FK only includes
+        # _part_ of the PK then it is not unique.
+        $from_unique = 1
+            if ( ( @from_cols == grep { $_->is_primary_key } @from_cols )
+                 &&
+                 ( @from_cols == $from_table->primary_key_size ) );
+
+        $from_unique = 1
+            if @from_cols == grep { $_->has_attribute( attribute => 'UNIQUE' ) } @from_cols;
+
+      INDEX:
+        foreach my $i ( grep { $_->unique } $from_table->indexes )
+        {
+            my @i_cols = $i->columns;
+
+            next unless @i_cols == @from_cols;
+
+            for ( my $x = 0; $x < @i_cols; $x++ )
+            {
+                next INDEX unless $i_cols[$x] eq $from_cols[$x];
+            }
+
+            $from_unique = 1;
+        }
+
+        my $from_cardinality = $from_unique ? '1' : 'n';
+
         my $from_is_dependent =
             ( grep { $_->nullable } @from_cols ) ? 0 : 1;
         my $to_is_dependent =
             ( grep { $_->nullable || $_->is_primary_key } @to_cols ) ? 0 : 1;
 
-	$schema->add_relationship( cardinality => [$from_unique ? '1' : 'n', '1'],
+	$schema->add_relationship( cardinality => [ $from_cardinality, '1' ],
                                    table_from => $from_table,
                                    table_to   => $to_table,
                                    columns_from => \@from_cols,

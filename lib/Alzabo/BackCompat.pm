@@ -30,8 +30,11 @@ my @compat = ( [ 0, 0.64 ],
 	       [ 0.65, 0.70,
 		 \&add_comment_fields,
 	       ],
-               [ 0.71, $Alzabo::VERSION,
+               [ 0.71, 0.73,
                  \&convert_pk_to_array,
+               ],
+               [ 0.79, $Alzabo::VERSION,
+                 \&add_table_attributes,
                ],
 	     );
 
@@ -193,6 +196,17 @@ sub convert_pk_to_array
         $table->{pk} = $pk;
     }
 }
+
+sub add_table_attributes
+{
+    my $s = shift;
+
+    foreach my $table ( $s->tables )
+    {
+        tie %{ $table->{attributes} }, 'Tie::IxHash';
+    }
+}
+
 
 __END__
 

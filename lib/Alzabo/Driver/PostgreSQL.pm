@@ -43,21 +43,19 @@ sub schemas
 {
     my $self = shift;
 
-    my %p = @_;
-
-    %p = validate( @_, { user => { type => SCALAR | UNDEF,
+    my %p = validate( @_, { user => { type => SCALAR | UNDEF,
+                                      optional => 1 },
+                            password => { type => SCALAR | UNDEF,
+                                          optional => 1 },
+                            host => { type => SCALAR | UNDEF,
 				   optional => 1 },
-			 password => { type => SCALAR | UNDEF,
-				       optional => 1 },
-			 host => { type => SCALAR | UNDEF,
-				   optional => 1 },
-			 port => { type => SCALAR | UNDEF,
-				   optional => 1 },
-			 options => { type => SCALAR | UNDEF,
-				      optional => 1 },
-			 tty => { type => SCALAR | UNDEF,
-				  optional => 1 },
-		       } );
+                            port => { type => SCALAR | UNDEF,
+                                      optional => 1 },
+                            options => { type => SCALAR | UNDEF,
+                                         optional => 1 },
+                            tty => { type => SCALAR | UNDEF,
+                                     optional => 1 },
+                          } );
 
     local %ENV;
     foreach ( grep { defined $p{$_} && length $p{$_} } keys %p )

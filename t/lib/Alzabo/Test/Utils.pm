@@ -70,7 +70,7 @@ sub rdbms_names
 
     my %c = $class->test_config;
 
-    return keys %c;
+    return sort keys %c;
 }
 
 sub rdbms_count
@@ -367,9 +367,9 @@ sub make_mysql_schema
 			     type => 'varchar',
 			     length => 40,
 			   );
-    $outer_1_t->make_column( name => 'outer_2_key',
+    $outer_1_t->make_column( name => 'outer_2_pk',
 			     type => 'int',
-			     nullable => 1,
+                             nullable => 1,
 			   );
 
     my $outer_2_t = $s->make_table( name => 'outer_2' );
@@ -382,15 +382,11 @@ sub make_mysql_schema
 			     type => 'varchar',
 			     length => 20,
 			   );
-    $outer_2_t->make_column( name => 'outer_2_key',
-			     type => 'int',
-			     nullable => 1,
-			   );
 
     $s->add_relationship( table_from => $outer_1_t,
 			  table_to   => $outer_2_t,
-			  columns_from => $outer_1_t->column('outer_2_key'),
-			  columns_to   => $outer_2_t->column('outer_2_key'),
+			  columns_from => $outer_1_t->column('outer_2_pk'),
+			  columns_to   => $outer_2_t->column('outer_2_pk'),
 			  cardinality => [1, 1],
 			  from_is_dependent => 0,
 			  to_is_dependent => 0,
@@ -552,7 +548,7 @@ sub make_pg_schema
 			     length => 40,
 			   );
 
-    $outer_1_t->make_column( name => 'outer_2_key',
+    $outer_1_t->make_column( name => 'outer_2_pk',
 			     type => 'int',
 			     nullable => 1,
 			   );
@@ -569,15 +565,10 @@ sub make_pg_schema
 			     length => 40,
 			   );
 
-    $outer_2_t->make_column( name => 'outer_2_key',
-			     type => 'int',
-			     nullable => 1,
-			   );
-
     $s->add_relationship( table_from => $outer_1_t,
 			  table_to   => $outer_2_t,
-			  columns_from => $outer_1_t->column('outer_2_key'),
-			  columns_to   => $outer_2_t->column('outer_2_key'),
+			  columns_from => $outer_1_t->column('outer_2_pk'),
+			  columns_to   => $outer_2_t->column('outer_2_pk'),
 			  cardinality => [1, 1],
 			  from_is_dependent => 0,
 			  to_is_dependent => 0,

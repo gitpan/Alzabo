@@ -50,4 +50,72 @@ sub write_to_cache { $CACHE{ $_[1]->table->name }{ $_[1]->id_as_string } = $_[1]
 
 __END__
 
-# doesn't work across Storable without patch I sent to p5p
+=head1 NAME
+
+Alzabo::Runtime::UniqueRowCache - Implements a row cache for Alzabo
+
+=head1 SYNOPSIS
+
+  use Alzabo::Runtime::UniqueRowCache;
+
+  Alzabo::Runtime::UniqueRowCache->clear();
+
+=head1 DESCRIPTION
+
+This is a very simple caching mechanism for C<Alzabo::Runtime::Row>
+objects that tries to ensure that for there is never more than one row
+object in memory for a given database row.
+
+To use it, simply load it.
+
+It can be foiled through the use of C<Storable> or other "deep magic"
+cloning code, like in the C<Clone> module.
+
+The cache is a simple hash kept in memory.  If you use this module,
+you are responsible for clearing the cache as needed.  The only time
+it is cleared automatically is when a table update or delete is
+performed, in which case all cached rows for that table are cleared.
+
+In a persistent environment like mod_perl, you should clear the cache
+on a regular basis in order to prevent the cache from getting out of
+sync with the database.  A good way to do this is to clear it at the
+start of every request.
+
+=head1 METHODS
+
+All methods provided are class methods.
+
+=over 4
+
+=item * clear
+
+This clears the entire cache
+
+=item * clear_table( $table_object )
+
+Given a table object, this method clear all the rows associated with
+that table.
+
+=item * row_in_cache( $table_name, $row_id )
+
+Given a table I<name> and a row id, as returned by the C<<
+Alzabo::Runtime::Row->id_as_string >> method, this method returns the
+matching row from the cache, if it exists.  Otherwise it returns undef.
+
+=item * delete_from_cache( $table_name, $row_id )
+
+Given a table I<name> and a row id, as returned by the C<<
+Alzabo::Runtime::Row->id_as_string >> method, this method returns the
+matching row from the cache.
+
+=item * write_to_cache( $row_object )
+
+Given a row object, this method stores it in the cache.
+
+=back
+
+=head1 AUTHOR
+
+Dave Rolsky, <autarch@urth.org>
+
+=cut

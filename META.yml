@@ -1,11 +1,12 @@
 --- #YAML:1.0
 name: Alzabo
-version: 0.79_01
+version: 0.79_02
 license: perl
 distribution_type: module
 requires:
   Class::Factory::Util: 1.3
   DBI: 1.21
+  Digest::MD5: 0
   Exception::Class: 0.97
   Params::Validate: 0.58
   Storable: 0.7
@@ -23,7 +24,7 @@ conflicts: {}
 provides:
   Alzabo:
     file: lib/Alzabo.pm
-    version: 0.79_01
+    version: 0.79_02
   Alzabo::BackCompat:
     file: lib/Alzabo/BackCompat.pm
     version: 2
@@ -176,4 +177,4 @@ provides:
   ___table:
     file: lib/Alzabo/Runtime/Row.pm
     version: 2
-generated_by: Module::Build version 0.20_02
+generated_by: Module::Build version 0.21

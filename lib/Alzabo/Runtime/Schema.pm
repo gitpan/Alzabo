@@ -17,9 +17,13 @@ $VERSION = 2.0;
 
 sub load_from_file
 {
-    my $self = shift;
+    my $class = shift;
 
-    $self->_load_from_file(@_);
+    my $self = $class->_load_from_file(@_);
+
+    $self->prefetch_all_but_blobs;
+
+    return $self;
 }
 
 sub _schema_file_type
@@ -339,16 +343,16 @@ sub _select_sql
 			     join => $p{join} );
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where} )
-            if exists $p{where};
+        if exists $p{where};
 
     Alzabo::Runtime::process_group_by_clause( $sql, $p{group_by} )
-            if exists $p{group_by};
+        if exists $p{group_by};
 
     Alzabo::Runtime::process_having_clause( $sql, $p{having} )
-            if exists $p{having};
+        if exists $p{having};
 
     Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} )
-            if exists $p{order_by};
+        if exists $p{order_by};
 
     $sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} ) if $p{limit};
 
@@ -461,7 +465,7 @@ sub _join_two_tables
     my $self = shift;
     my ($sql, $table_1, $table_2, $fk) = @_;
 
-    my $op =  $sql->last_op eq 'and' || $sql->last_op eq 'condition' ? 'and' : 'where';
+    my $op = $sql->last_op eq 'and' || $sql->last_op eq 'condition' ? 'and' : 'where';
 
     if ($fk)
     {
@@ -529,6 +533,13 @@ sub prefetch_all_but_blobs
     my $self = shift;
 
     $_->set_prefetch( grep { ! $_->is_blob } $_->columns ) for $self->tables;
+}
+
+sub prefetch_none
+{
+    my $self = shift;
+
+    $_->set_prefetch() for $self->tables;
 }
 
 __END__
@@ -915,6 +926,12 @@ L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table> for more details.
 
 This method will set all the tables in the schema to prefetch all
 their non-blob-type columns.
+
+This method is called as soon as a schema is loaded.
+
+=head2 prefetch_none
+
+This method turns of all prefetching.
 
 =for pod_merge name
 

@@ -190,6 +190,10 @@ deletions.  You have been warned.
 
 L<C<Alzabo::Exception::ReferentialIntegrity>|Alzabo::Exceptions>
 
+=for pod_merge id
+
+=for pod_merge comment
+
 =head1 AUTHOR
 
 Dave Rolsky, <autarch@urth.org>

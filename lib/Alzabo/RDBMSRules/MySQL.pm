@@ -212,6 +212,9 @@ sub validate_column_length
 	if defined $column->length || defined $column->precision;
 }
 
+# placeholder in case we decide to try to do something better later
+sub validate_table_attribute { 1 }
+
 sub validate_column_attribute
 {
     my $self = shift;
@@ -301,6 +304,8 @@ sub validate_index
     Alzabo::Exception::RDBMSRules->throw( error => 'An fulltext index cannot be unique' )
 	if $index->unique && $index->fulltext;
 
+    Alzabo::Exception::RDBMSRules->throw( error => 'MySQL does not support function indexes' )
+	if defined $index->function;
 }
 
 sub type_is_integer
@@ -327,7 +332,7 @@ sub type_is_char
     my $col  = shift;
     my $type = uc $col->type;
 
-    return 1 if $type =~ /\A(?:(?:NATIONAL\s+)?VAR)?CHAR\z/;
+    return 1 if $type =~ /(?:CHAR|TEXT)\z/;
 }
 
 sub type_is_date
@@ -373,7 +378,7 @@ sub type_is_blob
     my $col  = shift;
     my $type = uc $col->type;
 
-    return 1 if $type =~ /\A(?:TINY|MEDIUM|LONG)?(?:TEXT|BLOB)\z/;
+    return 1 if $type =~ /BLOB\z/;
 }
 
 sub blob_type { return 'BLOB' }
@@ -464,6 +469,12 @@ sub table_sql
 	$sql .= "\n";
     }
     $sql .= ")";
+
+    if (my @att = $table->attributes)
+    {
+        $sql .= ' ';
+        $sql .= join ' ', @att;
+    }
 
     my @sql = ($sql);
     foreach my $i ( $table->indexes )
@@ -690,11 +701,6 @@ sub column_sql_diff
     return @sql;
 }
 
-sub foreign_key_sql_diff
-{
-    return ();
-}
-
 sub alter_primary_key_sql
 {
     my $self = shift;
@@ -737,6 +743,14 @@ sub change_table_name_sql
     my $table = shift;
 
     return 'RENAME TABLE ' . $table->former_name . ' TO ' . $table->name;
+}
+
+sub change_table_attributes_sql
+{
+    my $self = shift;
+    my %p = @_;
+
+    return 'ALTER TABLE ' . $p{new}->name . ' ' . join ' ', $p{new}->attributes;
 }
 
 sub change_column_name_sql

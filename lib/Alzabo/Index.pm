@@ -35,29 +35,30 @@ sub prefix
     return ($self->{columns}->FETCH( $c->name ))->{prefix};
 }
 
-sub unique
-{
-    my $self = shift;
+sub unique { $_[0]->{unique} }
 
-    return $self->{unique};
-}
+sub fulltext { $_[0]->{fulltext} }
 
-sub fulltext
-{
-    my $self = shift;
-
-    return $self->{fulltext};
-}
+sub function { $_[0]->{function} }
 
 sub id
 {
     my $self = shift;
 
+    my $function;
+
+    if ( defined $self->function )
+    {
+        ($function) = $self->function =~ /^(\w+)/;
+    }
+
     return join '___', ( $self->{table}->name,
 # making this change would break schemas when the user tries to
 # delete/drop the index.  save for later, maybe?
 
-#			 $self->unique ? 'U' : (),
+#			 ( $self->unique ? 'U' : () ),
+#			 ( $self->fulltext ? 'F' : () ),
+                         ( $function ? $function : () ),
 			 ( map { $_->name, $self->prefix($_) || () }
 			   $self->columns ),
 		       );
@@ -131,6 +132,12 @@ A boolean value indicating whether or not the index is a unique index.
 =head3 Returns
 
 A boolean value indicating whether or not the index is a fulltext index.
+
+=head2 function
+
+=head3 Returns
+
+For function indexes, this returns the function being indexed.
 
 =head2 id
 

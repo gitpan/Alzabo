@@ -98,6 +98,23 @@ sub column_is_primary_key
     return 0;
 }
 
+sub attributes
+{
+    return keys %{ $_[0]->{attributes} };
+}
+
+sub has_attribute
+{
+    my $self = shift;
+    my %p = validate( @_, { attribute => { type => SCALAR },
+			    case_sensitive => { type => SCALAR,
+						optional => 1 } } );
+
+    my $att = $p{case_sensitive} ? $p{attribute} : lc $p{attribute};
+
+    return exists $self->{attributes}{$att};
+}
+
 sub foreign_keys
 {
     my $self = shift;
@@ -198,6 +215,16 @@ sub index
 	unless $self->{indexes}->EXISTS($id);
 
     return $self->{indexes}->FETCH($id);
+}
+
+sub has_index
+{
+    my $self = shift;
+
+    validate_pos( @_, { type => SCALAR } );
+    my $id = shift;
+
+    return $self->{indexes}->EXISTS($id);
 }
 
 sub indexes
@@ -303,6 +330,35 @@ method on the column object.
 A boolean value indicating whether or not the column given is part of
 the table's primary key.
 
+=head2 attributes
+
+A column's attributes are strings describing the column (for example,
+valid attributes in MySQL are 'UNSIGNED' or 'ZEROFILL'.
+
+=head3 Returns
+
+A list of strings.
+
+=head2 has_attribute
+
+=head3 Parameters:
+
+This method can be used to test whether or not a column has a
+particular attribute.  By default, the check is case-insensitive.
+
+=over 4
+
+=item * attribute => $attribute
+
+=item * case_sensitive => 0 or 1 (defaults to 0)
+
+=back
+
+=head3 Returns
+
+A boolean value indicating whether or not the column has this
+particular attribute.
+
 =head2 foreign_keys
 
 =head3 Parameters
@@ -347,13 +403,23 @@ list.  There is no guarantee as to what the first item will be.
 
 =head2 index ($index_id)
 
-This method expect an index id as returned by the
+This method expects an index id as returned by the
 L<C<Alzabo::Index-E<gt>id>|Alzabo::Index/id> method.
 
 =head3 Returns
 
 The L<C<Alzabo::Index>|Alzabo::Index> object matching this id, if it
 exists in the table.
+
+=head2 has_index ($index_id)
+
+This method expects an index id as returned by the
+L<C<Alzabo::Index-E<gt>id>|Alzabo::Index/id> method.
+
+=head3 Returns
+
+A boolean indicating whether or not the table has an index with the
+same id.
 
 =head2 indexes
 

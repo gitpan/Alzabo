@@ -19,7 +19,7 @@ unless (@rdbms_names)
     exit;
 }
 
-my $tests_per_run = 322;
+my $tests_per_run = 324;
 my $test_count = $tests_per_run * @rdbms_names;
 
 my %SINGLE_RDBMS_TESTS = ( mysql => 23,
@@ -530,20 +530,20 @@ sub run_tests
     {
 
 	$s->table('outer_2')->insert( values => { outer_2_name => 'will match something',
-						  outer_2_key => 1 },
+						  outer_2_pk => 1 },
 				    );
 
 	$s->table('outer_2')->insert( values => { outer_2_name => 'will match nothing',
-						  outer_2_key => 99 },
+						  outer_2_pk => 99 },
                                     );
 
 
 	$s->table('outer_1')->insert( values => { outer_1_name => 'test1 (has matching join row)',
-						  outer_2_key => 1 },
+						  outer_2_pk => 1 },
                                     );
 
 	$s->table('outer_1')->insert( values => { outer_1_name => 'test2 (has no matching join row)',
-						  outer_2_key => undef },
+						  outer_2_pk => undef },
                                     );
 
         {
@@ -590,7 +590,7 @@ sub run_tests
                                      join =>
                                      [ [ left_outer_join =>
                                          $s->tables( 'outer_1', 'outer_2' ),
-                                         [ $s->table('outer_2')->column( 'outer_2_key' ),
+                                         [ $s->table('outer_2')->column( 'outer_2_pk' ),
                                            '!=', 1 ],
                                        ] ],
                                      order_by =>
@@ -626,7 +626,7 @@ sub run_tests
                                      [ [ left_outer_join =>
                                          $s->tables( 'outer_1', 'outer_2' ),
                                          $fk,
-                                         [ $s->table('outer_2')->column( 'outer_2_key' ),
+                                         [ $s->table('outer_2')->column( 'outer_2_pk' ),
                                            '!=', 1 ],
                                        ] ],
                                      order_by =>
@@ -1692,6 +1692,14 @@ sub run_tests
     }
 
     {
+        is( scalar $proj_t->prefetch,
+            ( scalar $proj_t->columns -
+              $proj_t->primary_key_size -
+              scalar ( grep { $_->is_blob } $proj_t->columns ) ),
+            "Check that schema->prefetch_all_but_blobs is on by default" );
+    }
+
+    {
         $proj_t->set_prefetch();
         $s->prefetch_all;
 
@@ -1710,6 +1718,13 @@ sub run_tests
               $proj_t->primary_key_size -
               scalar ( grep { $_->is_blob } $proj_t->columns ) ),
             "Check that schema->prefetch_all_but_blobs works" );
+    }
+
+    {
+        $s->prefetch_none;
+
+        is( scalar $proj_t->prefetch, 0,
+            "Check that schema->prefetch_none works" );
     }
 
     {

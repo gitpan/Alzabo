@@ -39,11 +39,16 @@ sub has_attribute
     my $self = shift;
     my %p = validate( @_, { attribute => { type => SCALAR },
 			    case_sensitive => { type => SCALAR,
-						optional => 1 } } );
+						default => 0 } } );
 
-    my $att = $p{case_sensitive} ? $p{attribute} : lc $p{attribute};
-
-    return exists $self->{attributes}{$att};
+    if ( $p{case_sensitive} )
+    {
+        return exists $self->{attributes}{ $p{attribute} };
+    }
+    else
+    {
+        return 1 if grep { lc $p{attribute} eq lc $_ } keys %{ $self->{attributes} };
+    }
 }
 
 sub type
@@ -283,6 +288,9 @@ column.
 A boolean value indicating whether the column is a character type
 column.
 
+This is true only for any columns which are defined to hold I<text>
+data, regardless of size.
+
 =head2 is_date
 
 =head3 Returns
@@ -307,6 +315,9 @@ A boolean value indicating whether the column is a time type column.
 =head3 Returns
 
 A boolean value indicating whether the column is a blob column.
+
+This is true for any columns defined to hold binary data, regardless
+of size.
 
 =head2 generic_type
 

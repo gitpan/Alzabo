@@ -27,7 +27,7 @@ unless (@rdbms_names)
     exit;
 }
 
-plan tests => 10;
+plan tests => 8;
 
 
 Alzabo::Test::Utils->remove_all_schemas;
@@ -73,20 +73,6 @@ $s->connect( Alzabo::Test::Utils->connect_params_for($rdbms)  );
 
     is( $dep2->select('name'), 'bar', 'refresh works for cached rows' );
     is( $dep2_copy->select('name'), 'bar', 'refresh works for cached rows' );
-
-   TODO:
-    {
-        local $TODO = "Needs a custom Storable patch (for now)";
-
-        my $clone = Storable::thaw( Storable::nfreeze($dep2) );
-
-        is( "$clone", "$dep2",
-            'Storable freeze & thaw should still not create new object' );
-
-        my $clone2 = Storable::dclone($dep2);
-
-        is( "$clone2", "$dep2", 'Storable dclone should still not create new object' );
-    }
 
     my $old_id = $dep2->id_as_string;
     $dep2->update( department_id => 1000 );

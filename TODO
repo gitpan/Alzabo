@@ -2,19 +2,15 @@ To Do List
 
 Short term:
 
-- Support for table attributes (constraints, MySQL table types)
-
 - Overhaul foreign key objects so that one relationship has one such
   object, shared by two tables.
 
-- Add constraints to output SQL for Postgres and MySQL (InnoDB tables
+- Add constraints to output SQL for MySQL (InnoDB tables
   will actually use them).
 
 - Make sense of foreign key definitions for InnoDB tables in MySQL.
 
 - Table update & delete.
-
-- Prefetch by default (for all but blobs).
 
 - Add Alzabo::Runtime::Schema->clone method.
 

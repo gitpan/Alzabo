@@ -413,8 +413,8 @@ L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 =head2 set_attributes (@attributes)
 
 Sets the column's attributes.  These are strings describing the column
-(for example, valid attributes in MySQL are 'PRIMARY KEY' or
-'AUTO_INCREMENT').
+(for example, valid attributes in MySQL are "PRIMARY KEY" or
+"AUTO_INCREMENT").
 
 =head2 add_attribute ($attribute)
 

@@ -1,4 +1,68 @@
-0.79_01
+0.79_02  October 17, 2003
+
+ENHANCEMENTS:
+
+- Added support for table attributes like MySQL's "TYPE = ..." or
+Postgres's "WITH OIDS".
+
+- Added support for functional indexes in Postgres, like
+"LOWER(some_col)".  Funded by Kineticode, LLC for Bricolage 2.0.
+
+- Added column/table constraint/check reverse engineering for
+Postgres.  Funded by Kineticode, LLC for Bricolage 2.0.
+
+- The SQL generated for Postgres schemas now includes foreign key
+constraints.
+
+- Added a new method to Alzabo::Runtime::Schema, prefetch_none().
+
+- Added a new method to Alzabo::Table, has_index().
+
+- Documented Alzabo::Runtime::UniqueRowCache.
+
+- The definitions of the is_character and is_blob column methods have
+been clarified.  Note that these definitions have changed from the
+previous, undefined behavior.
+
+- When a 1..1 or 1..n foreign key is added to a table, a unique index
+is created on the columns involved in the foreign key, unless those
+columns are part of the tables primary key.
+
+BUG FIXES:
+
+- Fixed a problem in the Makefile.PL which would cause it to fail even
+if you had Module::Build installed.  Reported by Ken Williams.
+
+- Fixed (really, this time, I hope) a problem where the user-provided
+connection parameters were not respected in the 01-driver.t tests.
+Reported by Ken Williams.
+
+- FK reverse engineering for Postgres sometimes got the cardinality of
+the relationship wrong, making it 1..1 when it should be 1..n.  This
+should be much improved in this release, though it may still have
+bugs.
+
+- Removed references to the old caching code in various spots.
+
+- Fixed handling case_sensitive parameter to
+Alzabo::Column->has_attribute().
+
+BACKWARDS INCOMPATIBILITIES:
+
+- When you load a runtime schema, it now calls
+"$self->prefetch_all_but_blobs" in order to turn on pre-fetching by
+default, since for the vast majority of users, this is a huge
+performance improvement.  The new prefetch_none() method can be used
+to turn off all prefetching.
+
+- The is_character column method now returns true for any text type
+column, regardless of size.
+
+- The is_blob column method now returns true only for columns that are
+defined to hold binary data.
+
+
+0.79_01  October 10, 2003
 
 ENHANCEMENTS:
 
@@ -62,9 +126,9 @@ Previously, this could only be done as a double array reference, like:
 
 BUG FIXES:
 
-- A join using multiple aliased tables would fail with an error
-message like "Cannot use column (Foo.bar_id) in select unless its
-table is included in the FROM clause".
+- A join using multiple aliases to the same table would fail with an
+error message like "Cannot use column (Foo.bar_id) in select unless
+its table is included in the FROM clause".
 
 - Remove the long-ago deprecated next_row() and next_rows() methods.
 
@@ -95,7 +159,6 @@ Williams.
 
 - When checking for the MySQL variable sql_mode, the value may be
 simply '' as opposed to 0.  Patch by Andrew Baumhauer.
-
 
 BACKWARDS INCOMPATIBILITIES:
 
