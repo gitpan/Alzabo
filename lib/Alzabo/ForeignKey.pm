@@ -5,7 +5,7 @@ use vars qw($VERSION);
 
 use Alzabo;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -66,11 +66,45 @@ sub cardinality
     return ( $self->{min_max_from}->[1], $self->{min_max_to}->[1] );
 }
 
-sub dependent
+sub is_one_to_one
+{
+    my $self = shift;
+
+    my @c = $self->cardinality;
+
+    return $c[0] eq '1' && $c[1] eq '1';
+}
+
+sub is_one_to_many
+{
+    my $self = shift;
+
+    my @c = $self->cardinality;
+
+    return $c[0] eq '1' && $c[1] eq 'n';
+}
+
+sub is_many_to_one
+{
+    my $self = shift;
+
+    my @c = $self->cardinality;
+
+    return $c[0] eq 'n' && $c[1] eq 'n';
+}
+
+sub from_is_dependent
 {
     my $self = shift;
 
     return $self->{min_max_from}[0] eq '1';
+}
+
+sub to_is_dependent
+{
+    my $self = shift;
+
+    return $self->{min_max_to}[0] eq '1';
 }
 
 sub id
@@ -181,22 +215,25 @@ This will be either 1..1 or 1..n.
 A two element array containing the two portions of the cardinality of
 the relationship.
 
-=head2 dependent
+=head2 from_is_dependent
+
+=head2 to_is_dependent
 
 =head3 Returns
 
-A boolean value indicating whether there is a depdency on the table to
-which the relationship is to.
+A boolean value indicating whether there is a dependency from one
+table to the other.
 
-=head2 min_max_from
+=head2 is_one_to_one
 
-=head2 min_max_to
+=head2 is_one_to_many
+
+=head2 is_many_to_one
 
 =head3 Returns
 
-A two element array containing the two portions of the min_max value.
-
-Examples: (0, 1) -- (1, 'n')
+A boolean value indicating what kind of relationship the object
+represents.
 
 =head1 AUTHOR
 

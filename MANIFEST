@@ -34,6 +34,7 @@ lib/Alzabo/Runtime/Cursor.pm
 lib/Alzabo/Runtime/ForeignKey.pm
 lib/Alzabo/Runtime/Index.pm
 lib/Alzabo/Runtime/JoinCursor.pm
+lib/Alzabo/Runtime/OuterJoinCursor.pm
 lib/Alzabo/Runtime/Row.pm
 lib/Alzabo/Runtime/RowCursor.pm
 lib/Alzabo/Runtime/Schema.pm

@@ -9,7 +9,7 @@ use Alzabo::Util;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -242,11 +242,55 @@ sub from
     return $self;
 }
 
+sub left_outer_join
+{
+    shift->_outer_join( @_, 'left' );
+}
+
+sub right_outer_join
+{
+    shift->_outer_join( @_, 'right' );
+}
+
+sub _outer_join
+{
+    my $self = shift;
+
+    my $tables = @_ - 1;
+    validate_pos( @_, ( { isa => 'Alzabo::Table' } ) x $tables, { type => SCALAR } );
+
+    my $type = uc pop @_;
+    my @tables  = @_;
+
+    my $join_from = shift @tables;
+    my $join_on = pop @tables;
+
+    my @fk = $join_from->foreign_keys_by_table($join_on);
+
+    Alzabo::Exception::Params->throw( error => "The " . $join_from->name . " table has no foreign keys to the " . $join_on->name . " table" )
+	unless @fk;
+
+    Alzabo::Exception::Params->throw( error => "The " . $join_from->name . " table has more than 1 foreign key to the " . $join_on->name . " table" )
+	if @fk > 1;
+
+    $self->{sql} .= ' FROM ';
+
+    $self->{sql} .= join ', ', map { $_->name } @tables, $join_from;
+
+    $self->{sql} .= " $type OUTER JOIN ". $join_on->name . ' ON ';
+
+    $self->{sql} .= join ' AND ', map { $_->[0]->table->name . '.' . $_->[0]->name . ' = ' . $_->[1]->table->name . '.' . $_->[1]->name } $fk[0]->column_pairs;
+
+    $self->{last_op} = 'outer_join';
+
+    return $self;
+}
+
 sub where
 {
     my $self = shift;
 
-    $self->_assert_last_op( qw( from set ) );
+    $self->_assert_last_op( qw( from outer_join set ) );
 
     $self->{sql} .= ' WHERE ';
 

@@ -7,7 +7,7 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::ForeignKey);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -23,13 +23,20 @@ sub register_insert
     foreach my $pair ( $self->column_pairs )
     {
 	next if $pair->[0]->is_primary_key;
-	if ( !defined $vals{ $pair->[0]->name } && ($self->min_max_from)[0] eq '1' )
+
+	# This code (and similar code in register_update) may be
+	# unreachable because this may always be caught
+	# Alzabo::Runtime::Row::update where it won't let you use null
+	# for a non-nullable column.  And in
+	# Alzabo::Create::Schema::add_relation we make sure that
+	# dependent columns are not nullable.
+	if ( !defined $vals{ $pair->[0]->name } && $self->from_is_dependent )
 	{
 	    Alzabo::Exception::ReferentialIntegrity->throw( error => 'Referential integrity requires that this column (' . $self->table_from->name . '.' . $pair->[0]->name . ') not be null.' )
 	}
 
 	$self->_check_existence( $pair->[1] => $vals{ $pair->[0]->name } )
-	    if defined $vals{ $pair->[0]->name };
+	    if defined $vals{ $pair->[0]->name } && $pair->[1]->is_primary_key;
     }
 }
 
@@ -42,7 +49,7 @@ sub register_update
 
     foreach my $pair ( $self->column_pairs )
     {
-	if ( !defined $vals{ $pair->[0]->name } && ($self->min_max_from)[0] eq '1' )
+	if ( !defined $vals{ $pair->[0]->name } && $self->from_is_dependent )
 	{
 	    Alzabo::Exception::ReferentialIntegrity->throw( error => 'Referential integrity requires that this column (' . $self->table_from->name . '.' . $pair->[0]->name . ') not be null.' )
 	}
@@ -86,35 +93,35 @@ sub register_delete
     my $self = shift;
     my $row = shift;
 
-    my $delete = ($self->min_max_to)[0] eq '1';
-    my @update = grep { ! $_->is_primary_key } $self->columns_to;
+    my @update = grep { $_->nullable } $self->columns_to;
 
-    return unless $delete || @update;
+    return unless $self->to_is_dependent || @update;
 
     # Make the rows in the other table that contain the relation to
     # the row being deleted.
     my @where = map { [ $_->[1], '=', $row->select( $_->[0]->name ) ] } $self->column_pairs;
     my $cursor = $self->table_to->rows_where( where => \@where );
-    while ( my $row = $cursor->next_row )
+
+    while ( my $related_row = $cursor->next_row )
     {
 	($cursor->errors)[0]->rethrow if $cursor->errors;
 
 	# This is a class variable so that multiple foreign key
 	# objects don't try to delete the same rows
-	next if $DELETED{ $row->id };
+	next if $DELETED{ $related_row->id };
 
-	if ($delete)
+	if ($self->to_is_dependent)
 	{
 	    local %DELETED = %DELETED;
-	    $DELETED{ $row->id } = 1;
+	    $DELETED{ $related_row->id } = 1;
 	    # dependent relationship so delete other row (may begin a
 	    # chain reaction!)
-	    $row->delete;
+	    $related_row->delete;
 	}
 	elsif (@update)
 	{
 	    # not dependent so set the column(s) to null
-	    $row->update( map { $_->name => undef } @update );
+	    $related_row->update( map { $_->name => undef } @update );
 	}
     }
 }
@@ -156,11 +163,15 @@ C<Alzabo::ForeignKey>
 
 =for pod_merge cardinality
 
-=for pod_merge dependent
+=for pod_merge from_is_dependent
 
-=for pod_merge min_max_from
+=for pod_merge to_is_dependent
 
-=for pod_merge min_max_to
+=for pod_merge is_one_to_one
+
+=for pod_merge is_one_to_many
+
+=for pod_merge is_many_to_one
 
 =head2 register_insert ($new_value)
 

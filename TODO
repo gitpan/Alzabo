@@ -10,7 +10,7 @@ Short term:
   list of all the method and what objects they apply to.  This has
   been started.
 
-- Alzabo::ObjectCache::Store::RDBMS - this module will also do syncing
+- Alzabo::ObjectCache::RDBMS - this module will also do syncing
   all in one.  This will allow the caching/syncing to occur across
   multiple machines with multiple processes.
 
@@ -30,6 +30,9 @@ Short term:
 - Make caching system more atomic.  There may subtle race conditions
   in there that should be fixed (timestamps are generated more than
   once, which could be a problem, for one).
+
+- Make a caching module that uses an LRU system to limit the cache
+  size.
 
 - Support transactions in the caching system.  this eventually means
   real transactions at the middleware layer.  argh!

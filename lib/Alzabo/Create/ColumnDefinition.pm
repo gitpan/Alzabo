@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::ColumnDefinition);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -31,12 +31,19 @@ sub _init
     my $self = shift;
 
     validate( @_, { owner => { isa => 'Alzabo::Create::Column' },
-		    type  => { type => SCALAR } } );
+		    type  => { type => SCALAR },
+		    length => { type => UNDEF | SCALAR,
+				optional => 1 },
+		    precision  => { type => UNDEF | SCALAR,
+				    optional => 1 },
+		  } );
     my %p = @_;
 
-    $self->{owner} = $p{owner};
-
-    $self->set_type( $p{type} );
+    $p{type} = $p{owner}->table->schema->rules->validate_column_type( $p{type} );
+    foreach ( qw( owner type ) )
+    {
+	$self->{$_} = $p{$_} if exists $p{$_};
+    }
 }
 
 sub alter

@@ -54,7 +54,7 @@ much better job of making HTML.
 
 If you were in the root of the source directory you might run this as:
 
- perl ./lib /usr/local/apache/htdocs/Alzabo_docs /Alzabo_docs
+ perl ./make_html_docs.pl ./lib /usr/local/apache/htdocs/Alzabo_docs /Alzabo_docs
 
 The script will create an index.html file as well as turning the
 documentation into HTML.

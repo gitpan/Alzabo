@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.47 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.49 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -105,29 +105,15 @@ sub validate_column_type
 					 ),
 				     );
 
-    return $self->_capitalize_type($type) if $simple_types{uc $type};
+    return uc $type if $simple_types{uc $type};
 
     return 'DOUBLE' if $type =~ /DOUBLE\s+PRECISION/i;
 
-    return 'CHAR' if $type =~ /(?:NATIONAL\s+)?CHAR(?:ACTER)?/i;
-    return 'VARCHAR' if $type =~ /(?:NATIONAL\s+)?(?:VARCHAR|CHARACTER VARYING)?/;
+    return 'CHAR' if $type =~ /\A(?:NATIONAL\s+)?CHAR(?:ACTER)?/i;
+    return 'VARCHAR' if $type =~ /\A(?:NATIONAL\s+)?(?:VARCHAR|CHARACTER VARYING)/i;
 
-    my $list = qr{ (?:ENUM|SET)  # enum or set
-		   \s*           # space
-		   \(            # open paren
-		   ['"]          # quote start
-		   .*?           # quoted value
-		   ['"]          # quote end
-		   (?:           # optionally followed by ...
-		    \s*,\s*      # space comma space
-		    ['"]         # another quote start
-		    .*?          # quoted value
-		    ['"]         # quote end
-		   )+?
-		   \)            # close paren
-                 }ix;
-
-    $self->_capitalize_type($type) if $type =~ /\A$list\z/o;
+    my $t = $self->_capitalize_type($type);
+    return $t if $t;
 
     Alzabo::Exception::RDBMSRules->throw( error => "Unrecognized type: $type" );
 }
@@ -137,11 +123,11 @@ sub _capitalize_type
     my $self = shift;
     my $type = shift;
 
-    if ( lc substr($type, 0, 4) eq 'enum' )
+    if ( uc substr($type, 0, 4) eq 'ENUM' )
     {
 	return 'ENUM' . substr($type, 4);
     }
-    elsif ( lc substr($type, 0, 3) eq 'set' )
+    elsif ( uc substr($type, 0, 3) eq 'SET' )
     {
 	return 'SET' . substr($type, 3);
     }
@@ -219,7 +205,7 @@ sub validate_column_length
 
     if ( uc $column->type eq 'YEAR' )
     {
-	Alzabo::Exception::RDBMSRules->throw( error => "Valid values for the digit specification are 2 or 4." )
+	Alzabo::Exception::RDBMSRules->throw( error => "Valid values for the length specification are 2 or 4." )
 	    if defined $column->length && ($column->length != 2 && $column->length != 4);
 	return;
     }

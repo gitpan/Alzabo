@@ -184,11 +184,12 @@ my @order = ( qw( Alzabo
 		  Alzabo::Runtime::RowCursor
 		  Alzabo::Runtime::Cursor
 		  Alzabo::Runtime::JoinCursor
-		  Alzabo::Runtime::Column
-		  Alzabo::Runtime::ForeignKey
-		  Alzabo::Runtime::Index
+		  Alzabo::Runtime::OuterJoinCursor
 		  Alzabo::MethodMaker
 		  Alzabo::ObjectCache
+                  Alzabo::Runtime::ForeignKey
+		  Alzabo::Runtime::Column
+		  Alzabo::Runtime::Index
 		),
 	      [ qw( Alzabo::ObjectCache::Store::Memory
                     Alzabo::ObjectCache::Store::BerkeleyDB
@@ -201,8 +202,7 @@ my @order = ( qw( Alzabo
 		    Alzabo::ObjectCache::Sync::Null
 		  ) ],
 
-	      qw( Alzabo::Config
-                  Alzabo::Exceptions
+	      qw( Alzabo::Exceptions
                   Alzabo::FAQ
 		  Alzabo::Create::Schema
 		  Alzabo::Create::Table
@@ -220,7 +220,8 @@ my @order = ( qw( Alzabo
 	      'Alzabo::SQLMaker',
 	      [ qw( Alzabo::SQLMaker::MySQL Alzabo::SQLMaker::PostgreSQL ) ],
 
-	      qw( Alzabo::ChangeTracker
+	      qw( Alzabo::Config
+                  Alzabo::ChangeTracker
 		  Alzabo::Util
 		  Alzabo::ObjectCache::Sync
 		  Alzabo::Schema
@@ -331,8 +332,9 @@ sub pod2html
     my $in = shift;
 
     my $module = $in;
+    $module =~ s/PreInstall/Alzabo/;
+
     $module =~ s,^.*(?=Alzabo),, or return;
-    return if $module =~ /PreInstall/;
     $module =~ s/\.p(?:m|od)//;
 
     my $out = "$to/$module.html";
@@ -345,12 +347,30 @@ sub pod2html
     system("$^X /usr/bin/pod2html --infile=$in --outfile=$out --htmlroot=$htmlroot")
 	and die "error: $!\n";
 
-    add_header($out);
+    fixup_html($out);
+
+    if ($out =~ m,Runtime/Table\.html,)
+    {
+	print "  Fixing up links in $out\n";
+
+	local *FILE;
+	open FILE, "<$out"
+	    or die "Can't read $out: $!\n";
+	my $file = join '', <FILE>;
+	close FILE;
+
+	$file =~ s,<em>Alzabo/Using SQL Functions</em>,<a href="$htmlroot/Alzabo.html#using%20sql%20functions">Using SQL Functions</a>,gi;
+
+	open FILE, ">$out"
+	    or die "Can't write to $out: $!\n";
+	print FILE $file;
+	close FILE;
+    }
 
     $made{$out} = 1;
 }
 
-sub add_header
+sub fixup_html
 {
     my $file = shift;
 
@@ -361,6 +381,26 @@ sub add_header
     my $html = join '', <FILE>;
 
     close FILE;
+
+    $html = add_header($file, $html);
+
+    $html =~ s,<code>(value\(s\))</code>,$1,g;
+    $html =~ s,HTML::Mason,<a href="http://www.masonhq.com">HTML::Mason</a>,g;
+    $html =~ s,(#.*)E<gt>(.*\n),$1>$2,gi;
+    $html =~ s,E&lt;gt&gt;,>,g;
+    $html =~ s,E&lt;lt&gt;,<,g;
+
+    open FILE, ">$file"
+	or die "Can't write to $file: $!\n";
+
+    print FILE $html;
+
+    close FILE;
+}
+
+sub add_header
+{
+    my ($file, $html) = @_;
 
     my $module = $file;
     $module =~ s,.*(?=Alzabo),,;
@@ -381,17 +421,9 @@ sub add_header
 <hr>
 
 EOF
-
     $html =~ s/(<body>\n)/$1\n$header/i;
-    $html =~ s,HTML::Mason,<a href="http://www.masonhq.com">HTML::Mason</a>,g;
-    $html =~ s,(#.*)E<gt>(.*\n),$1>$2,gi;
 
-    open FILE, ">$file"
-	or die "Can't write to $file: $!\n";
-
-    print FILE $html;
-
-    close FILE;
+    return $html;
 }
 
 sub make_index
@@ -466,6 +498,8 @@ Index generated: $time
 </html>
 EOF
 
+    print "Creating $to/index.html\n";
+
     local *INDEX;
     open INDEX, ">$to/index.html"
 	or die "Can't write to $to/index.html: $!\n";
@@ -479,6 +513,8 @@ sub module_description
 {
     my $file = shift;
     $file =~ s,::,/,g;
+
+    $file =~ s/Alzabo/PreInstall/ if $file =~ /Config/;
 
     my $ext = -e "$from/$file.pm" ? 'pm' : 'pod';
 
@@ -531,6 +567,8 @@ EOF
 
     $html =~ s/<a name="NAME">\s+<h1>.*?<h1>/<h1>/gs;
 
+    print "Creating $to\n";
+
     open FILE, ">$to"
 	or die "Cannot write to $to: $!";
     print FILE $html
@@ -539,3 +577,4 @@ EOF
 
     $made{$to} = 1;
 }
+

@@ -6,7 +6,7 @@ use vars qw($SELF $VERSION);
 
 use base qw( Alzabo::ObjectCache::Sync );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -68,7 +68,7 @@ increase the speed of your application.  Using it in a multi-process
 situation is likely to cause data corruption unless your application
 is entirely read-only.
 
-L<Alzabo::ObjectCache/CACHING SCENARIOS>.
+L<CACHING SCENARIOS|Alzabo::ObjectCache/CACHING SCENARIOS>.
 
 =head1 METHODS
 

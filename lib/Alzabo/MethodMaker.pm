@@ -8,7 +8,7 @@ use Alzabo::Runtime::Schema;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.23 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
@@ -751,21 +751,6 @@ parent objects (true) or child objects (false).
 
 =back
 
-=head3 pluralize => \&pluralize - DEPRECATED
-
-This option has been deprecated in favor of the C<name> option.
-
-Some of the methods are designed to return an
-L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object.
-If your table names are singular, it may be desirable to use the
-plural form for the method names (such as 'movie' becoming 'movies').
-If you provide a callback for this parameter, it will be used to make
-the plural forms.  If none is provided, then the unaltered table name
-will be used.
-
-This callback should expect to receive a single parameter, the word to
-be pluralized, and should return its plural form.
-
 =head1 EFFECTS
 
 Using this module has several effects on your schema's objects.
@@ -784,17 +769,17 @@ to it.
 
 =head3 Schema
 
-<class root>::Schema
+C<E<lt>class rootE<gt>::Schema>
 
 =head3 Tables
 
-<class root>::Table::<table name>
+C<E<lt>class rootE<gt>::Table::<table nameE<gt>>
 
 =head3 Rows
 
-<class root>::Row::<table name>, subclassed by <class
-root>::CachedRow::<table name> and <class root>::UncachedRow::<table
-name>
+C<E<lt>class rootE<gt>::Row::<table nameE<gt>>, subclassed by
+C<E<lt>class rootE<gt>::CachedRow::<table nameE<gt>> and C<E<lt>class
+rootE<gt>::UncachedRow::<table nameE<gt>>
 
 With a root of 'My::Stuff', and a schema with only two tables, 'movie'
 and 'image', this would result in the following class names:
@@ -824,7 +809,7 @@ respectively.  If they are defined then they will be called before any
 actual inserts or updates are done.
 
 The C<validate_update> method should be defined in the C<E<lt>class
-rootE<gt>::Row::E<lt>table nameE<gt>> class, not its subclasses.
+rootE<gt>::Row::<table nameE<gt>> class, not its subclasses.
 
 They both should expect to receive a hash of column names to values as
 their parameters.  For C<validate_insert>, this will represent the new
@@ -885,9 +870,6 @@ L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> object or a single
 L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object,
 depending on the cardinality of the relationship.
 
-For relationships with 1..n cardinality, the C<pluralize> callback
-will be called in an attempt to pluralize the method name.
-
 Take these tables as an example.
 
   movie                     credit
@@ -895,23 +877,6 @@ Take these tables as an example.
   movie_id                  movie_id
   title                     person_id
                             role_name
-
-=head4 Name generation
-
-When creating the method that returns rows from the C<credit> table
-for the movie row objects, we will attempt to first pluralize the word
-'credit'.  Let's assume that pluralization returns the word 'credits'.
-This will create a method C<$movie_row-E<gt>credits> that returns an
-L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object.
-This cursor will return one
-L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> object for every
-credit containing the movie_id of the calling row.
-
-Conversely, credit row objects will have a method
-C<$credit_row-E<gt>movie> which will return the
-L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> object containing the
-movie_id of the credit row.
-
 NOTE: This option must be true if you want any of the following
 options to be used.
 
@@ -923,39 +888,6 @@ primary key.  These tables exist to facilitate n..n logical
 relationships.  If both C<foreign_keys> and C<linking_tables> are
 true, then methods will be created that skip the intermediate linking
 tables
-
-=head4 Name generation
-
-Start with the name of the linking table.  Let's assume that we have a
-linking table named 'movie_image' that links together a movie table
-and an image table in an n..n relationship.
-
-If the linking table name contains the name of the table for which we
-are creating the method, strip it from the beginning of the method
-name.  Also strip any underscores that follow this name.
-
-Similarly, strip the name of the table if it occurs at the end of the
-linking table name, along with any underscore immediately preceding
-it.
-
-Then call the C<pluralize> callback to pluralize the method name.
-
-The previous two rules would leave us with the methods
-C<$movie_row-E<gt>images> for the movie table rows and
-C<$image_row-E<gt>movies> for the image table rows.
-
-To illustrate further, let's use a slightly more complex example with
-the aforementioned movie and image tables.  Let's assume that there
-are now two linking tables, one named 'movie_poster_image' and one
-named 'movie_premiere_image'.
-
-If we apply the previous rules (and assume an English pluralization)
-we will end up with the following methods:
-
- $movie_row->poster_images
- $movie_row->premiere_images
- $image->movie_posters
- $image->movie_premieres
 
 =head3 lookup_tables ($bool)
 
@@ -976,13 +908,6 @@ When given a restaurant table row, we already know its cuisine_id
 value.  However, what we really want in most contexts is the value of
 C<cuisine.description>.
 
-=head4 Name generation
-
-In the above example, this module would create a method
-C<$restaurant_row-E<gt>cuisine> that returns the value of
-C<cuisine.description> in the row with the cuisine_id in that
-restaurant table row.
-
 =head3 self_relations ($bool)
 
 A self relation is when a table has a parent/child relationship with
@@ -998,13 +923,91 @@ NOTE: If the relationship has a cardinality of 1..1 then no methods
 will be created, as this option is really intended for parent/child
 relationships.  This may change in the future.
 
-=head4 Name generation
+=head1 NAMING SUB EXAMPLE
 
-It is not possible to create the relationship methods via the usual
-method, because the same name would be used for both methods.  In this
-case, the default is to create C<parent> and C<children> methods in
-the row object.  The C<parent> method returns a single row object,
-while the C<children> method returns a cursor.
+Here is an example that covers all of the possible options:
+
+ use Lingua::EN::Inflect;
+
+ sub namer
+ {
+     my %p = @_;
+
+     # Table object can be returned from the schema via methods such as $schema->User_t;
+     return $p{table}->name . '_t' if $p{type} eq 'table';
+
+     # Column objects are returned similarly, via $schema->User_t->username_c;
+     return $p{column}->name . '_c' if $p{type} eq 'table_column';
+
+     # If I have a row object, I can get at the columns via their names, for example $user->username;
+     return $p{column}->name if $p{type} eq 'row_column';
+
+     # This manipulates the table names a bit to generate names.  For
+     # example, if I have a table called UserRating and a 1..n
+     # relationship from User to UserRating, I'll end up with a method
+     # on rows in the User table called ->Ratings which returns a row
+     # cursor of rows from the UserRating table.
+     if ( $p{type} eq 'foreign_key' )
+     {
+       	 my $name = $p{foreign_key}->table_to->name;
+	 my $from = $p{foreign_key}->table_from->name;
+	 $name =~ s/$from//;
+
+	 if ($p{plural})
+	 {
+             return my_PL( $name );
+	 }
+         else
+	 {
+             return $name;
+	 }
+     }
+
+     # This is very similar to how foreign keys are handled.  Assume
+     # we have the tables Restaurant, Cuisine, and RestaurantCuisine.
+     # If we are generating a method for the link from Restaurant
+     # through to Cuisine, we'll have a method on Restaurant table
+     # rows called ->Cuisines, which will return a cursor of rows from
+     # the Cuisine table.
+     if ( $p{type} eq 'linking_table' )
+     {
+     	 my $method = $p{foreign_key}->table_to->name;
+	 my $tname = $p{foreign_key}->table_from->name;
+	 $method =~ s/$tname//;
+
+	 return my_PL($method);
+     }
+
+     # A lookup table is a 2 column table with a single column primary
+     # key.  The method we generate is the name of the column that is
+     # _not_ a primary key.  With a table named Location with columns
+     # location_id and location, we could have a relationship from our
+     # Restaurant table to the Location table.  This would give all
+     # Restaurant table rows a ->location method which returned the
+     # _value_ from the Location table that matched the location_id in
+     # the Restaurant row.
+     return (grep { ! $_->is_primary_key } $p{foreign_key}->table_to->columns)[0]->name
+         if $p{type} eq 'lookup_table';
+
+     # This should be fairly self-explanatory.
+     return $p{parent} ? 'parent' : 'children'
+	 if $p{type} eq 'self_relation';
+
+     # As should this.
+     return $p{type} if grep { $p{type} eq $_ } qw( insert update );
+
+     # And just to make sure that nothing slips by us we do this.
+     die "unknown type in call to naming sub: $p{type}\n";
+ }
+
+ # Lingua::EN::Inflect did not handle the word 'hours' properly when this was written
+ sub my_PL
+ {
+     my $name = shift;
+     return $name if $name =~ /hours$/i;
+
+     return Lingua::EN::Inflect::PL($name);
+ }
 
 =head1 AUTHOR
 

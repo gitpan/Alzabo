@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -117,8 +117,6 @@ rather creates them on demand, which is much more efficient.  For more
 details on the rational please see L<the HANDLING ERRORS section in
 Alzabo::Runtime::Cursor|Alzabo::Runtime::Cursor/HANDLING ERRORS>.
 
-NOTE: This class is considered experimental.
-
 =head1 INHERITS FROM
 
 L<C<Alzabo::Runtime::Cursor>|Alzabo::Runtime::Cursor>
@@ -144,9 +142,9 @@ L<C<Alzabo::Runtime::Cursor>|Alzabo::Runtime::Cursor>
 The next array of L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>
 objects or an empty list if no more are available.
 
-This behavior can mask errors in your database's referntial integrity.
-For more information on how to deal with this see L<the HANDLING
-ERRORS section in
+This behavior can mask errors in your database's referential
+integrity.  For more information on how to deal with this see L<the
+HANDLING ERRORS section in
 Alzabo::Runtime::Cursor|Alzabo::Runtime::Cursor/HANDLING ERRORS>.
 
 =head2 all_rows

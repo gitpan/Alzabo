@@ -1,3 +1,45 @@
+0.50
+
+ENHANCEMENTS:
+
+- There is now support for left and right outer joins.  The interface
+to this may change a bit in future releases.
+
+- Added the following methods to foreign key objects:
+from_is_dependent, to_is_dependent, is_one_to_one, is_one_to_many,
+is_many_to_one.
+
+- Improved and fixed the Alzabo::MethodMaker documentation.
+
+DEPRECATIONS:
+
+- In some future release are references to the concept 'min_max_from'
+and 'min_max_to' will go away.  Instead, relationships will be
+described by their cardinality and dependencies.  This was changed in
+the schema creation interface a while ago but the APIs have not yet
+completely switched over (there are accessors for the new way, but the
+set methods still use the old concepts).  I'll make sure that there is
+a time when using these methods issues a warning about their
+deprecation.
+
+BUG FIXES:
+
+- Fix pod merging, which broke a while back (this merges superclass
+documentation into subclasses for things like Alzabo::Runtime::Table).
+
+- The code was accidentally serializing a DBI handle, which generates
+lots of useless warnings.  This wasn't affecting Alzabo's operations
+as it never attempted to use the thawed handle.
+
+- Fix handling of ENUM and SET column types for MySQL.  These were not
+being allowed through properly.
+
+- Attempting to insert a value into a column that was related to a
+non-primary key column were not allowed if the value being inserted
+did not match the related column in the other table, even when the
+columns were not dependent on each other.  Now this is only disallowed
+when the foreign key is a primary key in its own table.
+
 0.49
 
 BUG FIXES:

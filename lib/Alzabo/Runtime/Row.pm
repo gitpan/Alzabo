@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.56 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.58 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -69,7 +69,6 @@ sub _init
 	$self->{data}{$k} = $v;
     }
 
-    # If there is
     unless ( keys %{ $self->{data} } > keys %{ $self->{id} } )
     {
 	# Need to try to fetch something to confirm that this row exists!
@@ -380,8 +379,10 @@ Alzabo::Runtime::Row - Row objects
 =head1 DESCRIPTION
 
 These objects represent actual rows from the database containing
-actual data.  They can be created via their new method or via an
-Alzabo::Runtime::Table object.
+actual data.  In general, you will want to use the
+L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table> object to retrieve
+rows.  The L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table> can return
+either single rows or L<row cursors|Alzabo::Runtime::RowCursor>.
 
 =head1 CACHING
 
@@ -390,50 +391,6 @@ before loading this one, then row objects will be cached, as will
 database accesses.
 
 =head1 METHODS
-
-=head2 new
-
-=head3 Parameters
-
-=over 4
-
-=item * table => C<Alzabo::Runtime::Table> object
-
-=item * id => (see below)
-
-=item * no_cache => 0 or 1
-
-The C<id> parameter may be one of two things.  If the table has only a
-single column primary key, it can be a simple scalar with the value of
-that primary key for this row.
-
-If the primary key is more than one column than it must be a hash
-reference containing column names and values such as:
-
-  { pk_column1 => 1,
-    pk_column2 => 'foo' }
-
-=back
-
-Setting the C<no_cache> parameter to true causes this particular row
-object to not interact with the cache at all.  This can be useful if
-you know you will be creating a very large number of row objects all
-at once that you have no intention of re-using.
-
-If your cache class synchronizes itself across multiple processes
-does), then it is highly recommended that you not do any operations
-that change data in the database (delete or update) with objects that
-were created with this parameter as it will probably cause problems.
-
-=head3 Returns
-
-A new C<Alzabo::Runtiem::Row> object.  It will attempt to retrieve the
-row from the cache first unless the C<no_cache> parameter is true.  If
-no object matches these values then an exception will be thrown.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::NoSuchRow>|Alzabo::Exceptions>
 
 =head2 select (@list_of_column_names)
 
@@ -494,6 +451,50 @@ cursor.
 All other parameters given will be passed directly to the
 L<C<new>|new> method (such as the C<no_cache>
 paremeter).
+
+=head2 new
+
+=head3 Parameters
+
+=over 4
+
+=item * table => C<Alzabo::Runtime::Table> object
+
+=item * id => (see below)
+
+=item * no_cache => 0 or 1
+
+The C<id> parameter may be one of two things.  If the table has only a
+single column primary key, it can be a simple scalar with the value of
+that primary key for this row.
+
+If the primary key is more than one column than it must be a hash
+reference containing column names and values such as:
+
+  { pk_column1 => 1,
+    pk_column2 => 'foo' }
+
+=back
+
+Setting the C<no_cache> parameter to true causes this particular row
+object to not interact with the cache at all.  This can be useful if
+you know you will be creating a very large number of row objects all
+at once that you have no intention of re-using.
+
+If your cache class synchronizes itself across multiple processes
+does), then it is highly recommended that you not do any operations
+that change data in the database (delete or update) with objects that
+were created with this parameter as it will probably cause problems.
+
+=head3 Returns
+
+A new C<Alzabo::Runtiem::Row> object.  It will attempt to retrieve the
+row from the cache first unless the C<no_cache> parameter is true.  If
+no object matches these values then an exception will be thrown.
+
+=head3 Throws
+
+L<C<Alzabo::Exception::NoSuchRow>|Alzabo::Exceptions>
 
 =head1 AUTHOR
 

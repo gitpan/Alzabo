@@ -149,14 +149,14 @@ check_prereq(\%prereq);
 
 MAKEFILE:
 
-WriteMakefile( 'NAME'	=> 'Alzabo',
-	       'VERSION_FROM' => 'lib/Alzabo.pm',
-	       PREREQ_PM => \%prereq,
+WriteMakefile( NAME         => 'Alzabo',
+	       VERSION_FROM => 'lib/Alzabo.pm',
+	       PREREQ_PM    => \%prereq,
 
-	       realclean => { FILES => './lib/Alzabo/Config.pm schemas t/*.dbm.* t/*.dbm t/*.db.* SDBM_File.lock __db.* log.*' },
+	       realclean    => { FILES => './lib/Alzabo/Config.pm schemas t/*.dbm.* t/*.dbm t/*.db.* SDBM_File.lock __db.* log.*' },
 
-	       AUTHOR => 'Dave Rolsky <autarch@urth.org>',
-	       ABSTRACT => 'Perl data modelling tool',
+	       AUTHOR       => 'Dave Rolsky <autarch@urth.org>',
+	       ABSTRACT     => 'Perl data modelling tool',
 	     );
 
 sub check_prereq
@@ -390,7 +390,10 @@ sub dist_core
 
     my $dist_core = $self->SUPER::dist_core(@_);
 
-    $dist_core =~ s/dist : (\$\(DIST_DEFAULT\))/dist :  $1 distcheck/;
+    $dist_core =~ s/dist : (\$\(DIST_DEFAULT\))/dist :  distcheck pause $1/;
+
+    $dist_core .= qq|\n\npause : \n\t\@\$\(PERL\) -e'print "Press a key\\n"; <STDIN>'|;
 
     return $dist_core;
 }
+

@@ -114,7 +114,7 @@ sub run_tests
 				       dep_id => $borg_id,
 				       smell => 'robotic',
 				       cash => 20.2,
-				     } )->delete; };
+				     } ); };
     ok( $@ && $@->isa('Alzabo::Exception::Params'),
 	"Inserting a non-nullable column as NULL should have produced an Alzabo::Exception::Params exception: $@" );
 
@@ -125,6 +125,19 @@ sub run_tests
 				     } )->delete; };
     ok( ! $@,
 	"Inserting a non-nullable column with a default as NULL should not have produced an exception: $@" );
+
+    eval { $emp_t->insert( values => { name => 'YetAnotherTest',
+				       dep_id => undef,
+				       cash => 1.1,
+				     } ) };
+
+    ok( $@ && $@->isa('Alzabo::Exception::Params'),
+	"Attempt to insert a NULL into dep_id for an employee should have caused a params exception but we got '$@' instead" );
+
+    eval { $emp{bill}->update( dep_id => undef ) };
+
+    ok( $@ && $@->isa('Alzabo::Exception::Params'),
+	"Attempt to update dep_id to NULL for an employee should have caused a params exception but we got '$@' instead" );
 
     $emp{bill}->update( cash => undef, smell => 'hello!' );
     ok( ! defined $emp{bill}->select('cash'),
@@ -220,6 +233,84 @@ sub run_tests
 	$rows[1]->table->name eq 'employee_project' &&
 	$rows[2]->table->name eq 'project',
 	"Join cursor did not return rows in expected order or did not return 3 rows" );
+
+    {
+
+	$s->table('outer_2')->insert( values => { outer_2_name => 'will match something',
+						  outer_2_key => 1 },
+				      no_cache => 1 );
+
+	$s->table('outer_2')->insert( values => { outer_2_name => 'will match nothing',
+						  outer_2_key => 99 },
+				      no_cache => 1 );
+
+
+	$s->table('outer_1')->insert( values => { outer_1_name => 'test1 (has matching join row)',
+						  outer_2_key => 1 },
+				      no_cache => 1 );
+
+	$s->table('outer_1')->insert( values => { outer_1_name => 'test2 (has no matching join row)',
+						  outer_2_key => undef },
+				      no_cache => 1 );
+
+	my $cursor = eval { $s->left_outer_join( tables => [ $s->tables( 'outer_1', 'outer_2' ) ] ) };
+
+	ok( ! $@,
+	    "Attempting to do an left outer join threw an exception: $@\n" );
+
+	my @sets = $cursor->all_rows;
+
+	ok( @sets == 2,
+	    "Left outer join should return 2 sets of rows but returned @{[ scalar @sets ]} sets\n" );
+
+	# re-order so that the set with 2 valid rows is always first
+	unless ( defined $sets[0]->[0]->select('outer_2_key') )
+	{
+	    my $set = shift @sets;
+	    push @sets, $set;
+	}
+
+	ok( $sets[0]->[0]->select('outer_1_name') eq 'test1 (has matching join row)',
+	    "The first row in the first set should have the name 'test1 (has matching join row)' but it is '@{[ $sets[0]->[0]->select('outer_1_name') ]}'\n" );
+
+	ok( $sets[0]->[1]->select('outer_2_name') eq 'will match something',
+	    "The second row in the first set should have the name 'will match something' but it is '@{[ $sets[0]->[1]->select('outer_2_name') ]}'\n" );
+
+	ok( $sets[1]->[0]->select('outer_1_name') eq 'test2 (has no matching join row)',
+	    "The first row in the second set should have the name 'test12 (has no matching join row)' but it is '@{[ $sets[1]->[0]->select('outer_1_name') ]}'\n" );
+
+	ok( ! defined $sets[1]->[1],
+	    "The second row in the second set is defined\n" );
+
+	my $cursor = eval { $s->right_outer_join( tables => [ $s->tables( 'outer_1', 'outer_2' ) ] ) };
+
+	ok( ! $@,
+	    "Attempting to do an right outer join threw an exception: $@\n" );
+
+	my @sets = $cursor->all_rows;
+
+	ok( @sets == 2,
+	    "Right outer join should return 2 sets of rows but returned @{[ scalar @sets ]} sets\n" );
+
+	# re-order so that the set with 2 valid rows is always first
+	unless ( defined $sets[0]->[1]->select('outer_2_key') )
+	{
+	    my $set = shift @sets;
+	    push @sets, $set;
+	}
+
+	ok( $sets[0]->[0]->select('outer_1_name') eq 'test1 (has matching join row)',
+	    "The first row in the first set should have the name 'test1 (has matching join row)' but it is '@{[ $sets[0]->[0]->select('outer_1_name') ]}'\n" );
+
+	ok( $sets[0]->[1]->select('outer_2_name') eq 'will match something',
+	    "The second row in the first set should have the name 'will match something' but it is '@{[ $sets[0]->[1]->select('outer_2_name') ]}'\n" );
+
+	ok( ! defined $sets[1]->[0],
+	    "The first row in the second set is defined\n" );
+
+	ok( $sets[1]->[1]->select('outer_2_name') eq 'will match nothing',
+	    "The second row in the second set should have the name 'test12 (has no matching join row)' but it is '@{[ $sets[1]->[1]->select('outer_2_name') ]}'\n" );
+    }
 
     my $id = $emp{bill}->select('employee_id');
 

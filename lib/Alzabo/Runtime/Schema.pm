@@ -7,7 +7,7 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.28 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.30 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -105,36 +105,12 @@ sub join
 		select( map {$_->primary_key} @$select )->
 		from( @{ $p{tables} } ) );
 
-    my $y = 0;
-    for (my $x = 0; $x < @{ $p{tables} } - 1; $x++)
-    {
-	my $cur_t = $p{tables}->[$x];
-	my $next_t = $p{tables}->[$x + 1];
-
-	Alzabo::Exception::Params->throw( error => "Table " . $cur_t->name . " doesn't exist in schema" )
-	    unless $self->{tables}->EXISTS( $cur_t->name );
-
-	my @fk = $cur_t->foreign_keys_by_table($next_t);
-
-	Alzabo::Exception::Params->throw( error => "The " . $cur_t->name . " table has no foreign keys to the " . $next_t->name . " table" )
-	    unless @fk;
-
-	Alzabo::Exception::Params->throw( error => "The " . $cur_t->name . " table has more than 1 foreign key to the " . $next_t->name . " table" )
-	    if @fk > 1;
-
-	foreach my $cp ( $fk[0]->column_pairs )
-	{
-	    my $op = $y++ ? 'and' : 'where';
-	    $sql->$op( $cp->[0], '=', $cp->[1] );
-	}
-    }
+    $self->_join_tables( sql => $sql,
+			 tables => $p{tables} );
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where}, 1 ) if exists $p{where};
 
-    if ( $p{limit} )
-    {
-	$sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} );
-    }
+    $sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} ) if $p{limit};
 
     if ( exists $p{order_by} )
     {
@@ -155,72 +131,90 @@ sub join
     }
 }
 
-sub outer_join
+sub left_outer_join
+{
+    shift->_outer_join( @_, type => 'left' );
+}
+
+sub right_outer_join
+{
+    shift->_outer_join( @_, type => 'right' );
+}
+
+sub full_outer_join
+{
+    shift->_outer_join( @_, type => 'full' );
+}
+
+sub _outer_join
 {
     my $self = shift;
 
     my %p = @_;
 
-    my $select = $p{select} || $p{tables};
-
     $p{tables} = [ $p{tables} ] unless UNIVERSAL::isa($p{tables}, 'ARRAY');
 
-    my $sql = ( $self->sqlmaker->
-		select( map {$_->primary_key} @$select )->
-		from( @{ $p{tables} } )->
-		outer_join( @{ $p{tables} }[0,1] ) );
+    # Treat right outer join as left outer join and reverse later
+    @{ $p{tables} }[0,-1] = @{ $p{tables} }[-1,0] if $p{type} eq 'right';
 
+    my @select = @{ $p{tables} }[0, -1];
+
+    my $join_method = $p{type} eq 'full' ? 'full_outer_join' : 'left_outer_join';
+
+    my $sql = ( $self->sqlmaker->
+		select( map {$_->primary_key} @select )->
+		$join_method( @{ $p{tables} } ) );
 
     if ( @{ $p{tables} } > 2 )
     {
-	my $y = 0;
-	for (my $x = 0; $x < @{ $p{tables} } - 1; $x++)
-	{
-	    my $cur_t = $p{tables}->[$x];
-	    my $next_t = $p{tables}->[$x + 1];
-
-	    Alzabo::Exception::Params->throw( error => "Table " . $cur_t->name . " doesn't exist in schema" )
-		    unless $self->{tables}->EXISTS( $cur_t->name );
-
-	    my @fk = $cur_t->foreign_keys_by_table($next_t);
-
-	    Alzabo::Exception::Params->throw( error => "The " . $cur_t->name . " table has no foreign keys to the " . $next_t->name . " table" )
-		    unless @fk;
-
-	    Alzabo::Exception::Params->throw( error => "The " . $cur_t->name . " table has more than 1 foreign key to the " . $next_t->name . " table" )
-		    if @fk > 1;
-
-	    foreach my $cp ( $fk[0]->column_pairs )
-	    {
-		my $op = $y++ ? 'and' : 'where';
-		$sql->$op( $cp->[0], '=', $cp->[1] );
-	    }
-	}
+	$self->_join_tables( sql => $sql,
+			     tables => [ @{ $p{tables} }[0, 2..$#{ $p{tables} }] ] );
     }
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where}, 1 ) if exists $p{where};
 
     Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} ) if exists $p{order_by};
 
-    if ( $p{limit} )
-    {
-	$sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} );
-    }
+    $sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} ) if $p{limit};
 
     my $statement = $self->driver->statement( sql => $sql->sql,
 					      bind => $sql->bind );
 
-    if (@$select == 1)
+    return Alzabo::Runtime::OuterJoinCursor->new( type => $p{type},
+						  statement => $statement,
+						  tables => \@select );
+}
+
+sub _join_tables
+{
+    my $self = shift;
+    my %p = @_;
+
+    my $y = 0;
+    for (my $x = 0; $x < @{ $p{tables} } - 1; $x++)
     {
-	return Alzabo::Runtime::RowCursor->new( statement => $statement,
-						table => $select->[0] );
-    }
-    else
-    {
-	return Alzabo::Runtime::JoinCursor->new( statement => $statement,
-						 tables => $select );
+	my $cur_t = $p{tables}->[$x];
+	my $next_t = $p{tables}->[$x + 1];
+
+	Alzabo::Exception::Params->throw( error => "Table " . $cur_t->name . " doesn't exist in schema" )
+		unless $self->{tables}->EXISTS( $cur_t->name );
+
+	my @fk = $cur_t->foreign_keys_by_table($next_t);
+
+	Alzabo::Exception::Params->throw( error => "The " . $cur_t->name . " table has no foreign keys to the " . $next_t->name . " table" )
+	    unless @fk;
+
+	Alzabo::Exception::Params->throw( error => "The " . $cur_t->name . " table has more than 1 foreign key to the " . $next_t->name . " table" )
+	    if @fk > 1;
+
+	foreach my $cp ( $fk[0]->column_pairs )
+	{
+	    my $op = $y++ ? 'and' : 'where';
+	    $p{sql}->$op( $cp->[0], '=', $cp->[1] );
+	}
     }
 }
+
 
 __END__
 
@@ -332,15 +326,13 @@ more details.
 
 =head2 join
 
-Join tables is done by taking the tables provided, in order, and
-finding a relation between them.  If any given table pair has more
-than one relation, then this method will fail.  The relations, along
-with the values given in the optional where clause will then be used
-to generate the necessary SQL.  See
+Joins are done by taking the tables provided in order, and finding a
+relation between them.  If any given table pair has more than one
+relation, then this method will fail.  The relations, along with the
+values given in the optional where clause will then be used to
+generate the necessary SQL.  See
 L<C<Alzabo::Runtime::JoinCursor>|Alzabo::Runtime::JoinCursor> for more
 information.
-
-NOTE: This method is currently considered experimental.
 
 =head3 Parameters
 
@@ -388,6 +380,64 @@ more than one table is desired, then this method will return an
 L<C<Alzabo::Runtime::JoinCursor>|Alzabo::Runtime::JoinCursor> object
 representing the results of the join.  Otherwise, the method returns
 an L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object.
+
+=head3 Throws
+
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+
+=head2 left_outer_join
+
+=head2 right_outer_join
+
+Joins are done by taking the tables provided, in order, and finding a
+relation between them, excluding the last table given.  If any given
+table pair has more than one relation, then this method will fail.
+The relations, along with the values given in the optional where
+clause will then be used to generate the necessary SQL.  See
+L<C<Alzabo::Runtime::JoinCursor>|Alzabo::Runtime::JoinCursor> for more
+information.
+
+=head3 Parameters
+
+=over 4
+
+=item * tables => C<Alzabo::Runtime::Table> object or objects
+
+The tables being joined together.  The order of these tables is
+significant if there are more than 2 tables, as we expect to find
+relationships between tables 1 & 2, 2 & 3, 3 & 4, etc.  The first and
+last tables are the ones which are joined together using an outer
+join.
+
+For example, given the tables 'foo', 'bar', 'baz', and 'quux', in that
+order, we could read this as follows.  Join 'foo', 'bar', and 'baz',
+then do a left join between 'foo' and 'quux'.
+
+This can be either a single table or an array reference of table
+objects.
+
+=item * where
+
+See the L<documentation on where clauses for the
+Alzabo::Runtime::Table class|Alzabo::Runtime::Table/rows_where>.
+
+=item * order_by
+
+See the L<documentation on order by clauses for the
+Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common Parameters>.
+
+=item * limit
+
+See the L<documentation on limit clauses for the
+Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common Parameters>.
+
+=back
+
+=head3 Returns
+
+An
+L<C<Alzabo::Runtime::OuterJoinCursor>|Alzabo::Runtime::OuterJoinCursor>
+object.  representing the results of the join.
 
 =head3 Throws
 

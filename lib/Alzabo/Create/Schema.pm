@@ -19,7 +19,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.61 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.63 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -767,8 +767,10 @@ sub save_to_file
     my $fh = do { local *FH; };
     open $fh, ">$schema_dir/$self->{name}/$self->{name}.create.alz"
 	or Alzabo::Exception::System->throw( error => "Unable to write to $schema_dir/$self->{name}.create.alz: $!\n" );
+    my $driver = delete $self->{driver};
     Storable::nstore_fd( $self, $fh )
 	or Alzabo::Exception::System->throw( error => "Can't store to filehandle" );
+    $self->{driver} = $driver;
     close $fh
 	or Alzabo::Exception::System->throw( error => "Unable to close $schema_dir/$self->{name}/$self->{name}.create.alz: $!" );
 
@@ -902,7 +904,7 @@ in the RDBMS.
 
 This is a string identifying the RDBMS.  The allowed values are
 returned from the
-L<Alzabo::RDBMSRules-E<gt>available|Alzabo::RDBMSRules/available>
+L<C<Alzabo::RDBMSRules-E<gt>available>|Alzabo::RDBMSRules/available>
 method.  These are values such as 'MySQL', 'PostgreSQL', etc.
 
 =back

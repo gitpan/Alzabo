@@ -6,7 +6,7 @@ use vars qw($SELF $VERSION %ARGS);
 # load this for use by Alzabo::Runtime::Row
 use Alzabo::Runtime::CachedRow;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -394,17 +394,6 @@ store the new object.
 
 Call this method to completely clear the cache.
 
-=head1 CAVEATS
-
-This module has no upper limit on how many objects it will store.  If
-you are operating in a persistent environment such as mod_perl, these
-will have a tendency to eat up memory over time.
-
-In order to prevent processes from growing without stop, it is
-recommended that you call the L<C<clear>|clear> method at the entry
-point(s) for your persistent application.  This will flush the cache
-completely.
-
 =head1 STORING INTERFACE
 
 The interface that any object storing module needs to implement is as
@@ -472,9 +461,14 @@ to preserve an existing time for the object if it already has one.
 
 =head1 SEE ALSO
 
-Alzabo::ObjectCache::MemoryStore, Alzabo::ObjectCache::BerkeleyDBSync,
-Alzabo::ObjectCache::DBMSync, Alzabo::ObjectCache::IPCSync,
-Alzabo::ObjectCache::Sync
+Alzabo::ObjectCache::Store::Memory,
+Alzabo::ObjectCache::Store::BerkeleyDB,
+Alzabo::ObjectCache::Store::Null,
+Alzabo::ObjectCache::Sync::BerkeleyDB,
+Alzabo::ObjectCache::Sync::SDBM_File,
+Alzabo::ObjectCache::Sync::DB_File, Alzabo::ObjectCache::Sync::IPC,
+Alzabo::ObjectCache::Sync::Null, Alzabo::ObjectCache::Store,
+Alzabo::ObjectCache::Sync, Alzabo::ObjectCache::Sync::DBM
 
 =head1 AUTHOR
 

@@ -12,7 +12,7 @@ use Time::HiRes qw(time);
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.52 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.54 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -405,7 +405,7 @@ This method is useful for regenerating a row that has been saved by
 reference to its id (returned by the
 L<C<Alzabo::Runtime::Row-E<gt>id>|Alzabo::Runtime::Row/id> method).
 This may be more convenient than saving a multi-column primary key
-when trying to maintain state in a wbe app, for example.
+when trying to maintain state in a web app, for example.
 
 =head3 Parameters
 
@@ -428,10 +428,9 @@ A new L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> object.  If no
 rows in the database match the value(s) given then an empty list or
 undef will be returned (for list or scalar context).
 
-=head2 Methods that return C<Alzabo::Runtime::RowCursor> object
+=head2 Methods that return an C<Alzabo::Runtime::RowCursor> object
 
-The following methods, L<C<rows_where>|rows_where> and
-L<C<all_rows>|all_rows>, all return an
+The following methods all return an
 L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object
 representing the results of the query.  This is the case even for
 queries that end up returning one or zero rows.
@@ -605,7 +604,7 @@ If you only requested a single function ( DISTINCT(foo) ), then it
 returns the first value in scalar context and all the values in list
 context.
 
-If you requested multiple function ( AVG(foo), MAX(foo) ) then it
+If you requested multiple functions ( AVG(foo), MAX(foo) ) then it
 returns a single array reference (the first row of values) in scalar
 context and a list of array references in list context.
 

@@ -10,7 +10,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.45 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.46 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -458,6 +458,8 @@ sub next_row
     Alzabo::Exception::Driver->throw( error => $@,
 				      sql => $self->{sql},
 				      bind => $self->{bind} ) if $@;
+
+    return unless $active;
 
     return @row;
 }

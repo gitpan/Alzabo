@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::ForeignKey);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -182,11 +182,15 @@ single a column object or a reference to an array of column objects.
 
 =for pod_merge cardinality
 
-=for pod_merge dependent
+=for pod_merge from_is_dependent
 
-=for pod_merge min_max_from
+=for pod_merge to_is_dependent
 
-=for pod_merge min_max_to
+=for pod_merge is_one_to_one
+
+=for pod_merge is_one_to_many
+
+=for pod_merge is_many_to_one
 
 =head2 set_min_max_from (\@min_max_value) see above for details
 
@@ -197,6 +201,9 @@ table.
 
 Sets the min_max value of the relation of the 'to' table to the 'from'
 table.
+
+NOTE: All the 'min_max' stuff is going to go away in favor of
+using cardinality and dependency terms.
 
 =head1 AUTHOR
 

@@ -2,7 +2,7 @@ package Alzabo::ObjectCache::Store::Memory;
 
 use vars qw($SELF $VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -69,6 +69,17 @@ Alzabo::ObjectCache::Store::Memory - Cache objects in memory
 
 This class simply stores cached objects in memory.  This means that a
 given object should never have to be created twice.
+
+=head1 CAVEATS
+
+This module has no upper limit on how many objects it will store.  If
+you are operating in a persistent environment such as mod_perl, these
+will have a tendency to eat up memory over time.
+
+In order to prevent processes from growing without stop, it is
+recommended that you call the L<C<clear>|clear> method at the entry
+point(s) for your persistent application.  This will flush the cache
+completely.
 
 =head1 METHODS
 

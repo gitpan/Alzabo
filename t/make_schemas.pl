@@ -41,6 +41,11 @@ sub mysql_make_schema
 			 type => 'integer',
 			 nullable => 1,
 		       );
+    # only here to test that making an enum works
+    $emp_t->make_column( name => 'test_enum',
+			 type => "enum('foo','bar')",
+			 nullable => 1 );
+
     $emp_t->make_index( columns => [ { column => $emp_t->column('name'),
 				       prefix => 10 },
 				     { column => $emp_t->column('smell') },
@@ -106,8 +111,47 @@ sub mysql_make_schema
     my $char_pk_t = $s->make_table( name => 'char_pk' );
     $char_pk_t->make_column( name => 'char_col',
 			     type => 'varchar',
-			     length => 20,
+			     length => 40,
 			     primary_key => 1 );
+
+
+    my $outer_1_t = $s->make_table( name => 'outer_1' );
+    $outer_1_t->make_column( name => 'outer_1_pk',
+			     type => 'int',
+			     sequenced => 1,
+			     primary_key => 1,
+			   );
+    $outer_1_t->make_column( name => 'outer_1_name',
+			     type => 'varchar',
+			     length => 40,
+			   );
+    $outer_1_t->make_column( name => 'outer_2_key',
+			     type => 'int',
+			     nullable => 1,
+			   );
+
+    my $outer_2_t = $s->make_table( name => 'outer_2' );
+    $outer_2_t->make_column( name => 'outer_2_pk',
+			     type => 'int',
+			     sequenced => 1,
+			     primary_key => 1,
+			   );
+    $outer_2_t->make_column( name => 'outer_2_name',
+			     type => 'varchar',
+			     length => 20,
+			   );
+    $outer_2_t->make_column( name => 'outer_2_key',
+			     type => 'int',
+			     nullable => 1,
+			   );
+
+    $s->add_relation( table_from => $outer_1_t,
+		      table_to   => $outer_2_t,
+		      columns_from => $outer_1_t->column('outer_2_key'),
+		      columns_to   => $outer_2_t->column('outer_2_key'),
+		      min_max_from => [ '0', '1' ],
+		      min_max_to   => [ '0', '1' ],
+		    );
 
     $s->save_to_file;
 
@@ -222,6 +266,44 @@ sub pg_make_schema
 			     type => 'char',
 			     nullable => 1,
 			     length => 5 );
+
+    my $outer_1_t = $s->make_table( name => 'outer_1' );
+    $outer_1_t->make_column( name => 'outer_1_pk',
+			     type => 'int',
+			     sequenced => 1,
+			     primary_key => 1,
+			   );
+    $outer_1_t->make_column( name => 'outer_1_name',
+			     type => 'varchar',
+			     length => 40,
+			   );
+    $outer_1_t->make_column( name => 'outer_2_key',
+			     type => 'int',
+			     nullable => 1,
+			   );
+
+    my $outer_2_t = $s->make_table( name => 'outer_2' );
+    $outer_2_t->make_column( name => 'outer_2_pk',
+			     type => 'int',
+			     sequenced => 1,
+			     primary_key => 1,
+			   );
+    $outer_2_t->make_column( name => 'outer_2_name',
+			     type => 'varchar',
+			     length => 40,
+			   );
+    $outer_2_t->make_column( name => 'outer_2_key',
+			     type => 'int',
+			     nullable => 1,
+			   );
+
+    $s->add_relation( table_from => $outer_1_t,
+		      table_to   => $outer_2_t,
+		      columns_from => $outer_1_t->column('outer_2_key'),
+		      columns_to   => $outer_2_t->column('outer_2_key'),
+		      min_max_from => [ '0', '1' ],
+		      min_max_to   => [ '0', '1' ],
+		    );
 
     $s->save_to_file;
 

@@ -2,7 +2,7 @@ package Alzabo::ObjectCache::Store::Null;
 
 use vars qw($SELF $VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -48,7 +48,9 @@ Alzabo::ObjectCache::Store::Null - Doesn't really store anything
 =head1 SYNOPSIS
 
   use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Null',
-                           sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB' );
+                           sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB',
+                           sync_dbm_file => 'somefilename.db',
+                         );
 
 =head1 DESCRIPTION
 

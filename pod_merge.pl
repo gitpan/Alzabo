@@ -26,33 +26,36 @@ merge( "$sourcedir/Alzabo.pm", "$sourcedir/Alzabo/QuickRef.pod", "$libdir/Alzabo
 
 sub merge
 {
-    my ($f, $t_in, $t_out, $class) = @_;
+    my ($file, $t_in, $t_out, $class) = @_;
 
     local (*FROM, *TO);
-    open FROM, $f or die "Can't read '$f': $!";
+    open FROM, $file or die "Can't read '$file': $!";
     open TO, $t_in or die "Can't read '$t_in': $!";
 
     my $from = join '', <FROM>;
     my $to = join '', <TO>;
 
-    close FROM or die "Can't close '$f': $!";
+    close FROM or die "Can't close '$file': $!";
     close TO or die "Can't close '$t_in': $!";
 
     $to =~ s/\r//g;
     $to =~ s/\n
              =for\ pod_merge   # find this string at the beginning of a line
              (?:
-              \s*
-              (\w+)            # optionally say what POD marker to merge until
+              \s+
+              (\w+)            # say what POD marker to merge from
              )
-	     \s+
-             (\w+)             # what we're going to merge (and replace)
-             \n*
+             (?:
+              \ +
+              (\w+)            # optionally, say what POD marker to merge until (i.e. =head3)
+             )?
+             .*?               # what we're going to merge (and replace)
+             \n+
              (?=
-              \n=              # next =foo marker, skipping all spaces
+              \n=              # next =foo marker, skipping all spaces.  This just makes matching stop here
              )
              /
-              find_chunk($f, $from, $1, $class, $2)
+              find_chunk($file, $from, $class, $1, $2)
              /gxie;
 
     mkpath( dirname($t_out) ) unless -d dirname($t_out);
@@ -66,14 +69,14 @@ sub merge
     close TO or die "Can't write to '$t_out': $!";
     chmod 0444, $t_out or die "Can't chmod '$t_out' to 444: $!";
 
-    for ( $f, $t_out ) { s,^.*(?=Alzabo),,; s/\.pm$//; s,/,::,g; }
+    for ( $file, $t_out ) { s,^.*(?=Alzabo),,; s/\.pm$//; s,/,::,g; }
 
-    print STDERR "merged $f docs into $t_out\n";
+    print STDERR "merged $file docs into $t_out\n";
 }
 
 sub find_chunk
 {
-    my ($file, $from, $title, $class, $until) = @_;
+    my ($file, $from, $class, $title, $until) = @_;
 
     my $chunk;
     if ($title eq 'merged')
@@ -86,7 +89,7 @@ sub find_chunk
 	{
 	    my $levels = join '', (1..$l);
 	    my $until_re = $until ? qr/$until/ : qr/(?:head[$levels]|cut)/;
-	    my $re = qr/(\n=head$l +$title.*?)\n=$until/s;
+	    my $re = qr/(\n=head$l +$title.*?)\n=$until_re/s;
 	    ($chunk) = $from =~ /$re/;
 	}
     }

@@ -7,7 +7,7 @@ use Alzabo::Exceptions;
 
 use base qw(Alzabo::SQLMaker);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
 
 my $MADE_LITERALS;
 my %functions;
@@ -198,38 +198,6 @@ sub init
 }
 
 sub DESTROY { }
-
-=pod
-
-my %functions = map { $_ => 1 } qw( abs degrees exp ln log pi
-				    pow radians round sqrt cbrt
-				    trunc float float4 integer
-				    acos asin atan atan2
-				    cos cot sin tan
-				    char_length character_length
-				    lower octet_length position
-				    substring trim upper
-				    char initcap lpad ltrim
-				    textpad rpos rtrim substr
-				    text translate varchar
-				    abstime age date_part
-				    date_trunc interval isfinite
-				    reltime timestamp to_char
-				    to_date to_timestamp
-				    to_math
-				    area box center diameter
-				    height isclosed isopen
-				    length pclose npoint
-				    popen radius width
-				    circle lset path
-				    point polygon
-				    isoldpath revertpoly
-				    upgradepath upgradepoly
-				    broadcast host masklen printmask
-				    count
-				  );
-
-=cut
 
 sub _valid_function
 {
