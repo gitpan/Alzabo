@@ -21,8 +21,10 @@ EOF
 my %opts;
 GetOptions( \%opts,
 	    'install=s%',
-	    'extension=s',
+	    'extension:s',
 	  );
+
+$opts{extension} ||= '';
 
 mason_schema() if $opts{install}{mason_schema};
 mason_browser() if $opts{install}{mason_browser};

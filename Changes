@@ -1,8 +1,23 @@
+0.10_%
+
+- You can now specify a database name to be used for testing.  The
+default is 'test_alzabo'.  This a good default for MySQL, at least.
+Thanks to Randal Schwartz for the suggestion/complaints.
+
+- Make sure test file cleanup is done _before_ attempting tests so
+that files from a test previously aborted are cleaned up (and no
+errors are generated.  Thanks to Randal Schwartz for the
+suggestion/complaints.
+
+- Doesn't fail on install for Mason components if no Mason component
+extension was given.  Thanks again to Randal for working with me on
+this in IRC late at night.
+
 0.10_4
 
-- fix Makefile.PL bug
+- Fix Makefile.PL bug
 
-- auto select a column when adding a relation (if there is a logical
+- Auto select a column when adding a relation (if there is a logical
 one to select).
 
 0.10_3

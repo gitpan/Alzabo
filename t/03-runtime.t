@@ -199,9 +199,9 @@ sub ok
 sub mysql_make_schema
 {
     my %p = @_;
-    my $s = Alzabo::Create::Schema->new( name => 'alzabo_test',
-				     rules => 'MySQL',
-				     driver => 'MySQL' );
+    my $s = Alzabo::Create::Schema->new( name => $p{db_name},
+					 rules => 'MySQL',
+					 driver => 'MySQL' );
 
     $s->make_table( name => 'employee' );
     my $emp_t = $s->table('employee');
@@ -274,14 +274,14 @@ sub mysql_make_schema
     delete $p{rdbms};
     $s->create(%p);
 
-    return Alzabo::Runtime::Schema->load_from_file( name => 'alzabo_test' );
+    return Alzabo::Runtime::Schema->load_from_file( name => $p{db_name} );
 }
 
 sub mysql_clean_schema
 {
     my %p = @_;
 
-    my $s = Alzabo::Create::Schema->load_from_file( name => 'alzabo_test' );
+    my $s = Alzabo::Create::Schema->load_from_file( name => $p{db_name} );
 
     delete $p{rdbms};
     $s->drop(%p);

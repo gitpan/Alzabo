@@ -236,19 +236,32 @@ sub test
     foreach (keys %main::test)
     {
 	my $name = $names{$_};
+
+	print qq[
+The information from the following questions are used solely for
+testing the pieces of Alzabo that require a real database to use.
+];
+
 	my $user = ExtUtils::MakeMaker::prompt( qq[
-What username should be used to connect to the $name RDBMS
-(must have the ability to create a new database/schema)? ] );
+Please provide a username that can be used to connect to the $name
+RDBMS?  This user must have the ability to create a new
+database/schema.  Username? ] );
 	my $password;
 	if ($user)
 	{
 	    $password = ExtUtils::MakeMaker::prompt( qq[
 What password should be used with the $user username? ] );
 	}
+
 	my $host = ExtUtils::MakeMaker::prompt( qq[
 What host is the $name RDBMS located on (skip this if its localhost)? ] );
 
-	push @t, { rdbms => $_, user => $user, password => $password, host => $host };
+	my $db_name = ExtUtils::MakeMaker::prompt( qq[
+Please provide database name should be used for testing.  A
+database/schema with this name will be created and dropped during the
+testing process.  Database name? ], 'test_alzabo' );
+
+	push @t, { rdbms => $_, user => $user, password => $password, host => $host, db_name => $db_name };
     }
     $Data::Dumper::Indent = 0;
     my $t = Data::Dumper->Dump( [\@t], [''] );

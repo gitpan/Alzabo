@@ -54,6 +54,7 @@ lib/Alzabo/Util.pm
 
 lib/PreInstall/Config.pm
 
+t/00-cleanup.t
 t/01-compile.t
 t/02-create.t
 t/03-runtime.t
