@@ -157,7 +157,7 @@ sub has_table
 sub table
 {
     my $self = shift;
-    my $name = shift;
+    my ($name) = validate_pos( @_, { type => SCALAR } );
 
     return
         $self->{tables}->FETCH($name) ||

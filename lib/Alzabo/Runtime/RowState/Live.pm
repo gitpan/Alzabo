@@ -171,9 +171,10 @@ sub update
 
     my @fk; # this never gets populated unless referential integrity
             # checking is on
+    my @set;
 
     my $includes_pk = 0;
-    foreach my $k ( keys %data )
+    foreach my $k ( sort keys %data )
     {
 	# This will throw an exception if the column doesn't exist.
 	my $c = $row->table->column($k);
@@ -199,23 +200,25 @@ sub update
             ( error => $c->name . " column in " . $row->table->name . " table cannot be null.",
               column_name => $c->name,
 	      table_name  => $c->table->name,
-	      schema_name => $c->table->schema->name,
+	      schema_name => $schema->name,
             )
                 unless defined $data{$k} || $c->nullable || defined $c->default;
 
 	push @fk, $row->table->foreign_keys_by_column($c)
 	    if $schema->referential_integrity;
+
+        push @set, $c => $data{$k};
     }
 
     return unless keys %data;
 
-    # If we have foreign keys we'd like all the fiddling to be atomic.
-    my $sql = ( $row->schema->sqlmaker->
-		update( $row->table ) );
-    $sql->set( map { $row->table->column($_), $data{$_} } keys %data );
+    my $sql = ( $schema->sqlmaker->update( $row->table ) );
+
+    $sql->set(@set);
 
     $class->_where( $row, $sql );
 
+    # If we have foreign keys we'd like all the fiddling to be atomic.
     $schema->begin_work if @fk;
 
     eval

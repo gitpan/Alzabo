@@ -2,12 +2,9 @@ package Alzabo::Build;
 
 use strict;
 
-use lib './lib', './blib';
-
 use Module::Build 0.20;
 use base 'Module::Build';
 
-use Cwd;
 use Data::Dumper;
 use File::Path;
 use File::Spec;

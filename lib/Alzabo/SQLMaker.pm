@@ -143,11 +143,17 @@ sub new
 		   type => undef,
 		   sql => '',
 		   bind => [],
+		   placeholders => [],
 		   as_id => 'aaaaa10000',
                    alias_in_having => 1,
                    %p,
 		 }, $class;
 }
+
+# this just needs to be some unique thing that won't ever look like a
+# valid bound parameter
+my $placeholder = do { my $x = 1; bless \$x, 'Alzabo::SQLMaker::Placeholder' };
+sub placeholder { $placeholder }
 
 sub last_op
 {
@@ -751,6 +757,8 @@ sub order_by
 		$self->{sql} .= ', ', if $x++;
 		$self->{sql} .= $string;
 	    }
+
+            $last = 'function';
 	}
 	else
 	{
@@ -900,10 +908,17 @@ sub values
 	}
 
 	$self->{sql} .= 'VALUES (';
-	$self->{sql} .= join ', ', ( map { $self->_bind_val($_) }
-				     ( map { $vals{ $_->name } }
-				       @{ $self->{columns} } ) );
+	$self->{sql} .=
+            join ', ', ( map { $self->_bind_val_for_insert( $_, $vals{ $_->name } ) }
+                         @{ $self->{columns} }
+                       );
 	$self->{sql} .= ')';
+    }
+
+    if ( @{ $self->{placeholders} } && @{ $self->{bind} } )
+    {
+        Alzabo::Exception::SQL->throw
+	    ( error => "Cannot mix actual bound values and placeholders in call to values()" );
     }
 
     $self->{last_op} = 'values';
@@ -998,23 +1013,40 @@ sub _assert_last_op
     }
 }
 
+sub _bind_val_for_insert
+{
+    my $self = shift;
+
+    my ( $col, $val ) =
+        validate_pos( @_,
+                      { isa => 'Alzabo::Runtime::Column' },
+                      { type => UNDEF | SCALAR | OBJECT }
+                    );
+
+    if ( defined $val && $val eq $placeholder )
+    {
+        push @{ $self->{placeholders} }, $col->name;
+        return '?';
+    }
+    else
+    {
+        return $self->_bind_val($val);
+    }
+}
+
 sub _bind_val
 {
     my $self = shift;
 
-    validate_pos( @_, { type => UNDEF | SCALAR | OBJECT } );
-
-    unless ( ref $_[0] )
-    {
-        push @{ $self->{bind} }, $_[0];
-        return '?';
-    }
+    validate_pos( @_,
+                  { type => UNDEF | SCALAR | OBJECT }
+                );
 
     return $_[0]->as_string( $self->{driver}, $self->{quote_identifiers} )
         if UNIVERSAL::isa( $_[0], 'Alzabo::SQLMaker::Function' );
 
-    Alzabo::Exception::Params->throw
-        ( error => "Cannot pass a " . (ref $_[0]) . " object to _bind_val" );
+    push @{ $self->{bind} }, $_[0];
+    return '?';
 }
 
 sub sql
@@ -1031,6 +1063,15 @@ sub bind
 {
     my $self = shift;
     return $self->{bind};
+}
+
+sub placeholders
+{
+    my $self = shift;
+
+    my $x = 0;
+
+    return map { $_ => $x++ } @{ $self->{placeholders} };
 }
 
 sub limit

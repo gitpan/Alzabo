@@ -441,6 +441,16 @@ sub schema_sql
 	push @sql, $self->table_sql($t);
     }
 
+    # This has to come at the end because we don't which tables
+    # reference other tables.
+    foreach my $t ( $schema->tables )
+    {
+	foreach my $fk ( $t->all_foreign_keys )
+	{
+	    push @sql, $self->foreign_key_sql($fk);
+	}
+    }
+
     return @sql;
 }
 
@@ -459,14 +469,6 @@ sub table_sql
 	$sql .= '  PRIMARY KEY (';
 	$sql .= join ', ', map {$_->name} @pk;
 	$sql .= ")";
-
-	my @fk = map { $self->foreign_key_sql($_) } $table->all_foreign_keys;
-
-	if (@fk)
-	{
-	    $sql .= ",\n  ";
-	    $sql .= join ",\n  ", @fk;
-	}
 
 	$sql .= "\n";
     }
@@ -538,6 +540,8 @@ sub index_sql
     my $self = shift;
     my $index = shift;
 
+    return if $self->{state}{index_sql}{ $index->id };
+
     my $index_name = $self->_make_index_name( $index->id );
 
     my $sql = 'CREATE';
@@ -562,17 +566,56 @@ sub _make_index_name
 
 sub foreign_key_sql
 {
-    return; # temporarily disable
+    # Bah, no ON UPDATE SET DEFAULT
+    return;
+
     my $self = shift;
     my $fk = shift;
 
-    return if grep { $_->is_primary_key } $fk->columns_from;
+    if ( grep { $_->is_primary_key } $fk->columns_from )
+    {
+        return unless $fk->from_is_dependent;
+    }
 
-    my $sql = 'FOREIGN KEY ( ';
+    my @indexes;
+    foreach my $part ( qw( from to ) )
+    {
+        my $found_index;
+
+        my $col_meth = "columns_$part";
+        my @cols = $fk->$col_meth();
+
+        my $table_meth = "table_$part";
+
+    INDEX:
+        foreach my $i ( $fk->$table_meth()->indexes )
+        {
+            my @c = $i->columns;
+
+            next unless @c == @cols;
+
+            for ( 0..$#c )
+            {
+                next INDEX unless $c[$_]->name eq $cols[$_]->name;
+            }
+
+            $found_index = 1;
+            last;
+        }
+
+        unless ($found_index)
+        {
+            push @indexes, $fk->$table_meth()->make_index( columns => [ @cols ] );
+        }
+    }
+
+    my $sql = 'ALTER TABLE ';
+    $sql .= $fk->table_from->name;
+    $sql .= ' ADD FOREIGN KEY ( ';
     $sql .= join ', ', map { $_->name } $fk->columns_from;
-    $sql .= ' ) REFERENCES ';
+    $sql .= ' ) REFERENCES `';
     $sql .= $fk->table_to->name;
-    $sql .= '( ';
+    $sql .= '`( ';
     $sql .= join ', ', map { $_->name } $fk->columns_to;
     $sql .= ' ) ON DELETE ';
 
@@ -593,30 +636,9 @@ sub foreign_key_sql
 	}
     }
 
-    my $found_index;
-    my @from = $fk->columns_from;
+    $sql .= ' ON UPDATE CASCADE';
 
- INDEX:
-    foreach my $i ( $fk->table_from->indexes )
-    {
-	my @c = $i->columns;
-
-	next unless @c == @from;
-
-	for ( 0..$#c )
-	{
-	    next INDEX unless $c[$_]->name eq $from[$_]->name;
-	}
-
-	$found_index = 1;
-    }
-
-    unless ($found_index)
-    {
-	$fk->table_from->make_index( columns => [ @from ] );
-    }
-
-    return $sql;
+    return ( map { $self->index_sql($_) } @indexes ), $sql;
 }
 
 sub drop_column_sql

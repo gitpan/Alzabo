@@ -12,6 +12,11 @@ Short term:
 
 - Table update & delete.
 
+- Update & delete "handles", to avoid having to regenerate SQL over
+and over.
+
+- Batch insert ?
+
 - Add Alzabo::Runtime::Schema->clone method.
 
 - allow defaults to be marked as functions ( NOW() ) so they're not

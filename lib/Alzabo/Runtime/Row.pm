@@ -13,7 +13,7 @@ use Alzabo::Runtime::RowState::Deleted;
 use Alzabo::Runtime::RowState::Live;
 use Alzabo::Runtime::RowState::Potential;
 
-use Params::Validate qw( validate UNDEF SCALAR HASHREF );
+use Params::Validate qw( validate UNDEF SCALAR HASHREF BOOLEAN );
 Params::Validate::validation_options
     ( on_fail => sub { params_exception join '', @_ } );
 
@@ -55,7 +55,8 @@ sub new
                                      },
                     values => { type => HASHREF,
                                 default => {},
-                              }
+                              },
+                    no_cache => { type => BOOLEAN, default => 0 },
                   }
                 );
 

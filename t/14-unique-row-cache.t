@@ -16,8 +16,6 @@ use Alzabo::Config;
 use Alzabo::Runtime::UniqueRowCache;
 use Alzabo::Runtime;
 
-use Storable ();
-
 
 my @rdbms_names = Alzabo::Test::Utils->rdbms_names;
 

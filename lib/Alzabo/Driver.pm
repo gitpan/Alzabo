@@ -263,7 +263,7 @@ sub tables
 
     $self->_check_dbh;
 
-    my @t = eval {  $self->{dbh}->tables( '', $self->{schema}->name, '%', '' ); };
+    my @t = eval {  $self->{dbh}->tables( '', '', '%', 'table' ); };
     Alzabo::Exception::Driver->throw( error => $@ ) if $@;
 
     return @t;
@@ -284,6 +284,16 @@ sub statement
 
     return Alzabo::DriverStatement->new( dbh => $self->{dbh},
 					 @_ );
+}
+
+sub statement_no_execute
+{
+    my $self = shift;
+
+    $self->_check_dbh;
+
+    return Alzabo::DriverStatement->new_no_execute( dbh => $self->{dbh},
+                                                    @_ );
 }
 
 sub func
@@ -461,6 +471,15 @@ $VERSION = '0.1';
 
 sub new
 {
+    my $self = shift->new_no_execute(@_);
+
+    $self->execute;
+
+    return $self;
+}
+
+sub new_no_execute
+{
     my $proto = shift;
     my $class = ref $proto || $proto;
 
@@ -488,8 +507,6 @@ sub new
 				      sql => $p{sql},
 				      bind => $self->{bind} ) if $@;
 
-    $self->execute;
-
     return $self;
 }
 
@@ -508,6 +525,19 @@ sub execute
 
         $self->{sth}->bind_columns
             ( \ ( @{ $self->{result} }[ 0..$#{ $self->{sth}->{NAME_lc} } ] ) );
+    };
+    Alzabo::Exception::Driver->throw( error => $@,
+				      sql => $self->{sth}{Statement},
+				      bind => $self->{bind} ) if $@;
+}
+
+sub execute_no_result
+{
+    my $self = shift;
+
+    eval
+    {
+	$self->{sth}->execute(@_);
     };
     Alzabo::Exception::Driver->throw( error => $@,
 				      sql => $self->{sth}{Statement},

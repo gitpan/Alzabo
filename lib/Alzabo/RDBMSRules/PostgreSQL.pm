@@ -349,10 +349,8 @@ sub schema_sql
 
     my @sql = $self->SUPER::schema_sql($schema);
 
-    # This has to come at the end because we don't which tables
-    # reference other tables in their constraints and Pg will barf if
-    # we try to create a table with a constraint that references an
-    # as-yet nonexistent table.
+    # This has to come at the end because we don't know which tables
+    # reference other tables.
     foreach my $t ( $schema->tables )
     {
 	foreach my $fk ( $t->all_foreign_keys )
@@ -788,6 +786,10 @@ sub reverse_engineer
 
     foreach my $table ( $driver->tables )
     {
+        # It seems that with DBD::Pg 1.31 & 1.32 you can't just the
+        # database's table, you also get the system tables back
+        next if $table =~ /^pg_catalog\./;
+
         $table =~ s/^[^\.]+\.//;
 
 	print STDERR "Adding table $table to schema\n"

@@ -29,8 +29,8 @@ sub _insert_or_update
 
     my $driver = $self->table_from->schema->driver;
 
-    my @where;
-    my @vals;
+    my @one_to_one_where;
+    my @one_to_one_vals;
 
     my $has_nulls = grep { ! defined } values %vals;
 
@@ -42,24 +42,31 @@ sub _insert_or_update
 	# to insert things into the table.
 	next if $type eq 'insert' && $pair->[0]->is_primary_key;
 
-	if ( $type eq 'update' || $pair->[1]->is_primary_key )
+        # A table is always allowed to make updates to its own primary
+        # key columns ...
+	if ( ( $type eq 'update' || $pair->[1]->is_primary_key )
+             && ! $pair->[0]->is_primary_key )
 	{
 	    $self->_check_existence( $pair->[1] => $vals{ $pair->[0]->name } )
 		if defined $vals{ $pair->[0]->name };
 	}
 
+        # Except when the PK has a one-to-one relationship to some
+        # other table, and the update would cause a duplication in the
+        # other table.
 	if ( $self->is_one_to_one && ! $has_nulls )
 	{
-	    push @where, [ $pair->[0], '=', $vals{ $pair->[0]->name } ];
-	    push @vals, $pair->[0]->name . ' = ' . $vals{ $pair->[0]->name };
+	    push @one_to_one_where, [ $pair->[0], '=', $vals{ $pair->[0]->name } ];
+	    push @one_to_one_vals, $pair->[0]->name . ' = ' . $vals{ $pair->[0]->name };
 	}
     }
 
     if ( $self->is_one_to_one && ! $has_nulls )
     {
-	if ( @where && $self->table_from->row_count( where => \@where ) )
+	if ( @one_to_one_where &&
+             $self->table_from->row_count( where => \@one_to_one_where ) )
 	{
-	    my $err = '(' . (join ', ', @vals) . ') already exists in the ' . $self->table_from->name . ' table';
+	    my $err = '(' . (join ', ', @one_to_one_vals) . ') already exists in the ' . $self->table_from->name . ' table';
 	    Alzabo::Exception::ReferentialIntegrity->throw( error => $err );
 	}
     }

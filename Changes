@@ -1,3 +1,26 @@
+0.81  December 21, 2003
+
+ENHANCEMENTS:
+
+- Added a new insert handle feature, which should be significantly
+faster for batch inserts than repeatedly calling the table class's
+insert() method.  Development funded by Marigold Technologies.
+
+BUG FIXES:
+
+- An order_by parameter that contained two SQL functions (like
+"COUNT(*) DESC, AVG(score) DESC") caused the error "A sort specifier
+cannot follow another sort specifier in an ORDER BY clause".
+
+- If you passed a no_cache parameter to a method that created a row,
+this would cause an error unless Alzabo::Runtime::UniqueRowCache had
+been loaded.
+
+- Workaround for bug/change/something in DBD::Pg 1.31+ that affects
+the $dbh->tables method, which broke reverse engineering.
+
+---------------------------------------------------------------------------
+
 0.80  October 24, 2003
 
 ENHANCEMENTS:
@@ -8,13 +31,15 @@ ENHANCEMENTS:
 
 - Lots and lots of doc cleanup and re-formatting.
 
+---------------------------------------------------------------------------
 
 0.79_04  October 18, 2003
 
-Identical to 0.79_03 except for minor POD changes in order to try to
+- Identical to 0.79_03 except for minor POD changes in order to try to
 fix the problem of search.cpan.org treating the wrong file as the main
 Alzabo.pm docs.  Again reported by Darren Duncan.
 
+---------------------------------------------------------------------------
 
 0.79_03  October 18, 2003
 
@@ -55,6 +80,7 @@ NOTE: Alzabo regular tables and columns have circular references to
 each other, but this normally isn't a problem because you generally
 want to keep a whole schema around all the time anyway.
 
+---------------------------------------------------------------------------
 
 0.79_02  October 17, 2003
 
@@ -119,6 +145,7 @@ column, regardless of size.
 - The is_blob column method now returns true only for columns that are
 defined to hold binary data.
 
+---------------------------------------------------------------------------
 
 0.79_01  October 10, 2003
 

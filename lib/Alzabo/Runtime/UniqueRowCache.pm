@@ -125,7 +125,9 @@ Given a row object, this method stores it in the cache.
 =head1 AVOIDING THE CACHE
 
 If you want to not cache a row, then you can pass the "no_cache"
-parameter to any table or schema method that creates a new row object.
+parameter to any table or schema method that creates a new row object
+or a cursor, such as C<< Alzabo::Runtime::Table->insert() >>, C<<
+Alzabo::Runtime::Table->rows_where() >>.
 
 =head1 AUTHOR
 

@@ -2,7 +2,6 @@ use strict;
 
 use 5.005;
 
-use Cwd;
 use Data::Dumper;
 use File::Spec;
 

@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name: Alzabo
-version: 0.80
+version: 0.81
 license: perl
 distribution_type: module
 requires:
@@ -25,7 +25,7 @@ conflicts: {}
 provides:
   Alzabo:
     file: lib/Alzabo.pm
-    version: 0.80
+    version: 0.81
   Alzabo::BackCompat:
     file: lib/Alzabo/BackCompat.pm
     version: 2
@@ -127,6 +127,8 @@ provides:
   Alzabo::Runtime::Index:
     file: lib/Alzabo/Runtime/Index.pm
     version: 2
+  Alzabo::Runtime::InsertHandle:
+    file: lib/Alzabo/Runtime/InsertHandle.pm
   Alzabo::Runtime::JoinCursor:
     file: lib/Alzabo/Runtime/JoinCursor.pm
     version: 2

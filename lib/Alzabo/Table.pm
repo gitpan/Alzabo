@@ -167,8 +167,7 @@ sub foreign_keys_by_column
 {
     my $self = shift;
 
-    validate_pos( @_, { isa => 'Alzabo::Column' } );
-    my $col = shift;
+    my ($col) = validate_pos( @_, { isa => 'Alzabo::Column' } );
 
     Alzabo::Exception::Params->throw( error => "Column " . $col->name . " doesn't exist in $self->{name}" )
 	unless $self->{columns}->EXISTS( $col->name );

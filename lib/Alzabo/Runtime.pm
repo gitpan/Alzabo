@@ -8,11 +8,13 @@ use Alzabo::Runtime::Column;
 use Alzabo::Runtime::ColumnDefinition;
 use Alzabo::Runtime::ForeignKey;
 use Alzabo::Runtime::Index;
+use Alzabo::Runtime::InsertHandle;
 use Alzabo::Runtime::JoinCursor;
 use Alzabo::Runtime::Row;
 use Alzabo::Runtime::RowCursor;
 use Alzabo::Runtime::Schema;
 use Alzabo::Runtime::Table;
+
 
 use vars qw($VERSION);
 

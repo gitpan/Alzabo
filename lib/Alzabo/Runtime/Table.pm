@@ -25,8 +25,11 @@ sub insert
 	unless $self->primary_key;
 
     my %p = @_;
-    %p = validate( @_, { values => { type => HASHREF, optional => 1 },
-			 ( map { $_ => { optional => 1 } } keys %p ) } );
+    %p = validate( @_,
+                   { ( map { $_ => { optional => 1 } } keys %p ),
+                     values => { type => HASHREF, optional => 1 },
+                   },
+                 );
 
     my $vals = delete $p{values} || {};
 
@@ -53,7 +56,6 @@ sub insert
     foreach my $c ($self->columns)
     {
 	next if $c->is_primary_key;
-
 
 	unless ( defined $vals->{ $c->name } || $c->nullable || defined $c->default )
 	{
@@ -111,6 +113,95 @@ sub insert
     }
 
     return $self->row_by_pk( pk => \%id, %p );
+}
+
+sub insert_handle
+{
+    my $self = shift;
+
+    logic_exception "Can't make rows for tables without a primary key"
+	unless $self->primary_key;
+
+    my %p = @_;
+    %p = validate( @_,
+                   { ( map { $_ => { optional => 1 } } keys %p ),
+                     columns => { type => ARRAYREF, default => [] },
+                     values  => { type => HASHREF, default => {} },
+                   },
+                 );
+
+    my %func_vals;
+    my %static_vals;
+
+    if ( $p{values} )
+    {
+        my $v = delete $p{values};
+        while ( my ( $name, $val ) = each %$v )
+        {
+            if ( defined $val && UNIVERSAL::isa( $val, 'Alzabo::SQLMaker::Function' ) )
+            {
+                $func_vals{$name} = $val;
+            }
+            else
+            {
+                $static_vals{$name} = $val
+            }
+        }
+    }
+
+    my $placeholder = $self->schema->sqlmaker->placeholder;
+
+    my %cols;
+    my %vals;
+    # Get the unique set of columns and associated values
+    foreach my $col ( @{ $p{columns} } )
+    {
+        $vals{ $col->name } = $placeholder;
+        $cols{ $col->name } = 1;
+    }
+
+    foreach my $name ( keys %static_vals )
+    {
+        $vals{$name} = $placeholder;
+        $cols{$name} = 1;
+    }
+
+    %vals = ( %vals, %func_vals );
+
+    # At this point, %vals has each column's name and associated
+    # value.  The value may be a placeholder or SQL function.
+
+    $cols{$_} = 1 foreach keys %func_vals;
+
+    foreach my $c ( $self->columns )
+    {
+	next if $c->is_primary_key  || $c->nullable || defined $c->default;
+
+        unless ( $cols{ $c->name } )
+	{
+	    not_nullable_exception
+		( error => $c->name . " column in " . $self->name . " table cannot be null.",
+		  column_name => $c->name,
+		  table_name  => $c->table->name,
+		  schema_name => $c->table->schema->name,
+		);
+	}
+    }
+
+    my @columns = $self->columns( keys %vals );
+
+    my $sql = ( $self->schema->sqlmaker->
+		insert->
+		into( $self, @columns )->
+		values( map { $_ => $vals{ $_->name } } @columns ),
+              );
+
+    return Alzabo::Runtime::InsertHandle->new( table => $self,
+                                               sql   => $sql,
+                                               values  => \%static_vals,
+                                               columns => \@columns,
+                                               %p,
+                                             );
 }
 
 sub row_by_pk
@@ -549,9 +640,12 @@ C<Alzabo::Table>
 
 =head2 Methods that return an C<Alzabo::Runtime::Row> object
 
+All of these methods accept the "no_cache" parameter, which will be
+passed on to C<< Alzabo::Runtime::Row->new >>.
+
 =head2 insert
 
-Inserts the given values into the table.  If no values are given for a
+Inserts the given values into the table.  If no value is given for a
 primary key column and the column is
 L<"sequenced"|Alzabo::Column/sequenced> then the primary key will be
 auto-generated.
@@ -615,6 +709,43 @@ Alzabo::Runtime::Row->id_as_string()
 It returns a new L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>
 object.  If no rows in the database match the value(s) given then an
 empty list or undef will be returned (for list or scalar context).
+
+
+=head2 Insert Handles
+
+If you are going to be inserting many rows at once, it is more
+efficient to create an insert handle and re-use that.  This is similar
+to how DBI allows you to create statement handles and execute them
+multiple times.
+
+=head2 insert_handle
+
+This method takes the following parameters:
+
+=over 4
+
+=item * columns => $arrayref
+
+This should be an array reference containing zero or more
+C<Alzabo::Runtime::Column> objects.
+
+If it is empty, or not provided, then defaults will be used for all
+columns.
+
+=item * values => $hashref
+
+This is used to specify values that will be the same for each row.
+These can be actual values or SQL functions.
+
+=back
+
+The return value of this method is an C<Alzabo::Runtime::InsertHandle>
+object.  This object has a single method, C<insert()>.  See the
+L<C<Alzabo::Runtime::InsertHandle>|Alzabo::Runtime::InsertHandle> docs
+for details.
+
+Throws: L<C<Alzabo::Exception::NotNullable>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 Common Parameters
 

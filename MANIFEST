@@ -43,6 +43,7 @@ lib/Alzabo/Runtime/ColumnDefinition.pm
 lib/Alzabo/Runtime/Cursor.pm
 lib/Alzabo/Runtime/ForeignKey.pm
 lib/Alzabo/Runtime/Index.pm
+lib/Alzabo/Runtime/InsertHandle.pm
 lib/Alzabo/Runtime/JoinCursor.pm
 lib/Alzabo/Runtime/Row.pm
 lib/Alzabo/Runtime/RowCursor.pm
@@ -81,6 +82,7 @@ t/09-storable.t
 t/12-rev_engineer_pg_fk.t
 t/14-unique-row-cache.t
 t/15-alias_ref.t
+t/17-insert-handle.t
 t/98-schema_diff.t
 t/99-cleanup.t
 t/99-pod.t
