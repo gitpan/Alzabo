@@ -7,7 +7,7 @@ use Cwd;
 
 use lib '.', './t';
 
-$| = 1;
+require 'base.pl';
 
 unless (defined $ENV{ALZABO_RDBMS_TESTS})
 {
@@ -18,8 +18,6 @@ unless (defined $ENV{ALZABO_RDBMS_TESTS})
 require 'make_schemas.pl';
 
 my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
-
-my $count = 0;
 
 my $TESTS_PER_RUN = 2;
 my $test_count = $TESTS_PER_RUN * @$tests;
@@ -54,12 +52,4 @@ foreach my $test (@$tests)
 
     $s1->delete;
     eval { $s1->drop(%$test); };
-}
-
-sub ok
-{
-    my $ok = !!shift;
-    print $ok ? 'ok ': 'not ok ';
-    print ++$count, "\n";
-    print "@_\n" if ! $ok;
 }

@@ -8,13 +8,7 @@ require 'base.pl';
 
 require 'utils.pl';
 
-warn "Cleaning up files and databases created during testing\n";
-
-my $dir = cwd;
-
-$Test::Harness::verbose = $Test::Harness::verbose;
-rmtree( "$dir/schemas", $Test::Harness::verbose );
-unlink 't/dbmsynctest.dbm';
+warn "Cleaning up databases created during testing\n";
 
 print "1..1\n";
 print "ok 1\n";

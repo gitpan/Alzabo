@@ -1,3 +1,13 @@
+0.31
+
+Bug fixes only
+
+- Fix bugs in Alzabo::MethodMaker.  The insert, update, lookup_table,
+and self_relation (parent portion only) were broken.
+
+- A bug in the SQL making code was causing some queries to appear as
+if they failed when they didn't.
+
 0.30
 
 - The convert.pl script in eg/ has been updated to handle the new

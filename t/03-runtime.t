@@ -3,20 +3,19 @@ use strict;
 use Alzabo::Create;
 use Alzabo::Config;
 
-use Cwd;
 use Data::Dumper;
 
 use lib '.', './t';
 
-require 'make_schemas.pl';
-
-$| = 1;
+require 'base.pl';
 
 unless (defined $ENV{ALZABO_RDBMS_TESTS})
 {
     print "1..0\n";
     exit;
 }
+
+require 'make_schemas.pl';
 
 $Data::Dumper::Indent = 0;
 
@@ -99,6 +98,7 @@ foreach my $c ( [ { store => 'Alzabo::ObjectCache::MemoryStore',
     my $cs = Alzabo::Create::Schema->load_from_file( name => $test->{db_name} );
     $cs->delete;
     eval { $cs->drop(%$test); };
+    warn $@ if $@;
     $cs->driver->disconnect;
 }
 

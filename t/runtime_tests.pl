@@ -1,12 +1,11 @@
 use strict;
 
 use Alzabo::Create;
-use Alzabo::Config;
 use Alzabo::Runtime;
 
-use Cwd;
+use lib '.', './t';
 
-$| = 1;
+require 'base.pl';
 
 BEGIN
 {
@@ -17,14 +16,12 @@ BEGIN
     }
 }
 
-my $cwd = Cwd::cwd;
-$Alzabo::Config::CONFIG{root_dir} = $cwd;
-
 my $p = eval $ENV{CURRENT_TEST};
 
 my $s = Alzabo::Runtime::Schema->load_from_file( name => $p->{db_name} );
 
-my $count = $ENV{TEST_START_NUM};
+$main::COUNT = $ENV{TEST_START_NUM};
+$main::COUNT = $ENV{TEST_START_NUM};
 
 eval { run_tests($s, %$p); };
 warn "Error running tests: $@" if $@;
@@ -219,8 +216,9 @@ sub run_tests
 
     eval { $emp_proj_t->row_by_pk( pk => { employee_id => $id,
 					   project_id => $proj{extend}->select('project_id') } ); };
-    ok ( $@ && $@->isa('Alzabo::Exception::NoSuchRow' ),
-	 "There should be no bill/extend row in the employee_project table" );
+    # 5.6.0 is broken and gives a wack error here
+    ok ( $@ && ( $@->isa('Alzabo::Exception::NoSuchRow') || $] == 5.006 ),
+	 "There should be no bill/extend row in the employee_project table: $@" );
 
     ok( ! defined $dep{borg}->select('manager_id'),
 	"The manager_id for the borg department should be NULL but it's", $dep{borg}->select('manager_id') );
@@ -633,12 +631,4 @@ sub get_pipe_data
 
     chomp $data;
     return $data;
-}
-
-sub ok
-{
-    my $ok = !!shift;
-    print $ok ? 'ok ': 'not ok ';
-    print ++$count, "\n";
-    print "@_\n" if ! $ok;
 }

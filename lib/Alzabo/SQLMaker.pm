@@ -6,7 +6,7 @@ use vars qw($VERSION $AUTOLOAD);
 use Alzabo::Exceptions;
 use Alzabo::Util;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -55,8 +55,7 @@ sub select
 
     if (@_)
     {
-	$self->{columns} = [ sort { $a->name cmp $b->name }
-			     map { $_->isa('Alzabo::Table') ? $_->columns : $_ } @_ ];
+	$self->{columns} = [ map { $_->isa('Alzabo::Table') ? $_->columns : $_ } @_ ];
 
 	$self->{sql} .= join ', ', map { join '.', $_->table->name, $_->name } @{ $self->{columns} };
     }

@@ -5,7 +5,7 @@ use vars qw($VERSION $DEBUG);
 
 use Alzabo::Runtime::Schema;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
@@ -345,7 +345,7 @@ sub make_self_relation
     warn "Making self-relation method $parent: returns single row\n" if $DEBUG;
     {
 	no strict 'refs';
-	*{$name} =
+	*{$parent} =
 	    sub { my $self = shift;
 		  my @where = map { [ $_->[0], '=', $self->select( $_->[1] ) ] } @pairs;
 		  return $table->rows_where( where => \@where,
@@ -408,7 +408,7 @@ sub make_linking_table_method
     my $method = join '::', $self->{row_class}, $name;
 
     my $s = $fk->table_to->schema;
-    my @t = ( $fk->table_to->name, $fk_2->table_to->name );
+    my @t = ( $fk->table_to, $fk_2->table_to );
     my $select = [ $t[1] ];
 
     warn "Making linking table method $method: returns row cursor\n" if $DEBUG;
@@ -464,6 +464,8 @@ sub make_insert_method
     my $self = shift;
     my $table = shift;
 
+    return unless $self->{table_class}->can('validate_insert');
+
     my $name = $self->{opts}{name_maker}->( type => 'insert',
 					    table => $table );
 
@@ -474,35 +476,27 @@ sub make_insert_method
 	return if *{$method}{CODE};
     }
 
-    my $msg = "Making insert method $method";
-
-    my $code = <<"EOF";
-sub $method
+    warn "Making insert method $method\n" if $DEBUG;
+    eval <<"EOF";
 {
-    my \$self = shift;
-    my \%p = \@_;
-EOF
-    if ( $self->{table_class}->can( 'validate_insert' ) )
+    package $self->{table_class};
+    sub $name
     {
-	$msg .= "... with validation";
-	$code .= <<'EOF';
-    $self->validate_insert( %{ $p{values} } );
-EOF
+        my \$s = shift;
+        my \%p = \@_;
+        \$s->validate_insert( %{ \$p{values} } );
+        \$s->SUPER::insert(\%p);
     }
-
-    $code .= <<'EOF';
-    $self->SUPER::insert(%p);
 }
 EOF
-
-    warn "$msg\n" if $DEBUG;
-    eval $code;
 }
 
 sub make_update_method
 {
     my $self = shift;
     my $table = shift;
+
+    return unless $self->{row_class}->can( 'validate_update' );
 
     my $name = $self->{opts}{name_maker}->( type => 'update',
 					    table => $table );
@@ -514,29 +508,20 @@ sub make_update_method
 	return if *{$method}{CODE};
     }
 
-    my $msg = "Making update method $method";
+    warn "Making update method $method\n";
 
-    my $code = <<"EOF";
-sub $method
+    eval <<"EOF";
 {
-    my \$self = shift;
-    my \%p = \@_;
-EOF
-    if ( $self->{row_class}->can( 'validate_update' ) )
+    package $self->{row_class};
+    sub $name
     {
-	$msg .= "... with validation";
-	$code .= <<'EOF';
-    $self->validate_update(%p);
-EOF
+        my \$s = shift;
+        my \%p = \@_;
+        \$s->validate_update(\%p);
+        \$s->SUPER::update(\%p);
     }
-
-    $code .= <<'EOF';
-    $self->SUPER::update(%p);
 }
 EOF
-
-    warn "$msg\n" if $DEBUG;
-    eval $code;
 }
 
 sub name
@@ -815,7 +800,9 @@ for schemas.
 
 Create an C<insert> method overriding the one in
 L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table>.  See L<Loading
-Classes> for more details.
+Classes> for more details.  Unless you have already defined a
+C<validate_insert> method for the generated table class this method
+will not be overridden.
 
 =head2 Row object methods
 
@@ -823,7 +810,9 @@ Classes> for more details.
 
 Create an C<update> method overriding the one in
 L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>.  See L<Loading
-Classes> for more details.
+Classes> for more details.  Unless you have already defined a
+C<validate_update> method for the generated row class this method will
+not be overridden.
 
 =head3 foreign_keys ($bool)
 

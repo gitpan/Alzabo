@@ -4,8 +4,14 @@ use Alzabo::Create;
 use Alzabo::Config;
 use Cwd;
 
-my $count = 0;
-$| = 1;
+use lib '.', './t';
+
+require 'base.pl';
+
+my $cwd = Cwd::cwd();
+mkdir "$cwd/schemas", 0755
+    or die "Can't make dir '$cwd/schemas' for testing: $!\n";
+
 print "1..91\n";
 
 ok(1);
@@ -25,11 +31,6 @@ ok( ref $s->rules eq 'Alzabo::RDBMSRules::MySQL',
 
 ok( ref $s->driver eq 'Alzabo::Driver::MySQL',
     "Schema's driver should be in the 'Alzabo::Driver::MySQL' class but they're in the " . ref $s->driver . " class" );
-
-my $cwd = Cwd::cwd;
-$Alzabo::Config::CONFIG{root_dir} = $cwd;
-mkdir "$cwd/schemas", 0755
-    or die "Can't make dir '$cwd/schemas' for testing: $!\n";
 
 my $dir = Alzabo::Config->schema_dir;
 {
@@ -424,11 +425,3 @@ ok( $index eq $index2,
 eval { $s->save_to_file };
 ok( ! $@,
     "Unable to save the schema to a file: $@" );
-
-sub ok
-{
-    my $ok = !!shift;
-    print $ok ? 'ok ': 'not ok ';
-    print ++$count, "\n";
-    print "@_\n" if ! $ok;
-}

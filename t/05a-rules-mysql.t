@@ -1,15 +1,12 @@
 use strict;
 
 use Alzabo::Create;
-use Alzabo::Config;
-use Cwd;
 
-my $count = 0;
-$| = 1;
+use lib '.', './t';
+
+require 'base.pl';
+
 print "1..6\n";
-
-my $cwd = Cwd::cwd;
-$Alzabo::Config::CONFIG{root_dir} = $cwd;
 
 my $new_s = eval { Alzabo::Create::Schema->new( name => 'hello there',
 						rdbms => 'MySQL' ); };
@@ -51,14 +48,3 @@ ok( $@,
     "Attempt to make 'text' column with a length parameter succeeded" );
 ok( $@->isa('Alzabo::Exception::RDBMSRules'),
     "Attempt to make 'text' column with a length parameter failed with unexpected exception: $@" );
-
-
-
-
-sub ok
-{
-    my $ok = !!shift;
-    print $ok ? 'ok ': 'not ok ';
-    print ++$count, "\n";
-    print "@_\n" if ! $ok;
-}

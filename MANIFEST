@@ -70,7 +70,10 @@ t/02-create.t
 t/03-runtime.t
 t/04-rev_engineer.t
 t/05a-rules-mysql.t
+t/06-db_drop.t
+t/07-methodmaker.t
 t/99-cleanup.t
+t/base.pl
 t/make_schemas.pl
 t/runtime_tests.pl
 t/utils.pl

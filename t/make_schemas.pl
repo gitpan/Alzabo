@@ -2,8 +2,9 @@ use strict;
 
 use Alzabo::Config;
 
-my $cwd = Cwd::cwd;
-$Alzabo::Config::CONFIG{root_dir} = $cwd;
+use lib '.', './t';
+
+require 'base.pl';
 
 1;
 sub mysql_make_schema
