@@ -19,7 +19,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.57 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.58 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -123,7 +123,7 @@ sub make_table
     my %p2;
     foreach ( qw( before after ) )
     {
-	$p2{$_} = $p{$_} if exists $p{$_};
+	$p2{$_} = delete $p{$_} if exists $p{$_};
     }
     $self->add_table( table => Alzabo::Create::Table->new( schema => $self,
 							   %p ),
@@ -137,10 +137,8 @@ sub add_table
     my $self = shift;
 
     validate( @_, { table  => { isa => 'Alzabo::Create::Table' },
-		    before => { type => SCALAR,
-				optional => 1 },
-		    after  => { type => SCALAR,
-				optional => 1 } } );
+		    before => { optional => 1 },
+		    after  => { optional => 1 } } );
     my %p = @_;
 
     my $table = $p{table};
@@ -155,7 +153,7 @@ sub add_table
 	if ( exists $p{$_} )
 	{
 	    $self->move_table( $_ => $p{$_},
-			       table => $self->table( $p{name} ) );
+			       table => $table );
 	    last;
 	}
     }
@@ -187,9 +185,9 @@ sub move_table
     my $self = shift;
 
     validate( @_, { table  => { isa => 'Alzabo::Create::Table' },
-		    before => { type => SCALAR,
+		    before => { isa => 'Alzabo::Create::Table',
 				optional => 1 },
-		    after  => { type => SCALAR,
+		    after  => { isa => 'Alzabo::Create::Table',
 				optional => 1 } } );
     my %p = @_;
 

@@ -15,9 +15,9 @@ my $row = $t->row_by_id(row_id => $id);
 
 eval { $row->delete; };
 
-$m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+$m->comp( '../common/exception', $@ ) if $@;
 
-my $url = $m->comp( Alzabo::Config::mason_url_path() . '/common/make_url',
+my $url = $m->comp( '../common/make_url',
 		    path => 'browse_table' . Alzabo::Config::mason_extension(),
 		    query => { schema => $s->name,
 			       table => $t->name,
@@ -29,6 +29,6 @@ my $url = $m->comp( Alzabo::Config::mason_url_path() . '/common/make_url',
 			       port => $port,
 			     } );
 
-$m->comp( Alzabo::Config::mason_url_path() . '/common/redirect',
+$m->comp( '../common/redirect',
 	  url => $url );
 </%init>

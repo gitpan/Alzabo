@@ -104,28 +104,7 @@ EOF
 	    $config{mason_web_dir} = prompt( '  Mason directory?', $default || '' );
 	} while ( ! -d $config{mason_web_dir} );
 
-	$default = $Alzabo::Config::CONFIG{mason_url_path};
-	$default =~ s,/alzabo\Z,, if $default;
-
-	do
-	{
-	    print <<"EOF";
-
-If a component in this directory ($config{mason_web_dir}) wanted to
-call another component in the same directory using an absolute path,
-what would the path be?
-EOF
-
-	    $config{mason_url_path} = prompt( '  URL Path to for component calls?', $default || '' );
-	} while ( ! defined $config{mason_url_path} );
-
-	foreach ( qw( mason_web_dir mason_url_path ) )
-	{
-	    $config{$_} =~ s,/\Z,,;
-	}
-
 	$config{mason_web_dir} .= '/alzabo';
-	$config{mason_url_path} .= '/alzabo';
 
 	print <<'EOF';
 

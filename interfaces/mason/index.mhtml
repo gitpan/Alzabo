@@ -6,7 +6,7 @@
 %   foreach my $s (sort @s) {
  <tr>
   <td>
-<& &Alzabo::Config::mason_url_path . '/common/href', text => $s, path => 'view_schema' . Alzabo::Config::mason_extension(), query => { schema => $s } &>
+<& '../common/href', text => $s, path => 'view_schema' . Alzabo::Config::mason_extension(), query => { schema => $s } &>
   </td>
  </tr>
 %   }

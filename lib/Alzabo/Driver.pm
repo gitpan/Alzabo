@@ -10,7 +10,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.41 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -270,6 +270,7 @@ sub disconnect
 {
     my $self = shift;
     $self->{dbh}->disconnect if $self->{dbh};
+    delete $self->{dbh};
 }
 
 sub connect

@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::Column);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.28 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.29 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -83,7 +83,7 @@ sub set_table
 {
     my $self = shift;
 
-    validate_pos( @_, { isa => 'Alzabo::Table' } );
+    validate_pos( @_, { isa => 'Alzabo::Create::Table' } );
     $self->{table} = shift;
 }
 
@@ -116,7 +116,7 @@ sub set_nullable
 {
     my $self = shift;
 
-    validate_pos( @_, { type => UNDEF | SCALAR } );
+    validate_pos( @_, { type => SCALAR } );
     my $n = shift;
 
     Alzabo::Exception::Params->throw( error => "Invalid value for nullable attribute: $n" )

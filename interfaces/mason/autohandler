@@ -40,7 +40,7 @@ my ($comp, @args);
 if ($schema)
 {
     eval{ $s = Alzabo::Create::Schema->load_from_file( name => $schema ); };
-    $m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+    $m->comp( '../common/exception', $@ ) if $@;
     $args{s} = $s;
 }
 
@@ -48,7 +48,7 @@ my $t;
 if ($table)
 {
     eval{ $t = $s->table($table); };
-    $m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+    $m->comp( '../common/exception', $@ ) if $@;
     $args{t} = $t;
 }
 
@@ -56,7 +56,7 @@ my $c;
 if ($column)
 {
     eval{ $c = $t->column($column); };
-    $m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+    $m->comp( '../common/exception', $@ ) if $@;
     $args{c} = $c;
 }
 
@@ -69,14 +69,14 @@ my ( $s, $t, $c ) = @_;
 my @t;
 if (defined $s)
 {
-    push @t, $t ? $m->scomp( &Alzabo::Config::mason_url_path . '/common/href',
+    push @t, $t ? $m->scomp( '../common/href',
 			     text => $s->name,
 			     path => 'view_schema' . Alzabo::Config::mason_extension(),
 			     query => { schema => $s->name } ) : $s->name;
 
     if (defined $t)
     {
-	push @t, $c ? $m->scomp( &Alzabo::Config::mason_url_path . '/common/href',
+	push @t, $c ? $m->scomp( '../common/href',
 				 text => $t->name,
 				 path => 'view_table' . Alzabo::Config::mason_extension(),
 				 query => { schema => $s->name,

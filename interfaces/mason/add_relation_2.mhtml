@@ -16,9 +16,9 @@ use Alzabo::Config;
 if ($ARGS{more})
 {
     delete $ARGS{more};
-    $m->comp( Alzabo::Config::mason_url_path() . '/common/redirect',
+    $m->comp( '../common/redirect',
 	      url =>
-	      $m->comp( Alzabo::Config::mason_url_path() . '/common/make_url',
+	      $m->comp( '../common/make_url',
 			path => 'add_relation' . Alzabo::Config::mason_extension(),
 			query => \%ARGS ) );
 }
@@ -44,9 +44,9 @@ eval
     $s->save_to_file;
 };
 
-$m->comp( Alzabo::Config::mason_url_path() . '/common/exception', $@ ) if $@;
+$m->comp( '../common/exception', $@ ) if $@;
 
-$m->comp( Alzabo::Config::mason_url_path() . '/common/redirect', url => 'view_table' . Alzabo::Config::mason_extension() . '?schema=' . $s->name . '&table=' . $table_from );
+$m->comp( '../common/redirect', url => 'view_table' . Alzabo::Config::mason_extension() . '?schema=' . $s->name . '&table=' . $table_from );
 
 </%init>
 

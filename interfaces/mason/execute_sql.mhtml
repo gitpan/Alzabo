@@ -1,5 +1,5 @@
 <p>
-The SQL was succesfully executed.
+The SQL was successfully executed.
 </p>
 
 <p>
@@ -22,5 +22,5 @@ eval
     $s->save_to_file;
 };
 
-$m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+$m->comp( '../common/exception', $@ ) if $@;
 </%init>

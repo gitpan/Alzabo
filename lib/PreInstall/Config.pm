@@ -36,11 +36,6 @@ sub mason_web_dir
     return $CONFIG{mason_web_dir};
 }
 
-sub mason_url_path
-{
-    return $CONFIG{mason_url_path};
-}
-
 sub mason_extension
 {
     return $CONFIG{mason_extension};
@@ -90,17 +85,10 @@ Alzabo::Exception::System
 
 The path to the root directory for the Alzabo Mason components.
 
-=head2 mason_url_path
-
-=head3 Returns
-
-The relative url path to the Alzabo Mason components.  This is only
-really useful inside the Mason components themselves.
-
 =head2 mason_extension
 
 =head3 Returns
 
-The file extenstion used by the Alzabo Mason components.
+The file extension used by the Alzabo Mason components.
 
 =cut

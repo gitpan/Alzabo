@@ -15,9 +15,9 @@ eval
     $s->save_to_file;
 };
 
-$m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+$m->comp( '../common/exception', $@ ) if $@;
 
-$m->comp( &Alzabo::Config::mason_url_path . '/common/redirect', url => 'view_schema' . Alzabo::Config::mason_extension() . '?schema=' . $s->name );
+$m->comp( '../common/redirect', url => 'view_schema' . Alzabo::Config::mason_extension() . '?schema=' . $s->name );
 
 </%init>
 

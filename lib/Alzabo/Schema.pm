@@ -15,7 +15,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 use Storable ();
 use Tie::IxHash ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.31 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -113,7 +113,7 @@ sub tables
 {
     my $self = shift;
 
-    validate_pos( @_, { type => SCALAR } x @_ ) if @_;
+    validate_pos( @_, ( { type => SCALAR } ) x @_ ) if @_;
 
     if (@_)
     {

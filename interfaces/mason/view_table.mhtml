@@ -35,7 +35,7 @@
     <tr valign="top">
      <td align="center">
 %       foreach my $c_from ($fk->columns_from) {
-<& &Alzabo::Config::mason_url_path . '/common/href', text => $c_from->name, path => 'view_column' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $t->name, column => $c_from->name } &>
+<& '../common/href', text => $c_from->name, path => 'view_column' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $t->name, column => $c_from->name } &>
 %         unless ($c_from->name eq ($fk->columns_from)[-1]->name) {
 <br>
 %         }
@@ -44,9 +44,9 @@
      </td>
      <td align="center">
 %       foreach my $c_to ($fk->columns_to) {
-<& &Alzabo::Config::mason_url_path . '/common/href', text => $fk->table_to->name, path => 'view_table' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $fk->table_to->name } &>
+<& '../common/href', text => $fk->table_to->name, path => 'view_table' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $fk->table_to->name } &>
  .
-<& &Alzabo::Config::mason_url_path . '/common/href', text => $c_to->name, path => 'view_column' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $fk->table_to->name, column => $c_to->name } &>
+<& '../common/href', text => $c_to->name, path => 'view_column' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $fk->table_to->name, column => $c_to->name } &>
 %         unless ($c_to->name eq ($fk->columns_to)[-1]->name) {
 <br>
 %         }
@@ -278,7 +278,7 @@ my $i = shift;
 my @c;
 foreach my $c ( $i->columns )
 {
-    my $url = $m->scomp( &Alzabo::Config::mason_url_path . '/common/href', text => $c->name, path => 'view_column' . Alzabo::Config::mason_extension(), query => { schema => $i->table->schema->name, table => $i->table->name, column => $c->name } );
+    my $url = $m->scomp( '../common/href', text => $c->name, path => 'view_column' . Alzabo::Config::mason_extension(), query => { schema => $i->table->schema->name, table => $i->table->name, column => $c->name } );
     $url .= '(' . $i->prefix($c) . ')' if $i->prefix($c);
     push @c, $url;
 }

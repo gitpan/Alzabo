@@ -55,6 +55,6 @@ $t
 </%args>
 
 <%init>
-$m->comp( &Alzabo::Config::mason_url_path . '/common/redirect', url => 'view_table' . Alzabo::Config::mason_extension() . '?schema=' . $s->name . '&table=' . $t->name )
+$m->comp( '../common/redirect', url => 'view_table' . Alzabo::Config::mason_extension() . '?schema=' . $s->name . '&table=' . $t->name )
     unless @columns;
 </%init>

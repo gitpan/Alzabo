@@ -1,3 +1,4 @@
+
 <%args>
 $schema
 $table
@@ -47,9 +48,13 @@ eval
     $s->save_to_file;
 };
 
-$m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+$m->comp( '../common/exception', $@ ) if $@;
 
-$m->comp( &Alzabo::Config::mason_url_path . '/common/redirect', url => 'view_table' . Alzabo::Config::mason_extension() . '?schema=' . $s->name . '&table=' . $t->name );
+$m->comp( '../common/redirect',
+          url => $m->comp( '../common/make_url',
+			   path => 'view_table' . Alzabo::Config::mason_extension(),
+			   query => { schema => $s->name,
+				      table => $t->name } ) );
 </%init>
 
 <%flags>

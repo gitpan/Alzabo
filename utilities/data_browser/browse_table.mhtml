@@ -74,11 +74,11 @@ my $table_body = $m->scomp('.table_body');
 <center>
 <h3>
 % if ($start_row > 0) {
-<& &Alzabo::Config::mason_url_path() . '/common/href', path => 'browse_table' . Alzabo::Config::mason_extension(),  text => '&lt;&lt', query => { schema => $s->name, table => $t->name, start_row => ( $start_row - $max_rows > 0 ? $start_row - $max_rows : 0 ), max_rows => $max_rows, filter_from => $filter_from, filter_where => $filter_where, user => $user, password => $password, host => $host, port => $port } &>
+<& '../common/href', path => 'browse_table' . Alzabo::Config::mason_extension(),  text => '&lt;&lt', query => { schema => $s->name, table => $t->name, start_row => ( $start_row - $max_rows > 0 ? $start_row - $max_rows : 0 ), max_rows => $max_rows, filter_from => $filter_from, filter_where => $filter_where, user => $user, password => $password, host => $host, port => $port } &>
 % }
 Rows <% $rows_fetched ? $start_row + 1 : 0 %>-<% $start_row + $rows_used %> (out of <% $row_count %>)
 % if ($start_row + $max_rows < $row_count) {
-<& &Alzabo::Config::mason_url_path() . '/common/href', path => 'browse_table' . Alzabo::Config::mason_extension(), text => '&gt;&gt;', query => { schema => $s->name, table => $t->name, start_row => $start_row + $max_rows, max_rows => $max_rows, filter_from => $filter_from, filter_where => $filter_where, user => $user, password => $password, host => $host, port => $port } &>
+<& '../common/href', path => 'browse_table' . Alzabo::Config::mason_extension(), text => '&gt;&gt;', query => { schema => $s->name, table => $t->name, start_row => $start_row + $max_rows, max_rows => $max_rows, filter_from => $filter_from, filter_where => $filter_where, user => $user, password => $password, host => $host, port => $port } &>
 % }
 </h3></center>
 </%def>

@@ -10,7 +10,7 @@ use DBI;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.28 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.29 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -29,7 +29,7 @@ sub connect
     my $self = shift;
     my %p = @_;
 
-    return if $self->{dbh} && $self->{dbh}->ping && ! $p{force};
+    return if $self->{dbh} && $self->{dbh}->ping;
 
     $self->disconnect if $self->{dbh};
     $self->{dbh} = $self->_make_dbh(%p, name => $self->{schema}->name);

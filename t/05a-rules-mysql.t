@@ -26,7 +26,7 @@ eval { Alzabo::Create::Schema->new( name => 'hello:there',
 ok( $@,
     "Attempting to create a schema named 'hello:there' should have caused an error" );
 
-my $s = eval { Alzabo::Create::Schema->load_from_file( name => 'foo' ); };
+my $s = eval { Alzabo::Create::Schema->load_from_file( name => 'foo_MySQL' ); };
 
 eval { $new_s->make_table( name => 'x' x 65 ) };
 

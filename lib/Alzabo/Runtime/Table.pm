@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.40 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.41 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -96,7 +96,7 @@ sub row_by_pk
     my $self = shift;
     my %p = @_;
 
-    my $pk_val = exists $p{pk} ? delete $p{pk} : $p{id};
+    my $pk_val = exists $p{pk} ? delete $p{pk} : delete $p{id};
 
     my @pk = $self->primary_key;
 

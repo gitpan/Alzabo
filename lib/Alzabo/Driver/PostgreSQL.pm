@@ -8,7 +8,7 @@ use DBD::Pg;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -27,10 +27,10 @@ sub connect
 
     $self->{tran_count} = undef;
 
-    return if $self->{dbh} && $self->{dbh}->ping && ! $p{force};
+    return if $self->{dbh} && $self->{dbh}->ping;
 
     $self->disconnect if $self->{dbh};
-    $self->{dbh} = $self->_make_dbh( @_, name => $self->{schema}->name );
+    $self->{dbh} = $self->_make_dbh( %p, name => $self->{schema}->name );
 }
 
 sub create_database

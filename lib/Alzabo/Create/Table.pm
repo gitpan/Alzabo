@@ -12,7 +12,7 @@ use Tie::IxHash;
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.38 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.39 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -91,7 +91,7 @@ sub make_column
     my %p2;
     foreach ( qw( before after ) )
     {
-	$p2{$_} = $p{$_} if exists $p{$_};
+	$p2{$_} = delete $p{$_} if exists $p{$_};
     }
     $self->add_column( column => Alzabo::Create::Column->new( table => $self,
 							      %p ),
@@ -108,10 +108,8 @@ sub add_column
     my $self = shift;
 
     validate( @_, { column => { isa => 'Alzabo::Create::Column' },
-		    before => { type => SCALAR,
-				optional => 1 },
-		    after  => { type => SCALAR,
-				optional => 1 } } );
+		    before => { optional => 1 },
+		    after  => { optional => 1 } } );
     my %p = @_;
 
     my $col = $p{column};
@@ -128,7 +126,7 @@ sub add_column
 	if ( exists $p{$_} )
 	{
 	    $self->move_column( $_ => $p{$_},
-				column => $self->column( $p{name} ) );
+				column => $col );
 	    last;
 	}
     }
@@ -168,11 +166,11 @@ sub move_column
 {
     my $self = shift;
 
-    validate( @_, { table  => { isa => 'Alzabo::Create::Column' },
-		    before => { type => SCALAR,
-				optional => 1 },
-		    after  => { type => SCALAR,
-				optional => 1 } } );
+    validate( @_, { column  => { isa => 'Alzabo::Create::Column' },
+		    before  => { isa => 'Alzabo::Create::Column',
+				 optional => 1 },
+		    after   => { isa => 'Alzabo::Create::Column',
+				 optional => 1 } } );
     my %p = @_;
 
     if ( exists $p{before} && exists $p{after} )

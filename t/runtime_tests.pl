@@ -382,12 +382,6 @@ sub run_sync_tests
     my $s = shift;
     my %p = @_;
 
-    $s->set_user($p{user}) if $p{user};
-    $s->set_password($p{password}) if $p{password};
-    $s->set_host($p{host}) if $p{host};
-    $s->set_referential_integrity(1);
-    $s->connect;
-
     $c_read  = do { local *FH; };
     $c_write = do { local *FH; };
     $p_read  = do { local *FH; };
@@ -420,6 +414,9 @@ sub parent
 
     close $p_read;
     close $p_write;
+
+    $s->driver->disconnect;
+    $s->connect;
 
     my $emp = eval { $s->table('employee')->insert( values => { name => 'parent',
 								department_id => 1,
@@ -503,10 +500,14 @@ sub parent
     my $pid2;
     if ( $pid2 = fork )
     {
+	$s->driver->disconnect;
+	$s->connect;
 	waitpid($pid2, 0);
     }
     else
     {
+	$s->driver->disconnect;
+	$s->connect;
 	# circumvent caching
 	$s->driver->do( sql => 'DELETE FROM employee WHERE employee_id = ?',
 			bind => $emp3_id );
@@ -563,6 +564,9 @@ sub child
 
     close $c_read;
     close $c_write;
+
+    $s->driver->disconnect;
+    $s->connect;
 
     # A.
     my $pk = get_pipe_data($p_read);

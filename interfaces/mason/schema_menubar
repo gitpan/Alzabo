@@ -8,11 +8,11 @@
   <td align="center">
 %       if ( my $t = $t[$y] ) {
 %         if ( $y > 0 ) {
-   <font size="-1"><& &Alzabo::Config::mason_url_path . '/common/href', text => '<', path => 'move_table' . Alzabo::Config::mason_extension(), query => { schema => $s->name, before => $t[ $y - 1 ]->name, table => $t->name } &></font>
+   <font size="-1"><& '../common/href', text => '<', path => 'move_table' . Alzabo::Config::mason_extension(), query => { schema => $s->name, before => $t[ $y - 1 ]->name, table => $t->name } &></font>
 %         }
-   <font size="-1"><& &Alzabo::Config::mason_url_path . '/common/href', text => $t->name, path => 'view_table' . Alzabo::Config::mason_extension(), query => { schema => $s->name, table => $t->name } &></font>
+   <font size="-1"><& '../common/href', text => $t->name, path => 'view_table' . Alzabo::Config::mason_extension(), query => { schema => $s->name, table => $t->name } &></font>
 %         if ( $t[ $y + 1 ]) {
-   <font size="-1"><& &Alzabo::Config::mason_url_path . '/common/href', text => '>', path => 'move_table' . Alzabo::Config::mason_extension(), query => { schema => $s->name, after => $t[ $y + 1 ]->name, table => $t->name } &></font>
+   <font size="-1"><& '../common/href', text => '>', path => 'move_table' . Alzabo::Config::mason_extension(), query => { schema => $s->name, after => $t[ $y + 1 ]->name, table => $t->name } &></font>
 %         }
 %       } else {
    &nbsp;

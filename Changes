@@ -1,3 +1,24 @@
+0.36
+
+- Addition of Params::Validate broke several methods:
+-- The Alzabo::Schema->tables method was broken when trying to
+retrieve a subset of all the tables.
+-- The Alzabo::Create::Schema->move_table method was broken (thus
+breaking the ability to add a table at a specified place in the table
+order).
+-- Same problem for Alzabo::Create::Table->move_column.
+
+- Attempting to dynamically generate component paths in the Mason
+component was a bad idea, particularly since it was unnecessary
+because I can find the component by doing '../common/foo'.  Thanks to
+Bob Gustafson for suggesting this.
+
+- Added to the test suite to catch all this in the future.
+
+- Fix bug in Postgres rules that didn't allow length for CHAR columns.
+
+- Fixed problems running multi-process tests with Postgres.
+
 0.35
 
 - Add ability to specify port parameter when connecting to DB for
@@ -34,7 +55,7 @@ removed if the new column type does not allow a length or precision
 setting.
 
 - Fix some warnings in the Makefile.PL code.  Also require Pod::Man >=
-1.15 to handle =head3 and =head4 directives.
+1.14 to handle =head3 and =head4 directives.
 
 - The Postgres code did not allow the ABSTIME, MACADDR, or RELTIME
 column types.  These have been added.  Thanks to Bob Gustafson for
