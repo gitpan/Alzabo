@@ -1,4 +1,4 @@
-0.56
+0.57
 
 ENHANCEMENTS:
 
@@ -67,6 +67,10 @@ of an object for their delete_from_cache method.
 
 - If you specify give the 'all' parameter to MethodMaker,
 'lookup_tables' is no longer included.
+
+0.56
+
+Had to become 0.57 cause I was too hasty in uploading to CPAN.  Doh!
 
 0.55
 
