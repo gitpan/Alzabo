@@ -21,6 +21,7 @@ lib/Alzabo/Create/Index.pm
 lib/Alzabo/Create/Schema.pm
 lib/Alzabo/Create/Table.pm
 lib/Alzabo/Debug.pm
+lib/Alzabo/Design.pod
 lib/Alzabo/Driver.pm
 lib/Alzabo/Driver/MySQL.pm
 lib/Alzabo/Driver/PostgreSQL.pm
@@ -28,6 +29,7 @@ lib/Alzabo/Exceptions.pm
 lib/Alzabo/FAQ.pod
 lib/Alzabo/ForeignKey.pm
 lib/Alzabo/Index.pm
+lib/Alzabo/Intro.pod
 lib/Alzabo/MethodMaker.pm
 lib/Alzabo/MySQL.pod
 lib/Alzabo/PostgreSQL.pod
@@ -42,7 +44,6 @@ lib/Alzabo/Runtime/Cursor.pm
 lib/Alzabo/Runtime/ForeignKey.pm
 lib/Alzabo/Runtime/Index.pm
 lib/Alzabo/Runtime/JoinCursor.pm
-lib/Alzabo/Runtime/PotentialRow.pm
 lib/Alzabo/Runtime/Row.pm
 lib/Alzabo/Runtime/RowCursor.pm
 lib/Alzabo/Runtime/RowState/Deleted.pm
@@ -79,6 +80,7 @@ t/07-methodmaker.t
 t/09-storable.t
 t/12-rev_engineer_pg_fk.t
 t/14-unique-row-cache.t
+t/15-alias_ref.t
 t/98-schema_diff.t
 t/99-cleanup.t
 t/99-pod.t

@@ -27,7 +27,7 @@ unless (@rdbms_names)
     exit;
 }
 
-plan tests => 8;
+plan tests => 9;
 
 
 Alzabo::Test::Utils->remove_all_schemas;
@@ -55,6 +55,7 @@ $s->connect( Alzabo::Test::Utils->connect_params_for($rdbms)  );
     $dep1->delete;
     ok( $dep1->is_deleted, 'copy is deleted' );
     ok( $dep1_copy->is_deleted, 'copy is deleted' );
+
 }
 
 {
@@ -83,4 +84,11 @@ $s->connect( Alzabo::Test::Utils->connect_params_for($rdbms)  );
 
     ok( ! Alzabo::Runtime::UniqueRowCache->row_in_cache( $dep2->table->name, $old_id ),
         'old id is not in cache' );
+
+    my $dep2_copy_2 =
+        $s->table('department')->row_by_pk( pk => $dep2->select('department_id'),
+                                            no_cache => 1 );
+
+    is( $dep2_copy_2->{state}, 'Alzabo::Runtime::RowState::Live',
+        'row state is live, not cached' );
 }

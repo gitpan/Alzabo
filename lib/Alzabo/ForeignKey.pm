@@ -98,12 +98,13 @@ sub to_is_dependent
     return shift->{to_is_dependent};
 }
 
-sub is_same_relationship
+sub is_same_relationship_as
 {
     my ($self, $other) = @_;
-    return ($self->id eq $other->id
-	    or
-	    $self->id eq $other->reverse->id);
+    return ( $self->id eq $other->id
+             or
+             $self->id eq $other->reverse->id
+           );
 }
 
 sub reverse

@@ -127,9 +127,8 @@ Alzabo::Runtime::ForeignKey - Foreign key objects
 =head1 DESCRIPTION
 
 Objects in this class maintain referential integrity.  This is really
-only useful when your RDBMS can't do this itself (like MySQL).  For a
-RDBMS that can do this, this feature can be turned off
-(by doing C<$schema-E<gt>set_referential_integrity(0)>).
+only useful when your RDBMS can't do this itself (like MySQL without
+InnoDB).
 
 =head1 INHERITS FROM
 
@@ -167,18 +166,14 @@ This method takes the proposed column value for a new row and makes
 sure that it is valid based on relationship that this object
 represents.
 
-=head3 Throws
-
-L<C<Alzabo::Exception::ReferentialIntegrity>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::ReferentialIntegrity>|Alzabo::Exceptions>
 
 =head2 register_update ($new_value)
 
 This method takes the proposed new value for a column and makes sure
 that it is valid based on relationship that this object represents.
 
-=head3 Throws
-
-L<C<Alzabo::Exception::ReferentialIntegrity>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::ReferentialIntegrity>|Alzabo::Exceptions>
 
 =head2 register_delete (C<Alzabo::Runtime::Row> object)
 
@@ -186,9 +181,7 @@ Allows the foreign key to delete rows dependent on the row being
 deleted.  Note, this can lead to a chain reaction of cascading
 deletions.  You have been warned.
 
-=head3 Throws
-
-L<C<Alzabo::Exception::ReferentialIntegrity>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::ReferentialIntegrity>|Alzabo::Exceptions>
 
 =for pod_merge id
 

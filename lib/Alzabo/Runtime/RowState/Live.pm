@@ -319,3 +319,31 @@ sub is_potential { 0 }
 sub is_live { 1 }
 
 sub is_deleted { 0 }
+
+
+1;
+
+__END__
+
+=head1 NAME
+
+Alzabo::Runtime::RowState::Live - Row objects representing rows in the database
+
+=head1 SYNOPSIS
+
+  my $row = $table->row_by_pk( pk => 1 );
+
+=head1 DESCRIPTION
+
+This state is used for live rows, rows which represent actual rows in
+the database.
+
+=head1 METHODS
+
+See C<L<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>.
+
+=head1 AUTHOR
+
+Dave Rolsky, <autarch@urth.org>
+
+=cut

@@ -73,7 +73,7 @@ C<Alzabo::Column>
 
 =head2 alias
 
-=head3 Parameters
+Takes the following parameters:
 
 =over 4
 
@@ -81,13 +81,11 @@ C<Alzabo::Column>
 
 =back
 
-=head3 Returns
-
-This returns an object that can be used in calls to the table and
-schema C<select> method in order to change the name given to the
-column if C<next_as_hash> is called on the
+This method returns an object that can be used in calls to the table
+and schema C<select()> methods in order to change the name given to
+the column if C<next_as_hash()> is called on the
 L<C<Alzabo::DriverStatement>|Alzabo::Driver/Alzabo::DriverStatment>
-returned by the aforementioned C<select> method.
+returned by the aforementioned C<select()> method.
 
 =head1 AUTHOR
 

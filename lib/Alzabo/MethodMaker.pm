@@ -518,7 +518,7 @@ sub make_linking_table_method
  	return unless @fk == 2;
 
         # Get the foreign key that's not the one we already have
- 	$fk_2 = $fk[0]->is_same_relationship($fk) ? $fk[1] : $fk[0];
+ 	$fk_2 = $fk[0]->is_same_relationship_as($fk) ? $fk[1] : $fk[0];
     }
 
     return unless $fk_2;

@@ -1043,7 +1043,7 @@ is instantiated, if you ask it to generate SQL via L<the C<make_sql()>
 the method|Alzabo::Create::Schema/make_sql>, it will generate the set
 of SQL statements that are needed to create the schema from scratch.
 
-After is instantiated, the schema will instead generate the SQL
+After it is instantiated, the schema will instead generate the SQL
 necessary to convert the version in the RDBMS backend to match the
 object's current state.  This can be thought of as a SQL 'diff'.
 

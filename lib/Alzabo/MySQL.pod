@@ -2,7 +2,7 @@
 
 =head1 NAME
 
-Alzabo - and MySQL
+Alzabo and MySQL
 
 =head1 DESCRIPTION
 
@@ -94,7 +94,7 @@ Column constraints are treated as column attributes.
 =item *
 
 Foreign key constraints are not generated when generating SQL for a
-Postgres schema.  This will probably change in the future.
+MySQL schema.  This will probably change in the future.
 
 =back
 

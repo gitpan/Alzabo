@@ -1,3 +1,43 @@
+0.79_03  October 18, 2003
+
+ENHANCEMENTS:
+
+- Many doc rewrites and updates.
+
+- Documented row state classes.
+
+- Added back the no_cache parameter to avoid caching one or more rows.
+
+- Moved the relevant documentation from Alzabo::Runtime::PotentialRow
+into Alzabo::Runtime::Row.
+
+BUG FIXES:
+
+- Fixed the NAME portion of the Alzabo::MySQL and Alzabo::PostgreSQL
+POD files so that search.cpan.org doesn't think Alzabo::MySQL is the
+Alzabo.pm file.  Reported by Darren Duncan.
+
+- The 12-rev_engineer_pg_fk.t test would try to load DBD::Pg even if
+you weren't using Postgres, which would cause the test file to die if
+DBD::Pg wasn't installed.  Reported by Jost's smokehouse.
+
+- More documentation updates to remove outdated information.
+
+- Split out the documentation in Alzabo.pm into Alzabo::Intro and
+Alzabo::Design.
+
+- Added a FAQ from a question on the mailing list.  Suggested by
+Terrence Brannon.
+
+- Eliminated a circular reference between tables created via the
+Alzabo::Runtime::Table->alias() method, and the columns those alias
+tables contain.  This required the use of weak references.
+
+NOTE: Alzabo regular tables and columns have circular references to
+each other, but this normally isn't a problem because you generally
+want to keep a whole schema around all the time anyway.
+
+
 0.79_02  October 17, 2003
 
 ENHANCEMENTS:
@@ -26,7 +66,7 @@ previous, undefined behavior.
 
 - When a 1..1 or 1..n foreign key is added to a table, a unique index
 is created on the columns involved in the foreign key, unless those
-columns are part of the tables primary key.
+columns are part of the table's primary key.
 
 BUG FIXES:
 
@@ -44,7 +84,7 @@ bugs.
 
 - Removed references to the old caching code in various spots.
 
-- Fixed handling case_sensitive parameter to
+- Fixed handling of case_sensitive parameter to
 Alzabo::Column->has_attribute().
 
 BACKWARDS INCOMPATIBILITIES:

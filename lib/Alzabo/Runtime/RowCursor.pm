@@ -25,7 +25,6 @@ sub new
 			  } );
 
     my $self = bless { %p,
-		       seen => {},
 		       count => 0,
 		     }, $class;
 
@@ -111,11 +110,12 @@ Alzabo::Runtime::RowCursor - Cursor that returns C<Alzabo::Runtime::Row> objects
 
 =head1 DESCRIPTION
 
-Objects in this class are used to return Alzabo::Runtime::Row objects
-when requested.  The cursor does not preload objects but rather
-creates them on demand, which is much more efficient.  For more
-details on the rational please see L<the RATIONALE FOR CURSORS section
-in Alzabo::Runtime::Cursor|Alzabo::Runtime::Cursor/RATIONALE FOR
+Objects in this class are used to return
+L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects for queries.
+The cursor does not preload objects but creates them on demand, which
+is much more efficient.  For more details on the rational please see
+L<the RATIONALE FOR CURSORS section in
+Alzabo::Design|Alzabo::Design/RATIONALE FOR
 CURSORS>.
 
 =head1 INHERITS FROM
@@ -123,18 +123,6 @@ CURSORS>.
 L<C<Alzabo::Runtime::Cursor>|Alzabo::Runtime::Cursor>
 
 =head1 METHODS
-
-=head2 new
-
-=head3 Parameters
-
-=over 4
-
-=item * statement => C<Alzabo::Driver::Statement> object
-
-=item * table => C<Alzabo::Table> object
-
-=back
 
 =head2 next
 
@@ -155,16 +143,12 @@ return the first row of the set.
 
 =head2 count
 
-=head3 Returns
-
-The number of rows returned by the cursor so far.
+Returns the number of rows returned by the cursor so far.
 
 =head2 next_as_hash
 
-=head3 Returns
-
-The next row in a hash, where the hash key is the table name and the
-hash value is the row object.
+Return the next row in a hash, where the hash key is the table name
+and the hash value is the row object.
 
 =head1 AUTHOR
 

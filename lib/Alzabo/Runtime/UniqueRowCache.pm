@@ -16,6 +16,14 @@ BEGIN
         sub { my $self = shift;
               my %p = @_;
 
+              if ( delete $p{no_cache} )
+              {
+                  return
+                      $self->$real_make_row( %p,
+                                             state => 'Alzabo::Runtime::RowState::Live',
+                                           );
+              }
+
               my $id =
                   Alzabo::Runtime::Row->id_as_string_ext
                       ( pk    => $p{pk},
@@ -113,6 +121,11 @@ matching row from the cache.
 Given a row object, this method stores it in the cache.
 
 =back
+
+=head1 AVOIDING THE CACHE
+
+If you want to not cache a row, then you can pass the "no_cache"
+parameter to any table or schema method that creates a new row object.
 
 =head1 AUTHOR
 

@@ -215,6 +215,7 @@ sub default_prereq
             'Digest::MD5' => 0,
             'Exception::Class' => 0.97,
             'Params::Validate' => 0.58,
+            'Scalar::Util' => 1.01,
             'Storable' => 0.7,
             'Test::Simple' => 0.47,
             'Test::Harness' => 1.26,

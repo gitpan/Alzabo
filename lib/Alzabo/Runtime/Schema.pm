@@ -564,7 +564,8 @@ Objects in this class represent schemas, and can be used to retrieve
 data from that schema.
 
 This object can only be loaded from a file.  The file is created
-whenever a corresponding Alzabo::Create::Schema object is saved.
+whenever a corresponding
+L<C<Alzabo::Create::Schema>|Alzabo::Create::Schema> object is saved.
 
 =head1 INHERITS FROM
 
@@ -574,108 +575,89 @@ C<Alzabo::Schema>
 
 =head1 METHODS
 
-=head2 load_from_file
+=head2 load_from_file ( name => $schema_name )
 
 Loads a schema from a file.  This is the only constructor for this
-class.
+class.  It returns an C<Alzabo::Runtime::Schema> object.  Loaded
+objects are cached in memory, so future calls to this method may
+return the same object.
 
-=head3 Parameters
-
-=over 4
-
-=item * name => $schema_name
-
-=back
-
-=head3 Returns
-
-An C<Alzabo::Runtime::Schema> object.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
-
-=head2 user
-
-=head3 Returns
-
-The username used by the schema when connecting to the database.
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::System>|Alzabo::Exceptions>
 
 =head2 set_user ($user)
 
-Set the username to use when connecting to the database.
+Sets the username to use when connecting to the database.
 
-=head2 password
+=head2 user
 
-=head3 Returns
-
-The password used by the schema when connecting to the database.
+Return the username used by the schema when connecting to the database.
 
 =head2 set_password ($password)
 
 Set the password to use when connecting to the database.
 
-=head2 host
+=head2 password
 
-=head3 Returns
-
-The host used by the schema when connecting to the database.
-
-=head2 port
-
-=head3 Returns
-
-The port used by the schema when connecting to the database.
+Returns the password used by the schema when connecting to the
+database.
 
 =head2 set_host ($host)
 
 Set the host to use when connecting to the database.
 
+=head2 host
+
+Returns the host used by the schema when connecting to the database.
+
 =head2 set_port ($port)
 
 Set the port to use when connecting to the database.
 
-=head2 referential_integrity
+=head2 port
 
-=head3 Returns
-
-A boolean value indicating whether this schema will attempt to
-maintain referential integrity.
+Returns the port used by the schema when connecting to the database.
 
 =head2 set_referential_integrity ($boolean)
 
-Sets the value returned by the
-L<C<referential_integrity>|referential_integrity> method.  If true,
-then when L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects are
+Turns referential integrity checking on or off.  If it is on, then
+when L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects are
 deleted, updated, or inserted, they will report this activity to any
 relevant L<C<Alzabo::Runtime::ForeignKey>|Alzabo::Runtime::ForeignKey>
 objects for the row, so that the foreign key objects can take
 appropriate action.
 
-Defaults to false.
+This defaults to false.  If your RDBMS supports foreign key
+constraints, these should be used instead of Alzabo's built-in
+referential integrity checking, as they will be much faster.
+
+=head2 referential_integrity
+
+Returns a boolean value indicating whether this schema will attempt to
+maintain referential integrity.
 
 =head2 set_quote_identifiers ($boolean)
 
 If this is true, then all SQL constructed for this schema will have
 quoted identifiers (like `Table`.`column` in MySQL).
 
-Defaults to false.
+This defaults to false.  Turning this on adds some overhead to all SQL
+generation.
 
 =head2 connect (%params)
 
 Calls the L<C<Alzabo::Driver-E<gt>connect>|Alzabo::Driver/connect>
 method for the driver owned by the schema.  The username, password,
 host, and port set for the schema will be passed to the driver, as
-will any additional parameters given to this method.  See the
-L<C<Alzabo::Driver-E<gt>connect>|Alzabo::Driver/connect> method for
-more details.
+will any additional parameters given to this method.  See the L<C<<
+Alzabo::Driver->connect() method >>|Alzabo::Driver/connect> for more
+details.
 
 =head2 disconnect
 
-Calls the L<C<Alzabo::Driver-E<gt>disconnect>|Alzabo::Driver/disconnect>
-method for the driver owned by the schema.  See the
-L<C<Alzabo::Driver-E<gt>disconnect>|Alzabo::Driver/disconnect> method for
-more details.
+Calls the L<C<< Alzabo::Driver->disconnect()
+>>|Alzabo::Driver/disconnect> method for the driver owned by the
+schema.
 
 =head2 join
 
@@ -687,17 +669,19 @@ generate the necessary SQL.  See
 L<C<Alzabo::Runtime::JoinCursor>|Alzabo::Runtime::JoinCursor> for more
 information.
 
-=head3 Parameters
+This method takes the following parameters:
 
 =over 4
 
 =item * join => <see below>
 
-This parameter can either be a simple array reference of tables or a
-reference to an array containing more arrays, each of which contain
-two tables, plus an optional modifier specifying a type of join for
-those two tables, like 'left_outer_join', and an optional foreign key
-object which will be used to join the two tables.
+This parameter can either be a simple array reference of tables or an
+array reference of array references.  In the latter case, each array
+reference should contain two tables.  These array references can also
+include an optional modifier specifying a type of join for the two
+tables, like 'left_outer_join', an optional foreign key object which
+will be used to join the two tables, and an optional where clause used
+to restrict the join.
 
 If a simple array reference is given, then the order of these tables
 is significant when there are more than 2 tables.  Alzabo expects to
@@ -721,8 +705,8 @@ looks like this:
             [ $table_C, $table_D ],
             [ $table_C, $table_E ] ]
 
-This is fairly self explanatory in.  Alzabo will expect to find a
-relationship between each specified pair.  This allows for the
+This is fairly self explanatory.  Alzabo will expect to find a
+relationship between each pair of tables.  This allows for the
 construction of arbitrarily complex join clauses.
 
 For even more complex needs, there are more options:
@@ -730,6 +714,10 @@ For even more complex needs, there are more options:
   join => [ [ left_outer_join => $table_A, $table_B ],
             [ $table_A, $table_C, $foreign_key ],
             [ right_outer_join => $table_C, $table_D, $foreign_key ] ]
+
+In this example, we are specifying two types of outer joins, and in
+two of the three cases, specifying which foreign key should be used to
+join the two tables.
 
 It should be noted that if you want to join two tables that have more
 than one foreign key between them, you B<must> provide a foreign key
@@ -745,14 +733,17 @@ is interepreted to mean
 
 Table order is relevant for right and left outer joins, obviously.
 
+However, for regular (inner) joins, table order is not important.
+
 It is also possible to apply restrictions to an outer join, for
 example:
 
-  join => [ [ left_outer_join => $table_A, $table_B, $foreign_key,
+  join => [ [ left_outer_join => $table_A, $table_B,
+              # outer join restriction
               [ [ $table_B->column('size') > 2 ],
                 'and',
-                [ $table_B->column('name'), '!=', 'Foo' ],
-              ] ] ]
+                [ $table_B->column('name'), '!=', 'Foo' ] ],
+            ] ]
 
 This corresponds to this SQL;
 
@@ -760,49 +751,55 @@ This corresponds to this SQL;
   LEFT OUTER JOIN table_B ON ...
               AND (table_B.size > 2 AND table_B.name != 'Foo')
 
-Again, the foreign key object is only mandatory when there is more
-than one foreign key between the two tables being joined.
+These restrictions are only allowed when performing an outer join,
+since there is no point in using them for regular inner joins.  An
+inner join restriction has the same effect when included in the
+"WHERE" clause.
 
-If the more complex method of specifying tables is used and no
-C<select> parameter is provided, then the order of the rows returned
-from calling C<next> on the cursor is not guaranteed.  In other words,
-the array that the cursor returns will contain a row from each table
-involved in the join, but the which row belongs to which table cannot
-be determined except by examining each row in turn.  The order will be
-the same every time C<next> is called, however.  It may be easier to
-use the C<next_as_hash> cursor method in this case.
+If the more multiple array reference of specifying tables is used and
+no "select" parameter is provided, then the order of the rows returned
+from calling L<C<< Alzabo::Runtime::JoinCursor->next()
+>>|Alzabo::Runtime::JoinCursor/next> is not guaranteed.  In other
+words, the array that the cursor returns will contain a row from each
+table involved in the join, but the which row belongs to which table
+cannot be determined except by examining the objects.  The order will
+be the same every time L<C<< Alzabo::Runtime::JoinCursor->next()
+>>|Alzabo::Runtime::JoinCursor/next> is called, however.  It may be
+easier to use the L<C<< Alzabo::Runtime::JoinCursor->next_as_hash()
+>>|Alzabo::Runtime::JoinCursor/next_as_hash> method in this case.
 
 =item * select => C<Alzabo::Runtime::Table> object or objects (optional)
 
 This parameter specifies from which tables you would like rows
-returned.  If this parameter is not given, then the distinct or join
-parameter will be used instead, in that order.
+returned.  If this parameter is not given, then the "distinct" or
+"join" parameter will be used instead, with the "distinct" parameter
+taking precedence.
 
 This can be either a single table or an array reference of table
 objects.
 
-=item * distinct => C<Alzabo::Runtime::Table> object or objects
+=item * distinct => C<Alzabo::Runtime::Table> object or objects (optional)
 
 If this parameter is given, it indicates that results from the join
 should never contain repeated rows.
 
-This can be used in place of the select parameter to indicate which
-tables are being selected, though the select parameter always takes
-first precedence.
+This can be used in place of the "select" parameter to indicate from
+which tables you want rows returned.  The "select" parameter, if
+given, supercedes this parameter.
 
-=item * where
+=item * where (optional)
 
 See the L<documentation on where clauses for the
 Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
 Parameters>.
 
-=item * order_by
+=item * order_by (optional)
 
 See the L<documentation on order by clauses for the
 Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
 Parameters>.
 
-=item * limit
+=item * limit (optional)
 
 See the L<documentation on limit clauses for the
 Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
@@ -810,30 +807,31 @@ Parameters>.
 
 =back
 
-=head3 Returns
-
-If the C<select> parameter (or C<tables> parameter) specified that
-more than one table is desired, then this method will return an
-L<C<Alzabo::Runtime::JoinCursor>|Alzabo::Runtime::JoinCursor> object
+If the "select" parameter specified that more than one table is
+desired, then this method will return n
+L<JoinCursor|Alzabo::Runtime::JoinCursor> object
 representing the results of the join.  Otherwise, the method returns
-an L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object.
+a L<RowCursor|Alzabo::Runtime::RowCursor> object.
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Logic>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Logic>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 one_row
 
 This method takes the exact same parameters as the
-L<C<join>|Alzabo::Runtime::table/join> method but instead of returning
-a cursor, it returns a single array of row object.  These will be the
-rows representing the first ids that are returned by the database.
+L<C<join()>|Alzabo::Runtime::table/join> method but instead of
+returning a cursor, it returns a single array of row objects.  These
+will be the rows representing the first row (a set of one or more
+table's primary keys) that is returned by the database.
+
+Throws: L<C<Alzabo::Exception::Logic>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 function and select
 
 These two methods differ only in their return values.
 
-=head3 Parameters
+They both take the following parameters:
 
 =over 4
 
@@ -844,10 +842,16 @@ scalars, SQL functions, or column objects.  For example:
 
   $schema->function( select =>
                      [ 1,
-                       $table->column('name'),
-                        LENGTH( $table->column('name') ) ],
-                     join => [ $table, $other_table ],
+                       $foo->column('name'),
+                       LENGTH( $foo->column('name') ) ],
+                     join => [ $foo, $bar_table ],
                    );
+
+This is equivalent to the following SQL:
+
+  SELECT 1, foo.name, LENGTH( foo.name )
+    FROM foo, bar
+   WHERE ...
 
 =item * join
 
@@ -874,7 +878,9 @@ Parameters>.
 
 =item * having
 
-This parameter is specified in the same way as the "where" parameter.
+This parameter is specified in the same way as the "where" parameter,
+but is used to generate a "HAVING" clause.  It only allowed when you
+also specify a "group_by" parameter.
 
 =item * limit
 
@@ -884,36 +890,43 @@ Parameters>.
 
 =back
 
-These methods is used to call arbitrary SQL functions such as 'AVG' or
-'MAX'.  The function (or functions) should be the return values from
-the functions exported by the SQLMaker subclass that you are using.
-Please see L<Using SQL functions|Alzabo/Using SQL functions> for more
-details.
+These methods are used to call arbitrary SQL functions such as 'AVG'
+or 'MAX', and to select data from individual columns.  The function
+(or functions) should be the return values from the functions exported
+by the SQLMaker subclass that you are using.  Please see L<Using SQL
+functions|Alzabo::Intro/"Using SQL functions"> for more details.
 
-=head3 Returns
+Throws: L<C<Alzabo::Exception::Logic>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
-=head4 function
+=head3 function() return values
 
 The return value of this method is highly context sensitive.
 
-If you only requested a single function ( DISTINCT(foo) ), then it
-returns the first value in scalar context and all the values in list
-context.
+If you only requested a single element in your "select" parameter,
+such as "DISTINCT(foo)", then it returns the first value in scalar
+context and all the values as an array in list context.
 
-If you requested multiple functions ( AVG(foo), MAX(foo) ) then it
-returns a single array reference (the first row of values) in scalar
-context and a list of array references in list context.
+If you requested multiple functions such as "AVG(foo), MAX(foo)", then
+it returns a single array reference, the first row of values, in
+scalar context and a list of array references in list context.
 
-=head4 select
+=head3 select() return values
 
 This method always returns a new
 L<C<Alzabo::DriverStatement>|Alzabo::Driver/Alzabo::DriverStatement>
-object containing the results of the query.
+object containing the results of the query.  This object has an
+interface very similar to the Alzabo cursor interface, and has methods
+such as C<next()>, C<next_as_hash()>, etc.
 
 =head2 row_count
 
 This method is simply a shortcut to get the result of COUNT('*') for a
-join.
+join.  It equivalent to calling C<function()> with a "select"
+parameter of C<COUNT('*')>.
+
+Throws: L<C<Alzabo::Exception::Logic>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 prefetch_all
 
@@ -958,11 +971,11 @@ This method turns of all prefetching.
 =head1 JOINING A TABLE MORE THAN ONCE
 
 It is possible to join to the same table more than once in a query.
-Table objects contain a method called
-L<C<alias>|Alzabo::Runtime::Table/alias> that, when called, returns an
-object that can be used in the same query as the original table
-object, but which will be treated as a separate table.  This is to
-allow starting with something like this:
+Table objects contain an L<C<alias()>|Alzabo::Runtime::Table/alias>
+method that, when called, returns an object that can be used in the
+same query as the original table object, but which will be treated as
+a separate table.  This faciliaties queries similar to the following
+SQL::
 
   SELECT ... FROM Foo AS F1, Foo as F2, Bar AS B ...
 
@@ -973,24 +986,22 @@ these conditions be retrieved from the alias object.
 
 For example:
 
- my $foo_alias = $foo_tab->alias;
+ my $foo_alias = $foo->alias;
 
- my $cursor = $schema->join( select => $foo_tab,
-                             join   => [ $foo_tab, $bar_tab, $foo_alias ],
-                             where  => [ [ $bar_tab->column('baz'), '=', 10 ],
+ my $cursor = $schema->join( select => $foo,
+                             join   => [ $foo, $bar, $foo_alias ],
+                             where  => [ [ $bar->column('baz'), '=', 10 ],
                                          [ $foo_alias->column('quux'), '=', 100 ] ],
                              order_by => $foo_alias->column('briz') );
 
-If we were to use the C<$foo_tab> object to retrieve the 'quux' and
+If we were to use the C<$foo> object to retrieve the 'quux' and
 'briz' columns then the join would simply not work as expected.
 
 It is also possible to use multiple aliases of the same table in a
-join, so that this:
+join, so that this will work properly:
 
- my $foo_alias1 = $foo_tab->alias;
- my $foo_alias2 = $foo_tab->alias;
-
-will work just fine.
+ my $foo_alias1 = $foo->alias;
+ my $foo_alias2 = $foo->alias;
 
 =head1 USER AND PASSWORD INFORMATION
 
@@ -998,10 +1009,10 @@ This information is never saved to disk.  This means that if you're
 operating in an environment where the schema object is reloaded from
 disk every time it is used, such as a CGI program spanning multiple
 requests, then you will have to make a new connection every time.  In
-a persistent environment, this is not a problem.  In a mod_perl
-environment, you could load the schema and call the
-L<C<set_user>|Alzabo::Runtime::Schema/set_user ($user)> and
-L<C<set_password>|Alzabo::Runtime::Schema/set_password ($password)>
+a persistent environment, this is not a problem.  For example, in a
+mod_perl environment, you could load the schema and call the
+L<C<set_user()>|Alzabo::Runtime::Schema/set_user ($user)> and
+L<C<set_password()>|Alzabo::Runtime::Schema/set_password ($password)>
 methods in the server startup file.  Then all the mod_perl children
 will inherit the schema with the user and password already set.
 Otherwise you will have to provide it for each request.
@@ -1011,8 +1022,11 @@ user and password information.  The basic reason was that I did not
 feel I could come up with a solution to this problem that was secure,
 easy to configure and use, and cross-platform compatible.  Rather, I
 think it is best to let each user decide on a security practice with
-which they feel comfortable.  If anybody does come up with such a
-scheme, then code submissions are more than welcome.
+which they feel comfortable.
+
+In addition, there are a number of modules aimed at helping store and
+use this sort of information on CPAN, including C<DBIx::Connect> and
+C<AppConfig>, among others.
 
 =head1 AUTHOR
 

@@ -10,8 +10,6 @@ this reference can give you an idea of what classes contain certain
 I<types> of methods, so you have an idea of where to look in order to
 figure out how to achieve a certain task.
 
-=for pod_merge Architecture head3
-
 =head2 Alzabo, Alzabo::Create, and Alzabo::Runtime
 
 These modules are mostly used just to load other modules.  The
@@ -200,9 +198,8 @@ C<AVG> or C<MAX>.
 
 =for html type=object
 
-Make a new
-L<C<Alzabo::Runtime::PotentialRow>|Alzabo::Runtime::PotentialRow>
-object.
+Make a new L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> in the
+"potential" state.
 
 =for html link=L<More|Alzabo::Runtime::Table/potential_row>
 

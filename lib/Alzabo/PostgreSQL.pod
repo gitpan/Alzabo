@@ -2,25 +2,20 @@
 
 =head1 NAME
 
-Alzabo - and PostgreSQL
+Alzabo and PostgreSQL
 
 =head1 DESCRIPTION
 
 This documentation is about what special support Alzabo has for PostgreSQL,
 as well as what is lacking.
 
-Postgres support is based on the 7.1 releases of Postgres.  Alzabo
-will probably work with the 7.0 releases as well.  Of course, features
-that were added to Postgres as part of the 7.1 releases will not work.
+Postgres support is based on the 7.3.x version of Postgres.  Alzabo
+should work with the 7.1 and 7.2 series, and may even work with the
+7.0 series.
 
 =head2 Reverse Engineering
 
 =over 4
-
-=item *
-
-Currently, Alzabo does not handle constraints or foreign keys during
-reverse engineering.  This will change in the future.
 
 =item *
 
@@ -54,17 +49,6 @@ Left and right outer joins are supported.
 =item *
 
 Full outer joins are not supported.
-
-=back
-
-=head2 Pre-7.1 Large Objects
-
-=over 4
-
-=item *
-
-There is no support for externally stored large objects.  Upgrade to
-Postgres 7.1 or newer, which supports arbitrarily large rows.
 
 =back
 

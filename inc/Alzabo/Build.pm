@@ -12,13 +12,15 @@ use Data::Dumper;
 use File::Path;
 use File::Spec;
 
-sub ACTION_build
+sub ACTION_docs
 {
     my $self = shift;
 
-    $self->SUPER::ACTION_build(@_);
+    $self->depends_on('code');
 
     $self->ACTION_pod_merge;
+
+    $self->SUPER::ACTION_docs(@_);
 }
 
 sub ACTION_pod_merge

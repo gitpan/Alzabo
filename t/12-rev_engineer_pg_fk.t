@@ -10,19 +10,20 @@ use Alzabo::Test::Utils;
 
 use Test::More;
 
-
-use DBD::Pg;
 use Alzabo::Create::Schema;
-use Alzabo::Driver::PostgreSQL;
-
 
 my $config = Alzabo::Test::Utils->test_config_for('pg');
 
 unless ( keys %$config )
 {
-    plan skip_all => 'no Postgre test config provided';
+    plan skip_all => 'no Postgres test config provided';
     exit;
 }
+
+
+require DBD::Pg;
+require Alzabo::Driver::PostgreSQL;
+
 
 plan tests => 28;
 

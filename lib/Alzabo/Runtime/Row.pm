@@ -268,6 +268,14 @@ Alzabo::Runtime::Row - Row objects
 
   use Alzabo::Runtime::Row;
 
+  my $row = $table->row_by_pk( pk => 1 );
+
+  $row->select('foo');
+
+  $row->update( bar => 5 );
+
+  $row->delete;
+
 =head1 DESCRIPTION
 
 These objects represent actual rows from the database containing
@@ -277,11 +285,29 @@ rows.  The L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table> object
 can return either single rows or L<row
 cursors|Alzabo::Runtime::RowCursor>.
 
+=head1 ROW STATES
+
+Row objects can have a variety of states.  Most row objects are
+"live", which means they represent an actual row object.  A row can be
+changed to the "deleted" state by calling its C<delete()> method.
+This is a row that no longer exists in the database.  Most method
+calls on rows in this state cause an exception.
+
+There is also a "potential" state, for objects which do not represent
+actual database rows.  You can call L<C<make_live()>|make_live> on
+these rows in order to change their state to "live".
+
+Finally, there is an "in cache" state, which is identical to the
+"live" state, except that it is used for object's that are cached via
+the
+L<C<Alzabo::Runtime::UniqueRowCache>|Alzabo::Runtime::UniqueRowCache>
+class.
+
 =head1 METHODS
 
-=head2 select (@list_of_column_names)
+Row objects offer the following methods:
 
-=head3 Returns
+=head2 select (@list_of_column_names)
 
 Returns a list of values matching the specified columns in a list
 context.  In scalar context it returns only a single value (the first
@@ -291,9 +317,11 @@ If no columns are specified, it will return the values for all of the
 columns in the table, in the order that are returned by
 L<C<Alzabo::Runtime::Table-E<gt>columns>|Alzabo::Runtime::Table/columns>.
 
-=head2 select_hash (@list_of_column_names)
+This method throws an
+L<C<Alzabo::Runtime::NoSuchRowException>|Alzabo::Exceptions> if called
+on a deleted row.
 
-=head3 Returns
+=head2 select_hash (@list_of_column_names)
 
 Returns a hash of column names to values matching the specified
 columns.
@@ -301,14 +329,39 @@ columns.
 If no columns are specified, it will return the values for all of the
 columns in the table.
 
+This method throws an
+L<C<Alzabo::Runtime::NoSuchRowException>|Alzabo::Exceptions> if called
+on a deleted row.
+
 =head2 update (%hash_of_columns_and_values)
 
 Given a hash of columns and values, attempts to update the database to
 and the object to represent these new values.
 
+This method throws an
+L<C<Alzabo::Runtime::NoSuchRowException>|Alzabo::Exceptions> if called
+on a deleted row.
+
+=head2 refresh
+
+Refreshes the object against the database.  This can be used when you
+want to ensure that a row object is up to date in regards to the
+database state.
+
+This method throws an
+L<C<Alzabo::Runtime::NoSuchRowException>|Alzabo::Exceptions> if called
+on a deleted row.
+
 =head2 delete
 
-Deletes the row from the RDBMS.
+Deletes the row from the RDBMS and changes the object's state to
+deleted.
+
+For potential rows, this method simply changes the object's state.
+
+This method throws an
+L<C<Alzabo::Runtime::NoSuchRowException>|Alzabo::Exceptions> if called
+on a deleted row.
 
 =head2 id_as_string
 
@@ -316,9 +369,25 @@ Returns the row's id value as a string.  This can be passed to the
 L<C<Alzabo::Runtime::Table-E<gt>row_by_id>|Alzabo::Runtime::Table/row_by_id>
 method to recreate the row later.
 
+For potential rows, this method always return an empty string.
+
+This method throws an
+L<C<Alzabo::Runtime::NoSuchRowException>|Alzabo::Exceptions> if called
+on a deleted row.
+
 =head2 is_live
 
-Indicates whether or not the given row is a real or potential row.
+Indicates whether or not the given row represents an actual row in the
+database.
+
+=head2 is_potential
+
+Indicates whether or not the given row represents an actual row in the
+datatbase.
+
+=head2 is_deleted
+
+Indicates whether or not the given row has been deleted
 
 =head2 table
 
@@ -333,7 +402,10 @@ $row->table->schema >>.
 
 =head2 rows_by_foreign_key
 
-=head3 Parameters
+This method is used to retrieve row objects from other tables by
+"following" a relationship between two tables.
+
+It takes the following parameters:
 
 =over 4
 
@@ -341,50 +413,64 @@ $row->table->schema >>.
 
 =back
 
-Given a foreign key object, this method returns either an
-L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> object or an
-L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object for
-the row(s) in the table that to which the relationship exists, based
-on the value of the relevant column(s) in the current row.
+Given a foreign key object, this method returns either a row object or
+a row cursor object the row(s) in the table to which the relationship
+exist.
 
 The type of object returned is based on the cardinality of the
 relationship.  If the relationship says that there could only be one
 matching row, then a row object is returned, otherwise it returns a
 cursor.
 
-All other parameters given will be passed directly to the
-L<C<new>|new> method.
+=head1 POTENTIAL ROWS
 
-=head2 new
+The "potential" row state is used for rows which do not yet exist in
+the database.  These are created via the L<C<<
+Alzabo::Runtime::Table->potential_row
+>>|Alzabo::Runtime::Table/potential_row> method.
 
-=head3 Parameters
+They are useful when you need a placeholder object which you can
+update and select from, but you don't actually want to commit the data
+to the database.
 
-=over 4
+These objects are not cached.
 
-=item * table => C<Alzabo::Runtime::Table> object
+Once L<C<make_live()>|/make_live> is called, the object's state
+becomes "live".
 
-=item * pk => (see below)
+Potential rows have looser constraints for column values than regular
+rows.  When creating a new potential row, it is ok if none of the
+columns are defined.  If a column has a default, and a value for that
+column is not given, then the default will be used.  However, you
+cannot update a column in a potential row to undef (NULL) if the
+column is not nullable.
 
-The C<pk> parameter may be one of two things.  If the table has only a
-single column primary key, it can be a simple scalar with the value of
-that primary key for this row.
+No attempt is made to enforce L<referential integrity
+constraints|Alzabo/Referential Integrity> on these objects.
 
-If the primary key is more than one column than it must be a hash
-reference containing column names and values such as:
+You cannot set a column's value to a database function like "NOW()",
+because this requires interaction with the database.
 
-  { pk_column1 => 1,
-    pk_column2 => 'foo' }
+=head2 make_live
 
-=back
+This method inserts the row into the database and changes the object's
+state to "live".
 
-=head3 Returns
+This means that all references to the potential row object will now be
+references to the real object (which is a good thing).
 
-A new C<Alzabo::Runtime::Row> object.  If no object matches these
-values then an exception will be thrown.
+This method can take any parameters that can be passed to the
+L<C<Alzabo::Runtime::Table-E<gt>insert>|Alzabo::Runtime::Table/insert>
+method.
 
-=head3 Throws
+Any columns already set will be passed to the C<insert> method,
+including primary key values.  However, these will be overridden, on
+a column by column basis, by a "pk" or "values" parameters given to
+the C<(make_live()> method.
 
-L<C<Alzabo::Exception::NoSuchRow>|Alzabo::Exceptions>
+Calling this method on a row object that is not in the "potential"
+state will cause an
+L<C<Alzabo::Runtime::LogicException>|Alzabo::Exceptions>
 
 =head1 AUTHOR
 

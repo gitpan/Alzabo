@@ -63,3 +63,29 @@ sub _write_to_cache
 1;
 
 __END__
+
+=head1 NAME
+
+Alzabo::Runtime::RowState::InCache - Cached row objects that represent actual database rows
+
+=head1 SYNOPSIS
+
+  use Alzabo::Runtime::UniqueRowCache;
+
+  my $row = $table->row_by_pk( pk => 1 );
+
+=head1 DESCRIPTION
+
+This state is used for live rows that are cached via the
+C<Alzabo::Runtime::UniqueRowCache> class.
+
+=head1 METHODS
+
+See C<L<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>.
+
+=head1 AUTHOR
+
+Dave Rolsky, <autarch@urth.org>
+
+=cut
+

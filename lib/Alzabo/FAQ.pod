@@ -50,4 +50,36 @@ it, like this:
 
   use Alzabo::Runtime qw( schema1 schema2 );
 
+=head2 How can I get objects for tables linked via the Mason GUI?
+
+=over 4
+
+For example, if I have a websites2categories table which maps a list
+of categories that a given web site should display -- and uses
+website_id and category_id in a 1..n relationship -- what is the
+proper way to set that up in the GUI and then in my code?
+
+=back
+
+In the GUI, you can simply create a relationship from websites to
+categories, and declare it n..n.  Alzabo will automatically create a
+table called websites_categories, and you're free to change the name
+to whatever you want.
+
+Then if you use C<Alzabo::MethodMaker>, Alzabo will see that you have
+a table with 2 cols, both of which are part of the PK, and that it has
+1..n relationships with 2 other tables, and it will create the
+appropriate methods.
+
+You can see what methods are being created by setting the
+C<ALZABO_DEBUG> environment variable to "METHODMAKER" before loading
+Alzabo::MethodMaker.  It'll spit everything out to STDERR.  There's
+also the generated documentation, which is available via the C<<
+docs_as_pod() >> schema method after MethodMaker does its thing.
+
+=head1 AUTHOR
+
+Dave Rolsky, <autarch@urth.org>
+
 =cut
+

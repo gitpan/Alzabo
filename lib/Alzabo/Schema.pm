@@ -100,7 +100,7 @@ sub _cached_schema
     validate_pos( @_, { type => SCALAR } );
     my $name = shift;
 
-    my $schema_dir = Alzabo::Config::schema_dir;
+    my $schema_dir = Alzabo::Config::schema_dir();
     my $file = $class->_schema_filename($name);
 
     if (exists $CACHE{$name}{$class}{object})

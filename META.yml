@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name: Alzabo
-version: 0.79_02
+version: 0.79_03
 license: perl
 distribution_type: module
 requires:
@@ -9,6 +9,7 @@ requires:
   Digest::MD5: 0
   Exception::Class: 0.97
   Params::Validate: 0.58
+  Scalar::Util: 1.01
   Storable: 0.7
   Test::Harness: 1.26
   Test::Simple: 0.47
@@ -24,7 +25,7 @@ conflicts: {}
 provides:
   Alzabo:
     file: lib/Alzabo.pm
-    version: 0.79_02
+    version: 0.79_03
   Alzabo::BackCompat:
     file: lib/Alzabo/BackCompat.pm
     version: 2
@@ -129,8 +130,6 @@ provides:
   Alzabo::Runtime::JoinCursor:
     file: lib/Alzabo/Runtime/JoinCursor.pm
     version: 2
-  Alzabo::Runtime::PotentialRow:
-    file: lib/Alzabo/Runtime/PotentialRow.pm
   Alzabo::Runtime::Row:
     file: lib/Alzabo/Runtime/Row.pm
     version: 2
