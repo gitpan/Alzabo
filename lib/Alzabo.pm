@@ -13,7 +13,7 @@ use Alzabo::Config;
 
 use vars qw($VERSION);
 
-$VERSION = '0.45';
+$VERSION = '0.46';
 
 1;
 
@@ -55,17 +55,10 @@ To take it a step further, you could then aggregate a set of rows from
 different tables into a larger container object which could understand
 the logical relationship between these tables.
 
-This is not yet intended to be a total object replacement for SQL, as
-there is not yet complete suppot for more operations such as joins or
-arbitrary SQL functions such as C<AVG> or C<MAX>, though that is
-coming.  However, it can still replace the drudgery of the most common
-operations.  In addition, the
-L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects support the
-use of a caching system.  Two caching modules,
-L<C<Alzabo::ObjectCache>|Alzabo::ObjectCache> and
-L<C<Alzabo::ObjectCacheIPC>|Alzabo::ObjectCacheIPC>, are included.
-However, you may substitute any caching system you like provided it
-has the appropriate method interface.
+The L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects support
+the use of a caching system.  Caching modules are included with the
+distribution.  However, you may substitute any caching system you like
+provided it has the appropriate method interface.
 
 =head2 What to Read?
 
@@ -391,6 +384,36 @@ L<C<Alzabo::MethodMaker>|Alzabo::MethodMaker>:
       }
   }
 
+=head3 Using SQL Functions
+
+Each subclass of Alzabo::SQLMaker is capable of exporting functions
+that allow you to use all the SQL functions that your RDBMS provides.
+These functions are normal Perl functions.  They take as argument
+normal scalars (strings and numbers), C<Alzabo::Column> objects, or
+the return value of another SQL function.  They may be used to select
+data via the
+L<C<Alzabo::Runtime::Row-E<gt>function>|Alzabo::Runtime::Row/function>
+method.  They may also be used as part updates, inserts, and where
+clauses, any place that is appropriate.
+
+Examples:
+
+ use Alzabo::SQLMaker::MySQL qw(MAX NOW PI);
+
+ my $max = $table->function( function => MAX( $table->column('budget') ),
+                             where => [ $table->column('country'), '=', 'USA' ] );
+
+ $table->insert( values => { create_date => NOW() } );
+
+ $row->update( pi => PI() );
+
+ my $cursor = $table->rows_where( where => [ $table->column('expire_date'), '<=', NOW() ] );
+
+ my $cursor = $table->rows_where( where => [ LENGTH( $table->column('password'), '<=', 5 ] );
+
+The documentation for the Alzabo::SQLMaker subclass for your RDBMS
+will contain a detailed list of all exportable functions.
+
 =head3 Changing the schema
 
 In MySQL, there are a number of various types of integers.  The type
@@ -453,9 +476,9 @@ another, though this is a future goal.
 
 =head3 MySQL
 
-Alzabo does not provide support for all possible MySQL features.  One
-notable feature that is supported in column prefixes in indexes, which
-are necessary to allow indexes on blob/text columns.
+Alzabo does not provide support for all possible MySQL features but is
+trying to get there.  Missing features currently include table type
+and transactions.
 
 =head3 PostgreSQL
 
@@ -465,12 +488,12 @@ First, reverse engineering does not handle constraints (including
 foreign keys).  This will change in the future.
 
 Second, reverse engineering cannot determine from the existence of a
-sequence that a sequence is meant to be used for a particular column
+sequence that the sequence is meant to be used for a particular column
 unless the sequence was created as a result of assigning the serial
 type to a column.
 
 Third, there is no support for large objects.  This was considered but
-given that 7.1 should support rows larger than 8K it was determined
+given that 7.1 now supports rows larger than 32K it was determined
 that supporting large objects was not worth the amount of effort
 reqiured.
 
@@ -494,7 +517,7 @@ This is a diagram of these inheritance relationships:
 
 This a diagram of how objects contain other objects:
 
-                      Schema
+                      Schema - makes--Alzabo::SQLMaker subclass object (many)
                      /      \
               contains       contains--Alzabo::Driver subclass object (1)
                   |                 \
@@ -520,6 +543,52 @@ Other classes/objects used in Alzabo include:
 
 =over 4
 
+=item * C<Alzabo::Driver>
+
+These objects handle all the actual communication with the database,
+using a thin wrapper over DBI.  The subclasses are used to implement
+functionality that must be handled uniquely for a given RDBMS, such as
+creating new values for sequenced columns.
+
+=item * C<Alzabo::SQLMaker>
+
+These objects handle the generation of all SQL for runtime operations.
+The subclasses are used to implement functionality that varies between
+RDBMS's, such as outer joins.
+
+=item * C<Alzabo::RDBMSRules>
+
+These objects perform several funtions.  First, they validate things
+such as schema or table names, column type and length, etc.
+
+Second they are used to generate SQL for creating and updating the
+database and its tables.
+
+And finally, they also handle the reverse engineering of an existing
+database.
+
+=item * C<Alzabo::ObjectCache>, C<Alzabo::ObjectCache::Store::*> and C<Alzabo::ObjectCache::Sync::*>
+
+These are object caching modules.  The modules in the
+C<Alzabo::ObjectCache::Store> hierarchy are used to store row objects
+persistently.  The modules in C<Alzabo::ObjectCache::Sync> are used to
+make sure that multiple instances of the same row objects in different
+processes don't step on each other's toes.
+
+=item * C<Alzabo::Runtime::Row>
+
+This object represents a row from a table.  These objects are created
+by L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table>,
+L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor>, and
+L<C<Alzabo::Runtime::JoinCursor>|Alzabo::Runtime::JoinCursor> objects.
+It is the sole interface by which actual data is retrieved, updated,
+or deleted in a table.
+
+=item * C<Alzabo::Runtime::JoinCursor> and C<Alzabo::Runtime::RowCursor>
+
+This object is a cursor that returns row objects.  Using a cursor
+saves a lot of memory for big selects.
+
 =item * C<Alzabo::Config>
 
 This class is generated by Makefile.PL during installation and
@@ -544,27 +613,6 @@ and row objects based on the structure of your schema.
 =item * C<Alzabo::Exceptions>
 
 This object creates the exception subclasses used by Alzabo.
-
-=item * C<Alzabo::ObjectCache> and C<Alzabo::ObjectCacheIPC>
-
-These are object caching modules.  The latter uses IPC to make sure
-that cached objects expired in one process get expired in any other
-process using the same caching module.  This can be quite useful when
-running under mod_perl, for example.
-
-=item * C<Alzabo::Runtime::Row>
-
-This object represents a row from a table.  These objects are created
-by L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table>,
-L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor>, and
-L<C<Alzabo::Runtime::JoinCursor>|Alzabo::Runtime::JoinCursor> objects.
-It is the sole interface by which actual data is retrieved, updated,
-or deleted in a table.
-
-=item * C<Alzabo::Runtime::JoinCursor> and C<Alzabo::Runtime::RowCursor>
-
-This object is a cursor that returns row objects.  Using a cursor
-saves a lot of memory for big selects.
 
 =item * C<Alzabo::Util>
 

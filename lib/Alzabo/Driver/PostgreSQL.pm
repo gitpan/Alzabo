@@ -8,7 +8,7 @@ use DBD::Pg;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -64,7 +64,7 @@ sub _make_dbh
     my $self = shift;
     my %p = @_;
 
-    my $dsn = "DBI:Pg:dbname=$p{name}";
+    my $dsn = "dbi:Pg:dbname=$p{name}";
     foreach ( qw( host port options tty ) )
     {
 	$dsn .= ";$_=$p{$_}" if $p{$_};

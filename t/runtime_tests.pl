@@ -16,7 +16,19 @@ BEGIN
     }
 }
 
-my $p = eval $ENV{CURRENT_TEST};
+my $p;
+BEGIN
+{
+    $p = eval $ENV{CURRENT_TEST};
+    if ( $p->{rdbms} eq 'mysql' )
+    {
+	eval 'use Alzabo::SQLMaker::MySQL qw(:all)';
+    }
+    elsif ( $p->{rdbms} eq 'pg' )
+    {
+	eval 'use Alzabo::SQLMaker::PostgreSQL qw(:all)';
+    }
+}
 
 my $s = Alzabo::Runtime::Schema->load_from_file( name => $p->{db_name} );
 
@@ -93,6 +105,10 @@ sub run_tests
 						  } ); };
     ok( ! $@,
 	"Unable to insert row into employee table: $@" );
+
+    my %data = $emp{bill}->select_hash( 'name', 'smell' );
+    ok ( $data{name} eq 'Big Bill' and $data{smell} eq 'robotic',
+	 "select_hash method returned incorrect data" );
 
     eval { $emp_t->insert( values => { name => undef,
 				       dep_id => $borg_id,
@@ -290,7 +306,14 @@ sub run_tests
     ok( $count == 4,
 	"There are $count employee table rows rather than 4" );
 
+    # this is deprecated but test it til it goes away
     $count = eval { $emp_t->func( func => 'COUNT', args => $emp_t->column('employee_id') ); };
+
+    ok( ! $@, "Error attempting to get row count via func method: $@" );
+    ok( $count == 4,
+	"There are $count employee table rows rather than 4" );
+
+    $count = eval { $emp_t->function( select => COUNT( $emp_t->column('employee_id') ) ); };
 
     ok( ! $@, "Error attempting to get row count via func method: $@" );
     ok( $count == 4,
@@ -411,6 +434,124 @@ sub run_tests
 	"Query should have returned 1 row but returned ", scalar @emps );
     ok( $emps[0]->select('employee_id') == 9000,
 	"Query returned incorrect row" );
+
+    $emp_t->insert( values => { name => 'Smelly',
+				smell => 'a',
+				dep_id => $dep_id,
+			      } );
+
+    my @emps = eval { $emp_t->rows_where( where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ] )->all_rows };
+
+    ok( @emps == 4,
+	"There should be only 4 employees where the length of the smell column is 1 but there are", scalar @emps );
+
+    my @smells = $emp_t->function( select => [ $emp_t->column('smell'), COUNT( $emp_t->column('smell') ) ],
+				   group_by => $emp_t->column('smell') );
+    # map smell to count
+    my %smells = map { $_->[0] => $_->[1] } @smells;
+    ok( @smells == 6 &&
+	$smells{a} == 2 && $smells{b} == 1 && $smells{c} == 1 &&
+	$smells{awful} == 1 && $smells{good} == 1 && $smells{horrid} == 1,
+	"Order by query returned incorrect results" );
+
+    if ( $p{rdbms} eq 'mysql' )
+    {
+	my $emp = eval { $emp_t->insert( values => { name => UNIX_TIMESTAMP(),
+						     dep_id => $dep_id } ) };
+
+	ok( ! $@,
+	    "Insert using SQL literal caused an error: $@" );
+
+	ok( $emp->select('name') =~ /\d+/,
+	    "Name should be all digits (unix timestamp) but it is " . $emp->select('name') );
+
+	eval { $emp->update( name => LOWER('FOO') ) };
+
+	ok( ! $@,
+	    "Update using SQL literal caused an error: $@" );
+
+	ok( $emp->select('name') eq 'foo',
+	    "Name should be 'foo' but it is " . $emp->select('name') );
+
+	eval { $emp->update( name => REPEAT('Foo', 3) ) };
+
+	ok( ! $@,
+	    "Update using SQL literal caused an error: $@" );
+
+	ok( $emp->select('name') eq 'FooFooFoo',
+	    "Name should be 'FooFooFoo' but it is " . $emp->select('name') );
+
+	eval { $emp->update( name => UPPER( REPEAT('Foo', 3) ) ) };
+
+	ok( ! $@,
+	    "Update using SQL literal caused an error: $@" );
+
+	ok( $emp->select('name') eq 'FOOFOOFOO',
+	    "Name should be 'FOOFOOFOO' but it is " . $emp->select('name') );
+
+	$emp_t->insert( values => { name => 'Timestamp',
+				    dep_id => $dep_id,
+				    tstamp => time - 100_000 } );
+
+	my $cursor;
+	eval { $cursor = $emp_t->rows_where( where => [ [ $emp_t->column('tstamp'), '!=', undef ],
+							[ $emp_t->column('tstamp'), '<', UNIX_TIMESTAMP() ] ] ) };
+	ok( ! $@,
+	    "Select using SQL literal caused an error: $@" );
+
+	my $count = scalar $cursor->all_rows;
+	ok( $count == 1,
+	    "Only one row should have a timestamp value that is not null and that is less than the current time but we have $count" );
+    }
+    elsif ( $p{rdbms} eq 'pg' )
+    {
+	my $emp = eval { $emp_t->insert( values => { name => NOW(),
+						     dep_id => $dep_id } ) };
+
+	ok( ! $@,
+	    "Insert using SQL literal caused an error: $@" );
+
+	ok( $emp->select('name') =~ /\d+/,
+	    "Name should be all digits (Postgres timestamp) but it is " . $emp->select('name') );
+
+	eval { $emp->update( name => LOWER('FOO') ) };
+
+	ok( ! $@,
+	    "Update using SQL literal caused an error: $@" );
+
+	ok( $emp->select('name') eq 'foo',
+	    "Name should be 'foo' but it is " . $emp->select('name') );
+
+	eval { $emp->update( name => REPEAT('Foo', 3) ) };
+
+	ok( ! $@,
+	    "Update using SQL literal caused an error: $@" );
+
+	ok( $emp->select('name') eq 'FooFooFoo',
+	    "Name should be 'FooFooFoo' but it is " . $emp->select('name') );
+
+	eval { $emp->update( name => UPPER( REPEAT('Foo', 3) ) ) };
+
+	ok( ! $@,
+	    "Update using SQL literal caused an error: $@" );
+
+	ok( $emp->select('name') eq 'FOOFOOFOO',
+	    "Name should be 'FOOFOOFOO' but it is " . $emp->select('name') );
+
+	$emp_t->insert( values => { name => 'Timestamp',
+				    dep_id => $dep_id,
+				    tstamp => time - 100_000 } );
+
+	my $cursor;
+	eval { $cursor = $emp_t->rows_where( where => [ [ $emp_t->column('tstamp'), '!=', undef ],
+							[ $emp_t->column('tstamp'), '<', NOW() ] ] ) };
+	ok( ! $@,
+	    "Select using SQL literal caused an error: $@" );
+
+	my $count = scalar $cursor->all_rows;
+	ok( $count == 1,
+	    "Only one row should have a timestamp value that is not null and that is less than the current time but we have $count" );
+    }
 }
 
 my $pid;

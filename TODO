@@ -29,9 +29,9 @@ Short term:
 
 - Non-Mason interface (curses, plain CGI)
 
-- Make caching system more atomic.  I'm sure there are subtle race
-  conditions in there that should be fixed (timestamps are generated
-  more than once, which could be a problem, for one).
+- Make caching system more atomic.  There may subtle race conditions
+  in there that should be fixed (timestamps are generated more than
+  once, which could be a problem, for one).
 
 - Support transactions in the caching system.  this eventually means
   real transactions at the middleware layer.  argh!

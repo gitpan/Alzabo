@@ -1,4 +1,4 @@
-#!/usr/bin/perl5.6.0 -w
+#!/usr/bin/perl -w
 
 use strict;
 
@@ -189,12 +189,14 @@ my @order = ( qw( Alzabo
 		  Alzabo::ObjectCache
 		),
 	      [ qw( Alzabo::ObjectCache::Store::Memory
-		    Alzabo::ObjectCache::Sync::Null
+                    Alzabo::ObjectCache::Store::BerkeleyDB
+                    Alzabo::ObjectCache::Store::Null
 		    Alzabo::ObjectCache::Sync::BerkeleyDB
 		    Alzabo::ObjectCache::Sync::SDBM_File
 		    Alzabo::ObjectCache::Sync::DB_File
 		    Alzabo::ObjectCache::Sync::IPC
 		    Alzabo::ObjectCache::Sync::DBM
+		    Alzabo::ObjectCache::Sync::Null
 		  ) ],
 
 	      qw( Alzabo::Exceptions
@@ -337,7 +339,7 @@ sub pod2html
 
     print "Creating $out\n";
 
-    system("$^X /usr/bin/pod2html --infile=$in --outfile=$out --htmlroot=$htmlroot")
+    system("$^X /usr/bin/pod2html --infile=$in --outfile=$out --htmlroot=$htmlroot --podpath=$from")
 	and die "error: $!\n";
 
     add_header($out);
@@ -402,10 +404,11 @@ sub make_index
 
 <p>
 If you are most interested in using Alzabo as an interface to
-retrieve/change data in an RDBMS and that the reader will be using the
-included schema creation interface to generate the schema objects,
-rather then doing it themselves in pure Perl, then please see the <a
-href="$htmlroot/Alzabo.html#what to read?">"What to Read?"</a> section.
+retrieve/change data in an RDBMS and you will be using the included
+schema creation interface to generate the schema objects, rather then
+doing it yourself in pure Perl, then please see the <a
+href="$htmlroot/Alzabo.html#what to read">"What to Read?"</a>
+section.
 </p>
 
 <p>

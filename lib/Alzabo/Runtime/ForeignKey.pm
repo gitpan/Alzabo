@@ -7,7 +7,7 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::ForeignKey);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -73,17 +73,9 @@ sub _check_existence
     my $self = shift;
     my ($col, $val) = @_;
 
-    my $driver = $self->table_from->schema->driver;
+    my $driver = $self->table_to->schema->driver;
 
-    my $sql = ( $self->table_from->schema->sqlmaker->
-		select->count('*')->
-		from( $self->table_to )
-	      );
-
-    $sql->where( $col, '=', $val );
-
-    unless ( $driver->one_row( sql => $sql->sql,
-			       bind => $sql->bind ) )
+    unless ( $self->table_to->row_count( where => [ $col, '=', $val ] ) )
     {
 	Alzabo::Exception::ReferentialIntegrity->throw( error => 'Foreign key must exist in foreign table.  No rows in ' . $self->table_to->name . ' where ' . $col->name . " = $val" );
     }

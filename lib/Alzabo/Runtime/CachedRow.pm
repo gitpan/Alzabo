@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::Runtime::Row);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -119,6 +119,13 @@ sub update
 
     while (my ($k, $v) = each %data)
     {
+	# These can't be stored until they're fetched from the database again
+	if ( UNIVERSAL::isa( $v, 'Alzabo::SQLMaker::Literal' ) )
+	{
+	    delete $self->{data}{$k};
+	    next;
+	}
+
 	$self->{data}{$k} = $v;
     }
 }

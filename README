@@ -13,11 +13,12 @@ DELETE, and UPDATE commands.
 To take it a step further, you could then aggregate a set of rows from
 different tables into a larger container object which could understand
 the logical relationship between these tables.  The
-Alzabo::MethodMaker module can be very helpful.
+Alzabo::MethodMaker module can be very helpful in this regard.
 
-For more information please see perldoc Alzabo or the Alzabo homepage
-at http://alzabo.sourceforge.net/.  The full documentation in HTML
-form is available at http://alzabo.sourceforge.net/docs/
+For more information please see the Alzabo (start with perldoc Alzabo)
+or the Alzabo homepage at http://alzabo.sourceforge.net/.  The full
+documentation in HTML form is available at
+http://alzabo.sourceforge.net/docs/
 
 Install information is in the INSTALL file.
 
@@ -39,27 +40,6 @@ _make backups first_!
 
 BUGS
 
-- Postgres, Perl 5.6.0+ and the 03-runtime.t test
-
-Running the 03-runtime.t test with Perl 5.6.0 (or 5.6.1 trial1) and
-Postgres produces a bunch of strange warning messages something like
-this:
-
- (in cleanup) dbih_getcom handle 'DBI::db=HASH(0x847d9c4)' is not a
-DBI handle (has no magic) at blib/lib/Alzabo/Driver.pm line 268 during
-global destruction.
-SV = RV(0x8474158) at 0x847d79c
-  REFCNT = 1
-  FLAGS = (ROK)
-  RV = 0x847d9c4
-
-However, the tests still pass.  I suspect this occurs because the
-03-runtime test does a lot of forking and this may be doing strange
-things to the internal state of the DBI objects.  If this also occurs
-during normal operations I will try to track it down but since I don't
-use 5.6.0 much, other than for compatibility testing, I may need some
-assistance.
-
 - Forking apps and Postgres
 
 In testing, I found that there were some problems using Postgres in a
@@ -70,6 +50,25 @@ than Alzabo.  I don't believe this would be a problem with an app
 which forks before ever connecting to the database (such as mod_perl).
 I have structured the test suite to avoid this problem in testing but
 forewarned is forearmed (or something like that).
+
+- make_html_docs.pl and Pod::Html
+
+There are links in the pod for Alzabo/Runtime/Table.pm back to
+Alzabo.pm that Pod::Html fails to resolve.  This patch (against the
+version of Pod::Html that comes with Perl 5.6.1) fixes this, though it
+may break other things.
+
+--- Html.pm.old	Mon Jul  2 11:52:46 2001
++++ Html.pm	Mon Jul  2 11:52:54 2001
+@@ -1697,7 +1697,7 @@
+     $page=$page83 if (defined $pages{$page83});
+     if ($page eq "") {
+ 	$link = "#" . htmlify( $section );
+-    } elsif ( $page =~ /::/ ) {
++    } elsif ( $page =~ /::|(?:^\w+$)/ ) {
+ 	$page =~ s,::,/,g;
+ 	# Search page cache for an entry keyed under the html page name,
+ 	# then look to see what directory that page might be in.  NOTE:
 
 CREDITS
 

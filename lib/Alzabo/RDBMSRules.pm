@@ -8,7 +8,7 @@ use Alzabo::Util;
 use Params::Validate qw( validate validate_pos );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.33 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.34 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -594,8 +594,7 @@ L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
 =head3 Returns
 
-A boolean value indicate whether or not this type is valid for the
-RDBMS.
+A canonized version of the type.
 
 =head3 Throws
 

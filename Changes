@@ -1,6 +1,40 @@
+0.46
+
+ENHANCEMENTS:
+
+- Column types are now canonized to be all upper case.  When multiple
+keywords specify the same type ('INT' and 'INTEGER', for example), one
+will be chosen.  This improves the quality of the reverse engineering
+and the usability of the schema creation interface.
+
+- You can now use SQL functions pretty much anywhere you would want
+(in inserts, updates, where clauses, etc).  See the "Using SQL
+Functions" section in the Alzabo.pm docs for more details.
+
+- As a corollary to the above, the Alzabo::Runtime::Table->function
+method has been created to replace the old
+Alzabo::Runtime::Table->func method.  This new method takes advantage
+of the new system for using SQL functions and is simpler and more
+flexible.  It allows you to perform all sorts of aggregate selects.
+
+- Added the Alzabo::Runtime::Row->select_hash method.  Requested by
+Dana Powers.
+
+DEPRECATIONS:
+
+- The Alzabo::Runtime::Table->func method has been deprecated.
+
+BUG FIXES:
+
+- When adding an AUTO_INCREMENT column to an existing MySQL table, the
+SQL generated would cause an error.  This has been fixed.  However, if
+the table already has more than row then chances are this still won't
+work (because MySQL does not try to generate needed unique values for
+the column when it is added).
+
 0.45
 
-Incompatibilities:
+INCOMPATIBILITIES:
 
 - The 'dbm_file' parameter given when loading a syncing module that
 used DBM files (such as Alzabo::ObjectCache::Sync::SDBM_File) has been
@@ -14,7 +48,7 @@ Previously, one process could update a row and another process could
 then update that same row.  Now the second process will throw an
 exception.
 
-Bug fixes:
+BUG FIXES:
 
 - Accidentally left debugging turned on in Alzabo::Exceptions.
 
@@ -39,7 +73,7 @@ correct diagnosis, thanks!).
 - Don't specify a database name when creating or dropping a database.
 Reported and patched by Dana Powers.
 
-Enhancements:
+ENHANCEMENTS:
 
 - Rules violations error messages (bad table name, for example) in the
 schema creator are now handled in a much friendlier manner.  Instead
@@ -73,7 +107,7 @@ little better now.
 
 0.44
 
-Bug fixes:
+BUG FIXES:
 
 - Bug fix in Alzabo::Runtime::Table->set_prefetch.  Reported by Bob
 Gustafson.
@@ -98,7 +132,7 @@ these.
 change to a column with an extended type and you did not change the
 type, an error occurred.
 
-Enhancements:
+ENHANCEMENTS:
 
 - Schema creator now shows you a list of possible column types instead
 of having you type it in.  However, for complex types like MySQL's
@@ -106,13 +140,13 @@ ENUM or Postgres' POLYGON there is a text box to type it in.
 
 0.43
 
-Enhancements:
+ENHANCEMENTS:
 
 - Allow passing of port when executing SQL from schema creator.
 
 - Confirm schema deletion in schema creator.
 
-Bug fixes:
+BUG FIXES:
 
 - Quick hack to fix a problem with Alzabo::MethodMaker when using
 caching.  However, this requires that the caching modules be loaded
@@ -127,7 +161,7 @@ you were prefetching one column.
 
 0.42
 
-Bug fixes:
+BUG FIXES:
 
 - The schema creator was broken (for lack of quotes around one string)
 
@@ -135,14 +169,14 @@ Bug fixes:
 
 0.41
 
-Bug fixes:
+BUG FIXES:
 
 - 0.40 was missing a file in the distro
 (lib/Alzabo/ObjectCache/Sync/DBM.pm).
 
 0.40
 
-Incompatibilities:
+INCOMPATIBILITIES:
 
 The classes in the ObjectCache hierarchy have been reorganized.  The
 renaming is as follows:
@@ -152,7 +186,7 @@ renaming is as follows:
  Alzabo::ObjectCache::IPCSync     => Alzabo::ObjectCache::Sync::IPC.pm
  Alzabo::ObjectCache::NullSync    => Alzabo::ObjectCache::Sync::Null.pm
 
-Enhancements:
+ENHANCEMENTS:
 
 - Document order by clauses for joins.
 
@@ -179,7 +213,7 @@ faster than the old DBMSync or IPCSync modules and actually appear to
 be faster than not syncing at all.  The NullSync (now Sync::Null)
 module is still faster than all of them, however.
 
-Bug fixes:
+BUG FIXES:
 
 - Reversing engineering a MySQL schema with ENUM or SET columns may
 have caused an error if the values for the enum/set contained spaces.
@@ -210,12 +244,12 @@ bug fix since this appears to be undocumented in the MySQL docs.
 and then became another (like Apache) may have caused permiission
 problems with the dbm file.  This has been fixed.
 
-Misc:
+MISC:
 
 - Require DBD::Pg 0.97 (the latest version as of this writing) as it
 fixes some bugs in earlier versions.
 
-Architecture:
+ARCHITECTURE:
 
 - Split up Row object into Alzabo::Runtime::Row (base class for
 standard uncached row) and Alzabo::Runtime::CachedRow (subclass for

@@ -10,7 +10,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.43 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.44 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -32,6 +32,13 @@ sub new
 sub available
 {
     return Alzabo::Util::subclasses(__PACKAGE__);
+}
+
+sub quote
+{
+    my $self = shift;
+
+    return $self->{dbh}->quote(@_);
 }
 
 sub rows
@@ -60,7 +67,7 @@ sub rows
 					  bind => \@bind );
     }
 
-    return @data;
+    return wantarray ? @data : $data[0];
 }
 
 sub rows_hashref

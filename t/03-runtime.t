@@ -112,12 +112,14 @@ foreach ( qw( BerkeleyDB SDBM_File DB_File IPC ) )
     }
 }
 
-my $TESTS_PER_RUN = 70;
+my $TESTS_PER_RUN = 75;
 my $SYNC_TESTS_PER_RUN = 18;
 my $test_count = ( ( $TESTS_PER_RUN * (@$tests + $#cache) ) +
 		   ( $SYNC_TESTS_PER_RUN * $sync ) );
 
-print "1..$test_count\n";
+my %SINGLE_RDBMS_TESTS = ( mysql => 10,
+			   pg => 10,
+			 );
 
 # re-order the tests to prevent test failures with multi-process tests
 # & Pg.
@@ -129,6 +131,20 @@ foreach my $db ( qw( mysql pg oracle sybase ) )
 
 my $test = shift @t;
 my $last_test_num;
+
+foreach (keys %SINGLE_RDBMS_TESTS)
+{
+    if ( $test->{rdbms} eq $_ )
+    {
+	$test_count += $SINGLE_RDBMS_TESTS{$_} * @cache;
+    }
+    else
+    {
+	$test_count += $SINGLE_RDBMS_TESTS{$_};
+    }
+}
+
+print "1..$test_count\n";
 
 foreach my $c (@cache)
 {
@@ -162,6 +178,11 @@ foreach my $c (@cache)
 
     $last_test_num += $TESTS_PER_RUN;
     $last_test_num += $SYNC_TESTS_PER_RUN if $c->[1];
+
+    foreach (keys %SINGLE_RDBMS_TESTS)
+    {
+	$last_test_num += $SINGLE_RDBMS_TESTS{$_} if $_ eq $test->{rdbms};
+    }
 
     system( "$^X t/runtime_tests.pl" )
 	and die "Can't run '$^X runtime_tests.pl: $!";

@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::ColumnDefinition);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -55,13 +55,12 @@ sub alter
     my $old_length = $self->{length};
     my $old_precision = $self->{precision};
 
-    $self->{type} = $p{type};
     $self->{length} = $p{length} if exists $p{length};
     $self->{precision} = $p{precision} if exists $p{precision};
 
     eval
     {
-	$self->owner->table->schema->rules->validate_column_type($p{type});
+	$self->{type} = $self->owner->table->schema->rules->validate_column_type($p{type});
 	$self->owner->table->schema->rules->validate_primary_key($self->owner)
 	    if $self->owner->is_primary_key;
 	$self->owner->table->schema->rules->validate_column_length($self->owner);
@@ -83,10 +82,9 @@ sub set_type
     my $type = shift;
 
     my $old_type = $self->{type};
-    $self->{type} = $type;
     eval
     {
-	$self->owner->table->schema->rules->validate_column_type($type);
+	$self->{type} = $self->owner->table->schema->rules->validate_column_type($type);
 	$self->owner->table->schema->rules->validate_primary_key($self->owner)
 	    if eval { $self->owner->is_primary_key };
 	# eval ^^ cause if we're creating the column its not in the table yet

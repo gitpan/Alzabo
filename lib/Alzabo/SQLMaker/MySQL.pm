@@ -1,15 +1,271 @@
 package Alzabo::SQLMaker::MySQL;
 
 use strict;
-use vars qw($VERSION $AUTOLOAD);
+use vars qw($VERSION $AUTOLOAD @EXPORT_OK %EXPORT_TAGS);
 
 use Alzabo::Exceptions;
 
 use base qw(Alzabo::SQLMaker);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
 
-1;
+my $MADE_LITERALS;
+my %functions;
+
+sub import
+{
+    _make_literals() unless $MADE_LITERALS;
+
+    # used to export literal functions
+    require Exporter;
+    *_import = \&Exporter::import;
+
+    goto &_import;
+}
+
+sub _make_literals
+{
+    *make_literal = \&Alzabo::SQLMaker::make_literal;
+
+    foreach ( [ PI => [ 'math' ] ],
+
+	      [ CURDATE => [ 'datetime' ] ],
+	      [ CURRENT_DATE => [ 'datetime' ] ],
+	      [ CURTIME => [ 'datetime' ] ],
+	      [ CURRENT_TIME => [ 'datetime' ] ],
+	      [ NOW => [ 'datetime', 'common' ] ],
+	      [ SYSDATE => [ 'datetime' ] ],
+	      [ CURRENT_TIMESTAMP => [ 'datetime' ] ],
+
+	      [ DATABASE => [ 'system' ] ],
+	      [ USER => [ 'system' ] ],
+	      [ SYSTEM_USER => [ 'system' ] ],
+	      [ SESSION_USER => [ 'system' ] ],
+	      [ VERSION => [ 'system' ] ],
+	      [ CONNECTION_ID => [ 'system' ] ],
+	    )
+    {
+	make_literal( literal => $_->[0],
+		      min => 0,
+		      max => 0,
+		      groups => $_->[1]
+		    );
+    }
+
+    foreach ( [ RAND => [ 'math' ] ],
+	      [ UNIX_TIMESTAMP => [ 'datetime' ] ],
+	      [ LAST_INSERT_ID => [ 'system' ] ],
+	    )
+    {
+	make_literal( literal => $_->[0],
+		      min => 0,
+		      max => 1,
+		      quote => [0],
+		      groups => $_->[1]
+		    );
+    }
+
+    make_literal( literal => 'CHAR',
+		  min => 1,
+		  max => undef,
+		  quote => [0],
+		  groups => [ 'string' ],
+		);
+
+    foreach ( [ WEEK => [1,0], [ 'datetime' ] ],
+	      [ ENCRYPT => [1,1], [ 'misc' ] ] )
+    {
+	make_literal( literal => $_->[0],
+		      min => 0,
+		      max => 1,
+		      quote => $_->[1],
+		      groups => $_->[2],
+		    );
+    }
+
+    foreach ( [ MOD => [0,0], [ 'math' ] ],
+	      [ ROUND => [0,0], [ 'math' ] ],
+	      [ POW => [0,0], [ 'math' ] ],
+	      [ POWER => [0,0], [ 'math' ] ],
+	      [ ATAN2 => [0,0], [ 'math' ] ],
+
+	      [ POSITION => [1,1], [ 'string' ] ],
+	      [ INSTR => [1,1], [ 'string' ] ],
+	      [ LEFT => [1,1], [ 'string' ] ],
+	      [ RIGHT => [1,1], [ 'string' ] ],
+	      [ FIND_IN_SET => [1,1], [ 'string' ] ],
+	      [ REPEAT => [1,0], [ 'string' ] ],
+
+	      [ ENCODE => [1,1], [ 'misc' ] ],
+	      [ DECODE => [1,1], [ 'misc' ] ],
+	      [ FORMAT => [0,0], [ 'misc' ] ],
+
+	      [ PERIOD_ADD => [0,0], [ 'datetime' ] ],
+	      [ PERIOD_DIFF => [0,0], [ 'datetime' ] ],
+	      [ DATE_ADD => [1,0], [ 'datetime' ] ],
+	      [ DATE_SUB => [1,0] , [ 'datetime' ]],
+	      [ ADDDATE => [1,0], [ 'datetime' ] ],
+	      [ SUBDATE => [1,0], [ 'datetime' ] ],
+	      [ DATE_FORMAT => [1,1], [ 'datetime' ] ],
+	      [ TIME_FORMAT => [1,1], [ 'datetime' ] ],
+	      [ FROM_UNIXTIME => [0,1], [ 'datetime' ] ],
+
+	      [ GET_LOCK => [1,0], [ 'system' ] ],
+	      [ BENCHMARK => [0,1], [ 'system' ] ],
+	      [ MASTER_POS_WAIT => [1,0], [ 'system' ]],
+	    )
+    {
+	make_literal( literal => $_->[0],
+		      min => 2,
+		      max => 2,
+		      quote => $_->[1],
+		      groups => $_->[2],
+		    );
+    }
+
+    foreach ( [ LEAST => [1,1,1], [ 'string' ] ],
+	      [ GREATEST => [1,1,1], [ 'string' ] ],
+	      [ CONCAT => [1,1,1], [ 'string' ] ],
+	      [ ELT => [0,1.1], [ 'string' ] ],
+	      [ FIELD => [1,1,1], [ 'string' ] ],
+	      [ MAKE_SET => [0,1,1], [ 'string' ] ],
+	    )
+    {
+	make_literal( literal => $_->[0],
+		      min => 2,
+		      max => undef,
+		      quote => $_->[1],
+		      groups => $_->[2],
+		    );
+    }
+
+    foreach ( [ LOCATE => [1,1,0], [ 'string' ] ],
+	      [ SUBSTRING => [1,0,0], [ 'string' ] ],
+	      [ CONV => [1,0,0], [ 'string' ] ],
+	      [ LPAD => [1,0,1], [ 'string' ] ],
+	      [ RPAD => [1,0,1], [ 'string' ] ],
+	      [ MID => [1,0,0], [ 'string' ] ],
+	      [ SUBSTRING_INDEX => [1,1,0], [ 'string' ] ],
+	      [ REPLACE => [1,1,1], [ 'string' ] ],
+	    )
+    {
+	make_literal( literal => $_->[0],
+		      min => 3,
+		      max => 3,
+		      quote => $_->[1],
+		      groups => $_->[2],
+		    );
+    }
+
+    make_literal( literal => 'CONCAT_WS',
+		  min => 3,
+		  max => undef,
+		  quote => [1,1,1,1],
+		  groups => [ 'string' ],
+		);
+
+    make_literal( literal => 'EXPORT_SET',
+		  min => 3,
+		  max => 5,
+		  quote => [0,1,1,1,0],
+		  groups => [ 'string' ],
+		);
+
+    make_literal( literal => 'INSERT',
+		  min => 3,
+		  max => 5,
+		  quote => [1,0,0,1],
+		  groups => [ 'string' ],
+		);
+
+    foreach ( [ ABS  => [0], [ 'math' ] ],
+	      [ SIGN  => [0], [ 'math' ] ],
+	      [ FLOOR  => [0], [ 'math' ] ],
+	      [ CEILING  => [0], [ 'math' ] ],
+	      [ EXP  => [0], [ 'math' ] ],
+	      [ LOG  => [0], [ 'math' ] ],
+	      [ LOG10  => [0], [ 'math' ] ],
+	      [ SQRT  => [0], [ 'math' ] ],
+	      [ COS  => [0], [ 'math' ] ],
+	      [ SIN  => [0], [ 'math' ] ],
+	      [ TAN  => [0], [ 'math' ] ],
+	      [ ACOS  => [0], [ 'math' ] ],
+	      [ ASIN  => [0], [ 'math' ] ],
+	      [ ATAN  => [0], [ 'math' ] ],
+	      [ COT  => [0], [ 'math' ] ],
+	      [ DEGREES  => [0], [ 'math' ] ],
+	      [ RADIANS  => [0], [ 'math' ] ],
+	      [ TRUNCATE  => [0], [ 'math' ] ],
+
+	      [ ASCII  => [1], [ 'string' ] ],
+	      [ ORD  => [1], [ 'string' ] ],
+	      [ BIN  => [0], [ 'string' ] ],
+	      [ OCT  => [0], [ 'string' ] ],
+	      [ HEX  => [0], [ 'string' ] ],
+	      [ LENGTH  => [1], [ 'string' ] ],
+	      [ OCTET_LENGTH  => [1], [ 'string' ] ],
+	      [ CHAR_LENGTH  => [1], [ 'string' ] ],
+	      [ CHARACTER_LENGTH  => [1], [ 'string' ] ],
+	      [ TRIM  => [1], [ 'string' ] ],
+	      [ LTRIM  => [1], [ 'string' ] ],
+	      [ RTRIM  => [1], [ 'string' ] ],
+	      [ SOUNDEX  => [1], [ 'string' ] ],
+	      [ SPACE  => [0], [ 'string' ] ],
+	      [ REVERSE  => [1], [ 'string' ] ],
+	      [ LCASE  => [1], [ 'string' ] ],
+	      [ LOWER  => [1], [ 'string' ] ],
+	      [ UCASE  => [1], [ 'string' ] ],
+	      [ UPPER  => [1], [ 'string' ] ],
+
+	      [ RELEASE_LOCK  => [1], [ 'system' ] ],
+
+	      [ DAYOFWEEK  => [1], [ 'datetime' ] ],
+	      [ WEEKDAY  => [1], [ 'datetime' ] ],
+	      [ DAYOFYEAR  => [1], [ 'datetime' ] ],
+	      [ MONTH  => [1], [ 'datetime' ] ],
+	      [ DAYNAME  => [1], [ 'datetime' ] ],
+	      [ MONTHNAME  => [1], [ 'datetime' ] ],
+	      [ QUARTER  => [1], [ 'datetime' ] ],
+	      [ YEARWEEK  => [1], [ 'datetime' ] ],
+	      [ HOUR  => [1], [ 'datetime' ] ],
+	      [ MINUTE  => [1], [ 'datetime' ] ],
+	      [ SECOND  => [1], [ 'datetime' ] ],
+	      [ TO_DAYS  => [1], [ 'datetime' ] ],
+	      [ FROM_DAYS  => [0], [ 'datetime' ] ],
+	      [ SEC_TO_TIME  => [0], [ 'datetime' ] ],
+	      [ TIME_TO_SEC  => [1], [ 'datetime' ] ],
+
+	      [ INET_NTOA  => [0], [ 'misc' ] ],
+	      [ INET_ATON  => [1], [ 'misc' ] ],
+
+	      [ COUNT  => [0], [ 'aggregate', 'common' ] ],
+	      [ AVG  => [0], [ 'aggregate', 'common' ] ],
+	      [ MIN  => [0], [ 'aggregate', 'common' ] ],
+	      [ MAX  => [0], [ 'aggregate', 'common' ] ],
+	      [ SUM  => [0], [ 'aggregate', 'common' ] ],
+	      [ STD  => [0], [ 'aggregate' ] ],
+	      [ STDDEV  => [0], [ 'aggregate' ] ],
+	      [ DISTINCT  => [0], [ 'aggregate', 'common' ] ],
+
+	      [ BIT_OR  => [0], [ 'misc' ] ],
+	      [ PASSWORD  => [1], [ 'misc' ] ],
+	      [ MD5  => [1], [ 'misc' ] ],
+	      [ BIT_AND  => [0], [ 'misc' ] ],
+	      [ LOAD_FILE  => [1], [ 'misc' ] ],
+	    )
+    {
+	make_literal( literal => $_->[0],
+		      min => 1,
+		      max => 1,
+		      quote => $_->[1],
+		      groups => $_->[2],
+		    );
+    }
+
+    %functions = map { $_ => 1 } @EXPORT_OK;
+
+    $MADE_LITERALS = 1;
+}
 
 sub init
 {
@@ -18,43 +274,11 @@ sub init
 
 sub DESTROY { }
 
-my %functions = map { $_ => 1 } qw( abs sign mod floor ceiling
-				    round exp log log10 pow power
-				    sqrt pi cos sin tan acos
-				    asin atan atan2 cot rand least
-				    greatest degrees radians truncate
-				    asci ord conv bin oct hex char
-				    concat concat_ws length
-				    octet_length char_length character_length
-				    locate position instr lpad rpad
-				    left right substring mid
-				    substring_index ltrim rtrim trim
-				    soundex space replace repeat
-				    reverse insert elt field find_in_set
-				    make_set export_set lcase lower
-				    ucase upper dayofweek weekday
-				    dayofyear month dayname monthname
-				    quarter week yearweek hour minute
-				    second period_add period_diff
-				    date_add date_sub adddate subdate
-				    to_days from_days date_format
-				    time_format curdate current_date
-				    curtime current_time now sysdate
-				    current_timestamp unix_timestamp
-				    from_unixtime sec_to_time time_to_sec
-				    database user system_user session_user
-				    password encrypt encode decode
-				    md5 last_insert_id format version
-				    connection_id get_lock releast_lock
-				    benchmark inet_ntoa inet_aton
-				    count avg min max sum std stddev
-				    bit_or bit_and distinct );
-
 sub _valid_function
 {
     shift;
 
-    return $functions{ lc shift };
+    return $functions{ uc shift };
 }
 
 sub _subselect
@@ -88,6 +312,13 @@ sub get_limit
     return undef;
 }
 
+sub sqlmaker_id
+{
+    return 'MySQL';
+}
+
+1;
+
 __END__
 
 =head1 NAME
@@ -112,6 +343,180 @@ an L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions> error.
 Almost all of the functionality inherited from Alzabo::SQLMaker is
 used as is.  The only overridden methods are C<limit> and
 C<get_limit>, as MySQL does allow for a C<LIMIT> clause in its SQL.
+
+=head1 EXPORTED SQL FUNCTIONS
+
+SQL may be imported by name or by tags.  They take arguments as
+documented in the MySQL documentation (version 3.23.39).  The
+functions (organized by tag) are:
+
+=head2 :math
+
+ PI
+ RAND
+ MOD
+ ROUND
+ POW
+ POWER
+ ATAN2
+ ABS
+ SIGN
+ FLOOR
+ CEILING
+ EXP
+ LOG
+ LOG10
+ SQRT
+ COS
+ SIN
+ TAN
+ ACOS
+ ASIN
+ ATAN
+ COT
+ DEGREES
+ RADIANS
+ TRUNCATE
+
+=head2 :string
+
+ CHAR
+ POSITION
+ INSTR
+ LEFT
+ RIGHT
+ FIND_IN_SET
+ REPEAT
+ LEAST
+ GREATEST
+ CONCAT
+ ELT
+ FIELD
+ MAKE_SET
+ LOCATE
+ SUBSTRING
+ CONV
+ LPAD
+ RPAD
+ MID
+ SUBSTRING_INDEX
+ REPLACE
+ CONCAT_WS
+ EXPORT_SET
+ INSERT
+ ASCII
+ ORD
+ BIN
+ OCT
+ HEX
+ LENGTH
+ OCTET_LENGTH
+ CHAR_LENGTH
+ CHARACTER_LENGTH
+ TRIM
+ LTRIM
+ RTRIM
+ SOUNDEX
+ SPACE
+ REVERSE
+ LCASE
+ LOWER
+ UCASE
+ UPPER
+
+=head2 :datetime
+
+ CURDATE
+ CURRENT_DATE
+ CURTIME
+ CURRENT_TIME
+ NOW
+ SYSDATE
+ CURRENT_TIMESTAMP
+ UNIX_TIMESTAMP
+ WEEK
+ PERIOD_ADD
+ PERIOD_DIFF
+ DATE_ADD
+ DATE_SUB
+ ADDDATE
+ SUBDATE
+ DATE_FORMAT
+ TIME_FORMAT
+ FROM_UNIXTIME
+ DAYOFWEEK
+ WEEKDAY
+ DAYOFYEAR
+ MONTH
+ DAYNAME
+ MONTHNAME
+ QUARTER
+ YEARWEEK
+ HOUR
+ MINUTE
+ SECOND
+ TO_DAYS
+ FROM_DAYS
+ SEC_TO_TIME
+ TIME_TO_SEC
+
+=head2 :aggregate
+
+These are functions which operate on an aggregate set of values all at
+once.
+
+ COUNT
+ AVG
+ MIN
+ MAX
+ SUM
+ STD
+ STDDEV
+ DISTINCT
+
+=head2 :system
+
+These are functions which return information about the MySQL server.
+
+ DATABASE
+ USER
+ SYSTEM_USER
+ SESSION_USER
+ VERSION
+ CONNECTION_ID
+ LAST_INSERT_ID
+ GET_LOCK
+ RELEASE_LOCK
+ BENCHMARK
+ MASTER_POS_WAIT
+
+=head2 :misc
+
+These are functions which don't fit into any other categories.
+
+ ENCRYPT
+ ENCODE
+ DECODE
+ FORMAT
+ INET_NTOA
+ INET_ATON
+ BIT_OR
+ BIT_AND
+ PASSWORD
+ MD5
+ LOAD_FILE
+
+=head2 :common
+
+These are functions from other groups that are most commonly used.
+
+ NOW
+ COUNT
+ AVG
+ MIN
+ MAX
+ SUM
+ DISTINCT
 
 =head1 AUTHOR
 

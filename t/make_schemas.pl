@@ -37,6 +37,10 @@ sub mysql_make_schema
 			 precision => 2,
 			 nullable => 1,
 		       );
+    $emp_t->make_column( name => 'tstamp',
+			 type => 'integer',
+			 nullable => 1,
+		       );
     $emp_t->make_index( columns => [ { column => $emp_t->column('name'),
 				       prefix => 10 },
 				     { column => $emp_t->column('smell') },
@@ -145,6 +149,10 @@ sub pg_make_schema
 			 type => 'numeric',
 			 length => 6,
 			 precision => 2,
+			 nullable => 1,
+		       );
+    $emp_t->make_column( name => 'tstamp',
+			 type => 'integer',
 			 nullable => 1,
 		       );
     $emp_t->make_index( columns => [ { column => $emp_t->column('name') } ] );

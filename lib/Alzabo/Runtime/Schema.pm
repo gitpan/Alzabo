@@ -7,7 +7,7 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.27 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.28 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -138,31 +138,6 @@ sub join
 
     if ( exists $p{order_by} )
     {
-	my @c;
-	my $s;
-	if ( UNIVERSAL::isa( $p{order_by}, 'Alzabo::Column' ) )
-	{
-	    @c = $p{order_by};
-	}
-	elsif ( UNIVERSAL::isa( $p{order_by}, 'ARRAY' ) )
-	{
-	    @c = @{ $p{order_by} };
-	}
-	else
-	{
-	    Alzabo::Exception::Params->throw( error => "No columns provided for order by" )
-		    unless $p{order_by}{columns};
-
-	    @c = ( UNIVERSAL::isa( $p{order_by}{columns}, 'ARRAY' ) ?
-		   @{ $p{order_by}{columns} } :
-		   $p{order_by}{columns} );
-
-	    $s = lc $p{order_by}{sort}
-		if exists $p{order_by}{sort};
-	}
-
-	$sql->order_by(@c);
-	$sql->$s() if $s;
     }
 
     my $statement = $self->driver->statement( sql => $sql->sql,
@@ -225,38 +200,11 @@ sub outer_join
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where}, 1 ) if exists $p{where};
 
+    Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} ) if exists $p{order_by};
+
     if ( $p{limit} )
     {
 	$sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} );
-    }
-
-    if ( exists $p{order_by} )
-    {
-	my @c;
-	my $s;
-	if ( UNIVERSAL::isa( $p{order_by}, 'Alzabo::Column' ) )
-	{
-	    @c = $p{order_by};
-	}
-	elsif ( UNIVERSAL::isa( $p{order_by}, 'ARRAY' ) )
-	{
-	    @c = @{ $p{order_by} };
-	}
-	else
-	{
-	    Alzabo::Exception::Params->throw( error => "No columns provided for order by" )
-		    unless $p{order_by}{columns};
-
-	    @c = ( UNIVERSAL::isa( $p{order_by}{columns}, 'ARRAY' ) ?
-		   @{ $p{order_by}{columns} } :
-		   $p{order_by}{columns} );
-
-	    $s = lc $p{order_by}{sort}
-		if exists $p{order_by}{sort};
-	}
-
-	$sql->order_by(@c);
-	$sql->$s() if $s;
     }
 
     my $statement = $self->driver->statement( sql => $sql->sql,

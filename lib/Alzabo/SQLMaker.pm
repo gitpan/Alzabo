@@ -9,9 +9,86 @@ use Alzabo::Util;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
 
 1;
+
+sub make_literal
+{
+    my %p = @_;
+    my $class = caller;
+
+    validate( @_,
+	      { literal => { type => SCALAR },
+		min => { type => SCALAR },
+		max => { type => UNDEF | SCALAR },
+		groups => { type => ARRAYREF },
+		quote => { type => ARRAYREF, optional => 1 },
+		format => { type => SCALAR, optional => 1 },
+	      } );
+
+    my $valid = '';
+    if ( ! defined $p{max} || $p{min} > 0 || $p{max} > 0 )
+    {
+	$valid .= 'validate_pos( @_, ';
+	$valid .= join ', ', ('1') x $p{min};
+    }
+
+    if ( defined $p{max} && $p{max} > $p{min} )
+    {
+	$valid .= ', ';
+	$valid .= join ', ', ('0') x ( $p{max} - $p{min} );
+    }
+    elsif ( ! defined $p{max} )
+    {
+	$valid .= ", ('1') x (\@_ - $p{min})";
+    }
+    $valid .= ' );' if $valid;
+
+    my @args = "literal => '$p{literal}'";
+
+    if ( ! defined $p{max} || $p{max} > 0 )
+    {
+	push @args, '                                      args => [@_]';
+    }
+
+    if ( $p{format} )
+    {
+	push @args, "                                      format => '$p{format}'";
+    }
+
+    if ( $p{quote} )
+    {
+	my $quote .= '                                      quote => [';
+	$quote .= join ', ', @{ $p{quote} };
+	$quote .= ']';
+	push @args, $quote;
+    }
+
+    my $args = join ",\n", @args;
+
+    my $code = <<"EOF";
+sub ${class}::$p{literal}
+{
+    shift if UNIVERSAL::isa( \$_[0], 'Alzabo::SQLMaker' );
+    $valid
+    return Alzabo::SQLMaker::Literal->new( $args );
+}
+EOF
+
+    eval $code;
+
+    {
+	no strict 'refs';
+	push @{ "$class\::EXPORT_OK" }, $p{literal};
+	my $exp = \%{ "$class\::EXPORT_TAGS" };
+	foreach ( @{ $p{groups} } )
+	{
+	    push @{ $exp->{$_}  }, $p{literal};
+	}
+	push @{ $exp->{all} }, $p{literal};
+    }
+}
 
 sub load
 {
@@ -37,31 +114,53 @@ sub init
     1;
 }
 
-sub _object
+sub new
 {
+    my $class = shift;
+    my $driver = shift;
+
     return bless { last_op => undef,
 		   expect => undef,
 		   type => undef,
 		   sql => '',
 		   bind => [],
-		 }, shift;
+		   driver => $driver,
+		 }, $class;
 }
 
 sub select
 {
-    my $class = ref $_[0] || $_[0];
-    shift;
+    my $self = shift;
 
-    my $self = $class->_object;
+    Alzabo::Exception::Params->throw( error => "The select method requires at least one parameter" )
+	unless @_;
 
     $self->{sql} .= 'SELECT ';
 
-    if (@_)
+    my @sql;
+    foreach (@_)
     {
-	$self->{columns} = [ map { $_->isa('Alzabo::Table') ? $_->columns : $_ } @_ ];
-
-	$self->{sql} .= join ', ', map { join '.', $_->table->name, $_->name } @{ $self->{columns} };
+	if ( UNIVERSAL::isa( $_, 'Alzabo::Column' ) )
+	{
+	    push @{ $self->{columns} }, $_;
+	    push @sql, join '.', $_->table->name, $_->name;
+	}
+	elsif ( UNIVERSAL::isa( $_, 'Alzabo::Table' ) )
+	{
+	    push @{ $self->{columns} }, $_->columns;
+	    push @sql, join ', ', map { join '.', $_->table->name, $_->name } $_->columns;
+	}
+	elsif ( UNIVERSAL::isa( $_, 'Alzabo::SQLMaker::Literal' ) )
+	{
+	    push @sql, $_->as_string;
+	}
+	else
+	{
+	    Alzabo::Exception::SQL->throw( error => 'Arguments to select must be either column objects, table objects, or literal objects' );
+	}
     }
+
+    $self->{sql} .= join ', ', @sql;
 
     $self->{type} = 'select';
     $self->{last_op} = 'select';
@@ -92,7 +191,7 @@ sub _function
 
     $self->_assert_last_op( qw( select function ) );
 
-    Alzabo::Exception::SQL->throw( error => $self->rules_id . " does not support the '$func' function" )
+    Alzabo::Exception::SQL->throw( error => $self->sqlmaker_id . " does not support the '$func' function" )
 	unless $self->_valid_function($func);
 
     $self->{sql} .= ',' if $self->{last_op} eq 'function';
@@ -122,7 +221,6 @@ sub from
     $self->{sql} .= ' FROM ';
     $self->{sql} .= join ', ', map { $_->name } @_;
 
-    # note to self: \@_ does not work
     $self->{tables} = { map { $_ => 1 } @_ };
 
     if ($self->{type} eq 'SELECT')
@@ -228,28 +326,34 @@ sub condition
     my $self = shift;
 
     validate_pos( @_,
-		  { isa => 'Alzabo::Column' },
+		  { type => OBJECT },
 		  { type => SCALAR },
 		  { type => UNDEF | SCALAR | OBJECT },
 		  ( { type => SCALAR | OBJECT, optional => 1 } ) x (@_ - 3) );
-    my $col = shift;
+    my $lhs = shift;
     my $comp = lc shift;
     my $rhs = shift;
 
     $self->{last_op} = 'condition';
 
-    unless ( $self->{tables}{ $col->table } )
+    if ( $lhs->isa('Alzabo::Column') )
     {
-	die $@ if $@;
-	my $err = 'Cannot use column (';
-	$err .= join '.', $col->table->name, $col->name;
-	$err .= ") in \U$self->{type}\E unless its table is included in the ";
-	$err .= $self->{type} eq 'update' ? 'UPDATE' : 'FROM';
-	$err .= ' clause';
-	Alzabo::Exception::SQL->throw( error => $err );
+	unless ( $self->{tables}{ $lhs->table } )
+	{
+	    die $@ if $@;
+	    my $err = 'Cannot use column (';
+	    $err .= join '.', $lhs->table->name, $lhs->name;
+	    $err .= ") in \U$self->{type}\E unless its table is included in the ";
+	    $err .= $self->{type} eq 'update' ? 'UPDATE' : 'FROM';
+	    $err .= ' clause';
+	    Alzabo::Exception::SQL->throw( error => $err );
+	}
+	$self->{sql} .= join '.', $lhs->table->name, $lhs->name;
     }
-
-    $self->{sql} .= join '.', $col->table->name, $col->name;
+    elsif ( $lhs->isa('Alzabo::SQLMaker::Literal') )
+    {
+	$self->{sql} .= $lhs->as_string;
+    }
 
     if ( $comp eq 'between' )
     {
@@ -261,9 +365,9 @@ sub condition
 	Alzabo::Exception::SQL->throw( error => "The BETWEEN comparison operator cannot accept a subselect" )
 	    if grep { UNIVERSAL::isa( $_, 'Alzabo::SQLMaker' ) } $rhs, $rhs2;
 
-	$self->{sql} .= $self->_rhs($col, $rhs);
+	$self->{sql} .= $self->_rhs($lhs, $rhs);
 	$self->{sql} .= " AND ";
-	$self->{sql} .= $self->_rhs($col, $rhs2);
+	$self->{sql} .= $self->_rhs($lhs, $rhs2);
 
 	return;
     }
@@ -273,7 +377,7 @@ sub condition
 	$self->{sql} .= ' IN (';
 	$self->{sql} .= join ', ', map { ( UNIVERSAL::isa( $_, 'Alzabo::SQLMaker' ) ?
 					   '(' . $self->_subselect($_) . ')' :
-					   $self->_rhs($col, $_) ) } $rhs, @_;
+					   $self->_rhs($lhs, $_) ) } $rhs, @_;
 	$self->{sql} .= ')';
 
 	return;
@@ -282,7 +386,7 @@ sub condition
     if ( ! ref $rhs && defined $rhs )
     {
 	$self->{sql} .= " $comp ";
-	$self->{sql} .= $self->_rhs($col, $rhs);
+	$self->{sql} .= $self->_rhs($lhs, $rhs);
     }
     elsif ( ! defined $rhs )
     {
@@ -310,7 +414,7 @@ sub condition
 	}
 	else
 	{
-	    $self->{sql} .= $self->_rhs($col, $rhs);
+	    $self->{sql} .= $self->_rhs($lhs, $rhs);
 	}
     }
 }
@@ -336,7 +440,7 @@ sub _rhs
     }
     else
     {
-	return $self->_bind_val($col, $rhs);
+	return $self->_bind_val($rhs);
     }
 }
 
@@ -353,7 +457,7 @@ sub order_by
 {
     my $self = shift;
 
-    $self->_assert_last_op( qw( select from condition ) );
+    $self->_assert_last_op( qw( select from condition group_by ) );
 
     Alzabo::Exception::SQL->throw( error => "Cannot use order by in a '$self->{type}' statement" )
 	unless $self->{type} eq 'select';
@@ -366,9 +470,7 @@ sub order_by
 	{
 	    my $err = 'Cannot use column (';
 	    $err .= join '.', $c->table->name, $c->name;
-	    $err .= ") in \U$self->{type}\E unless its table is included in the ";
-	    $err .= $self->{type} eq 'update' ? 'UPDATE' : 'FROM';
-	    $err .= ' clause';
+	    $err .= ") in \U$self->{type}\E unless its table is included in the FROM clause";
 	    Alzabo::Exception::SQL->throw( error => $err );
 	}
     }
@@ -377,6 +479,36 @@ sub order_by
     $self->{sql} .= join ', ', map { join '.', $_->table->name, $_->name } @_;
 
     $self->{last_op} = 'order_by';
+
+    return $self;
+}
+
+sub group_by
+{
+    my $self = shift;
+
+    $self->_assert_last_op( qw( select from condition order_by ) );
+
+    Alzabo::Exception::SQL->throw( error => "Cannot use group by in a '$self->{type}' statement" )
+	unless $self->{type} eq 'select';
+
+    validate_pos( @_, ( { isa => 'Alzabo::Column' } ) x @_ );
+
+    foreach my $c (@_)
+    {
+	unless ( $self->{tables}{ $c->table } )
+	{
+	    my $err = 'Cannot use column (';
+	    $err .= join '.', $c->table->name, $c->name;
+	    $err .= ") in \U$self->{type}\E unless its table is included in the FROM clause";
+	    Alzabo::Exception::SQL->throw( error => $err );
+	}
+    }
+
+    $self->{sql} .= ' GROUP BY ';
+    $self->{sql} .= join ', ', map { join '.', $_->table->name, $_->name } @_;
+
+    $self->{last_op} = 'group_by';
 
     return $self;
 }
@@ -407,10 +539,7 @@ sub _asc_or_desc
 
 sub insert
 {
-    my $class = ref $_[0] || $_[0];
-    shift;
-
-    my $self = $class->_object;
+    my $self = shift;
 
     $self->{sql} .= 'INSERT ';
 
@@ -487,8 +616,8 @@ sub values
 	}
 
 	$self->{sql} .= 'VALUES (';
-	$self->{sql} .= join ', ', ( map { $self->_bind_val(@$_) }
-				     ( map { [ $_, $vals{ $_->name } ] }
+	$self->{sql} .= join ', ', ( map { $self->_bind_val($_) }
+				     ( map { $vals{ $_->name } }
 				       @{ $self->{columns} } ) );
 	$self->{sql} .= ')';
     }
@@ -500,10 +629,7 @@ sub values
 
 sub update
 {
-    my $class = ref $_[0] || $_[0];
-    shift;
-
-    my $self = $class->_object;
+    my $self = shift;
 
     validate_pos( @_, { isa => 'Alzabo::Table' } );
 
@@ -528,7 +654,7 @@ sub set
     Alzabo::Exception::Params->throw( error => "'set' method expects key/value pairs of column objects and values'" )
        if !@vals || @vals % 2;
 
-    validate_pos( @_, ( { isa => 'Alzabo::Column' }, { type => SCALAR | UNDEF } ) x (@vals / 2) );
+    validate_pos( @_, ( { isa => 'Alzabo::Column' }, { type => UNDEF | SCALAR | OBJECT } ) x (@vals / 2) );
 
     $self->{sql} .= ' SET ';
 
@@ -544,7 +670,7 @@ sub set
 	    Alzabo::Exception::SQL->throw( error => $err );
 	}
 
-	push @set, $col->name . ' = ' . $self->_bind_val($col, $val);
+	push @set, $col->name . ' = ' . $self->_bind_val($val);
     }
     $self->{sql} .= join ', ', @set;
 
@@ -555,10 +681,7 @@ sub set
 
 sub delete
 {
-    my $class = ref $_[0] || $_[0];
-    shift;
-
-    my $self = $class->_object;
+    my $self = shift;
 
     $self->{sql} .= 'DELETE ';
 
@@ -584,10 +707,11 @@ sub _bind_val
 {
     my $self = shift;
 
-    validate_pos( @_, { isa => 'Alzabo::Column' }, { type => SCALAR | UNDEF } );
+    validate_pos( @_, { type => UNDEF | SCALAR | OBJECT } );
 
-    my $column = shift;
     my $val = shift;
+
+    return $val->as_string( $self->{driver} ) if UNIVERSAL::isa( $val, 'Alzabo::SQLMaker::Literal' );
 
     push @{ $self->{bind} }, $val;
 
@@ -620,7 +744,7 @@ sub get_limit
     shift()->_virtual;
 }
 
-sub rules_id
+sub sqlmaker_id
 {
     shift()->_virtual;
 }
@@ -633,6 +757,64 @@ sub _virtual
     $sub =~ s/.*::(.*?)$/$1/;
     Alzabo::Exception::VirtualMethod->throw( error =>
 					     "$sub is a virtual method and must be subclassed in " . ref $self );
+}
+
+package Alzabo::SQLMaker::Literal;
+
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
+sub new
+{
+    my $class = shift;
+    my %p = @_;
+
+    $p{args} = [] unless defined $p{args};
+    $p{quote} ||= [];
+
+    return bless \%p, $class;
+}
+
+sub as_string
+{
+    my $self = shift;
+    my $driver = shift;
+
+    my @args;
+    foreach ( 0..$#{ $self->{args} } )
+    {
+	if ( UNIVERSAL::isa( $self->{args}[$_], 'Alzabo::Column' ) )
+	{
+	    push @args, join '.', $self->{args}[$_]->table->name, $self->{args}[$_]->name;
+	    next;
+	}
+	elsif ( UNIVERSAL::isa( $self->{args}[$_], 'Alzabo::SQLMaker::Literal' ) )
+	{
+	    push @args, $self->{args}[$_]->as_string($driver);
+	    next;
+	}
+
+	# if there are more args than specified in the quote param
+	# then this literal must allow an unlimited number of
+	# arguments, in which case the last value in the quote param
+	# is the value that should be used for all of the extra
+	# arguments.
+	my $i = $_ > $#{ $self->{quote} } ? -1 : $_;
+	push @args, $self->{quote}[$i] ? $driver->quote( $self->{args}[$_] ) : $self->{args}[$_];
+    }
+
+    my $sql = $self->{literal} . '(';
+    if ( $self->{format} )
+    {
+	$sql .= sprintf('%s', @args);
+    }
+    else
+    {
+	$sql .= join ', ', @args;
+    }
+    $sql .= ')';
+
+    return $sql;
 }
 
 __END__
@@ -788,13 +970,13 @@ L<C<from>|Alzabo::SQLMaker/from (Alzabo::Table object, ...)>
 
 L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
 
-=head2 where ( (C<Alzabo::Column> object), $comparison, (C<Alzabo::Column> object, $value, or C<Alzabo::SQLMaker> object), [ see below ] )
+=head2 where ( (C<Alzabo::Column> object or SQL function), $comparison, (C<Alzabo::Column> object, $value, or C<Alzabo::SQLMaker> object), [ see below ] )
 
-The first parameter must be an C<Alzabo::Column> object.  The second
-is a comparison operator of some sort, given as a string.  The third
-argument can be one of three things.  It can be an C<Alzabo::Column>
-object, a value (a number or string), or an C<Alzabo::SQLMaker>
-object.  The latter is treated as a subselect.
+The first parameter must be an C<Alzabo::Column> object or SQL
+function.  The second is a comparison operator of some sort, given as
+a string.  The third argument can be one of three things.  It can be
+an C<Alzabo::Column> object, a value (a number or string), or an
+C<Alzabo::SQLMaker> object.  The latter is treated as a subselect.
 
 Values given as parameters will be properly quoted an escaped.
 

@@ -16,7 +16,7 @@ use Alzabo::Runtime::Table;
 
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -77,6 +77,49 @@ sub process_where_clause
 	$x++;
     }
 }
+
+sub process_order_by_clause
+{
+    _process_by_clause(@_, 'order');
+}
+
+sub process_group_by_clause
+{
+    _process_by_clause(@_, 'group');
+}
+
+sub _process_by_clause
+{
+    my ($sql, $by, $type) = @_;
+
+    my @c;
+    my $s;
+    if ( UNIVERSAL::isa( $by, 'Alzabo::Column' ) )
+    {
+	@c = $by;
+    }
+    elsif ( UNIVERSAL::isa( $by, 'ARRAY' ) )
+    {
+	@c = @{ $by };
+    }
+    else
+    {
+	Alzabo::Exception::Params->throw( error => "No columns provided for order by" )
+		unless $by->{columns};
+
+	@c = ( UNIVERSAL::isa( $by->{columns}, 'ARRAY' ) ?
+	       @{ $by->{columns} } :
+	       $by->{columns} );
+
+	$s = lc $by->{sort} if exists $by->{sort};
+    }
+
+    my $method = "${type}_by";
+    $sql->$method(@c);
+    $sql->$s() if $s;
+}
+
+
 
 __END__
 

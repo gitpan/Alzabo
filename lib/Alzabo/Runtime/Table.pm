@@ -12,7 +12,7 @@ use Time::HiRes qw(time);
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.49 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.52 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -181,34 +181,7 @@ sub _cursor_by_sql
 			       optional => 1 },
 		    ( map { $_ => { optional => 1 } } keys %p ) } );
 
-    if ( exists $p{order_by} )
-    {
-	my @c;
-	my $s;
-	if ( UNIVERSAL::isa( $p{order_by}, 'Alzabo::Column' ) )
-	{
-	    @c = $p{order_by};
-	}
-	elsif ( UNIVERSAL::isa( $p{order_by}, 'ARRAY' ) )
-	{
-	    @c = @{ $p{order_by} };
-	}
-	else
-	{
-	    Alzabo::Exception::Params->throw( error => "No columns provided for order by" )
-		    unless $p{order_by}{columns};
-
-	    @c = ( UNIVERSAL::isa( $p{order_by}{columns}, 'ARRAY' ) ?
-		   @{ $p{order_by}{columns} } :
-		   $p{order_by}{columns} );
-
-	    $s = lc $p{order_by}{sort}
-		if exists $p{order_by}{sort};
-	}
-
-	$p{sql}->order_by(@c);
-	$p{sql}->$s() if $s;
-    }
+    Alzabo::Runtime::process_order_by_clause( $p{sql}, $p{order_by} ) if exists $p{order_by};
 
     if ( exists $p{limit} )
     {
@@ -228,11 +201,37 @@ sub row_count
 {
     my $self = shift;
 
-    return $self->func( func => 'COUNT',
-			args => '*',
-			@_ );
+    return $self->function( select => $self->schema->sqlmaker->COUNT('*'),
+			    @_ );
 }
 
+sub function
+{
+    my $self = shift;
+
+    my %p = @_;
+    validate( @_, { select => { type => ARRAYREF | OBJECT },
+		    group_by => { type => ARRAYREF | HASHREF | OBJECT,
+				  optional => 1 },
+		    ( map { $_ => { optional => 1 } } keys %p ) } );
+
+    my @funcs = UNIVERSAL::isa( $p{select}, 'ARRAY' ) ? @{ $p{select} } : $p{select};
+
+    my $method = @funcs > 1 ? 'rows' : 'column';
+
+    my $sql = $self->schema->sqlmaker->select(@funcs)->from($self);
+
+    Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
+
+    Alzabo::Runtime::process_group_by_clause( $sql, $p{group_by} ) if exists $p{group_by};
+
+    Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} ) if exists $p{order_by};
+
+    return $self->schema->driver->$method( sql => $sql->sql,
+					   bind => $sql->bind );
+}
+
+# deprecated
 sub func
 {
     my $self = shift;
@@ -243,9 +242,12 @@ sub func
 			      optional => 1 },
 		    ( map { $_ => { optional => 1 } } keys %p ) } );
 
-    my $func = $p{func};
+    my $func = uc $p{func};
     my @args = exists $p{args} ? ( UNIVERSAL::isa( $p{args}, 'ARRAY' ) ? @{ $p{args} } : $p{args} ) : ();
-    my $sql = $self->schema->sqlmaker->select->$func(@args)->from($self);
+
+    my $literal = $self->schema->sqlmaker->$func(@args);
+
+    my $sql = $self->schema->sqlmaker->select($literal)->from($self);
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
 
@@ -470,7 +472,7 @@ values.  This does not handle any conditionals besides equality.
 
 =over 4
 
-=item * where => [ C<Alzabo::Column> object, $comparison, $value or C<Alzabo::Column> object ]
+=item * where => [ C<Alzabo::Column> object or SQL function, $comparison, $value or C<Alzabo::Column> object ]
 
 This parameter can take a variety of values.  It can take a single
 array reference as shown above.  The C<$comparison> should be a string
@@ -478,13 +480,13 @@ containing a SQL operator such as C<'E<gt>'> or C<'='>.
 
 The parameter can also be an array of references to such arrays:
 
- [ [ C<Alzabo::Column> object, $comparison, $value or C<Alzabo::Column> object ],
-   [ C<Alzabo::Column> object, $comparison, $value or C<Alzabo::Column> object ] ]
+ [ [ C<Alzabo::Column> object or SQL function, $comparison, $value or C<Alzabo::Column> object ],
+   [ C<Alzabo::Column> object or SQL function, $comparison, $value or C<Alzabo::Column> object ] ]
 
 For more details on exactly what the possibilities are here, please
 see the L<documentation for Alzabo::SQLMaker|Alzabo::SQLMaker/where (
-(Alzabo::Column object), $comparison, (Alzabo::Column object, $value,
-or Alzabo::SQLMaker statement), [ see below ] )>.
+(Alzabo::Column object or SQL function), $comparison, (Alzabo::Column
+object, $value, or Alzabo::SQLMaker statement), [ see below ] )>.
 
 By default, each clause represented by an array reference is joined
 together with an 'AND'.  However, you can put the string 'or' between
@@ -516,6 +518,15 @@ which would generate SQL something like:
 
 Make sure that your parentheses balance out or an exception will be
 thrown.
+
+You can also use the SQL functions (L<Alzabo/Using SQL Functions>)
+exported from the SQLMaker subclass you are using.  For example:
+
+ [ LENGTH($foo_col), '<', 10 ]
+
+would generate something like:
+
+ WHERE LENGTH(foo) < 10
 
 =back
 
@@ -554,29 +565,49 @@ representing the query.
 
 A scalar indicating how many rows the table has.
 
-=head2 func
+=head2 function
 
 =head3 Parameters
 
 =over 4
 
-=item * func => $function
+=item * select => $function or [ SQL functions and/or C<Alzabo::Column> objects ]
 
-=item * args => \@args
+If you pass an array reference for this parameter, it may contain
+either SQL function of column objects.  For example:
+
+  $table->function( select => [ $table->column('name'), COUNT( $table->column('name') ) ] );
 
 =item * where => see L<rows_where|Alzabo::Runtime::Table/rows_where> method
+
+=item * group_by => see below
+
+This parameter can take one of three different things.  The simplest
+form is to just give it a single column object.  Alternatively, you
+can give it an array reference to a list of column objects.  Finally
+you can give it a hash reference such as:
+
+  group_by => { columns => $column_object or \@column_objects,
+                sort => 'ASC' or 'DESC' }
 
 =back
 
 This method is used to call arbitrary SQL functions such as 'AVG' or
-'MAX'.  If the function needs arguments, these can be passed in the
-C<args> parameter.  These may be either strings or C<Alzabo::Column>
-objects.  Either way, the arguments will be joined together by commas
-and placed in parentheses.
+'MAX'.  The function (or functions) should be the return values from
+the functions exported by the SQLMaker subclass that you are using.
+Please see L<Alzabo/Using SQL Functions> for more details.
 
 =head3 Returns
 
-The value returned from the SQL function.
+The return value of this method is highly context sensitive.
+
+If you only requested a single function ( DISTINCT(foo) ), then it
+returns the first value in scalar context and all the values in list
+context.
+
+If you requested multiple function ( AVG(foo), MAX(foo) ) then it
+returns a single array reference (the first row of values) in scalar
+context and a list of array references in list context.
 
 =for pod_merge schema
 

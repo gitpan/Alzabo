@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.55 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.56 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -125,6 +125,13 @@ sub select
     my %data = $self->_get_data(@cols);
 
     return wantarray ? @data{@cols} : $data{ $cols[0] };
+}
+
+sub select_hash
+{
+    my $self = shift;
+
+    return $self->_get_data(@_);
 }
 
 sub update
@@ -435,6 +442,13 @@ L<C<Alzabo::Exception::NoSuchRow>|Alzabo::Exceptions>
 Returns a list of values matching the specified columns in a list
 context.  In scalar context it returns only a single value (the first
 column specified).
+
+=head2 select_hash (@list_of_column_names)
+
+=head3 Returns
+
+Returns a hash of column names to values matching the specified
+columns.
 
 =head2 update (%hash_of_columns_and_values)
 

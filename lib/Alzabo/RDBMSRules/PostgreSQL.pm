@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -95,11 +95,13 @@ sub validate_column_type
 					   TIMETZ
 					   VARCHAR );
 
-    return if $simple_types{$type};
+    return 'INTEGER' if $type eq 'INT' || $type eq 'INT4';
 
-    return if $type =~ /CHARACTER\s+VARYING/;
+    return $type if $simple_types{$type};
 
-    return if $type =~ /\ABOX|CIRCLE|LINE|LSEG|PATH|POINT|POLYGON/;
+    return $type if $type =~ /CHARACTER\s+VARYING/;
+
+    return $type if $type =~ /\ABOX|CIRCLE|LINE|LSEG|PATH|POINT|POLYGON/;
 
     Alzabo::Exception::RDBMSRules->throw( error => "Invalid column type: $type" );
 }
@@ -177,7 +179,7 @@ sub type_is_numeric
                              DECIMAL|
 			     FLOAT(?:4|8)?|
 			     INT(?:2|4|8)?|
-			     SMALLINT
+			     SMALLINT|
 			     INTEGER|
 			     MONEY|
 			     NUMERIC|

@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.45 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.46 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -72,7 +72,9 @@ sub validate_column_name
 sub validate_column_type
 {
     my $self = shift;
-    my $type = uc shift;
+    my $type = shift;
+
+    $type = 'INTEGER' if uc $type eq 'INT';
 
     # Columns which take no modifiers.
     my %simple_types = map {$_ => 1} ( qw( DATE
@@ -86,7 +88,6 @@ sub validate_column_type
 					   MEDIUMTEXT
 					   LONGBLOB
 					   LONGTEXT
-					   INT
 					   INTEGER
 					   TINYINT
 					   SMALLINT
@@ -104,34 +105,50 @@ sub validate_column_type
 					 ),
 				     );
 
-    return if $simple_types{$type};
+    return $self->_capitalize_type($type) if $simple_types{uc $type};
 
-    foreach ( qr/DOUBLE\s+PRECISION/,
-	      qr/NATIONAL\s+CHAR/,
-	      qr/NATIONAL\s+VARCHAR/,
-	     )
-    {
-	return if $type =~ /$_/;
-    }
+    return 'DOUBLE' if $type =~ /DOUBLE\s+PRECISION/i;
+
+    return 'CHAR' if $type =~ /(?:NATIONAL\s+)?CHAR(?:ACTER)?/i;
+    return 'VARCHAR' if $type =~ /(?:NATIONAL\s+)?(?:VARCHAR|CHARACTER VARYING)?/;
 
     my $list = qr{ (?:ENUM|SET)  # enum or set
 		   \s*           # space
 		   \(            # open paren
 		   ['"]          # quote start
 		   .*?           # quoted value
-		   ['"]
+		   ['"]          # quote end
 		   (?:           # optionally followed by ...
 		    \s*,\s*      # space comma space
 		    ['"]         # another quote start
 		    .*?          # quoted value
-		    ['"]         # whatever quote opened this
+		    ['"]         # quote end
 		   )+?
 		   \)            # close paren
                  }ix;
 
-    return if $type =~ /\A$list\z/o;
+    $self->_capitalize_type($type) if $type =~ /\A$list\z/o;
 
     Alzabo::Exception::RDBMSRules->throw( error => "Unrecognized type: $type" );
+}
+
+sub _capitalize_type
+{
+    my $self = shift;
+    my $type = shift;
+
+    if ( lc substr($type, 0, 4) eq 'enum' )
+    {
+	return 'ENUM' . substr($type, 4);
+    }
+    elsif ( lc substr($type, 0, 3) eq 'set' )
+    {
+	return 'SET' . substr($type, 3);
+    }
+    else
+    {
+	return uc $type;
+    }
 }
 
 sub validate_column_length
@@ -505,7 +522,20 @@ sub column_sql_add
     my $self = shift;
     my $col = shift;
 
-    return 'ALTER TABLE ' . $col->table->name . ' ADD COLUMN ' . $self->column_sql($col);
+    my $sequenced = 0;
+    if ( ($sequenced = $col->sequenced) )
+    {
+	$col->set_sequenced(0);
+    }
+
+    my $new_sql = $self->column_sql($col);
+
+    if ($sequenced)
+    {
+	$col->set_sequenced(1);
+    }
+
+    return 'ALTER TABLE ' . $col->table->name . ' ADD COLUMN ' . $new_sql;
 }
 
 sub column_sql_diff
@@ -515,13 +545,26 @@ sub column_sql_diff
     my $new = $p{new};
     my $old = $p{old};
 
+    my $sequenced = 0;
+    if ( ($sequenced = $new->sequenced) && ! $old->sequenced )
+    {
+	$new->set_sequenced(0);
+    }
+
     my $new_sql = $self->column_sql($new);
 
-    my $sql;
-    $sql = 'ALTER TABLE ' . $new->table->name . ' CHANGE COLUMN ' . $new->name . ' ' . $new_sql
-	if $new_sql ne $self->column_sql($old);
+    if ($sequenced)
+    {
+	$new->set_sequenced(1);
+    }
 
-    return $sql ? $sql : ();
+    my @sql;
+    if ( $new_sql ne $self->column_sql($old) )
+    {
+	push @sql, 'ALTER TABLE ' . $new->table->name . ' CHANGE COLUMN ' . $new->name . ' ' . $new_sql;
+    }
+
+    return @sql;
 }
 
 sub foreign_key_sql_diff
@@ -548,6 +591,15 @@ sub alter_primary_key_sql
 	$sql .= ')';
 
 	push @sql, $sql;
+    }
+
+    foreach ($new->primary_key)
+    {
+	if ( $_->sequenced && ! ( eval { $old->column( $_->name ) } && $old->column_is_primary_key( $_->name ) ) )
+	{
+	    my $sql = $self->column_sql($_);
+	    push @sql, 'ALTER TABLE ' . $new->name . ' CHANGE COLUMN ' . $_->name . ' ' . $sql;
+	}
     }
 
     return @sql;
@@ -606,6 +658,8 @@ sub reverse_engineer
 		    $p{precision} = $3;
 		}
 	    }
+	    $type = 'integer' if $type eq 'int';
+	    $type = $self->_capitalize_type($type);
 
  	    my $c = $t->make_column( name => $row->[0],
 				     type => $type,

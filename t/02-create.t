@@ -86,6 +86,7 @@ foreach my $db (@db)
 	"Unable to retrieve 'footab' from schema: $@" );
 
     my $att = $db eq 'MySQL' ? 'unsigned' : 'check > 5';
+
     eval { $t1->make_column( name => 'foo_pk',
 			     type => 'int',
 			     attributes => [ $att ],
@@ -102,8 +103,8 @@ foreach my $db (@db)
     ok( defined $t1_c1,
 	"\$t1->column('foo_pk') returned undefined value\n" );
 
-    ok( $t1_c1->type eq 'int',
-	"foo_pk type should be 'int'" );
+    ok( $t1_c1->type eq 'INTEGER',
+	"foo_pk type should be 'INTEGER' but it is " . $t1_c1->type );
     ok( $t1_c1->attributes == 1 && ($t1_c1->attributes)[0] eq $att,
 	"foo_pk should have one attribute, '$att'" );
     ok( $t1_c1->has_attribute( attribute => uc $att ),
