@@ -12,8 +12,9 @@ use vars qw(%extra %config %test @TESTS);
 goto MAKEFILE if @ARGV && $ARGV[0] eq '--dist';
 
 eval { require Alzabo::Config; };
+eval { require Alzabo; };
 
-if ( ! $@ && Alzabo::Config::available_schemas() )
+if ( ! $@ && Alzabo::Config::available_schemas() && $Alzabo::VERSION < 0.30 )
 {
     print <<'EOF';
 
@@ -51,12 +52,14 @@ my %prereq;
 {
     # extra prereqs for certain features
     my @extra_prereq = ( [ 'the MySQL driver', 'DBD::mysql' => 0, 'mysql' ],
-			 [ 'the PostgreSQL driver', 'DBD::Pg' => 0, 'pg' ],
+			 [ 'the PostgreSQL driver', 'DBD::Pg' => 0.97, 'pg' ],
 #			 [ 'the Oracle driver', 'DBD::Oracle', 0, 'oracle' ],
-			 [ 'the IPC caching system', 'IPC::Shareable', 0.54 ],
-			 [ 'the DBM caching system', 'DB_File', 1.76 ],
-			 [ 'the HTML::Mason based schema creation interface', 'HTML::Mason', 0.896, undef, 'mason_schema' ],
-			 [ 'the HTML::Mason based data browser', 'HTML::Mason', 0.896, undef, 'mason_browser' ],
+			 [ 'the IPC cache syncing code', 'IPC::Shareable' => 0.54 ],
+			 [ 'the DB_File 1.x cache syncing code', 'DB_File' => 1.76 ],
+			 [ 'the BerkeleyDB 2.x/3.x cache syncing code', 'BerkeleyDB' => 0.15 ],
+			 [ 'the SDBM_File cache syncing code', 'SDBM_File' => 0 ],
+			 [ 'the HTML::Mason based schema creation interface', 'HTML::Mason' => 0.896, undef, 'mason_schema' ],
+			 [ 'the HTML::Mason based data browser', 'HTML::Mason' => 0.896, undef, 'mason_browser' ],
 		       );
 
     print <<'EOF';
@@ -149,7 +152,7 @@ WriteMakefile( 'NAME'	=> 'Alzabo',
 	       'VERSION_FROM' => 'lib/Alzabo.pm',
 	       PREREQ_PM => \%prereq,
 
-	       realclean => { FILES => './lib/Alzabo/Config.pm schemas t/dbmsynctest.dbm' },
+	       realclean => { FILES => './lib/Alzabo/Config.pm schemas t/sdbmsynctest.dbm.* t/db_filesynctest.dbm t/berkeleydbsynctest.dbm SDBM_File.lock __db.* log.*' },
 
 	       AUTHOR => 'Dave Rolsky <autarch@urth.org>',
 	       ABSTRACT => 'Perl data modelling tool',

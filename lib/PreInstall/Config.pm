@@ -6,6 +6,11 @@ use strict;
 
 %CONFIG = ''CONFIG'';
 
+sub root_dir
+{
+    return $CONFIG{root_dir};
+}
+
 sub schema_dir
 {
     return $CONFIG{root_dir} . '/schemas';
@@ -59,6 +64,12 @@ This module contains functions related to Alzabo configuration
 information.
 
 =head1 FUNCTIONS
+
+=head2 root_dir
+
+=head3
+
+The root directory for your Alzabo installation.
 
 =head2 schema_dir
 

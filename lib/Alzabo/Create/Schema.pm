@@ -19,7 +19,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.58 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.59 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -89,7 +89,7 @@ sub set_name
     validate_pos( @_, { type => SCALAR } );
     my $name = shift;
 
-    return if $self->{name} && $name eq $self->{name};
+    return if defined $self->{name} && $name eq $self->{name};
 
     my $old_name = $self->{name};
     $self->{name} = $name;
@@ -778,7 +778,7 @@ sub save_to_file
     close $fh
 	or Alzabo::Exception::System->throw( error => "Unable to close $schema_dir/$self->{name}/$self->{name}.rdbms: $!" );
 
-    my $rt = $self->make_runtime_clone;
+    my $rt = $self->_make_runtime_clone;
 
     open $fh, ">$schema_dir/$self->{name}/$self->{name}.runtime.alz"
 	or Alzabo::Exception::System->throw( error => "Unable to write to $schema_dir/$self->{name}.runtime.alz: $!\n" );
@@ -790,7 +790,26 @@ sub save_to_file
     $self->_save_to_cache;
 }
 
-sub make_runtime_clone
+sub clone
+{
+    my $self = shift;
+
+    validate( @_, { name  => { type => SCALAR } } );
+    my %p = @_;
+
+    my $clone = Storable::dclone($self);
+
+    $clone->{name} = $p{name};
+
+    $clone->rules->validate_schema_name($clone);
+    $clone->{original}{name} = $p{name} if $p{name};
+
+    $clone->set_instantiated(0);
+
+    return $clone;
+}
+
+sub _make_runtime_clone
 {
     my $self = shift;
 
@@ -1190,6 +1209,31 @@ object to connect to the database.
 Removes the schema object from disk.  It does not delete the database
 from the RDBMS.  To do this you must call the L<C<drop>|drop> method
 first.
+
+=head2 clone
+
+This method creates a new object identical to the one that the method
+was called on, except that this new schema has a different name, it
+does not yet exist on disk, its instantiation attribute is set to
+false.
+
+It is also worth noting that if you set the instantiation attribute to
+true immediately, then the new schema be able to generate 'diffs'
+against the last version of the schema instantiated in an RDBMS
+backend.  This is useful in the case where you have already copied the
+data from the old database to the new database in the RDBMS backend.
+
+=head3 Parameters
+
+=over 4
+
+=item * name => $name
+
+=back
+
+=head3 Returns
+
+A new Alzabo::Create::Schema object.
 
 =head2 save_to_file
 

@@ -1,4 +1,4 @@
-package Alzabo::ObjectCache::IPCSync;
+package Alzabo::ObjectCache::Sync::IPC;
 
 use strict;
 
@@ -8,7 +8,7 @@ use vars qw($SELF $VERSION %IPC);
 
 use base qw( Alzabo::ObjectCache::Sync );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -27,6 +27,12 @@ sub _init
 {
     my $self = shift;
     $self->{ipc} = \%IPC;
+}
+
+sub clear
+{
+    return unless $SELF;
+    %{ $SELF->{times} } = ();
 }
 
 sub update
@@ -54,12 +60,12 @@ __END__
 
 =head1 NAME
 
-Alzabo::ObjectCache::IPCSync - Uses a IPC file to sync object caches
+Alzabo::ObjectCache::Sync::IPC - Uses a IPC file to sync object caches
 
 =head1 SYNOPSIS
 
-  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::MemoryStore',
-                           sync  => 'Alzabo::ObjectCache::IPCSync',
+  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
+                           sync  => 'Alzabo::ObjectCache::Sync::IPC',
                            clear_on_startup => 1 );
 
 

@@ -17,5 +17,5 @@ $m->comp( '../common/exception', $@ ) if $@;
 $m->comp( '../common/redirect', url => 'view_schema' . Alzabo::Config::mason_extension() . '?schema=' . $s->name );
 </%init>
 <%flags>
-inherit => undef
+inherit => 'syshandler'
 </%flags>

@@ -1,16 +1,16 @@
-package Alzabo::ObjectCache::DBMSync;
+package Alzabo::ObjectCache::Sync::DB_File;
 
 use strict;
 
 use vars qw($SELF $VERSION $FILE);
 
-use base qw( Alzabo::ObjectCache::Sync );
+use base qw( Alzabo::ObjectCache::Sync::DBM );
 
 use Alzabo::Exceptions;
 use DB_File;
 use Fcntl qw( :flock O_RDONLY O_RDWR O_CREAT );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -30,49 +30,10 @@ sub import
 	{
 	    unlink $FILE or Alzabo::Exception::System->throw( error => "Can't delete '$FILE': $!" );
 	}
-
-	my %db;
-	my $db = tie %db, 'DB_File', $FILE, O_RDWR | O_CREAT, 0644
-	    or Alzabo::Exception::System->throw( error => "Can't create '$FILE': $!" );
-	if ( $p{clear_on_startup} )
-	{
-	    %db = ();
-	    $db->sync;
-	}
     }
 }
 
-sub _init
-{
-    my $self = shift;
-    $self->{dbm_file} = $FILE;
-}
-
-sub update
-{
-    my $self = shift;
-    my $id = shift;
-    my $time = shift;
-    my $overwrite = shift;
-
-    $self->_dbm( write => $id, $time, ! $overwrite );
-}
-
-sub sync_time
-{
-    my $self = shift;
-    my $id = shift;
-
-    return $self->_dbm( read => $id );
-}
-
-sub clear
-{
-    return unless $SELF;
-    %{ $SELF->{times} } = ();
-}
-
-sub _dbm
+sub dbm
 {
     my $self = shift;
     my $mode = shift;
@@ -80,30 +41,27 @@ sub _dbm
     my $val = shift;
     my $preserve = shift;
 
-    # The DB should already exist (see import method) so O_CREAT
-    # should never be needed.  If the DB file disappears from under us
-    # I think its better to fail than to simply ignore that.
-    my ($lock_mode, $open_mode) = $mode eq 'write' ? ( LOCK_EX, O_RDWR ) : ( LOCK_SH, O_RDONLY );
+    my ($lock_mode, $open_mode) = $mode eq 'write' ? ( LOCK_EX, O_RDWR | O_CREAT ) : ( LOCK_SH, O_RDONLY | O_CREAT );
 
     my %orig_db;
     # This code largely ripped off from Tie::DB_FileLock
-    my $db = tie %orig_db, 'DB_File', $self->{dbm_file}, $open_mode, 0644
-	or Alzabo::Exception::System->throw( error => "Can't tie '$self->{dbm_file}' ($mode mode): $!" );
+    my $db = tie %orig_db, 'DB_File', $FILE, $open_mode, 0644
+	or Alzabo::Exception::System->throw( error => "Can't tie '$FILE' ($mode mode): $!" );
 
     $db->sync;
 
     my $fh = do { local *FH; *FH; };
     open $fh, '<&=' . $db->fd
 	or Alzabo::Exception::System->throw( error =>
-					     "Can't dup file descriptor for '$self->{dbm_file}': $!" );
+					     "Can't dup file descriptor for '$FILE': $!" );
 
     flock( $fh, $lock_mode )
 	or Alzabo::Exception::System->throw( error =>
-					     "Unable to place a $mode lock on '$self->{dbm_file}': $!" );
+					     "Unable to place a $mode lock on '$FILE': $!" );
 
     my %db;
-    $db = tie %db, 'DB_File', $self->{dbm_file}, $open_mode, 0644
-	or Alzabo::Exception::System->throw( error => "Can't tie '$self->{dbm_file}' ($mode mode): $!" );
+    $db = tie %db, 'DB_File', $FILE, $open_mode, 0644
+	or Alzabo::Exception::System->throw( error => "Can't tie '$FILE' ($mode mode): $!" );
 
     my $return;
     if ($mode eq 'read' || $preserve)
@@ -122,7 +80,7 @@ sub _dbm
     }
 
     flock( $fh, LOCK_UN )
-	or Alzabo::Exception::System->throw( error => "Unable to unlock '$self->{dbm_file}': $!" );
+	or Alzabo::Exception::System->throw( error => "Unable to unlock '$FILE': $!" );
 
     # This is crucial for some reason I can't figure out!
     close $fh;
@@ -134,12 +92,12 @@ __END__
 
 =head1 NAME
 
-Alzabo::ObjectCache::DBMSync - Uses a DBM file to sync object caches
+Alzabo::ObjectCache::Sync::DB_File - Uses a Berkeley DB file to sync object caches
 
 =head1 SYNOPSIS
 
-  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::MemoryStore',
-                           sync  => 'Alzabo::ObjectCache::DBMSync',
+  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
+                           sync  => 'Alzabo::ObjectCache::Sync::DB_File',
                            dbm_file => 'somefilename.db',
                            clear_on_startup => 1 );
 
@@ -156,9 +114,9 @@ reading/writing data.
 
 =item * dbm_file => $filename
 
-This parameter is required.  It is the parameter of the file which
-will be used to store the syncing data.  If the file does not exist,
-it will be created.  If it does exist it will not be overwritten.
+This parameter is required.  It is the name of the file which will be
+used to store the syncing data.  If the file does not exist, it will
+be created.  If it does exist it will not be overwritten.
 
 =item * clear_on_startup => $boolean
 

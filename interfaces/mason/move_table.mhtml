@@ -31,5 +31,5 @@ $m->comp( '../common/redirect', url => $url );
 </%init>
 
 <%flags>
-inherit => undef
+inherit => 'syshandler'
 </%flags>

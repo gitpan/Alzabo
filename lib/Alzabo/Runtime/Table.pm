@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.41 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.46 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -139,7 +139,7 @@ sub rows_where
 
     my $sql = $self->_make_sql;
 
-    $sql = $self->_add_where_clause( $sql, %p );
+    Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
 
     return $self->_cursor_by_sql( %p, sql => $sql );
 }
@@ -158,7 +158,7 @@ sub _make_sql
     my $self = shift;
 
     my $sql = ( $self->schema->sqlmaker->
-		select( $self->primary_key )->
+		select( $self->primary_key, $self->columns( $self->prefetch ) )->
 		from( $self ) );
 
     return $sql;
@@ -242,30 +242,10 @@ sub func
     my @args = exists $p{args} ? ( UNIVERSAL::isa( $p{args}, 'ARRAY' ) ? @{ $p{args} } : $p{args} ) : ();
     my $sql = $self->schema->sqlmaker->select->$func(@args)->from($self);
 
-    $self->_add_where_clause($sql, @_);
+    Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
 
     return $self->schema->driver->one_row( sql => $sql->sql,
 					   bind => $sql->bind );
-}
-
-sub _add_where_clause
-{
-    my $self = shift;
-    my $sql = shift;
-    my %p = @_;
-
-    if ( $p{where} )
-    {
-	$p{where} = [ $p{where} ] unless UNIVERSAL::isa( $p{where}[0], 'ARRAY' );
-	my $x = 0;
-	foreach ( @{ $p{where} } )
-	{
-	    my $op = $x++ ? 'and' : 'where';
-	    $sql->$op(@$_);
-	}
-    }
-
-    return $sql;
 }
 
 sub set_prefetch
@@ -458,8 +438,6 @@ whatever is described:
 
 =item * order_by => see below
 
-=back
-
 This parameter can take one of three different things.  The simplest
 form is to just give it a single column object.  Alternatively, you
 can give it an array reference to a list of column objects.  Finally
@@ -467,6 +445,16 @@ you can give it a hash reference such as:
 
   order_by => { columns => $column_object or \@column_objects,
                 sort => 'ASC' or 'DESC' }
+
+=item * limit => $limit or [ $limit, $offset ]
+
+For databases that support LIMIT clauses, this incorporates such a
+clause into the SQL.  For databases that don't, the limit will be
+implemented programatically as rows are being requested.  If an offset
+is given, this will be the number of rows skipped in the result set
+before the first one is returned.
+
+=back
 
 =head2 rows_where
 
@@ -491,8 +479,38 @@ The parameter can also be an array of references to such arrays:
 For more details on exactly what the possibilities are here, please
 see the L<documentation for Alzabo::SQLMaker|Alzabo::SQLMaker/where (
 (Alzabo::Column object), $comparison, (Alzabo::Column object, $value,
-or Alzabo::SQLMaker statement), [ see below ] )>.  Multiple values
-given to this parameter will be joined together by a logical 'AND'.
+or Alzabo::SQLMaker statement), [ see below ] )>.
+
+By default, each clause represented by an array reference is joined
+together with an 'AND'.  However, you can put the string 'or' between
+two array references to cause them to be joined with an 'OR', such as:
+
+ [ [ $foo_col, '=', 5 ],
+   'or',
+   [ $foo_col, '>', 10 ] ]
+
+which would generate SQL something like:
+
+ WHERE foo = 5 OR foo > 10
+
+If you want to be explicit, you can also use the string 'and'.
+
+If you need to group conditionals you can use '(' and ')' characters
+in between array references representing a conditional.  For example:
+
+ [ [ $foo_col, '=', 5 ],
+   '(',
+     [ $foo_col, '>', 10 ]
+     'or',
+     [ $bar_col, '<', 50, ')' ],
+   ')' ]
+
+which would generate SQL something like:
+
+ WHERE foo = 5 AND ( foo > 10 OR bar < 50 )
+
+Make sure that your parentheses balance out or an exception will be
+thrown.
 
 =back
 
@@ -583,6 +601,11 @@ The value returned from the SQL function.
 
 This concept was taken directly from Michael Schwern's Class::DBI
 module (credit where it is due).
+
+This lazy loading is only done when caching is turned on.  Otherwise,
+Alzabo always fetches data from the database when it is requested and
+does not store it locally in memory at all.  In fact, B<trying to use
+lazy column loading without caching will simply slow things down>.
 
 By default, L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects
 only load data from the database as it is requested via the select

@@ -1,4 +1,4 @@
-package Alzabo::ObjectCache::NullSync;
+package Alzabo::ObjectCache::Sync::Null;
 
 use strict;
 
@@ -6,7 +6,7 @@ use vars qw($SELF $VERSION);
 
 use base qw( Alzabo::ObjectCache::Sync );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -14,6 +14,12 @@ sub _init
 {
     my $self = shift;
     $self->{times} = {};
+}
+
+sub clear
+{
+    return unless $SELF;
+    %{ $SELF->{times} } = ();
 }
 
 sub sync_time
@@ -41,12 +47,12 @@ __END__
 
 =head1 NAME
 
-Alzabo::ObjectCache::NullSync - No inter-process cache syncing
+Alzabo::ObjectCache::Sync::Null - No inter-process cache syncing
 
 =head1 SYNOPSIS
 
-  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::MemoryStore',
-                           sync  => 'Alzabo::ObjectCache::NullSync' );
+  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
+                           sync  => 'Alzabo::ObjectCache::Sync::Null' );
 
 =head1 DESCRIPTION
 
@@ -55,6 +61,14 @@ however, keep track of deleted objects.  This is needed in the case
 where one part of a program deletes an object to which another part of
 the program has a refence.  If the other part attempts to use the
 object an exception will be thrown.
+
+If you are running Alzabo as part of a single-process application,
+using this syncing module along with one of the caching modules will
+increase the speed of your application.  Using it in a multi-process
+situation is likely to cause data corruption unless your application
+is entirely read-only.
+
+L<Alzabo::ObjectCache/CACHING SCENARIOS>.
 
 =head1 METHODS
 

@@ -7,17 +7,27 @@ use Alzabo::Config;
 use Alzabo::ChangeTracker;
 
 require Alzabo::ObjectCache;
-require Alzabo::ObjectCache::MemoryStore;
-require Alzabo::ObjectCache::NullSync;
+require Alzabo::ObjectCache::Store::Memory;
+require Alzabo::ObjectCache::Sync::Null;
 
 if ( eval { require IPC::Shareable } && ! $@ )
 {
-    require Alzabo::ObjectCache::IPCSync;
+    require Alzabo::ObjectCache::Sync::IPC;
 }
 
 if ( eval { require DB_File } && ! $@ )
 {
-    require Alzabo::ObjectCache::DBMSync;
+    require Alzabo::ObjectCache::Sync::DB_File;
+}
+
+if ( eval { require BerekeleyDB } && ! $@ )
+{
+    require Alzabo::ObjectCache::Sync::BerkeleyDB;
+}
+
+if ( eval { require SDBM_File } && ! $@ )
+{
+    require Alzabo::ObjectCache::Sync::SDBM_File;
 }
 
 use Alzabo;
@@ -29,7 +39,6 @@ use Alzabo::Runtime;
 use Alzabo::SQLMaker;
 use Alzabo::SQLMaker::MySQL;
 use Alzabo::SQLMaker::PostgreSQL;
-#use Alzabo::SQLMaker::Oracle;
 
 use Alzabo::Driver;
 use Alzabo::RDBMSRules;

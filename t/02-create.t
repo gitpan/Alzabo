@@ -21,7 +21,8 @@ if ( eval { require DBD::Pg } && ! $@ )
     push @db, 'PostgreSQL';
     $tests += 101;
 }
-else
+
+unless ($tests)
 {
     print "1..0\n";
     exit;

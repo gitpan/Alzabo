@@ -4,33 +4,6 @@ Alzabo::FAQ - Frequently Asked Questions
 
 =head1 FAQ
 
-=head2 I installed the Mason components but I get errors about being unable to find a component (particularly /alzabo/common/href)
-
-There are lots of different things to check.  When Alzabo asked you
-what absolute path to use for component calls from within a component,
-you may have given wrong answer.
-
-If your component root is the same as your document root, then the
-answer should simply be the path to the subdirectory where you
-installed the components for Alzabo.
-
-If your component root is under your document root, then things are a
-bit more complicated.  Here is an example:
-
- Server's document root:  /usr/local/apache/htdocs
- Mason component root:    /usr/local/apache/htdocs/mason
- Alzabo components:       /usr/local/apache/htdocs/mason/apps/alzabo
-
-In this case, the answer to the path question is '/apps'.  A component
-located in C</usr/local/apache/htdocs/mason/apps> would use the
-absolute path C</apps> to call another component in the same
-directory.  However, an external call (via a web client) to components
-in that directory would start with C</mason/apps>.
-
-If this doesn't solve your problem please see the Mason HQ page, at
-http://www.masonhq.com/.  Make sure to read the Introduction and
-Administrator's Manual in the Documentation section.
-
 =head2 How can I generate the SQL to turn one schema into another?
 
 Assuming you have schema objects representing these already created
@@ -42,15 +15,42 @@ the same RDBMS, you can simply do this:
 The C<@sql> array will contain all the SQL statements necessary to
 transform the schema in C<$schema1> into the schema in C<$schema2>.
 
+=head2 How can I make Alzabo's RDBMS-OO mapping functionality run faster?
+
+You may choose to set the environment variable C<NO_VALIDATE> to a
+true value before starting your app.  This will turn off parameter
+validation.  This can lead to a 10-20% speedup in my experience.  Of
+course, this may also hide bugs in your application.  This is best
+only used for a well tested application that is being used in
+production.
+
+If your application does not consist almost exclusively of inserts,
+updates, or deletes, then it would probably benefit from caching, but
+only with certain syncing modules.  If you are in a single process
+environment, then use the Alzabo::ObjectCache::Store::Memory and
+Alzabo::ObjectCache::Sync::Null modules.  If you are in a
+multi-process environment, use the Alzabo::ObjectCache::Store::Memory
+and Alzabo::ObjectCache::Sync::BerkeleyDB modules.  If installing a
+newer version of the Berkeley DB library is too much of a hassle, use
+the Alzabo::ObjectCache::Sync::SDBM_File module.
+
+As a corollary, both the Alzabo::ObjectCache::Sync::DB_File and
+Alzabo::ObjectCache::Sync::IPC will actually B<slow down> your
+application, even though they are using caching.  The only reason to
+use them is if you need the additional cross-process data integrity
+provided by the syncing mechanism.  If you need this, using either the
+Alzabo::ObjectCache::Sync::BerkeleyDB or
+Alzabo::ObjectCache::Sync::SDBM_File module is strongly reocmmended.
+
 =head2 How can I make a local copy of the documentation as HTML?
 
 Alzabo comes with a script called C<make_html_docs.pl>.  It takes
 three arguments.  The first is the source file directory root.  The
 second is the target directory.  The last is the absolute URL path
-that this target directory represents.  If you have perl 5.6.0
-installed, it is recommended that you use it to run this script as the
-Pod::Html module included with 5.6.0 does a much better job of making
-HTML.
+that this target directory represents.  If you have perl 5.6.0 or
+greated installed, it is recommended that you use it to run this
+script as the Pod::Html module included with more recent Perls does a
+much better job of making HTML.
 
 If you were in the root of the source directory you might run this as:
 
@@ -58,5 +58,11 @@ If you were in the root of the source directory you might run this as:
 
 The script will create an index.html file as well as turning the
 documentation into HTML.
+
+=head2 Does Alzabo support large objects with Postgres?
+
+No, it does not.  The large object system in Postgres is a godawful
+piece of crap.  Fortunately, you can now upgrade to Postgres 7.1 and
+your rows can be as big as you want.
 
 =cut

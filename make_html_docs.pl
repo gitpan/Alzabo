@@ -188,10 +188,12 @@ my @order = ( qw( Alzabo
 		  Alzabo::MethodMaker
 		  Alzabo::ObjectCache
 		),
-	      [ qw( Alzabo::ObjectCache::MemoryStore
-		    Alzabo::ObjectCache::NullSync
-		    Alzabo::ObjectCache::DBMSync
-		    Alzabo::ObjectCache::IPCSync
+	      [ qw( Alzabo::ObjectCache::Store::Memory
+		    Alzabo::ObjectCache::Sync::Null
+		    Alzabo::ObjectCache::Sync::BerkeleyDB
+		    Alzabo::ObjectCache::Sync::SDBM_File
+		    Alzabo::ObjectCache::Sync::DB_File
+		    Alzabo::ObjectCache::Sync::IPC
 		  ) ],
 
 	      qw( Alzabo::Exceptions

@@ -100,7 +100,7 @@ sub mysql_make_schema
     my $char_pk_t = $s->make_table( name => 'char_pk' );
     $char_pk_t->make_column( name => 'char_col',
 			     type => 'varchar',
-			     length => '20',
+			     length => 20,
 			     primary_key => 1 );
 
     $s->save_to_file;
@@ -204,8 +204,12 @@ sub pg_make_schema
     my $char_pk_t = $s->make_table( name => 'char_pk' );
     $char_pk_t->make_column( name => 'char_col',
 			     type => 'varchar',
-			     length => '20',
+			     length => 20,
 			     primary_key => 1 );
+    $char_pk_t->make_column( name => 'fixed_char',
+			     type => 'char',
+			     nullable => 1,
+			     length => 5 );
 
     $s->save_to_file;
 

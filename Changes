@@ -1,3 +1,88 @@
+0.40
+
+Incompatibilities:
+
+The classes in the ObjectCache hierarchy have been reorganized.  The
+renaming is as follows:
+
+ Alzabo::ObjectCache::MemoryStore => Alzabo::ObjectCache::Store::Memory
+ Alzabo::ObjectCache::DBMSync     => Alzabo::ObjectCache::Sync::DB_File
+ Alzabo::ObjectCache::IPCSync     => Alzabo::ObjectCache::Sync::IPC.pm
+ Alzabo::ObjectCache::NullSync    => Alzabo::ObjectCache::Sync::Null.pm
+
+Enhancements:
+
+- Document order by clauses for joins.
+
+- Document limit clauses for joins and single table selects.
+
+- Expand options for where clauses to allow 'OR' conditionals as well
+as subgroupings of conditional clauses.
+
+- If you set prefetch columns for a table, these are now fetched along
+with other data for the table in a cursor, reducing the number of
+database SELECTs being done.
+
+- Added Alzabo::Create::Schema->clone method.  This allows you to
+clone a schema object (except for the name, which must be changed as
+part of the cloning process).
+
+- Using the profiler, I have improved some of the hot spots in the
+code.  I am not sure how noticeable these improvements are but I plan
+to do a lot more of this type of work in the future.
+
+- Added the Alzabo::ObjectCache::Sync::BerkeleyDB and
+Alzabo::ObjectCache::Sync::SDBM_File modules.  These modules are much
+faster than the old DBMSync or IPCSync modules and actually appear to
+be faster than not syncing at all.  The NullSync (now Sync::Null)
+module is still faster than all of them, however.
+
+Bug fixes:
+
+- Reversing engineering a MySQL schema with ENUM or SET columns may
+have caused an error if the values for the enum/set contained spaces.
+
+- A bug in the schema creation interface made it impossible to create
+an index without a prefix.  Reported by Sam Horrocks.
+
+- When dropping a table in Postgres, the sequences for its columns (if
+any), need to be dropped as well.  Adapted from a patch submitted by
+Sam Horrocks.
+
+- The modules needed by the schema creator and data browser are now
+used by the components.  However, it is still better to load them at
+server startup in order to maximize shared memory.
+
+- Calling the object cache's clear method did not work when using the
+IPCSync or NullSync modules.
+
+- Reverse engineering a Postgres database was choking on char(n)
+columns, which are converted internally by Postgres into bpchar(n)
+columns.  This is now fixed (by converting them back during reverse
+engineering).
+
+- Reject column prefixes > 255 with MySQL.  I hesitate to call this a
+bug fix since this appears to be undocumented in the MySQL docs.
+
+- Using the DBMSync module in an environment which started as one user
+and then became another (like Apache) may have caused permiission
+problems with the dbm file.  This has been fixed.
+
+Misc:
+
+- Require DBD::Pg 0.97 (the latest version as of this writing) as it
+fixes some bugs in earlier versions.
+
+Architecture:
+
+- Split up Row object into Alzabo::Runtime::Row (base class for
+standard uncached row) and Alzabo::Runtime::CachedRow (subclass for
+rows that have to interact with a cache).  This simplifies the code,
+particulary in terms of how it interacts with the caching system.
+
+- Made Alzabo::Runtime::Row->get_data a private method.  This served
+no purpose for end users anyway.
+
 0.36
 
 - Addition of Params::Validate broke several methods:
@@ -8,12 +93,12 @@ breaking the ability to add a table at a specified place in the table
 order).
 -- Same problem for Alzabo::Create::Table->move_column.
 
+- Added to the test suite to catch all this in the future.
+
 - Attempting to dynamically generate component paths in the Mason
 component was a bad idea, particularly since it was unnecessary
 because I can find the component by doing '../common/foo'.  Thanks to
 Bob Gustafson for suggesting this.
-
-- Added to the test suite to catch all this in the future.
 
 - Fix bug in Postgres rules that didn't allow length for CHAR columns.
 

@@ -8,7 +8,7 @@ use DBD::Pg;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -155,49 +155,6 @@ sub finish_transaction
     $self->{dbh}->{AutoCommit} = 1;
 
     $self->{tran_count} = undef;
-}
-
-sub create_large_object
-{
-    my $self = shift;
-    my $data = shift;
-
-    $self->start_transaction;
-
-    my $lo_id = $self->{dbh}->func( $self->{dbh}->{pg_INV_WRITE}, 'lo_creat' );
-
-    Alzabo::Exception::Driver->throw( error => "Can't create new large object" )
-	unless defined $lo_id;
-
-    my $lo_fd = $self->{dbh}->func( $lo_id, $self->{dbh}->{pg_INV_WRITE}, 'lo_open' );
-
-    Alzabo::Exception::Driver->throw( error => "Can't open large object for writing (id: $lo_id)" )
-	unless defined $lo_fd;
-
-    my $bytes = $self->{dbh}->func( $lo_fd, $data, length $data, 'lo_write' );
-
-    Alzabo::Exception::Driver->throw( error => "Can't write message body to large object (id: $lo_id)" )
-	unless defined $bytes;
-
-    $self->{dbh}->func( $lo_fd, 'lo_close' )
-	or Alzabo::Exception::Driver->throw( error => "Can't close large object (id: $lo_id)" );
-
-    $self->finish_transaction;
-
-    return $lo_id;
-}
-
-sub delete_large_object
-{
-    my $self = shift;
-    my $lo_id = shift;
-
-    $self->start_transaction;
-
-    $self->get_dbh->func( $lo_id, 'lo_unlink' )
-	or Alzabo::Exception::Driver->throw( error => "Unable to unlink large object (id: $lo_id)" );
-
-    $self->finish_transaction;
 }
 
 sub driver_id

@@ -3,7 +3,10 @@ package Alzabo::ObjectCache;
 use strict;
 use vars qw($SELF $VERSION %ARGS);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
+# load this for use by Alzabo::Runtime::Row
+use Alzabo::Runtime::CachedRow;
+
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -103,7 +106,7 @@ Alzabo::ObjectCache - A simple in-memory cache for row objects.
 =head1 SYNOPSIS
 
   use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::MemoryStore',
-                           sync  => 'Alzabo::ObjectCache::DBMSync',
+                           sync  => 'Alzabo::ObjectCache::BerkeleySync',
                            dbm_file => 'somefile.db' );
 
 =head1 DESCRIPTION
@@ -443,6 +446,11 @@ follows:
 
 This method will be called when the object is first created.
 
+=head2 clear
+
+Clears the process-local sync times (not the times shared between
+processes).
+
 =head2 sync_time ($id)
 
 =head3 Returns
@@ -457,6 +465,12 @@ a particularl object.  The first parameter is the object's id.  The
 second is the time that the object was last refreshed.  The third
 parameter, which is optional, tells the syncing object whether or not
 to preserve an existing time for the object if it already has one.
+
+=head1 SEE ALSO
+
+Alzabo::ObjectCache::MemoryStore, Alzabo::ObjectCache::BerkeleyDBSync,
+Alzabo::ObjectCache::DBMSync, Alzabo::ObjectCache::IPCSync,
+Alzabo::ObjectCache::Sync
 
 =head1 AUTHOR
 

@@ -27,6 +27,7 @@ lib/Alzabo/Create/Schema.pm
 lib/Alzabo/Create/Table.pm
 
 lib/Alzabo/Runtime.pm
+lib/Alzabo/Runtime/CachedRow.pm
 lib/Alzabo/Runtime/Column.pm
 lib/Alzabo/Runtime/ColumnDefinition.pm
 lib/Alzabo/Runtime/Cursor.pm
@@ -56,11 +57,13 @@ lib/Alzabo/MethodMaker.pm
 lib/Alzabo/Util.pm
 
 lib/Alzabo/ObjectCache.pm
-lib/Alzabo/ObjectCache/MemoryStore.pm
+lib/Alzabo/ObjectCache/Store/Memory.pm
 lib/Alzabo/ObjectCache/Sync.pm
-lib/Alzabo/ObjectCache/DBMSync.pm
-lib/Alzabo/ObjectCache/IPCSync.pm
-lib/Alzabo/ObjectCache/NullSync.pm
+lib/Alzabo/ObjectCache/Sync/BerkeleyDB.pm
+lib/Alzabo/ObjectCache/Sync/DB_File.pm
+lib/Alzabo/ObjectCache/Sync/IPC.pm
+lib/Alzabo/ObjectCache/Sync/Null.pm
+lib/Alzabo/ObjectCache/Sync/SDBM_File.pm
 
 lib/Alzabo/FAQ.pod
 lib/Alzabo/QuickRef.pod

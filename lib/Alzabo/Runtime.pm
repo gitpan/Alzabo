@@ -1,5 +1,7 @@
 package Alzabo::Runtime;
 
+use strict;
+
 use Alzabo;
 
 use Alzabo::Runtime::Column;
@@ -14,7 +16,7 @@ use Alzabo::Runtime::Table;
 
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -25,6 +27,55 @@ sub import
     # ignore errors and let them be handled later in the app when it
     # tries to access the schema.
     eval { Alzabo::Runtime::Schema->load_from_file( name => $_ ); } foreach @_;
+}
+
+sub process_where_clause
+{
+    my ($sql, $where, $has_conditions) = @_;
+
+    $where = [ $where ] unless UNIVERSAL::isa( $where->[0], 'ARRAY' );
+
+    my $x = 0;
+    my $needs_op = 1;
+    foreach my $clause (@$where)
+    {
+	if (ref $clause)
+	{
+	    if ($needs_op)
+	    {
+		my $op = $x || $has_conditions ? 'and' : 'where';
+		$sql->$op();
+	    }
+	    $sql->condition(@$clause);
+	    $needs_op = 1;
+	}
+	elsif ($clause eq 'and' || $clause eq 'or')
+	{
+	    $sql->$clause();
+	    $needs_op = 0;
+	    next;
+	}
+	elsif ($clause eq '(')
+	{
+	    if ($needs_op)
+	    {
+		my $op = $x ? 'and' : 'where';
+		$sql->$op();
+	    }
+	    $sql->subgroup_start;
+	    $needs_op = 0;
+	}
+	elsif ($clause eq ')')
+	{
+	    $sql->subgroup_end;
+	    $needs_op = 1;
+	}
+	else
+	{
+	    Alzabo::Exception::Params->throw( error => "Invalid where clause specification: $clause" );
+	}
+	$x++;
+    }
 }
 
 __END__

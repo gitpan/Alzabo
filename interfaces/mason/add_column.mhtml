@@ -58,5 +58,5 @@ $m->comp( '../common/redirect',
 </%init>
 
 <%flags>
-inherit => undef
+inherit => 'syshandler'
 </%flags>

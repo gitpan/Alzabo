@@ -17,13 +17,16 @@ unless (defined $ENV{ALZABO_RDBMS_TESTS})
 
 require 'make_schemas.pl';
 
+# squash dumb warnings
+$DB_File::VERSION = $IPC::Shareable::VERSION = $BerkeleyDB::VERSION = 0;
+
 $Data::Dumper::Indent = 0;
 
 my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
 
 my @cache = ( [
-	       { store => 'Alzabo::ObjectCache::MemoryStore',
-		 sync  => 'Alzabo::ObjectCache::NullSync' },
+	       { store => 'Alzabo::ObjectCache::Store::Memory',
+		 sync  => 'Alzabo::ObjectCache::Sync::Null' },
 	       0,
 	      ],
 	      [
@@ -35,30 +38,52 @@ my @cache = ( [
 	    );
 
 my $sync = 0;
-if ( eval { require DB_File } && ! $@ )
+if ( eval { require DB_File } && $DB_File::VERSION >= 1.76 && ! $@ )
 {
-    unshift @cache, [ { store => 'Alzabo::ObjectCache::MemoryStore',
-			sync  => 'Alzabo::ObjectCache::DBMSync',
-			dbm_file => 't/dbmsynctest.dbm',
+    unshift @cache, [ { store => 'Alzabo::ObjectCache::Store::Memory',
+			sync  => 'Alzabo::ObjectCache::Sync::DB_File',
+			dbm_file => 't/db_filesynctest.dbm',
 			clear_on_startup => 1,
 		      },
 		      1
 		    ];
     $sync++;
 }
-if ( eval { require IPC::Shareable } && ! $@ )
+if ( eval { require IPC::Shareable } && $IPC::Shareable::VERSION >= 0.54 && ! $@ )
 {
-    unshift @cache, [ { store => 'Alzabo::ObjectCache::MemoryStore',
-			sync  => 'Alzabo::ObjectCache::IPCSync' },
+    unshift @cache, [ { store => 'Alzabo::ObjectCache::Store::Memory',
+			sync  => 'Alzabo::ObjectCache::Sync::IPC' },
+		      1
+		    ];
+    $sync++;
+}
+if ( eval { require BerkeleyDB } && $BerkeleyDB::VERSION >= 0.15 && ! $@ )
+{
+    unshift @cache, [ { store => 'Alzabo::ObjectCache::Store::Memory',
+			sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB',
+			dbm_file => 't/berkeleydbsynctest.dbm',
+			clear_on_startup => 1,
+		      },
+		      1
+		    ];
+    $sync++;
+}
+if ( eval { require SDBM_File } && ! $@ )
+{
+    unshift @cache, [ { store => 'Alzabo::ObjectCache::Store::Memory',
+			sync  => 'Alzabo::ObjectCache::Sync::SDBM_File',
+			dbm_file => 't/sdbmsynctest.dbm',
+			clear_on_startup => 1,
+		      },
 		      1
 		    ];
     $sync++;
 }
 
-
-my $TESTS_PER_RUN = 66;
-my $SYNC_TESTS_PER_RUN = 17;
-my $test_count = ($TESTS_PER_RUN * (@$tests + (@cache - 1))) + ($SYNC_TESTS_PER_RUN * $sync);
+my $TESTS_PER_RUN = 70;
+my $SYNC_TESTS_PER_RUN = 18;
+my $test_count = ( ( $TESTS_PER_RUN * (@$tests + $#cache) ) +
+		   ( $SYNC_TESTS_PER_RUN * $sync ) );
 
 print "1..$test_count\n";
 
@@ -118,8 +143,8 @@ foreach my $c (@cache)
 
 if (@t)
 {
-    my $c_params = Data::Dumper->Dump( [ { store => 'Alzabo::ObjectCache::MemoryStore',
-					   sync  => 'Alzabo::ObjectCache::NullSync' } ],
+    my $c_params = Data::Dumper->Dump( [ { store => 'Alzabo::ObjectCache::Store::Memory',
+					   sync  => 'Alzabo::ObjectCache::Sync::Null' } ],
 				       [''] );
     $c_params =~ s/\$ = //;
     $c_params =~ s/'/"/g;
@@ -133,7 +158,7 @@ if (@t)
 	    &{ "$test->{rdbms}_make_schema" }(%$test);
 	}
 
-	print "Running $test->{rdbms} runtime tests with\n\tstore => Alzabo::ObjectCache::MemoryStore,\n\tsync  => Alzabo::ObjectCache::NullSync\n";
+	print "Running $test->{rdbms} runtime tests with\n\tstore => Alzabo::ObjectCache::Store::Memory,\n\tsync  => Alzabo::ObjectCache::Sync::Null\n";
 
 	my $t = Data::Dumper->Dump( [$test], [''] );
 	$t =~ s/\$ = //;

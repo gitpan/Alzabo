@@ -29,5 +29,5 @@ $m->comp( '../common/redirect', url => 'view_table' . Alzabo::Config::mason_exte
 </%init>
 
 <%flags>
-inherit => undef
+inherit => 'syshandler'
 </%flags>

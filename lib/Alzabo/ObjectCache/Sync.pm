@@ -7,7 +7,7 @@ use strict;
 use Alzabo::Exceptions;
 use Time::HiRes qw( time );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -30,12 +30,6 @@ sub _init
     return;
 }
 
-sub clear
-{
-    return unless $SELF;
-    %{ $SELF->{times} } = ();
-}
-
 sub register_store
 {
     my $self = shift;
@@ -45,7 +39,7 @@ sub register_store
     return if
 	exists $self->{times}{$id} && defined $self->{times}{$id} && $self->{times}{$id} > 0;
 
-    my $time = time;
+    my $time = shift || time;
     # don't overwrite
     $self->update( $id => $time, 0 );
 
@@ -114,6 +108,11 @@ sub delete_from_cache
     my $self = shift;
 
     delete $self->{times}{ shift->id };
+}
+
+sub clear
+{
+    shift()->_virtual;
 }
 
 sub update

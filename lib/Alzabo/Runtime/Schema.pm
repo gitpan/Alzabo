@@ -7,7 +7,7 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.25 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.27 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -129,11 +129,7 @@ sub join
 	}
     }
 
-    if ( $p{where} )
-    {
-	$p{where} = [ $p{where} ] unless UNIVERSAL::isa( $p{where}[0], 'ARRAY' );
-	$sql->and(@$_) foreach @{ $p{where} };
-    }
+    Alzabo::Runtime::process_where_clause( $sql, $p{where}, 1 ) if exists $p{where};
 
     if ( $p{limit} )
     {
@@ -184,7 +180,99 @@ sub join
     }
 }
 
+sub outer_join
+{
+    my $self = shift;
 
+    my %p = @_;
+
+    my $select = $p{select} || $p{tables};
+
+    $p{tables} = [ $p{tables} ] unless UNIVERSAL::isa($p{tables}, 'ARRAY');
+
+    my $sql = ( $self->sqlmaker->
+		select( map {$_->primary_key} @$select )->
+		from( @{ $p{tables} } )->
+		outer_join( @{ $p{tables} }[0,1] ) );
+
+
+    if ( @{ $p{tables} } > 2 )
+    {
+	my $y = 0;
+	for (my $x = 0; $x < @{ $p{tables} } - 1; $x++)
+	{
+	    my $cur_t = $p{tables}->[$x];
+	    my $next_t = $p{tables}->[$x + 1];
+
+	    Alzabo::Exception::Params->throw( error => "Table " . $cur_t->name . " doesn't exist in schema" )
+		    unless $self->{tables}->EXISTS( $cur_t->name );
+
+	    my @fk = $cur_t->foreign_keys_by_table($next_t);
+
+	    Alzabo::Exception::Params->throw( error => "The " . $cur_t->name . " table has no foreign keys to the " . $next_t->name . " table" )
+		    unless @fk;
+
+	    Alzabo::Exception::Params->throw( error => "The " . $cur_t->name . " table has more than 1 foreign key to the " . $next_t->name . " table" )
+		    if @fk > 1;
+
+	    foreach my $cp ( $fk[0]->column_pairs )
+	    {
+		my $op = $y++ ? 'and' : 'where';
+		$sql->$op( $cp->[0], '=', $cp->[1] );
+	    }
+	}
+    }
+
+    Alzabo::Runtime::process_where_clause( $sql, $p{where}, 1 ) if exists $p{where};
+
+    if ( $p{limit} )
+    {
+	$sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} );
+    }
+
+    if ( exists $p{order_by} )
+    {
+	my @c;
+	my $s;
+	if ( UNIVERSAL::isa( $p{order_by}, 'Alzabo::Column' ) )
+	{
+	    @c = $p{order_by};
+	}
+	elsif ( UNIVERSAL::isa( $p{order_by}, 'ARRAY' ) )
+	{
+	    @c = @{ $p{order_by} };
+	}
+	else
+	{
+	    Alzabo::Exception::Params->throw( error => "No columns provided for order by" )
+		    unless $p{order_by}{columns};
+
+	    @c = ( UNIVERSAL::isa( $p{order_by}{columns}, 'ARRAY' ) ?
+		   @{ $p{order_by}{columns} } :
+		   $p{order_by}{columns} );
+
+	    $s = lc $p{order_by}{sort}
+		if exists $p{order_by}{sort};
+	}
+
+	$sql->order_by(@c);
+	$sql->$s() if $s;
+    }
+
+    my $statement = $self->driver->statement( sql => $sql->sql,
+					      bind => $sql->bind );
+
+    if (@$select == 1)
+    {
+	return Alzabo::Runtime::RowCursor->new( statement => $statement,
+						table => $select->[0] );
+    }
+    else
+    {
+	return Alzabo::Runtime::JoinCursor->new( statement => $statement,
+						 tables => $select );
+    }
+}
 
 __END__
 
@@ -319,13 +407,6 @@ relationships between tables 1 & 2, 2 & 3, 3 & 4, etc.
 This can be either a single table or an array reference of table
 objects.
 
-=item * where => [ C<Alzabo::Runtime::Column> => $value ] (optional)
-
-This parameter must be an array reference, not a hash reference (or
-the column object will be stringified).  It specifies the values to be
-used in the where clause (in addition to those necessary to create the
-join).
-
 =item * select => C<Alzabo::Runtime::Table> object or objects (optional)
 
 This parameter specifies from which tables you would like rows
@@ -334,6 +415,21 @@ will be used instead.
 
 This can be either a single table or an array reference of table
 objects.
+
+=item * where
+
+See the L<documentation on where clauses for the
+Alzabo::Runtime::Table class|Alzabo::Runtime::Table/rows_where>.
+
+=item * order_by
+
+See the L<documentation on order by clauses for the
+Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common Parameters>.
+
+=item * limit
+
+See the L<documentation on limit clauses for the
+Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common Parameters>.
 
 =back
 

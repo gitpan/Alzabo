@@ -8,9 +8,11 @@ use Alzabo::Runtime;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
+use Time::HiRes qw(time);
+
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -29,7 +31,7 @@ sub new
     $self->{statement} = $p{statement};
     $self->{table} = $p{table};
     $self->{errors} = [];
-    $self->{no_cache} = $p{no_cache};
+    $self->{row_params} = { no_cache => $p{no_cache} };
 
     return bless $self, $class;
 }
@@ -53,16 +55,26 @@ sub next_row
     {
 	$self->{errors} = [];
 
+	my $time = time;
 	my @row = $self->{statement}->next_row;
 
 	return unless @row && grep { defined } @row;
 
 	my %hash;
-	@hash{ map { $_->name } $self->{table}->primary_key } = @row;
+	my @pk = $self->{table}->primary_key;
+	@hash{ map { $_->name } @pk } = @row[0..$#pk];
+
+	my %prefetch;
+	if ( (my @pre = $self->{table}->prefetch) && @row > $#pk )
+	{
+	    @prefetch{@pre} = @row[$#pk + 1 .. $#row];
+	}
 
 	$row = eval { $self->{table}->row_by_pk( @_,
 						 pk => \%hash,
-						 no_cache => $self->{no_cache},
+						 prefetch => \%prefetch,
+						 time => $time,
+						 %{ $self->{row_params} },
 					       ); };
 	if ($@)
 	{

@@ -17,7 +17,7 @@ eval
     $t = $s->table($table);
 
     my @cols = ( map { { column => $t->column( $columns[$_] ),
-		         prefix => $prefixes[$_] || undef } }
+		         defined $prefixes[$_] ? ( prefix => $prefixes[$_] ) : () } }
 		 0..$#columns );
 
     @cols = sort { $ARGS{ $a->{column}->name . '_order' } <=> $ARGS{ $b->{column}->name . '_order' } } @cols;
@@ -34,5 +34,5 @@ $m->comp( '../common/redirect', url => 'view_table' . Alzabo::Config::mason_exte
 </%init>
 
 <%flags>
-inherit => undef
+inherit => 'syshandler'
 </%flags>

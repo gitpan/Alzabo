@@ -9,7 +9,7 @@ use Alzabo::Util;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -75,7 +75,7 @@ sub AUTOLOAD
 
     my ($func) = $AUTOLOAD =~ /::([^:]+)$/;
 
-    $self->_assert_last_op( qw( select function where and or ) );
+    $self->_assert_last_op( qw( select function condition ) );
     return $self->_function( $func, @_ );
 
     Alzabo::Exception->throw( error => "'$func' is not supported by this RDBMS\n" );
@@ -123,13 +123,13 @@ sub from
     $self->{sql} .= join ', ', map { $_->name } @_;
 
     # note to self: \@_ does not work
-    $self->{tables} = [ @_ ];
+    $self->{tables} = { map { $_ => 1 } @_ };
 
     if ($self->{type} eq 'SELECT')
     {
 	foreach my $c ( @{ $self->{columns} } )
 	{
-	    unless ( grep { $_ eq $c->table } @{ $self->{tables} } )
+	    unless ( $self->{tables}{ $c->table } )
 	    {
 		my $err = 'Cannot select column (';
 		$err .= join '.', $c->table->name, $c->name;
@@ -152,9 +152,9 @@ sub where
 
     $self->{sql} .= ' WHERE ';
 
-    $self->_condition(@_);
-
     $self->{last_op} = 'where';
+
+    $self->condition(@_) if @_;
 
     return $self;
 }
@@ -163,12 +163,16 @@ sub and
 {
     my $self = shift;
 
+    $self->_assert_last_op( qw( subgroup_end condition ) );
+
     return $self->_and_or( 'and', @_ );
 }
 
 sub or
 {
     my $self = shift;
+
+    $self->_assert_last_op( qw( subgroup_end condition ) );
 
     return $self->_and_or( 'or', @_ );
 }
@@ -178,18 +182,48 @@ sub _and_or
     my $self = shift;
     my $op = shift;
 
-    $self->_assert_last_op( qw( where and or ) );
-
     $self->{sql} .= " \U$op ";
 
-    $self->_condition(@_);
-
     $self->{last_op} = $op;
+
+    $self->condition(@_) if @_;
 
     return $self;
 }
 
-sub _condition
+sub subgroup_start
+{
+    my $self = shift;
+
+    $self->_assert_last_op( qw( where and or ) );
+
+    $self->{sql} .= ' (';
+    $self->{subgroup} ||= 0;
+    $self->{subgroup}++;
+
+    $self->{last_op} = 'subgroup_start';
+
+    return $self;
+}
+
+sub subgroup_end
+{
+    my $self = shift;
+
+    $self->_assert_last_op( qw( condition ) );
+
+    Alzabo::Exception::SQL->throw( error => "Can't end a subgroup unless one has been started already" )
+	unless $self->{subgroup};
+
+    $self->{sql} .= ' )';
+    $self->{subgroup}--;
+
+    $self->{last_op} = 'subgroup_start';
+
+    return $self;
+}
+
+sub condition
 {
     my $self = shift;
 
@@ -199,10 +233,12 @@ sub _condition
 		  { type => UNDEF | SCALAR | OBJECT },
 		  ( { type => SCALAR | OBJECT, optional => 1 } ) x (@_ - 3) );
     my $col = shift;
-    my $comp = shift;
+    my $comp = lc shift;
     my $rhs = shift;
 
-    unless ( grep { $_ eq $col->table } @{ $self->{tables} } )
+    $self->{last_op} = 'condition';
+
+    unless ( $self->{tables}{ $col->table } )
     {
 	die $@ if $@;
 	my $err = 'Cannot use column (';
@@ -215,7 +251,7 @@ sub _condition
 
     $self->{sql} .= join '.', $col->table->name, $col->name;
 
-    if ( lc $comp eq 'between' )
+    if ( $comp eq 'between' )
     {
 	Alzabo::Exception::SQL->throw( error => "The BETWEEN comparison operator requires an additional argument" )
 	    unless @_ == 1;
@@ -232,7 +268,7 @@ sub _condition
 	return;
     }
 
-    if ( lc $comp eq 'in' )
+    if ( $comp eq 'in' )
     {
 	$self->{sql} .= ' IN (';
 	$self->{sql} .= join ', ', map { ( UNIVERSAL::isa( $_, 'Alzabo::SQLMaker' ) ?
@@ -243,7 +279,27 @@ sub _condition
 	return;
     }
 
-    if ( ref $rhs )
+    if ( ! ref $rhs && defined $rhs )
+    {
+	$self->{sql} .= " $comp ";
+	$self->{sql} .= $self->_rhs($col, $rhs);
+    }
+    elsif ( ! defined $rhs )
+    {
+	if ( $comp eq '=' )
+	{
+	    $self->{sql} .= ' IS NULL';
+	}
+	elsif ( $comp eq '!=' || $comp eq '<>' )
+	{
+	    $self->{sql} .= ' IS NOT NULL';
+	}
+	else
+	{
+	    Alzabo::Exception::SQL->throw( error => "Cannot compare a column to a NULL with '$comp'" );
+	}
+    }
+    elsif ( ref $rhs )
     {
 	$self->{sql} .= " $comp ";
 	if( $rhs->isa('Alzabo::SQLMaker') )
@@ -257,23 +313,6 @@ sub _condition
 	    $self->{sql} .= $self->_rhs($col, $rhs);
 	}
     }
-    elsif ( defined $rhs )
-    {
-	$self->{sql} .= " $comp ";
-	$self->{sql} .= $self->_rhs($col, $rhs);
-    }
-    elsif ( $comp eq '=' )
-    {
-	$self->{sql} .= ' IS NULL';
-    }
-    elsif ( $comp eq '!=' || $comp eq '<>' )
-    {
-	$self->{sql} .= ' IS NOT NULL';
-    }
-    else
-    {
-	Alzabo::Exception::SQL->throw( error => "Cannot compare a column to a NULL with '$comp'" );
-    }
 }
 
 sub _rhs
@@ -284,7 +323,7 @@ sub _rhs
 
     if ( UNIVERSAL::isa( $rhs, 'Alzabo::Column' ) )
     {
-	unless ( grep { $_ eq $rhs->table } @{ $self->{tables} } )
+	unless ( $self->{tables}{ $rhs->table } )
 	{
 	    my $err = 'Cannot use column (';
 	    $err .= join '.', $rhs->table->name, $rhs->name;
@@ -314,7 +353,7 @@ sub order_by
 {
     my $self = shift;
 
-    $self->_assert_last_op( qw( select from where and or ) );
+    $self->_assert_last_op( qw( select from condition ) );
 
     Alzabo::Exception::SQL->throw( error => "Cannot use order by in a '$self->{type}' statement" )
 	unless $self->{type} eq 'select';
@@ -323,7 +362,7 @@ sub order_by
 
     foreach my $c (@_)
     {
-	unless ( grep {  $_ eq $c->table } @{ $self->{tables} } )
+	unless ( $self->{tables}{ $c->table } )
 	{
 	    my $err = 'Cannot use column (';
 	    $err .= join '.', $c->table->name, $c->name;
@@ -390,11 +429,11 @@ sub into
     validate_pos( @_, { isa => 'Alzabo::Table' }, ( { isa => 'Alzabo::Column' } ) x (@_ - 1) );
 
     my $table = shift;
-    $self->{tables} = [ $table ];
+    $self->{tables} = { $table => 1 };
 
     foreach my $c (@_)
     {
-	unless ( grep { $_ eq $c->table } @{ $self->{tables} } )
+	unless ( $c->table eq $table )
 	{
 	    my $err = 'Cannot into column (';
 	    $err .= join '.', $c->table->name, $c->name;
@@ -471,7 +510,7 @@ sub update
     my $table = shift;
 
     $self->{sql} = 'UPDATE ' . $table->name;
-    $self->{tables} = [ $table ];
+    $self->{tables} = { $table => 1 };
 
     $self->{type} = 'update';
     $self->{last_op} = 'update';
@@ -494,9 +533,10 @@ sub set
     $self->{sql} .= ' SET ';
 
     my @set;
+    my $table = ( keys %{ $self->{tables} } )[0];
     while ( my ($col, $val) = splice @vals, 0, 2 )
     {
-	unless ( $self->{tables}[0] eq $col->table )
+	unless ( $table eq $col->table )
 	{
 	    my $err = 'Cannot set column (';
 	    $err .= join '.', $col->table->name, $col->name;
@@ -557,6 +597,10 @@ sub _bind_val
 sub sql
 {
     my $self = shift;
+
+    Alzabo::Exception::SQL->throw( error => "SQL contains unbalanced parentheses subgrouping: $self->{sql}" )
+	if $self->{subgroup};
+
     return $self->{sql};
 }
 

@@ -20,5 +20,5 @@ $m->comp( '../common/redirect', url => 'index' . Alzabo::Config::mason_extension
 </%init>
 
 <%flags>
-inherit => undef
+inherit => 'syshandler'
 </%flags>

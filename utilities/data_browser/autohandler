@@ -64,6 +64,7 @@ inherit => undef
 <%def .title>
 <%init>
 use Alzabo::Config;
+use Alzabo::Runtime;
 
 my ( $s, $t, $user, $password, $host, $port ) = @_;
 

@@ -5,10 +5,10 @@ use Alzabo::Runtime;
 
 use lib '.', './t';
 
-require 'base.pl';
-
 BEGIN
 {
+    require 'base.pl';
+
     if (my $c_params = eval $ENV{OBJECTCACHE_PARAMS})
     {
 	require Alzabo::ObjectCache;
@@ -194,7 +194,7 @@ sub run_tests
 	"Cursor's all_rows method returned $count rows but should have returned 2" );
 
     $cursor = eval { $s->join( tables => [ $emp_t, $emp_proj_t, $proj_t ],
-			       where =>  [ [ $emp_t->column('employee_id'), '=', 1 ] ] ) };
+			       where =>  [ $emp_t->column('employee_id'), '=', 1 ] ) };
     ok( ! $@,
 	"Join threw an exception: $@" );
 
@@ -221,7 +221,7 @@ sub run_tests
 					   project_id => $proj{extend}->select('project_id') } ); };
     # 5.6.0 is broken and gives a wack error here
     ok( $@ && ( $@->isa('Alzabo::Exception::NoSuchRow') || $] == 5.006 ),
-	 "There should be no bill/extend row in the employee_project table: $@" );
+	"There should be no bill/extend row in the employee_project table: $@" );
 
     ok( ! defined $dep{borg}->select('manager_id'),
 	"The manager_id for the borg department should be NULL but it's", $dep{borg}->select('manager_id') );
@@ -372,6 +372,44 @@ sub run_tests
 	"Attempting to fetch a row via the ->row_by_id method failed: $@" );
     ok( $row->id eq $emps[1]->id,
 	"Row retrieved via the ->row_by_id method should be the same as the row whose id was used" );
+
+    $emp_t->insert( values => { employee_id => 9000,
+				name => 'bob9000',
+				smell => 'a',
+				department_id => $dep_id } );
+    $emp_t->insert( values => { employee_id => 9001,
+				name => 'bob9001',
+				smell => 'b',
+				department_id => $dep_id } );
+    $emp_t->insert( values => { employee_id => 9002,
+				name => 'bob9002',
+				smell => 'c',
+				department_id => $dep_id } );
+
+    my $eid_c = $emp_t->column('employee_id');
+    @emps = $emp_t->rows_where( where => [ [ $eid_c, '=', 9000 ],
+					   'or',
+					   [ $eid_c, '=', 9002 ] ] )->all_rows;
+    @emps = sort { $a->select('employee_id') <=> $b->select('employee_id') } @emps;
+
+    ok( @emps == 2,
+	"Query should have returned 2 rows but returned ", scalar @emps );
+    ok( $emps[0]->select('employee_id') == 9000 && $emps[1]->select('employee_id') == 9002,
+	"Query returned incorrect rows" );
+
+    @emps = $emp_t->rows_where( where => [ [ $emp_t->column('smell'), '!=', 'c' ],
+					   (
+					    '(',
+					    [ $eid_c, '=', 9000 ],
+					    'or',
+					    [ $eid_c, '=', 9002, ')' ],
+					    ')',
+					   ),
+					 ] )->all_rows;
+    ok( @emps == 1,
+	"Query should have returned 1 row but returned ", scalar @emps );
+    ok( $emps[0]->select('employee_id') == 9000,
+	"Query returned incorrect row" );
 }
 
 my $pid;
@@ -476,7 +514,7 @@ sub parent
     $emp2 = $s->table('employee')->row_by_pk( pk => $emp2_id );
     eval { $emp2->update( name => 'newname3' ); };
     ok( ! $@,
-	"Attempt to update row immediate after update in child failed: $@" );
+	"Attempt to update row immediately after update in child failed: $@" );
 
     # K.
     print $c_write "1\n";
@@ -553,6 +591,22 @@ sub parent
 
     ok( $new_name eq 'alive2',
 	"Employee 1000's name should be 'alive2' but it is $new_name" );
+
+    $s->table('employee')->set_prefetch( $s->table('employee')->column('name') );
+    Alzabo::ObjectCache->clear;
+    my $cursor = $s->table('employee')->rows_where( where => [ $s->table('employee')->column('employee_id'), '=', 1000 ] );
+
+    # U.
+    print $c_write "1\n";
+
+    # V.
+    get_pipe_data($c_read);
+
+    # This is basically a test that the ->clear method for the cache
+    # actually worked.
+    my $rocko = $cursor->next_row;
+    ok( $rocko->select('name') eq 'Rocko',
+	"The name of employee 1000 should now be 'Rocko' but it is " . $rocko->select('name') );
 
     close $c_read;
     close $c_write;
@@ -673,12 +727,20 @@ sub child
     # S.
     get_pipe_data($p_read);
 
-    eval { $s->table('employee')->insert( values => { employee_id => 1000,
-						      name => 'alive2',
-						      department_id => 1,
-						    } ); };
+    my $e1000 = eval { $s->table('employee')->insert( values => { employee_id => 1000,
+								  name => 'alive2',
+								  department_id => 1,
+								} ); };
 
     # T.
+    print $p_write "1\n";
+
+    # U.
+    get_pipe_data($p_read);
+
+    $e1000->update( name => 'Rocko' );
+
+    # V.
     print $p_write "1\n";
 
     close $p_write;

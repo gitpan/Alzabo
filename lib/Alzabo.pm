@@ -13,7 +13,7 @@ use Alzabo::Config;
 
 use vars qw($VERSION);
 
-$VERSION = '0.36';
+$VERSION = '0.40';
 
 1;
 
@@ -603,6 +603,15 @@ ever look at documentation on methods that alter the schema and its
 contained objects.
 
 =back
+
+=head1 LICENSE
+
+Copyright (c) 2000-2001 Dave Rolsky
+
+All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
 
 =head1 AUTHOR
 

@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -252,9 +252,17 @@ sub _sequence_sql
     my $self = shift;
     my $col = shift;
 
-    my $seq_name = join '___', $col->table->name, $col->name;
+    my $seq_name = $self->_sequence_name($col);
 
     return "CREATE SEQUENCE $seq_name;\n";
+}
+
+sub _sequence_name
+{
+    my $self = shift;
+    my $col = shift;
+
+    return join '___', $col->table->name, $col->name;
 }
 
 sub column_sql
@@ -296,6 +304,35 @@ sub foreign_key_sql
     return;
 }
 
+sub drop_table_sql
+{
+    my $self = shift;
+    my $table = shift;
+    my $keep_sequences = shift;
+
+    my @sql = $self->SUPER::drop_table_sql($table);
+
+    unless ($keep_sequences)
+    {
+	foreach my $c ($table->columns)
+	{
+	    push @sql, $self->_drop_sequence_sql($c) if $c->sequenced;
+	}
+    }
+
+    return @sql;
+}
+
+sub _drop_sequence_sql
+{
+    my $self = shift;
+    my $col = shift;
+
+    my $seq_name = $self->_sequence_name($col);
+
+    return "DROP SEQUENCE $seq_name;\n";
+}
+
 sub drop_column_sql
 {
     my $self = shift;
@@ -306,7 +343,7 @@ sub drop_column_sql
     return () if $self->{sql_made}{table_sql}{ $p{new_table}->name };
 
     return ( $self->_temp_table_sql( $p{new_table} ),
-	     $self->drop_table_sql( $p{old}->table ),
+	     $self->drop_table_sql( $p{old}->table, 1 ),
 	     $self->table_sql( $p{new_table} ),
 	     $self->_restore_table_data_sql( $p{new_table} ),
 	   );
@@ -447,7 +484,9 @@ EOF
 		for ($p{default}) { s/^'//; s/'$//; }
 	    }
 
-	    if ( $row->[3] =~ /char/ )
+	    $p{type} = $row->[3];
+
+	    if ( $p{type} =~ /char/i )
 	    {
 		# The real length is the value of: a.atttypmod - ((int32) sizeof(int32))
 		#
@@ -457,7 +496,7 @@ EOF
 		# better way of doing this would be welcome.
 		$p{length} = $row->[6] - 4;
 	    }
-	    if ( $row->[3] eq 'numeric' )
+	    if ( lc $p{type} eq 'numeric' )
 	    {
 		# see comment above.
 		my $num = $row->[6] - 4;
@@ -465,9 +504,10 @@ EOF
 		$p{precision} = $num & 0xffff;
 	    }
 
+	    $p{type} = 'char' if lc $p{type} eq 'bpchar';
+
 	    $t->make_column( name => $row->[1],
 			     nullable => ! $row->[2],
-			     type => $row->[3],
 			     %p
 			   );
 	}
@@ -528,7 +568,7 @@ __END__
 
 =head1 NAME
 
-Alzabo::RDBMSRules::PostgreSQL - Perl extension for blah blah blah
+Alzabo::RDBMSRules::PostgreSQL - PostgreSQL specific database rules
 
 =head1 SYNOPSIS
 

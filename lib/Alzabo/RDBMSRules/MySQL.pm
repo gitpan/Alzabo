@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.37 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.40 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -114,10 +114,22 @@ sub validate_column_type
 	return if $type =~ /$_/;
     }
 
-    my $list_val = qr{(['"]).*?\1};
-    my $comma_sep_list = qr{\($list_val(?:\s*,\s*$list_val)+?\)};
+    my $list = qr{ (?:ENUM|SET)  # enum or set
+		   \s*           # space
+		   \(            # open paren
+		   ['"]          # quote start
+		   .*?           # quoted value
+		   ['"]
+		   (?:           # optionally followed by ...
+		    \s*,\s*      # space comma space
+		    ['"]         # another quote start
+		    .*?          # quoted value
+		    ['"]         # whatever quote opened this
+		   )+?
+		   \)            # close paren
+                 }ix;
 
-    return if $type =~ /\A(?:ENUM|SET)\s*$comma_sep_list\z/o;
+    return if $type =~ /\A$list\z/o;
 
     Alzabo::Exception::RDBMSRules->throw( error => "Unrecognized type: $type" );
 }
@@ -252,6 +264,9 @@ sub validate_index
 	{
 	    Alzabo::Exception::RDBMSRules->throw( error => "Invalid prefix specification ('$prefix')" )
 		unless $prefix =~ /\d+/ && $prefix > 0;
+
+	    Alzabo::Exception::RDBMSRules->throw( error => "Prefix value must be less than 255" )
+		unless $prefix < 255;
 
 	    Alzabo::Exception::RDBMSRules->throw( error => 'Non-character/blob columns cannot have an index prefix' )
 		unless $self->type_is_blob( $c->type ) || $self->type_is_char( $c->type );
@@ -469,7 +484,15 @@ sub reverse_engineer
 	my $t = $schema->make_table( name => $table );
 	foreach my $row ( $driver->rows( sql => "DESCRIBE $table" ) )
 	{
-	    my ($type, @a) = split /\s+/, $row->[1];
+            my ($type, @a);
+            if ( $row->[1] =~ /\A(?:ENUM|SET)/i )
+            {
+                $type = $row->[1];
+            }
+            else
+            {
+                ($type, @a) = split /\s+/, $row->[1];
+            }
 
 	    my $default = $row->[4] if $row->[4] && uc $row->[4] ne 'NULL';
 
@@ -542,7 +565,7 @@ __END__
 
 =head1 NAME
 
-Alzabo::RDBMSRules::MySQL - Perl extension for blah blah blah
+Alzabo::RDBMSRules::MySQL - MySQL specific database rules.
 
 =head1 SYNOPSIS
 

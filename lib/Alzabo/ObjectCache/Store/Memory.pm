@@ -1,10 +1,12 @@
-package Alzabo::ObjectCache::MemoryStore;
+package Alzabo::ObjectCache::Store::Memory;
 
 use vars qw($SELF $VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/;
 
 1;
+
+sub import {}
 
 sub new
 {
