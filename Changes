@@ -1,3 +1,25 @@
+0.86  December 22, 2004
+
+BUG FIXES:
+
+- Allow a UNIQUE constraint as a column attribute for MySQL.
+
+ENHANCEMENTS:
+
+- It is now possible to use a single Alzabo schema object to create
+and access multiple copies of that schema in an RDBMS.  This is done
+by setting the "schema_name" parameter whenever calling a method that
+accesses the RDBMS.
+
+This feature has a bad interaction with the way internal schema diffs
+are generated, however.  Please see the "MULTIPLE COPIES OF THE SAME
+SCHEMA" section in Alzabo::Intro for details.
+
+- The Alzabo::Runtime::Row->update() method now returns a boolean
+indicating whether any changes where actually made.  Patch by Eric
+Waters.
+
+
 0.85  October 12, 2004
 
 BUG FIXES:

@@ -66,7 +66,16 @@ sub update
                 unless defined $data{$k} || $c->nullable || defined $c->default;
     }
 
-    @{ $row->{data} }{keys %data} = values %data;
+    my $changed = 0;
+    while ( my ( $k, $v ) = each %data )
+    {
+        next if $row->_cached_data_is_same( $k, $data{$k} );
+
+        $row->{data}{$k} = $v;
+        $changed = 1;
+    }
+
+    return $changed;
 }
 
 # doesn't need to do anything

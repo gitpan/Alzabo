@@ -176,16 +176,7 @@ sub update
         # This will throw an exception if the column doesn't exist.
         my $c = $row->table->column($k);
 
-        # Only make the change if the two values are different.  The
-        # convolutions are necessary to avoid a warning.
-        if ( exists $row->{data}{$k} &&
-             ( ( ! defined $data{$k} && ! defined $row->{data}{$k} ) ||
-               ( defined $data{$k} &&
-                 defined $row->{data}{$k} &&
-                 ( $data{$k} eq $row->{data}{$k} )
-               )
-             )
-           )
+        if ( $row->_cached_data_is_same( $k, $data{$k} ) )
         {
             delete $data{$k};
             next;
@@ -207,7 +198,7 @@ sub update
         push @set, $c => $data{$k};
     }
 
-    return unless keys %data;
+    return 0 unless keys %data;
 
     my $sql = ( $schema->sqlmaker->update( $row->table ) );
 
@@ -253,10 +244,9 @@ sub update
         $row->{data}{$k} = $v;
     }
 
-    if ($includes_pk)
-    {
-        $row->_update_pk_hash;
-    }
+    $row->_update_pk_hash if $includes_pk;
+
+    return 1;
 }
 
 sub refresh

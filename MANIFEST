@@ -85,6 +85,7 @@ t/14-unique-row-cache.t
 t/15-alias_ref.t
 t/17-insert-handle.t
 t/18-debug-null-bug.t
+t/19-schema-name.t
 t/98-schema_diff.t
 t/99-cleanup.t
 t/99-pod.t

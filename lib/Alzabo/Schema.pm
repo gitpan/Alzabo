@@ -145,6 +145,17 @@ sub name
     return $self->{name};
 }
 
+sub db_schema_name
+{
+    my $self = shift;
+
+    return
+        ( exists $self->{db_schema_name}
+          ? $self->{db_schema_name}
+          : $self->name
+        );
+}
+
 sub has_table
 {
     my $self = shift;

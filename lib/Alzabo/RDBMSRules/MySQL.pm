@@ -245,7 +245,8 @@ sub validate_column_attribute
             unless $column->is_character;
         return;
     }
-    return if $a =~ /\AREFERENCES/i;
+
+    return if $a =~ /\A(?:REFERENCES|UNIQUE\z)/i;
 
     Alzabo::Exception::RDBMSRules->throw( error => "Unrecognized attribute: $a" );
 }

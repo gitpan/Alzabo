@@ -34,7 +34,7 @@ sub connect
 
     # This database handle is stale or nonexistent, so we need to (re)connect
     $self->disconnect;
-    $self->{dbh} = $self->_make_dbh( %p, name => $self->{schema}->name );
+    $self->{dbh} = $self->_make_dbh( %p, name => $self->{schema}->db_schema_name );
 }
 
 sub supports_referential_integrity { 1 }
@@ -98,7 +98,7 @@ sub create_database
     # connect to something else.  "template1" should always be there.
     my $dbh = $self->_make_dbh( @_, name => 'template1' );
 
-    eval { $dbh->do( "CREATE DATABASE " . $self->{schema}->name ); };
+    eval { $dbh->do( "CREATE DATABASE " . $self->{schema}->db_schema_name ); };
 
     my $e = $@;
 
@@ -118,7 +118,7 @@ sub drop_database
 
     my $dbh = $self->_make_dbh( @_, name => 'template1' );
 
-    eval { $dbh->do( "DROP DATABASE " . $self->{schema}->name ); };
+    eval { $dbh->do( "DROP DATABASE " . $self->{schema}->db_schema_name ); };
     my $e = $@;
 
     eval { $dbh->disconnect; };

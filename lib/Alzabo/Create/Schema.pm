@@ -739,13 +739,17 @@ sub instantiated
 sub create
 {
     my $self = shift;
+    my %p = @_;
 
     my @sql = $self->make_sql;
 
-    $self->{driver}->create_database(@_)
-        unless grep { $self->{name} eq $_ } $self->{driver}->schemas(@_);
+    local $self->{db_schema_name} = delete $p{schema_name}
+        if exists $p{schema_name};
 
-    $self->{driver}->connect(@_);
+    $self->{driver}->create_database(%p)
+        unless $self->_has_been_instantiated(%p);
+
+    $self->{driver}->connect(%p);
 
     foreach my $statement (@sql)
     {
@@ -759,6 +763,15 @@ sub create
     $self->{original} = Storable::dclone($self);
     $self->{driver} = $driver;
     delete $self->{original}{original};
+}
+
+sub _has_been_instantiated
+{
+    my $self = shift;
+
+    my $db_schema_name = $self->db_schema_name;
+
+    return 1 if grep { $db_schema_name eq $_ } $self->{driver}->schemas(@_);
 }
 
 sub make_sql
@@ -779,14 +792,18 @@ sub make_sql
 sub sync_backend_sql
 {
     my $self = shift;
+    my %p = @_;
 
-    unless ( grep { $self->{name} eq $_ } $self->{driver}->schemas(@_) )
+    local $self->{db_schema_name} = delete $p{schema_name}
+        if exists $p{schema_name};
+
+    unless ( $self->_has_been_instantiated(%p) )
     {
         return $self->rules->schema_sql($self);
     }
 
-    my $existing = $self->reverse_engineer( @_,
-                                            name => $self->name,
+    my $existing = $self->reverse_engineer( %p,
+                                            name => $self->db_schema_name,
                                             rdbms => $self->driver->driver_id,
                                           );
 
@@ -797,16 +814,20 @@ sub sync_backend_sql
 sub sync_backend
 {
     my $self = shift;
+    my %p = @_;
 
-    unless ( grep {  $self->{name} eq $_ } $self->{driver}->schemas(@_) )
+    local $self->{db_schema_name} = delete $p{schema_name}
+        if exists $p{schema_name};
+
+    unless ( $self->_has_been_instantiated(%p) )
     {
         $self->set_instantiated(0);
-        return $self->create(@_);
+        return $self->create(%p);
     }
 
-    $self->{driver}->connect(@_);
+    $self->{driver}->connect(%p);
 
-    foreach my $statement ( $self->sync_backend_sql(@_) )
+    foreach my $statement ( $self->sync_backend_sql(%p) )
     {
         $self->driver->do( sql => $statement );
     }
@@ -823,8 +844,12 @@ sub sync_backend
 sub drop
 {
     my $self = shift;
+    my %p = @_;
 
-    $self->{driver}->drop_database(@_);
+    local $self->{db_schema_name} = delete $p{schema_name}
+        if exists $p{schema_name};
+
+    $self->{driver}->drop_database(%p);
     $self->set_instantiated(0);
 }
 
@@ -1326,7 +1351,17 @@ schema to be marked as instantiated.
 Wherever possible, existing data will be preserved.
 
 This method takes any parameters that can be used when connecting to
-the RDBMS, including "user", "password", "host", and "port".
+the RDBMS, including "schema_name", "user", "password", "host", and
+"port".
+
+If a "schema_name" parameter is given, then this will be the name
+given to the schema in the RDBMS.
+
+B<Warning>: Every time you call C<create()> or C<sync_backend()>, the
+schema will consider itself to have been instantiated.  This will
+affect how schema diffs are generated.  After this, you will almost
+certainly need to use C<sync_backend()> to sync the RDBMS schema,
+since the schema's internal notion of it's state may be incorrect.
 
 =head2 instantiated
 
@@ -1353,7 +1388,8 @@ to be marked as not instantiated.  This method does not delete the
 Alzabo files from disk.  To do this, call the C<delete()> method.
 
 This method takes any parameters that can be used when connecting to
-the RDBMS, including "user", "password", "host", and "port".
+the RDBMS, including "schema_name", "user", "password", "host", and
+"port".
 
 Throws: L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
 
@@ -1380,7 +1416,8 @@ cause it to execute SQL commands.  Fortunately, the SQL it generates
 will not cause anything to break.
 
 This method takes any parameters that can be used when connecting to
-the RDBMS, including "user", "password", "host", and "port".
+the RDBMS, including "schema_name", "user", "password", "host", and
+"port".
 
 Throws: L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
 
@@ -1390,7 +1427,8 @@ If there is no corresponding schema in the RDBMS backend, then this
 method returns the SQL necessary to create the schema from scratch.
 
 This method takes any parameters that can be used when connecting to
-the RDBMS, including "user", "password", "host", and "port".
+the RDBMS, including "schema_name", "user", "password", "host", and
+"port".
 
 Throws: L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
 

@@ -66,6 +66,13 @@ sub referential_integrity
     return defined $self->{maintain_integrity} ? $self->{maintain_integrity} : 0;
 }
 
+sub set_db_schema_name
+{
+    my $self = shift;
+
+    $self->{db_schema_name} = shift;
+}
+
 sub set_user
 {
     my $self = shift;

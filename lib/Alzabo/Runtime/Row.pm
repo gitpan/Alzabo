@@ -177,6 +177,26 @@ sub make_live
                   );
 }
 
+sub _cached_data_is_same
+{
+    my $self = shift;
+    my ( $key, $val ) = @_;
+
+    # The convolutions here are necessary to avoid avoid treating
+    # undef as being equal to 0 or ''.  Stupid NULLs.
+    return 1
+        if ( exists $self->{data}{$key} &&
+             ( ( ! defined $val && ! defined $self->{data}{$key} ) ||
+               ( defined $val &&
+                 defined $self->{data}{$key} &&
+                 ( $val eq $self->{data}{$key} )
+               )
+             )
+           );
+
+    return 0;
+}
+
 sub _no_such_row_error
 {
     my $self = shift;
@@ -342,6 +362,9 @@ on a deleted row.
 
 Given a hash of columns and values, attempts to update the database to
 and the object to represent these new values.
+
+It returns a boolean value indicating whether or not any data was
+actually modified.
 
 This method throws an
 L<C<Alzabo::Runtime::NoSuchRowException>|Alzabo::Exceptions> if called

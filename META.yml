@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name: Alzabo
-version: 0.85
+version: 0.86
 author:
   - Dave Rolsky, <autarch@urth.org>
 abstract: A data modelling tool and RDBMS-OO mapper
@@ -26,7 +26,7 @@ build_requires:
 provides:
   Alzabo:
     file: lib/Alzabo.pm
-    version: 0.85
+    version: 0.86
   Alzabo::BackCompat:
     file: lib/Alzabo/BackCompat.pm
     version: 2
@@ -179,4 +179,4 @@ provides:
   ___table:
     file: lib/Alzabo/Runtime/Row.pm
     version: 2
-generated_by: Module::Build version 0.26
+generated_by: Module::Build version 0.2607

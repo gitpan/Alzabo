@@ -33,7 +33,7 @@ sub connect
 
     $self->disconnect if $self->{dbh};
     $self->{dbh} = $self->_make_dbh( @_,
-                                     name => $self->{schema}->name
+                                     name => $self->{schema}->db_schema_name
                                    );
 
     foreach ( $self->rows( sql => 'SHOW VARIABLES' ) )
@@ -127,7 +127,7 @@ sub create_database
 {
     my $self = shift;
 
-    my $db = $self->{schema}->name;
+    my $db = $self->{schema}->db_schema_name;
 
     my $dbh = $self->_make_dbh( name => '',
                                 @_ );
@@ -143,7 +143,7 @@ sub drop_database
 {
     my $self = shift;
 
-    my $db = $self->{schema}->name;
+    my $db = $self->{schema}->db_schema_name;
 
     my $dbh = $self->_make_dbh( name => '',
                                 @_ );

@@ -182,7 +182,8 @@ sub remove_mysql_schema
 
     delete @{ $config }{ 'schema_name', 'rdbms' };
 
-    eval { $s->drop(%$config) };
+    eval { $s->drop( %$config ) };
+    eval { $s->drop( %$config, schema_name => $s->name . '_2' ) };
 
     $s->delete if $s->is_saved;
 }
@@ -203,6 +204,7 @@ sub remove_pg_schema
     delete @{ $config }{ 'schema_name', 'rdbms' };
 
     eval { $s->drop(%$config) };
+    eval { $s->drop( %$config, schema_name => $s->name . '_2' ) };
 
     $s->delete if $s->is_saved;
 }
@@ -227,15 +229,17 @@ sub make_schema
 {
     my $class = shift;
     my $rdbms = shift;
+    my $skip_create = shift;
 
     my $meth = "make_${rdbms}_schema";
 
-    return $class->$meth();
+    return $class->$meth($skip_create);
 }
 
 sub make_mysql_schema
 {
     my $class = shift;
+    my $skip_create = shift;
 
     my $config = $class->mysql_test_config;
 
@@ -413,13 +417,16 @@ sub make_mysql_schema
 			  );
     $u->make_column( name => 'user_id', type => 'integer', primary_key => 1 );
 
-    delete @{ $config }{'rdbms', 'schema_name'};
+    unless ($skip_create)
+    {
+        delete @{ $config }{'rdbms', 'schema_name'};
 
-    $s->create(%$config);
+        $s->create(%$config);
+
+        $s->driver->disconnect;
+    }
 
     $s->save_to_file;
-
-    $s->driver->disconnect;
 
     return $s;
 }
@@ -429,6 +436,7 @@ sub make_mysql_schema
 sub make_pg_schema
 {
     my $class = shift;
+    my $skip_create = shift;
 
     my $config = $class->pg_test_config;
 
@@ -599,13 +607,16 @@ sub make_pg_schema
 
     my $name = $config->{schema_name};
 
-    delete @{ $config }{'rdbms', 'schema_name'};
+    unless ($skip_create)
+    {
+        delete @{ $config }{'rdbms', 'schema_name'};
 
-    $s->create(%$config);
+        $s->create(%$config);
+
+        $s->driver->disconnect;
+    }
 
     $s->save_to_file;
-
-    $s->driver->disconnect;
 
     return $s;
 }

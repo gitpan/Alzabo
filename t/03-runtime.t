@@ -19,7 +19,7 @@ unless (@rdbms_names)
     exit;
 }
 
-my $tests_per_run = 332;
+my $tests_per_run = 336;
 my $test_count = $tests_per_run * @rdbms_names;
 
 my %SINGLE_RDBMS_TESTS = ( mysql => 23,
@@ -210,9 +210,19 @@ sub run_tests
     isa_ok( $e, 'Alzabo::Exception::Params',
 	    "Exception thrown from attempt to update dep_id to NULL for an employee" );
 
-    $emp{bill}->update( cash => undef, smell => 'hello!' );
-    ok( ! defined $emp{bill}->select('cash'),
-	"Bill has no cash" );
+    {
+        my $updated = $emp{bill}->update( cash => undef, smell => 'hello!' );
+
+        ok( $updated, 'update() did change values' );
+        ok( ! defined $emp{bill}->select('cash'),
+            "Bill has no cash" );
+    }
+
+    {
+        my $updated = $emp{bill}->update( cash => undef, smell => 'hello!' );
+
+        ok( ! $updated, 'update() did not change values' );
+    }
 
     ok( $emp{bill}->select('smell') eq 'hello!',
 	"smell for bill should be 'hello!'" );
@@ -1653,9 +1663,19 @@ sub run_tests
     is( $p_emp->select('smell'), 'grotesque',
 	"Potential Employee should have default smell, 'grotesque'" );
 
-    $p_emp->update( cash => undef, smell => 'hello!' );
-    ok( ! defined $p_emp->select('cash'),
-	"Potential Employee cash column is not defined" );
+    {
+        my $updated = $p_emp->update( cash => undef, smell => 'hello!' );
+
+        ok( $updated, 'update() did change values' );
+        ok( ! defined $p_emp->select('cash'),
+            "Potential Employee cash column is not defined" );
+    }
+
+    {
+        my $updated = $p_emp->update( cash => undef, smell => 'hello!' );
+
+        ok( ! $updated, 'update() did not change values' );
+    }
 
     is( $p_emp->select('smell'), 'hello!',
 	"smell for employee should be 'hello!' after update" );

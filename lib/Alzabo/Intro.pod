@@ -370,6 +370,27 @@ schema.  If these have not been loaded already, Alzabo will do so and
 issue a warning to say that this has happened, in case you would like
 to restart the process without these classes loaded.
 
+=head1 MULTIPLE COPIES OF THE SAME SCHEMA
+
+It is possible to use the same schema definition with multiple copies
+of that schema in the RDBMS.  This can be done by setting the
+"schema_name" parameter whenever you call a method that connects to
+the RDBMS, such as L<<
+C<Alzabo::Create::Schema-E<gt>create>|Alzabo::Create::Schema/create >>
+or L<<
+C<Alzabo::Runtime::Schema-E<gt>connect>|Alzabo::Runtime::Schema/connect
+>>.  This will override the default, the schema's name as given when
+it was first created via L<<
+C<Alzabo::Create::Schema-E<gt>new>|Alzabo::Create::Schema/new >>.
+
+Every time you call C<create()> or C<sync_backend()>, the schema will
+consider itself to have been instantiated.  This means that if you
+call C<create()> twice, each time with a different "schema_name"
+parameter, then you will probably not be able to generate useful diffs
+via the C<make_sql()> method in the future.
+
+This is a bug that is unlikely to be fixed.
+
 =head1 MULTIPLE RDBMS SUPPORT
 
 Alzabo aims to be as cross-platform as possible.  To that end, RDBMS
@@ -399,9 +420,8 @@ another, though this is a future goal.
 
 =head1 REFERENTIAL INTEGRITY
 
-By default, Alzabo will maintain referential integrity in your
-database based on the relationships you have defined.  This can be
-turned off via L<< the
+Alzabo can maintain referential integrity in your database based on
+the relationships you have defined.  This can be toggled via L<< the
 C<Alzabo::Runtime::Schema-E<gt>set_referential_integrity()>
 method|Alzabo::Runtime::Schema/set_referential_integrity >>.
 

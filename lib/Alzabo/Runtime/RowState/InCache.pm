@@ -29,13 +29,15 @@ sub update
 
     $class->refresh($row) unless $class->_in_cache($row);
 
-    $class->SUPER::update( $row, @_ );
+    my $changed = $class->SUPER::update( $row, @_ );
 
-    return if exists $row->{id_string};
+    return $changed if exists $row->{id_string};
 
     Alzabo::Runtime::UniqueRowCache->delete_from_cache( $row->table->name, $old_id );
 
     Alzabo::Runtime::UniqueRowCache->write_to_cache($row);
+
+    return $changed;
 }
 
 sub refresh

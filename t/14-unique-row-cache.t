@@ -25,7 +25,7 @@ unless (@rdbms_names)
     exit;
 }
 
-plan tests => 9;
+plan tests => 11;
 
 
 Alzabo::Test::Utils->remove_all_schemas;
@@ -74,7 +74,15 @@ $s->connect( Alzabo::Test::Utils->connect_params_for($rdbms)  );
     is( $dep2_copy->select('name'), 'bar', 'refresh works for cached rows' );
 
     my $old_id = $dep2->id_as_string;
-    $dep2->update( department_id => 1000 );
+    {
+        my $updated = $dep2->update( department_id => 1000 );
+        ok( $updated, 'update() did change values' );
+    }
+
+    {
+        my $updated = $dep2->update( department_id => 1000 );
+        ok( ! $updated, 'update() did not change values' );
+    }
 
     ok( Alzabo::Runtime::UniqueRowCache->row_in_cache
             ( $dep2->table->name, $dep2->id_as_string ),

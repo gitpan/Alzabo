@@ -1216,9 +1216,13 @@ Alzabo::SQLMaker - Alzabo base class for RDBMS drivers
 
 =head1 SYNOPSIS
 
-  use Alzabo::SQLMaker;
+  use Alzabo::SQLMaker::MySQL;
 
-  my $sql = Alzabo::SQLMaker->new( sql => 'MySQL' );
+  my $sql = Alzabo::SQLMaker::MySQL->new( driver => $driver_object );
+
+  # or better yet
+
+  my $sql = $runtime_schema->sqlmaker;
 
 =head1 DESCRIPTION
 
