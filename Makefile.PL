@@ -16,7 +16,7 @@ GetOptions( \%opts, 'dist' );
 unless ( $opts{dist} )
 {
     my $pl_file = File::Spec->catfile( 'install_helpers', 'prompts.pl' );
-    do $pl_file;
+    require $pl_file;
 }
 
 my $realclean = join ' ', ( File::Spec->catfile( 'lib', 'Alzabo', 'Config.pm' ),
@@ -63,6 +63,10 @@ sub manifypods
     my $self = shift;
 
     my $make = $self->SUPER::manifypods;
+
+    # include Alzabo::Config in list of PODs
+#    my $config_pm = File::Spec->catfile( 'lib', 'Alzabo Config.pm' );
+#    $make =~ s|(\t\@\$\(POD2MAN\))|$1 $config_pm \$(INST_MAN3DIR)/Alzabo::Config.\$(MAN3EXT)|;
 
     # use PODs from INST_LIB for man page creation
     $make =~ s/(\s)lib/$1\$(INST_LIB)/g;

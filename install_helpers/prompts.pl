@@ -4,6 +4,7 @@ eval { require Alzabo::Config; };
 eval { require Alzabo; };
 
 if ( ! $@ && defined Alzabo::Config::root_dir() &&
+     length Alzabo::Config::root_dir() &&
      Alzabo::Config::available_schemas() && $Alzabo::VERSION < 0.55 )
 {
     print <<'EOF';
@@ -23,7 +24,8 @@ Please select a root directory for Alzabo (schema files will be stored
 under this root.
 EOF
 
-    $config{root_dir} = prompt( '  Alzabo root?', find_possible_root() );
+    my $root_dir = Alzabo::Config::root_dir() if %Alzabo::Config::CONFIG;
+    $config{root_dir} = prompt( '  Alzabo root?', $root_dir || find_possible_root() );
 }
 
 {
@@ -235,7 +237,7 @@ sub write_config_module
 	my $val;
 	if ( length $config{$k} )
 	{
-	    $val = "'\Q$config{$k}\E'";
+	    $val = "'$config{$k}'";
 	}
 	else
 	{
@@ -321,3 +323,5 @@ EOF
 	push @TESTS, { rdbms => $_, user => $user, password => $password, host => $host, port => $port, schema_name => $db_name };
     }
 }
+
+1;

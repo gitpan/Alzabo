@@ -17,6 +17,9 @@ Short term:
 
 Medium term:
 
+- Abort during Makefile.PL if supplied username/pw cannot connect to
+  DB (and try to test privs too).  Suggested by Robert Creager.
+
 - Support transactions in the caching system.  this eventually means
   real transactions at the middleware layer.  argh!
 

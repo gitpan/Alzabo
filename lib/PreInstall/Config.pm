@@ -6,6 +6,8 @@ use vars qw($VERSION %CONFIG);
 
 use strict;
 
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/;
+
 %CONFIG = ''CONFIG'';
 
 my $curdir = File::Spec->curdir;

@@ -1,3 +1,10 @@
+0.67  June 6, 2002
+
+BUG FIXES:
+
+- There were some broken bits in the installation code in 0.66.  These
+are now fixed.
+
 0.66  June 6, 2002
 
 ENHANCEMENTS:
