@@ -8,15 +8,32 @@ use Alzabo::Runtime::Schema;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.28 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.34 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
-1;
+# types of methods that can be made - only ones that haven't been
+# deprecated
+my @options = qw( foreign_keys
+		  linking_tables
+		  lookup_columns
+		  row_columns
+		  self_relations
 
-# types of methods that can be made
-my @options = qw( foreign_keys insert linking_tables lookup_columns
-		  row_columns self_relations tables table_columns update );
+		  tables
+		  table_columns
+
+                  insert_hooks
+		  update_hooks
+		  select_hooks
+		  delete_hooks
+		);
+
+# deprecated options
+my @deprecated = qw( insert
+                     update
+                     lookup_tables
+                   );
 
 sub import
 {
@@ -29,11 +46,11 @@ sub import
 				    optional => 1 },
 		    pluralize  => { type => CODEREF,
 				    optional => 1 },
-		    ( map { $_ => { optional => 1 } } 'all', @options ) } );
+		    ( map { $_ => { optional => 1 } } 'all', @options, @deprecated ) } );
     my %p = @_;
 
     return unless exists $p{schema};
-    return unless grep { exists $p{$_} && $p{$_} } 'all', 'lookup_tables', @options;
+    return unless grep { exists $p{$_} && $p{$_} } 'all', @options, @deprecated;
 
     my $maker = $class->new(%p);
 
@@ -45,7 +62,13 @@ sub new
     my $class = shift;
     my %p = @_;
 
-    map { $p{$_} = 1 } @options if delete $p{all};
+    if ( delete $p{all} )
+    {
+	foreach (@options)
+	{
+	    $p{$_} = 1 unless exists $p{$_} && ! $p{$_};
+	}
+    }
 
     my $s = eval { Alzabo::Runtime::Schema->load_from_file( name => delete $p{schema} ); };
     warn $@ if $@ && $DEBUG;
@@ -87,7 +110,7 @@ sub make
     $self->eval_schema_class;
     $self->load_class( $self->{schema_class} );
 
-    foreach my $t ( $self->{schema}->tables )
+    foreach my $t ( sort { $a->name cmp $b->name  } $self->{schema}->tables )
     {
 	$self->{table_class} = join '::', $self->{class_root}, 'Table', $t->name;
 	$self->{row_class} = join '::', $self->{class_root}, 'Row', $t->name;
@@ -105,6 +128,7 @@ sub make
 	}
 
 	$self->load_class( $self->{table_class} );
+	$self->load_class( $self->{row_class} );
 
 	if ( $self->{opts}{table_columns} )
 	{
@@ -119,16 +143,24 @@ sub make
 	{
 	    $self->make_foreign_key_methods($t);
 	}
+
+	foreach ( qw( insert update select delete ) )
+	{
+	    if ( $self->{opts}{"$_\_hooks"} )
+	    {
+		$self->make_hooks($t, $_);
+	    }
+	}
+
+	# deprecated
 	if ( $self->{opts}{insert} )
 	{
-	    $self->make_insert_method($t);
+	    $self->make_insert_method;
 	}
 	if ( $self->{opts}{update} )
 	{
-	    $self->make_update_method($t);
+	    $self->make_update_method;
 	}
-
-	$self->load_class( $self->{row_class} );
     }
 }
 
@@ -143,6 +175,8 @@ use base qw( Alzabo::Runtime::Schema );
 
 1;
 EOF
+
+    die $@ if $@;
 }
 
 sub make_table_method
@@ -182,6 +216,8 @@ sub row_by_pk
 
 1;
 EOF
+
+    die $@ if $@;
 }
 
 sub eval_row_class
@@ -198,7 +234,7 @@ sub new
     my \%p = \@_;
     my \$row = Alzabo::Runtime::Row->new(\@_);
 
-    if ( \$p{no_cache} || ! \$Alzabo::ObjectCache::VERSION )
+    if ( \$p{no_cache} || ! defined \$Alzabo::ObjectCache::VERSION )
     {
         return bless \$row, '$self->{uncached_row_class}';
     }
@@ -219,6 +255,8 @@ package $self->{cached_row_class};
 
 1;
 EOF
+
+    die $@ if $@;
 }
 
 sub load_class
@@ -236,7 +274,7 @@ sub make_table_column_methods
     my $self = shift;
     my $t = shift;
 
-    foreach my $c ( $t->columns )
+    foreach my $c ( sort { $a->name cmp $b->name  } $t->columns )
     {
 	my $name = $self->{opts}{name_maker}->( type => 'table_column',
 						column => $c );
@@ -258,7 +296,7 @@ sub make_row_column_methods
     my $self = shift;
     my $t = shift;
 
-    foreach my $c ( $t->columns )
+    foreach my $c ( sort { $a->name cmp $b->name  } $t->columns )
     {
 	my $name = $self->{opts}{name_maker}->( type => 'row_column',
 						column => $c );
@@ -287,7 +325,7 @@ sub make_foreign_key_methods
     my $self = shift;
     my $t = shift;
 
-    foreach my $other_t ( $t->schema->tables )
+    foreach my $other_t ( sort { $a->name cmp $b->name  } $t->schema->tables )
     {
 	my @fk = $t->foreign_keys_by_table($other_t);
 
@@ -317,6 +355,8 @@ sub make_foreign_key_methods
 	    {
 		$self->make_linking_table_method($fk);
 	    }
+
+	    # deprecated
 	    if ( $self->{opts}{lookup_tables} )
 	    {
 		$self->make_lookup_table_method($fk);
@@ -492,32 +532,6 @@ sub make_linking_table_method
     return 1;
 }
 
-sub make_lookup_table_method
-{
-    my $self = shift;
-    my $fk = shift;
-
-    return unless $fk->table_to->primary_key == 1;
-
-    my $name = $self->{opts}{name_maker}->( type => 'lookup_table',
-					    foreign_key => $fk );
-    return unless $name;
-    return if $self->{row_class}->can($name);
-
-    my $method = join '::', $self->{row_class}, $name;
-
-    my $non_pk_name = (grep { ! $_->is_primary_key } $fk->table_to->columns)[0]->name;
-    warn "Making lookup table $method: returns scalar value of column\n" if $DEBUG;
-    {
-	no strict 'refs';
-	*{$method} =
-	    sub { my $self = shift;
-		  return $self->rows_by_foreign_key( foreign_key => $fk, @_ )->select($non_pk_name) };
-    }
-
-    return 1;
-}
-
 sub make_lookup_columns_methods
 {
     my $self = shift;
@@ -528,7 +542,7 @@ sub make_lookup_columns_methods
     return unless ( ( scalar grep { $_->is_primary_key } @to ) == @to &&
 		    ( scalar $fk->table_to->primary_key ) == @to );
 
-    foreach ( $fk->table_to->columns )
+    foreach ( sort { $a->name cmp $b->name  } $fk->table_to->columns )
     {
 	my $name = $self->{opts}{name_maker}->( type => 'lookup_columns',
 						foreign_key => $fk,
@@ -548,21 +562,41 @@ sub make_lookup_columns_methods
     }
 }
 
-sub make_insert_method
+sub make_hooks
 {
     my $self = shift;
     my $table = shift;
+    my $type = shift;
 
-    return unless $self->{table_class}->can('validate_insert');
+    my $class = $type eq 'insert' ? $self->{table_class} : $self->{row_class};
 
-    my $method = join '::', $self->{table_class}, 'insert';
+    my $pre = "pre_$type";
+    my $post = "post_$type";
+    return unless ( $class->can($pre) || $class->can($post) ||
+		    ( $type eq 'select' && $class->can('post_select_hash') ) );
+
+    my $method = join '::', $class, $type;
 
     {
 	no strict 'refs';
 	return if *{$method}{CODE};
     }
 
-    warn "Making insert method $method\n" if $DEBUG;
+    warn "Making $type hooks method $method\n" if $DEBUG;
+
+    my $meth = "make_$type\_hooks";
+    $self->$meth($table);
+}
+
+sub make_insert_hooks
+{
+    my $self = shift;
+
+    my $code = '';
+    $code .= "        \$s->pre_insert(\\\%p);\n" if $self->{table_class}->can('pre_insert');
+    $code .= "        my \$new = \$s->SUPER::insert(\%p);\n";
+    $code .= "        \$s->post_insert({\%p, row => \$new});\n" if $self->{table_class}->can('post_insert');
+
     eval <<"EOF";
 {
     package $self->{table_class};
@@ -570,28 +604,24 @@ sub make_insert_method
     {
         my \$s = shift;
         my \%p = \@_;
-        \$s->validate_insert( %{ \$p{values} } );
-        \$s->SUPER::insert(\%p);
+$code
+
+        return \$new;
     }
 }
 EOF
+
+    die $@ if $@;
 }
 
-sub make_update_method
+sub make_update_hooks
 {
     my $self = shift;
-    my $table = shift;
 
-    return unless $self->{row_class}->can('validate_update');
-
-    my $method = join '::', $self->{cached_row_class}, 'update';
-
-    {
-	no strict 'refs';
-	goto UNCACHED if *{$method}{CODE};
-    }
-
-    warn "Making update method $method\n" if $DEBUG;
+    my $code = '';
+    $code .= "        \$s->pre_update(\\\%p);\n" if $self->{row_class}->can('pre_update');
+    $code .= "        \$s->Alzabo::Runtime::CachedRow::update(\%p);\n";
+    $code .= "        \$s->post_update(\\\%p);\n" if $self->{row_class}->can('post_update');
 
     eval <<"EOF";
 {
@@ -600,22 +630,14 @@ sub make_update_method
     {
         my \$s = shift;
         my \%p = \@_;
-        \$s->validate_update(\%p);
-        \$s->Alzabo::Runtime::CachedRow::update(\%p);
+$code
     }
 }
 EOF
 
- UNCACHED:
+    die $@ if $@;
 
-    $method = join '::', $self->{uncached_row_class}, 'update';
-
-    {
-	no strict 'refs';
-	return if *{$method}{CODE};
-    }
-
-    warn "Making update method $method\n" if $DEBUG;
+    $code =~ s/CachedRow::/Row::/;
 
     eval <<"EOF";
 {
@@ -624,11 +646,146 @@ EOF
     {
         my \$s = shift;
         my \%p = \@_;
-        \$s->validate_update(\%p);
-        \$s->Alzabo::Runtime::Row::update(\%p);
+$code
     }
 }
 EOF
+
+    die $@ if $@;
+}
+
+sub make_select_hooks
+{
+    my $self = shift;
+
+    my $pre = '';
+    $pre  = "\$s->pre_select(\\\@_);\n" if $self->{row_class}->can('pre_select');
+
+    my $post = '';
+    $post = "\$s->post_select(\\\@r);\n" if $self->{row_class}->can('post_select');
+
+    my $post_hash = '';
+    $post_hash = "\$s->post_select_hash(\\\%r);\n" if $self->{row_class}->can('post_select_hash');
+
+    eval <<"EOF";
+{
+    package $self->{cached_row_class};
+    sub select
+    {
+        my \$s = shift;
+
+        $pre
+
+        my (\@r, \$r);
+        if (wantarray)
+        {
+            \@r = \$s->SUPER::select(\@_);
+        }
+        else
+        {
+            \$r = \$s->SUPER::select(\@_);
+            \@r = \$r;
+        }
+
+        $post
+
+        return wantarray ? \@r : \$r[0];
+    }
+
+    sub select_hash
+    {
+        my \$s = shift;
+
+        $pre
+
+        my \%r = \$s->SUPER::select_hash(\@_);
+
+        $post_hash
+
+        return \%r;
+    }
+}
+
+{
+    package $self->{uncached_row_class};
+    sub select
+    {
+        my \$s = shift;
+
+        $pre
+
+        my (\@r, \$r);
+        if (wantarray)
+        {
+            \@r = \$s->SUPER::select(\@_);
+        }
+        else
+        {
+            \$r = \$s->SUPER::select(\@_);
+            \@r = \$r;
+        }
+
+        $post
+
+        return wantarray ? \@r : \$r[0];
+    }
+
+    sub select_hash
+    {
+        my \$s = shift;
+
+        $pre
+
+        my \%r = \$s->SUPER::select_hash(\@_);
+
+        $post_hash
+
+        return \%r;
+    }
+}
+EOF
+
+    die $@ if $@;
+}
+
+sub make_delete_hooks
+{
+    my $self = shift;
+
+    my $code = '';
+    $code .= "        \$s->pre_delete(\\\%p);\n" if $self->{row_class}->can('pre_delete');
+    $code .= "        \$s->Alzabo::Runtime::CachedRow::delete(\%p);\n";
+    $code .= "        \$s->post_delete(\\\%p);\n" if $self->{row_class}->can('post_delete');
+
+    eval <<"EOF";
+{
+    package $self->{cached_row_class};
+    sub delete
+    {
+        my \$s = shift;
+        my \%p = \@_;
+$code
+    }
+}
+EOF
+
+    die $@ if $@;
+
+    $code =~ s/CachedRow::/Row::/;
+
+    eval <<"EOF";
+{
+    package $self->{uncached_row_class};
+    sub delete
+    {
+        my \$s = shift;
+        my \%p = \@_;
+$code
+    }
+}
+EOF
+
+    die $@ if $@;
 }
 
 sub name
@@ -664,16 +821,139 @@ sub name
 	return $self->{opts}{pluralize}->($method);
     }
 
-    return (grep { ! $_->is_primary_key } $p{foreign_key}->table_to->columns)[0]->name
-	if $p{type} eq 'lookup_table';
+    return join '_', map { lc $_->name } $p{foreign_key}->table_to, $p{column}
+	if $p{type} eq 'lookup_columns';
 
     return $p{column}->name if $p{type} eq 'lookup_columns';
 
     return $p{parent} ? 'parent' : 'children'
 	if $p{type} eq 'self_relation';
 
+    # deprecated
+    return (grep { ! $_->is_primary_key } $p{foreign_key}->table_to->columns)[0]->name
+	if $p{type} eq 'lookup_table';
+
     die "unknown type in call to naming sub: $p{type}\n";
 }
+
+#
+# Deprecated pieces
+#
+
+sub make_lookup_table_method
+{
+    my $self = shift;
+    my $fk = shift;
+
+    return unless $fk->table_to->primary_key == 1;
+
+    my $name = $self->{opts}{name_maker}->( type => 'lookup_table',
+					    foreign_key => $fk );
+    return unless $name;
+    return if $self->{row_class}->can($name);
+
+    my $method = join '::', $self->{row_class}, $name;
+
+    my $non_pk_name = (grep { ! $_->is_primary_key } $fk->table_to->columns)[0]->name;
+    warn "Making lookup table $method: returns scalar value of column\n" if $DEBUG;
+    {
+	no strict 'refs';
+	*{$method} =
+	    sub { my $self = shift;
+		  return $self->rows_by_foreign_key( foreign_key => $fk, @_ )->select($non_pk_name) };
+    }
+
+    return 1;
+}
+
+sub make_insert_method
+{
+    my $self = shift;
+
+    return unless $self->{table_class}->can('validate_insert');
+
+    my $method = join '::', $self->{table_class}, 'insert';
+
+    {
+	no strict 'refs';
+	return if *{$method}{CODE};
+    }
+
+    warn "Making insert method $method\n" if $DEBUG;
+    eval <<"EOF";
+{
+    package $self->{table_class};
+    sub insert
+    {
+        my \$s = shift;
+        my \%p = \@_;
+        \$s->validate_insert( %{ \$p{values} } );
+        \$s->SUPER::insert(\%p);
+    }
+}
+EOF
+
+    die $@ if $@;
+}
+
+sub make_update_method
+{
+    my $self = shift;
+
+    return unless $self->{row_class}->can('validate_update');
+
+    my $method = join '::', $self->{cached_row_class}, 'update';
+
+    {
+	no strict 'refs';
+	goto UNCACHED if *{$method}{CODE};
+    }
+
+    warn "Making update method $method\n" if $DEBUG;
+
+    eval <<"EOF";
+{
+    package $self->{cached_row_class};
+    sub update
+    {
+        my \$s = shift;
+        my \%p = \@_;
+        \$s->validate_update(\%p);
+        \$s->Alzabo::Runtime::CachedRow::update(\%p);
+    }
+}
+EOF
+
+    die $@ if $@;
+
+ UNCACHED:
+
+    $method = join '::', $self->{uncached_row_class}, 'update';
+
+    {
+	no strict 'refs';
+	return if *{$method}{CODE};
+    }
+
+    warn "Making update method $method\n" if $DEBUG;
+
+    eval <<"EOF";
+{
+    package $self->{uncached_row_class};
+    sub update
+    {
+        my \$s = shift;
+        my \%p = \@_;
+        \$s->validate_update(\%p);
+        \$s->Alzabo::Runtime::Row::update(\%p);
+    }
+}
+EOF
+
+    die $@ if $@;
+}
+
+1;
 
 
 __END__
@@ -713,6 +993,13 @@ This tells this module to make all of the methods it possibly can.
 See L<METHOD CREATION OPTIONS|METHOD CREATION OPTIONS> for more
 details.
 
+If individual method creation options are set as false, then that
+setting will be respected, so you could use
+
+  use Alzabo::MethodMaker( schema => 'foo', all => 1, tables => 0 );
+
+to turn on all of the regular options B<except> for C<tables>.
+
 =head3 name_maker => \&naming_sub
 
 If this option is given, then this callback will be called any time a
@@ -734,7 +1021,280 @@ such a method, which returns the name of the table.  See the relevant
 documentation of the schema, table, and row objects for a list of
 methods they contain.
 
-The callback will receive a hash containing the following parameters:
+The L<Naming Sub Parameters|NAMING SUB PARAMETERS> section contains
+the details of what parameters are passed to this callback.
+
+=head1 EFFECTS
+
+Using this module has several effects on your schema's objects.
+
+=head2 New Class Names
+
+Your schema, table, and row objects to be blessed into subclasses of
+L<C<Alzabo::Runtime::Schema>|Alzabo::Runtime::Schema>,
+L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table>,
+L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>, respectively.  These
+subclasses contain the various methods created by this module.  The
+new class names are formed by using the
+L<C<class_root>|Alzabo::MethodMaker/PARAMETERS> parameter and adding
+onto it.
+
+=head3 Schema
+
+C<E<lt>class rootE<gt>::Schema>
+
+=head3 Tables
+
+C<E<lt>class rootE<gt>::Table::<table nameE<gt>>
+
+=head3 Rows
+
+C<E<lt>class rootE<gt>::Row::<table nameE<gt>>, subclassed by
+C<E<lt>class rootE<gt>::CachedRow::<table nameE<gt>> and C<E<lt>class
+rootE<gt>::UncachedRow::<table nameE<gt>>
+
+With a root of 'My::Stuff', and a schema with only two tables, 'Movie'
+and 'Image', this would result in the following class names:
+
+ My::Stuff::Schema
+ My::Stuff::Table::Movie
+ My::Stuff::Row::Movie
+   My::Stuff::CachedRow::Movie
+   My::Stuff::UncachedRow::Movie
+ My::Stuff::Table::Image
+ My::Stuff::Row::Image
+   My::Stuff::CachedRow::Image
+   My::Stuff::UncachedRow::Image
+
+=head2 Loading Classes
+
+For each class into which an object is blessed, this module will
+attempt to load that class via a C<use> statement.  If there is no
+module found this will not cause an error.  If this class defines any
+methods that have the same name as those this module generates, then
+this module will not attempt to generate them.
+
+=head1 METHOD CREATION OPTIONS
+
+When using Alzabo::MethodMaker, you may specify any of the following
+parameters.  Specifying 'all' causes all of them to be used.
+
+=head2 Schema object methods
+
+=head3 tables => $bool
+
+Creates methods for the schema that return the table object matching
+the name of the method.
+
+For example, given a schema containing tables named 'Movie' and
+'Image', this would create methods that could be called as
+C<$schema-E<gt>Movie> and C<$schema-E<gt>Image>.
+
+=head2 Table object methods.
+
+=head3 table_columns => $bool
+
+Creates methods for the tables that return the column object matching
+the name of the method.  This is quite similar to the C<tables> option
+for schemas.
+
+=head3 insert_hooks => $bool
+
+Look for hooks to wrap around the C<insert> method in
+L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table>.  See L<Loading
+Classes> for more details.  You have to define either a C<pre_insert>
+or C<post_insert> method (or both) for the generated table class or
+this parameter will not do anything.  See the L<HOOKS|HOOKS> section
+for more details.
+
+=head2 Row object methods
+
+=head3 row_column => $bool
+
+This tells MethodMaker to create get/set methods for each column a row
+has.  These methods take a single optional argument, which if given
+will cause that column to be updated for the row.
+
+=head3 update_hooks => $bool
+
+Look for hooks to wrap around the C<update> method in
+L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>.  See L<Loading
+Classes> for more details.  You have to define either a C<pre_update>
+or C<post_update> method (or both) for the generated row class or this
+parameter will not do anything.  See the L<HOOKS|HOOKS> section for
+more details.
+
+=head3 select_hooks => $bool
+
+Look for hooks to wrap around the C<select> method in
+L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>.  See L<Loading
+Classes> for more details.  You have to define either a C<pre_select>
+or C<post_select> method (or both) for the generated row class or this
+parameter will not do anything.  See the L<HOOKS|HOOKS> section for
+more details.
+
+=head3 delete_hooks => $bool
+
+Look for hooks to wrap around the C<delete> method in
+L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>.  See L<Loading
+Classes> for more details.  You have to define either a C<pre_delete>
+or C<post_delete> method (or both) for the generated row class or this
+parameter will not do anything.  See the L<HOOKS|HOOKS> section for
+more details.
+
+=head3 foreign_keys => $bool
+
+Creates methods in row objects named for the table to which the
+relationship exists.  These methods return either a single
+L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> object or a single
+L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object,
+depending on the cardinality of the relationship.
+
+Take these tables as an example.
+
+  Movie                     Credit
+  ---------                 --------
+  movie_id                  movie_id
+  title                     person_id
+                            role_name
+
+NOTE: This option must be true if you want any of the following
+options to be used.
+
+=head3 linking_tables => $bool
+
+A linking table, as defined here, is a table with a two column primary
+key that, with each column being a foreign key to another table's
+primary key.  These tables exist to facilitate n..n logical
+relationships.  If both C<foreign_keys> and C<linking_tables> are
+true, then methods will be created that skip the intermediate linking
+tables
+
+=head3 lookup_columns => $bool
+
+Lookup columns are columns in foreign tables to which a table has a
+many-to-one or one-to-one relationship to the foreign table's primary
+key.  For example, given the tables below:
+
+  Restaurant                    Cuisine
+  ---------                     --------
+  restaurant_id                 cuisine_id
+  name              (n..1)      description
+  phone                         spiciness
+  cuisine_id
+
+If we have a Restaurant row, we might want to have methods available
+such as ->cuisine_description or ->cuisine_spiciness.
+
+=head3 self_relations => $bool
+
+A self relation is when a table has a parent/child relationship with
+itself.  Here is an example:
+
+ Location
+ --------
+ location_id
+ name
+ parent_location_id
+
+NOTE: If the relationship has a cardinality of 1..1 then no methods
+will be created, as this option is really intended for parent/child
+relationships.  This may change in the future.
+
+=head1 HOOKS
+
+As was mentioned before, it is possible to create pre- and
+post-execution hooks to wrap around a number of methods.  This allow
+you to do data validation on inserts and updates as well as giving you
+a chance to filter incoming our outgoing data as needed (for example,
+if you need to convert dates to and from a specific RDBMS format).
+
+Each of these hooks receives different parameters, documented below:
+
+=head2 Insert Hooks
+
+=over 4
+
+=item * pre_insert
+
+This method receives a hash reference of all the parameters that are
+passed to the
+L<C<Alzabo::Runtime::Table-E<gt>insert>|Alzabo::Runtime::Table/insert>
+method.
+
+These are the actual parameters that will be passed to the C<insert>
+method so alterations to this reference will be seen by that method.
+This allows you to alter the values that actually end up going into
+the database or change any other parameters as you see fit.
+
+=item * post_insert
+
+This method also receives a hash reference containing all of the
+parameters passed to the C<insert> method.  In addition, the hash
+reference contains an additional key, C<row>, which contains the newly
+created row.
+
+=back
+
+=head2 Update Hooks
+
+=over 4
+
+=item * pre_update
+
+This method receives a hash reference of the parameters that will be
+passed to the
+L<C<Alzabo::Runtime::Row-E<gt>update>|Alzabo::Runtime::Row/update>
+method.  Again, alterations to these parameters will be seen by the
+C<update> method.
+
+=item * post_update
+
+This method receives the same parameters as C<pre_update>
+
+=back
+
+=head2 Select Hooks
+
+=over 4
+
+=item * pre_select
+
+This method receives an array reference containing the names of the
+requested columns.  This is called when either the
+L<C<Alzabo::Runtime::Row-E<gt>select>|Alzabo::Runtime::Row/select> or
+L<C<Alzabo::Runtime::Row-E<gt>select_hash>|Alzabo::Runtime::Row/select_hash>
+methods are called.
+
+=item * post_select
+
+This method is called after the
+L<C<Alzabo::Runtime::Row-E<gt>select>|Alzabo::Runtime::Row/select>.
+It receives an array reference containing the values returned from the
+C<select> method, which it may modify.
+
+=item * post_select_hash
+
+This method is called after the
+L<C<Alzabo::Runtime::Row-E<gt>select_hash>|Alzabo::Runtime::Row/select_hash>.
+It receives a reference to the hash returned from the C<select_hash>
+method.
+
+=back
+
+=head2 Delete hooks
+
+=over 4
+
+=item * pre_delete
+
+This method receives no parameters.
+
+=back
+
+=head1 NAMING SUB PARAMETERS
+
+The naming sub will receive a hash containing the following parameters:
 
 =over 4
 
@@ -742,12 +1302,13 @@ The callback will receive a hash containing the following parameters:
 
 This will always be the same as one of the parameters you give to the
 import method.  It will be one of the following: C<foreign_key>,
-C<insert>, C<linking_table>, C<lookup_columns>, C<row_column>,
-C<self_relation>, C<table>, C<table_column>, or C<update>.
+C<linking_table>, C<lookup_columns>, C<row_column>, C<self_relation>,
+C<table>, C<table_column>.
 
 =back
 
-The following parameters vary from case to case:
+The following parameters vary from case to case, depending on the
+value of C<type>.
 
 When the type is C<table>:
 
@@ -829,185 +1390,6 @@ parent objects (true) or child objects (false).
 
 =back
 
-=head1 EFFECTS
-
-Using this module has several effects on your schema's objects.
-
-=head2 New Class Names
-
-Using this module causes your schema, table, and row objects to be
-blessed into subclasses of
-L<C<Alzabo::Runtime::Schema>|Alzabo::Runtime::Schema>,
-L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table>,
-L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>, respectively.  These
-subclasses contain the various methods created by this module.  The
-new class names are formed by using the
-L<C<class_root>|Alzabo::MethodMaker/PARAMETERS> parameter and adding
-to it.
-
-=head3 Schema
-
-C<E<lt>class rootE<gt>::Schema>
-
-=head3 Tables
-
-C<E<lt>class rootE<gt>::Table::<table nameE<gt>>
-
-=head3 Rows
-
-C<E<lt>class rootE<gt>::Row::<table nameE<gt>>, subclassed by
-C<E<lt>class rootE<gt>::CachedRow::<table nameE<gt>> and C<E<lt>class
-rootE<gt>::UncachedRow::<table nameE<gt>>
-
-With a root of 'My::Stuff', and a schema with only two tables, 'movie'
-and 'image', this would result in the following class names:
-
- My::Stuff::Schema
- My::Stuff::Table::movie
- My::Stuff::Row::movie
-   My::Stuff::CachedRow::movie
-   My::Stuff::UncachedRow::movie
- My::Stuff::Table::image
- My::Stuff::Row::image
-   My::Stuff::CachedRow::image
-   My::Stuff::UncachedRow::image
-
-=head2 Loading Classes
-
-For each class into which an object is blessed, this module will
-attempt to load that class via a C<use> statement.  If there is no
-module found this will not cause an error.  If this class defines any
-methods that have the same name as those this module generates, then
-this module will not attempt to generate them.
-
-=head3 C<validate_insert> and C<validate_update> methods
-
-These methods can be defined in the relevant table and row class,
-respectively.  If they are defined then they will be called before any
-actual inserts or updates are done.
-
-The C<validate_update> method should be defined in the C<E<lt>class
-rootE<gt>::Row::<table nameE<gt>> class, not its subclasses.
-
-They both should expect to receive a hash of column names to values as
-their parameters.  For C<validate_insert>, this will represent the new
-row to be inserted.  For C<validate_update>, this will represent the
-changes to the existing row.
-
-These methods should throw exceptions if there are errors with this
-data.
-
-For this to work, you must specify the C<insert> and/or C<update>
-parameters as true when loading the module.  This causes these methods
-to be overridden in the generated subclasses.
-
-=head1 METHOD CREATION OPTIONS
-
-When using Alzabo::MethodMaker, you may specify any of the following
-parameters.  Specifying 'all' causes all of them to be used.
-
-=head2 Schema object methods
-
-=head3 tables => $bool
-
-Creates methods for the schema that return the table object matching
-the name of the method.
-
-For example, given a schema containing tables named 'movie' and
-'image', this would create methods that could be called as
-C<$schema-E<gt>movie> and C<$schema-E<gt>image>.
-
-=head2 Table object methods.
-
-=head3 table_columns => $bool
-
-Creates methods for the tables that return the column object matching
-the name of the method.  This is quite similar to the C<tables> option
-for schemas.
-
-=head3 insert => $bool
-
-Create an C<insert> method overriding the one in
-L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table>.  See L<Loading
-Classes> for more details.  Unless you have already defined a
-C<validate_insert> method for the generated table class this method
-will not be overridden.
-
-=head2 Row object methods
-
-=head3 row_column => $bool
-
-This tells MethodMaker to create get/set methods for each column a row
-has.  These methods take a single optional argument, which if given
-will cause that column to be updated for the row.
-
-=head3 update => $bool
-
-Create an C<update> method overriding the one in
-L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>.  See L<Loading
-Classes> for more details.  Unless you have already defined a
-C<validate_update> method for the generated row class this method will
-not be overridden.
-
-=head3 foreign_keys => $bool
-
-Creates methods in row objects named for the table to which the
-relationship exists.  These methods return either a single
-L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> object or a single
-L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object,
-depending on the cardinality of the relationship.
-
-Take these tables as an example.
-
-  Movie                     Credit
-  ---------                 --------
-  movie_id                  movie_id
-  title                     person_id
-                            role_name
-
-NOTE: This option must be true if you want any of the following
-options to be used.
-
-=head3 linking_tables => $bool
-
-A linking table, as defined here, is a table with a two column primary
-key that, with each column being a foreign key to another table's
-primary key.  These tables exist to facilitate n..n logical
-relationships.  If both C<foreign_keys> and C<linking_tables> are
-true, then methods will be created that skip the intermediate linking
-tables
-
-=head3 lookup_columns => $bool
-
-Lookup columns are columns in foreign tables to which a table has a
-many-to-one or one-to-one relationship to the foreign table's primary
-key.  For example, given the tables below:
-
-  Restaurant                    Cuisine
-  ---------                     --------
-  restaurant_id                 cuisine_id
-  name              (n..1)      description
-  phone                         spiciness
-  cuisine_id
-
-If we have a Restaurant row, we might want to have methods available
-such as ->cuisine_description or ->cuisine_spiciness.
-
-=head3 self_relations => $bool
-
-A self relation is when a table has a parent/child relationship with
-itself.  Here is an example:
-
- Location
- --------
- location_id
- name
- parent_location_id
-
-NOTE: If the relationship has a cardinality of 1..1 then no methods
-will be created, as this option is really intended for parent/child
-relationships.  This may change in the future.
-
 =head1 NAMING SUB EXAMPLE
 
 Here is an example that covers all of the possible options:
@@ -1077,15 +1459,12 @@ Here is an example that covers all of the possible options:
 
      if ( $p{type} eq 'lookup_columns' )
      {
-         return join '_', map { lc $_->name } $p{foreign_key}->table_to->name, $p{column}->name;
+         return join '_', map { lc $_->name } $p{foreign_key}->table_to, $p{column};
      }
 
      # This should be fairly self-explanatory.
      return $p{parent} ? 'parent' : 'children'
 	 if $p{type} eq 'self_relation';
-
-     # As should this.
-     return $p{type} if grep { $p{type} eq $_ } qw( insert update );
 
      # And just to make sure that nothing slips by us we do this.
      die "unknown type in call to naming sub: $p{type}\n";

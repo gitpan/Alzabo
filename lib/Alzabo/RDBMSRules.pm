@@ -8,7 +8,7 @@ use Alzabo::Util;
 use Params::Validate qw( validate validate_pos );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.34 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.35 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -87,6 +87,11 @@ sub type_is_character
 sub type_is_blob
 {
     shift()->_virtual;
+}
+
+sub blob_type
+{
+    shift()->virtual;
 }
 
 # feature probing

@@ -4,11 +4,11 @@ use strict;
 
 use IPC::Shareable;
 
-use vars qw($SELF $VERSION %IPC);
+use vars qw($VERSION %IPC);
 
 use base qw( Alzabo::ObjectCache::Sync );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -27,12 +27,6 @@ sub _init
 {
     my $self = shift;
     $self->{ipc} = \%IPC;
-}
-
-sub clear
-{
-    return unless $SELF;
-    %{ $SELF->{times} } = ();
 }
 
 sub update
@@ -77,21 +71,8 @@ it uses handles locking issues.
 
 In normal circumstances, the IPC segment used by this module is
 deleted when the process that first loaded the module ends.  If the
-program is aborted abnormally (via an external signal) then this
-cleanup will probably not occur.
-
-=head1 IMPORT PARAMETERS
-
-=over 4
-
-=item * clear_on_startup => $boolean
-
-If this is true, then the IPC segment is cleared when the module is
-loaded.  This is generally desirable as an existing segment may
-contain spurious entries from previous executions of the program.
-However, in the interests of safety, this parameter defaults to false.
-
-=back
+program is aborted abnormally (via certain signals, for example) then
+this cleanup will probably not occur.
 
 =head1 AUTHOR
 

@@ -2,7 +2,7 @@ package Alzabo::ObjectCache::Sync::SDBM_File;
 
 use strict;
 
-use vars qw($SELF $VERSION $DB $FILE $LOCK_FILE);
+use vars qw($VERSION $DB $FILE $LOCK_FILE);
 
 use base qw( Alzabo::ObjectCache::Sync::DBM );
 
@@ -11,7 +11,7 @@ use Alzabo::Exceptions;
 use Fcntl qw( :flock O_RDONLY O_RDWR O_CREAT );
 use SDBM_File;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -91,31 +91,6 @@ Alzabo::ObjectCache::SDBM_File - Uses an SDBM file to sync object caches
 
 This class implements object cache syncing between multiple processes
 using an SDBM_File.
-
-=head1 IMPORT PARAMETERS
-
-=over 4
-
-=item * sync_dbm_file => $filename
-
-This parameter is required.  It is the name of the file which will be
-used to store the syncing data.  If the file does not exist, it will
-be created.  If it does exist it will not be overwritten.
-
-=item * lock_file => $filename
-
-This parameter is optional.  It defaults to a file named
-"SDBM_File.lock" in your Alzabo installation's top level directory.
-
-=item * clear_on_startup => $boolean
-
-If this is true, then a new file is B<always> created on when the
-module is loaded, overwriting any existing file.  This is generally
-desirable as an existing file may contain spurious entries from
-previous executions of the program.  However, in the interests of
-safety, this parameter defaults to false.
-
-=back
 
 =head1 AUTHOR
 

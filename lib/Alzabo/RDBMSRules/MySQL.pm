@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.50 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.51 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -329,6 +329,8 @@ sub type_is_blob
 
     return 1 if $type =~ /\A(?:TINY|MEDIUM|LONG)?(?:TEXT|BLOB)\z/;
 }
+
+sub blob_type { return 'BLOB' }
 
 sub column_types
 {

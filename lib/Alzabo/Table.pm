@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use Tie::IxHash;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.33 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.34 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -28,15 +28,26 @@ sub name
     return $self->{name};
 }
 
+sub has_column
+{
+    my $self = shift;
+
+    validate_pos( @_, { type => SCALAR } );
+
+    return $self->{columns}->FETCH(shift);
+}
+
 sub column
 {
     my $self = shift;
+
+    validate_pos( @_, { type => SCALAR } );
     my $name = shift;
 
     Alzabo::Exception::Params->throw( error => "Column $name doesn't exist in $self->{name}" )
 	unless $self->{columns}->EXISTS($name);
 
-    return $self->{columns}->FETCH($name);
+    return $self->has_column($name);
 }
 
 sub columns
@@ -231,6 +242,13 @@ given.
 A list of L<C<Alzabo::Column>|Alzabo::Column> objects that match the
 list of names given.  If no list is provided, then it returns all
 column objects for the table.
+
+=head2 has_column ($name)
+
+=head3 Returns
+
+A true or false value depending on whether or not the column exists in
+the table.
 
 =head2 primary_key
 

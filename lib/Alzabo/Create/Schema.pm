@@ -21,7 +21,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.67 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.69 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -1010,6 +1010,8 @@ you want to make sure you have a copy of the schema saved.
 
 =for pod_merge tables
 
+=for pod_merge has_table
+
 =head2 make_table
 
 This method makes a new table and adds it to the schema, the
@@ -1162,20 +1164,10 @@ schema to be marked as instantiated.
 
 Wherever possible, existing data will be preserved.
 
-=head3 Parameters
-
-=over 4
-
-=item * host => $host
-
-=item * user => $user
-
-=item * password => $user
-
-These three parameters are all passed the schema's Alzabo::Driver
-object to connect to the database.
-
-=back
+Any parameters are given are passed to the driver object when
+connecting to the database.  Generally, this will be the username and
+password, possibly a host name, and any other parameters that the
+driver might accept.
 
 =head2 instantiated
 
@@ -1203,20 +1195,10 @@ Drops the database/schema from the RDBMS.  This will cause the schema
 to be marked as not instantiated.  This method does not delete the
 Alzabo files from disk.  To do this, call the C<delete> method.
 
-=head3 Parameters
-
-=over 4
-
-=item * host => $host
-
-=item * user => $user
-
-=item * password => $user
-
-These three parameters are all passed the schema's Alzabo::Driver
-object to connect to the database.
-
-=back
+Any parameters are given are passed to the driver object when
+connecting to the database.  Generally, this will be the username and
+password, possibly a host name, and any other parameters that the
+driver might accept.
 
 =head2 delete
 
@@ -1259,7 +1241,7 @@ Saves the schema to a file on disk.
 
 =for pod_merge finish_transaction
 
-=for pod_merge run_in_transasction ( sub { code... } )
+=for pod_merge run_in_transaction ( sub { code... } )
 
 =for pod_merge driver
 

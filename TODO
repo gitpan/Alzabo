@@ -1,17 +1,12 @@
 Short term:
 
-- Alzabo::ObjectCache::RDBMS - this module will also do syncing
-  all in one.  This will allow the caching/syncing to occur across
-  multiple machines with multiple processes.
-
 - Expand regression tests for core API - SQLMaker, RDBMSRules.
 
 - Make it possible to do multiple outer joins in a single query.
 
 - Give the options to save objects to disk in something a bit more
-  robust than a serialized object form.  Barrie Slaymaker is (was?)
-  working on a generic XML language for database schema modelling, to
-  be called DBML.
+  robust than a serialized object form.  Eventually, Alzabo will spit
+  out some sort of XML.
 
 - Support transactions in the caching system.  this eventually means
   real transactions at the middleware layer.  argh!

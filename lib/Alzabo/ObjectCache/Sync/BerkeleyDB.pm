@@ -2,14 +2,14 @@ package Alzabo::ObjectCache::Sync::BerkeleyDB;
 
 use strict;
 
-use vars qw($SELF $VERSION $DB $ENV);
+use vars qw($VERSION $DB $ENV);
 
 use base qw( Alzabo::ObjectCache::Sync::DBM );
 
 use Alzabo::Exceptions;
-use BerkeleyDB qw( DB_CREATE DB_INIT_MPOOL DB_INIT_CDB DB_NOTFOUND );
+use BerkeleyDB qw( DB_CREATE DB_INIT_MPOOL DB_INIT_CDB DB_NOTFOUND DB_NOOVERWRITE DB_KEYEXIST );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -46,7 +46,7 @@ sub dbm
     my $preserve = shift;
 
     my $return;
-    if ($mode eq 'read' || $preserve)
+    if ($mode eq 'read')
     {
 	my $status = $DB->db_get($id, $return);
 	Alzabo::Exception::System->throw( error => "Error retrieving sync time for id $id from Berkeley DB: $BerkeleyDB::Error" )
@@ -55,11 +55,14 @@ sub dbm
 
     if ($mode eq 'write')
     {
-	unless ($preserve && defined $return && $return > 0)
+	my $status = $DB->db_put( $id => $val, $preserve ? DB_NOOVERWRITE : () );
+
+	if ( $status != 0 )
 	{
-	    $DB->db_put( $id => $val ) == 0
-		or Alzabo::Exception::System->throw( error => "Error storing object id $id from Berkeley DB: $BerkeleyDB::Error" );
-	    $return = $val;
+	    unless ( $preserve && $status == DB_KEYEXIST )
+	    {
+		Alzabo::Exception::System->throw( error => "Error storing object id $id from Berkeley DB: $BerkeleyDB::Error" );
+	    }
 	}
     }
 
@@ -92,28 +95,8 @@ BerkeleyDB Perl module, which can take advantage of the new features
 available in versions 2 and 3 of the Berkeley DB library.  These
 features allow this module to avoid having to constantly open and
 close the DBM file.  In addition, locking is handled by the Berkeley
-DB library at a much lower level than would be possible from this
-module.
-
-=head1 IMPORT PARAMETERS
-
-=over 4
-
-=item * sync_dbm_file => $filename
-
-This parameter is required.  It is the name of the file which will be
-used to store the syncing data.  If the file does not exist, it will
-be created.  If it does exist it will not be overwritten.
-
-=item * clear_on_startup => $boolean
-
-If this is true, then a new file is B<always> created on when the
-module is loaded, overwriting any existing file.  This is generally
-desirable as an existing file may contain spurious entries from
-previous executions of the program.  However, in the interests of
-safety, this parameter defaults to false.
-
-=back
+DB library at a much lower level than would be possible with a
+different DBM implementation.
 
 =head1 AUTHOR
 

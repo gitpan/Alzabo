@@ -510,7 +510,7 @@ foreach my $db (@db)
     if ($db eq 'MySQL')
     {
 	eval { $t1->column('foo_pk')->set_type('text') };
-	my_isa_ok( $@, 'Alzabo::Exception',
+	my_isa_ok( $@, 'Alzabo::Exception::RDBMSRules',
 		"Attempting to set a primary key column to the 'text' type should throw an exception" );
     }
 

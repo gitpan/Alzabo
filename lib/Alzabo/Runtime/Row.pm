@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.60 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.62 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -266,22 +266,17 @@ sub rows_by_foreign_key
 
     my $fk = delete $p{foreign_key};
 
-    my %fk_vals = map { $_->[1]->name => $self->select( $_->[0]->name ) } $fk->column_pairs;
-
-    if ( ( grep { $_->is_primary_key } $fk->columns_to ) == scalar $fk->table_to->primary_key )
+    if ($p{where})
     {
-	return $fk->table_to->row_by_pk( pk => \%fk_vals, %p );
+	$p{where} = [ $p{where} ] unless UNIVERSAL::isa( $p{where}[0], 'ARRAY' );
     }
-    else
-    {
-	if ($p{where})
-	{
-	    $p{where} = [ $p{where} ] unless UNIVERSAL::isa( $p{where}[0], 'ARRAY' );
-	}
 
-	push @{ $p{where} }, map { [ $_, '=', $fk_vals{ $_->name } ] } $fk->columns_to;
-	return $fk->table_to->rows_where(%p);
-    }
+    push @{ $p{where} }, map { [ $_->[1], '=', $self->select( $_->[0]->name ) ] } $fk->column_pairs;
+    my $cursor = $fk->table_to->rows_where(%p);
+
+    # if the relationship is not 1..n, then only one row can be
+    # returned (or referential integrity is hosed).
+    return $fk->is_one_to_many ? $cursor : ($cursor->all_rows)[0];
 }
 
 # Class or object method
@@ -290,21 +285,26 @@ sub id
     my $self = shift;
     my %p = @_;
 
+    my $id_string;
     if (ref $self)
     {
-	return $self->{id_string} if exists $self->{id_string};
-	$self->{id_string} = join ';:;_;:;', ( $self->table->schema->name,
-					       $self->table->name,
-					       map { $_, $self->{id}{$_} } sort keys %{ $self->{id} } );
-	return $self->{id_string};
+	unless ( exists $self->{id_string} )
+	{
+	    $self->{id_string} = join ';:;_;:;', ( $self->table->schema->name,
+						   $self->table->name,
+						   map { $_, $self->{id}{$_} } sort keys %{ $self->{id} } );
+	}
+	$id_string = $self->{id_string};
     }
     else
     {
 	my $id_hash = $self->_make_id_hash(%p);
-	return join ';:;_;:;', ( $p{table}->schema->name,
-				 $p{table}->name,
-				 map { $_, $id_hash->{$_} } sort keys %$id_hash );
+	$id_string = join ';:;_;:;', ( $p{table}->schema->name,
+				       $p{table}->name,
+				       map { $_, $id_hash->{$_} } sort keys %$id_hash );
     }
+
+    return $id_string;
 }
 
 sub _no_such_row_error
@@ -442,7 +442,7 @@ cursor.
 
 All other parameters given will be passed directly to the
 L<C<new>|new> method (such as the C<no_cache>
-paremeter).
+parameter).
 
 =head2 new
 

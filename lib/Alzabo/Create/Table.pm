@@ -12,7 +12,7 @@ use Tie::IxHash;
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.41 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -446,6 +446,8 @@ Changes the name of the table.
 =for pod_merge column
 
 =for pod_merge columns
+
+=for pod_merge has_column
 
 =head2 make_column
 

@@ -328,7 +328,7 @@ EOF
 
 	my $db_name = prompt( '  Database name?', "test_alzabo_$_" );
 
-	push @TESTS, { rdbms => $_, user => $user, password => $password, host => $host, db_name => $db_name };
+	push @TESTS, { rdbms => $_, user => $user, password => $password, host => $host, schema_name => $db_name };
     }
 }
 

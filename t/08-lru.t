@@ -32,7 +32,7 @@ my $t = pop @$tests;
     &{ "$t->{rdbms}_make_schema" }(%$t);
 }
 
-my $s = Alzabo::Runtime::Schema->load_from_file( name => $t->{db_name} );
+my $s = Alzabo::Runtime::Schema->load_from_file( name => $t->{schema_name} );
 
 foreach ( qw( user password host ) )
 {

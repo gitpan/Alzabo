@@ -3,9 +3,9 @@ package Alzabo::ObjectCache::Store::BerkeleyDB;
 use vars qw($SELF $VERSION);
 
 use Alzabo::Exceptions;
-use BerkeleyDB qw( DB_CREATE DB_INIT_MPOOL DB_INIT_CDB DB_NEXT DB_NOOVERWRITE DB_KEYEXIST DB_NOTFOUND );
+use BerkeleyDB qw( DB_CREATE DB_INIT_MPOOL DB_INIT_CDB DB_NEXT DB_NOOVERWRITE DB_KEYEXIST DB_NOTFOUND DB_RMW DB_WRITECURSOR );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -48,11 +48,24 @@ sub new
 sub clear
 {
     return unless $SELF;
-    my $cursor = $DB->db_cursor;
-    my ($t1, $t2);
-    while ( $cursor->c_del == 0 )
+
+    my $cursor = $DB->db_cursor( DB_WRITECURSOR );
+
+    my $status = 0;
+    my ($t1, $t2) = (0, 0); # temp vars that hold the key/value pairs but are ignored
+    while (1)
     {
-	$cursor->c_get( $t1, $t2, DB_NEXT );
+	$status = $cursor->c_get( $t1, $t2, DB_NEXT | DB_RMW );
+
+	last if $status == DB_NOTFOUND;
+
+	Alzabo::Exception::System->throw( error => "Error retrieving next key from BerkeleyDB database: $BerkeleyDB::Error" )
+	    unless $status == 0;
+
+	$status = $cursor->c_del;
+
+	Alzabo::Exception::System->throw( error => "Error deleting key from BerkeleyDB database: $BerkeleyDB::Error" )
+	    unless $status == 0;
     }
 }
 
@@ -66,7 +79,7 @@ sub fetch_object
 
     return if $status == DB_NOTFOUND;
 
-    Alzabo::Exception::System->throw( error => "Error retrieving object id '$id' from Berkeley DB: $BerkeleyDB::Error ($status)" )
+    Alzabo::Exception::System->throw( error => "Error retrieving object id '$id' from Berkeley DB: $BerkeleyDB::Error" )
 	if $status;
 
     return Alzabo::Runtime::Row->thaw($ser);
@@ -98,7 +111,7 @@ __END__
 
 =head1 NAME
 
-Alzabo::ObjectCache::Store::BerkeleyDB - Cache objects in memory
+Alzabo::ObjectCache::Store::BerkeleyDB - Cache objects in a BerkeleyDB file
 
 =head1 SYNOPSIS
 
@@ -110,69 +123,6 @@ Alzabo::ObjectCache::Store::BerkeleyDB - Cache objects in memory
 
 This class simply stores cached objects in a DBM file using the
 C<BerkeleyDB> module.
-
-=head1 IMPORT PARAMETERS
-
-=over 4
-
-=item * store_dbm_file => $filename
-
-This parameter is required.  It is the name of the file which will be
-used to store the cached row objects.  If the file does not exist, it
-will be created.  If it does exist it will not be overwritten.
-
-=item * clear_on_startup => $boolean
-
-If this is true, then a new file is B<always> created on when the
-module is loaded, overwriting any existing file.  This is generally
-desirable as an existing file may contain spurious entries from
-previous executions of the program.  However, in the interests of
-safety, this parameter defaults to false.
-
-=back
-
-=head1 METHODS
-
-Note that pretty much all the methods that take an object as an
-argument will silently do nothing if the object is not already in the
-cache.  The obvious exception is the
-L<C<store_object>|Alzabo::ObjectCache::Store::BerkeleyDB/store_object
-($object)> method.
-
-=head2 new
-
-=head3 Returns
-
-A new C<Alzabo::ObjectCache::Store::BerkeleyDB> object.
-
-=head2 fetch_object ($id)
-
-=head3 Returns
-
-The specified object if it is in the cache.  Otherwise it returns
-undef.
-
-=head2 store_object ($object)
-
-Stores an object in the cache.  This will not overwrite an existing
-object in the cache.  To do that you must first call the
-L<C<delete_from_cache>|Alzabo::ObjectCache::Store::BerkeleyDB/delete_from_cache
-($id)> method.
-
-=head2 delete_from_cache ($id)
-
-This method allows you to remove an object from the cache.  This does
-not register the object as deleted.  It is provided solely so that you
-can call L<C<store_object>|Alzabo::ObjectCache/store_object ($object)>
-after calling this method and have
-L<C<store_object>|Alzabo::ObjectCache/store_object ($object)> actually
-store the new object.
-
-=head1 CLASS METHOD
-
-=head2 clear
-
-Call this method to completely clear the cache.
 
 =head1 AUTHOR
 

@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -66,6 +66,7 @@ sub validate_column_type
 					   BOOL
 					   BOOLEAN
 					   BOX
+					   BYTEA
 					   CHAR
 					   CHARACTER
 					   CIDR
@@ -200,8 +201,13 @@ sub type_is_char
 
 sub type_is_blob
 {
-    return 0;
+    my $self = shift;
+    my $type = uc shift;
+
+    return 1 if $type =~ /\ABYTEA\z/;
 }
+
+sub blob_type { return 'BYTEA' }
 
 sub column_types
 {
@@ -215,6 +221,8 @@ sub column_types
 	       CHAR
 	       VARCHAR
 	       TEXT
+
+               BYTEA
 
 	       DATE
 	       TIME

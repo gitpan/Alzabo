@@ -59,7 +59,7 @@ sub dump_schema
     }
     else
     {
-	($rdbms) = (split /::/, ref $s->driver)[2];
+	($rdbms) = (split /::/, ref $s->rules)[2];
     }
     push @eval, "\trdbms => '$rdbms',";
 

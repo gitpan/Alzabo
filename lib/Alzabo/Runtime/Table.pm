@@ -12,7 +12,7 @@ use Time::HiRes qw(time);
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.57 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.58 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -620,6 +620,8 @@ context and a list of array references in list context.
 =for pod_merge column
 
 =for pod_merge columns
+
+=for pod_merge has_column
 
 =for pod_merge primary_key
 

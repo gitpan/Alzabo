@@ -62,12 +62,14 @@ lib/Alzabo/ObjectCache/Store/BerkeleyDB.pm
 lib/Alzabo/ObjectCache/Store/LRU.pm
 lib/Alzabo/ObjectCache/Store/Memory.pm
 lib/Alzabo/ObjectCache/Store/Null.pm
+lib/Alzabo/ObjectCache/Store/RDBMS.pm
 lib/Alzabo/ObjectCache/Sync.pm
 lib/Alzabo/ObjectCache/Sync/BerkeleyDB.pm
 lib/Alzabo/ObjectCache/Sync/DB_File.pm
 lib/Alzabo/ObjectCache/Sync/DBM.pm
 lib/Alzabo/ObjectCache/Sync/IPC.pm
 lib/Alzabo/ObjectCache/Sync/Null.pm
+lib/Alzabo/ObjectCache/Sync/RDBMS.pm
 lib/Alzabo/ObjectCache/Sync/SDBM_File.pm
 
 lib/Alzabo/FAQ.pod
@@ -83,11 +85,15 @@ t/04-rev_engineer.t
 t/04-db_drop.t
 t/05a-rules-mysql.t
 t/06-db_drop.t
-t/07-methodmaker.t
+t/07a-methodmaker.t
+t/07b-db_drop.t
+t/07c-methodmaker-nocache.t
+t/08-db_drop.t
 t/08-lru.t
 t/99-cleanup.t
 t/base.pl
 t/make_schemas.pl
+t/methodmaker.pl
 t/runtime_tests.pl
 t/utils.pl
 

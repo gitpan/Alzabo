@@ -11,7 +11,7 @@ require 'base.pl';
 sub mysql_make_schema
 {
     my %p = @_;
-    my $s = Alzabo::Create::Schema->new( name => $p{db_name},
+    my $s = Alzabo::Create::Schema->new( name => $p{schema_name},
 					 rdbms => 'MySQL',
 				       );
 
@@ -159,10 +159,10 @@ sub mysql_make_schema
 		      to_is_dependent => 0,
 		    );
 
-    $s->save_to_file;
-
     delete $p{rdbms};
     $s->create(%p);
+
+    $s->save_to_file;
 
     $s->driver->disconnect;
 
@@ -174,7 +174,7 @@ sub mysql_make_schema
 sub pg_make_schema
 {
     my %p = @_;
-    my $s = Alzabo::Create::Schema->new( name => $p{db_name},
+    my $s = Alzabo::Create::Schema->new( name => $p{schema_name},
 					 rdbms => 'PostgreSQL',
 				       );
 
@@ -317,10 +317,10 @@ sub pg_make_schema
 		      to_is_dependent => 0,
 		    );
 
-    $s->save_to_file;
-
     delete $p{rdbms};
     $s->create(%p);
+
+    $s->save_to_file;
 
     $s->driver->disconnect;
 

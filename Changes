@@ -1,3 +1,63 @@
+0.58
+
+ENHANCEMENTS:
+
+- Added new insert_hooks, update_hooks, select_hooks, and delete_hooks
+options to Alzabo::MethodMaker.  Suggested by Ilya Martynov.
+
+- Moved all the important document for the object caching system into
+Alzabo::ObjectCache, including the import options for all of the
+various modules.
+
+- Added Alzabo::ObjectCache::Sync::RDBMS &
+Alzabo::ObjectCache::Store::RDBMS.  The former finally allows
+synchronization of multiple processes across multiple machines!
+
+- Add Alzabo::Schema->has_table and Alzabo::Table->has_column methods.
+
+- Make BYTEA a legal column type for postgres.  This is treated as a
+blob type.
+
+BUG FIXES:
+
+- The way cardinality and dependency was being represented in the
+schema graphs was sometimes backward and sometimes just broken.
+
+- Fixed Alzabo::ObjectCache::Store::BerkeleyDB->clear, which was not
+actually doing anything.  Added tests that catch this.
+
+- The lookup_tables option, which was deprecated in 0.57, was not
+being allowed at all.
+
+- Calls to select_hash on cached rows were not going through the cache
+checking routines, possibly returning expired data.  Added tests for
+this.
+
+- Eliminate race condition in Alzabo::ObjectCache::Sync::BerkeleyDB.
+
+- The Alzabo::Runtime::Row->rows_by_foreign_key method wasn't doing
+quite what it said.  In cases where there was a 1..1 or n..1
+relationship to columns that were not the table's primary key, a
+cursor would be returned instead of a single row.  Reported by Ilya
+Martynov.
+
+- Alzabo::MethoMaker could generate 'subroutine foo redefined'
+warnings .  Reported by Ilya Martynov.
+
+- Fixed clear method for all Alzabo::ObjectCache::Store::* modules.
+
+DEPRECATIONS:
+
+- The insert and update options for Alzabo::MethodMaker have been
+deprecated.  They have been replaced by the new insert_hooks and
+update_hooks options, along with new select_hooks and delete_hooks
+options.
+
+INCOMPATIBILITIES:
+
+- If you specify give the 'all' parameter to MethodMaker,
+'insert' and 'update' are no longer included.
+
 0.57
 
 ENHANCEMENTS:
@@ -5,8 +65,8 @@ ENHANCEMENTS:
 - When MethodMaker creates 'row_column' methods, these are now get/set
 methods.
 
-- Added lookup_columns to MethodMaker option (like lookup_tables but
-more flexible).  This replaces the now deprecated lookup_tables
+- Added new lookup_columns option to MethodMaker (like lookup_tables
+but more flexible).  This replaces the now deprecated lookup_tables
 option.  See DEPRECATIONS and INCOMPATIBILITIES for more details.
 
 - Added the ability to make any storage cache module an LRU.  Simply

@@ -46,7 +46,7 @@ foreach my $t ($s->tables)
 	    $p{arrowhead} = $fk->from_is_dependent ? 'dot' : 'odot';
 	    $p{arrowtail} = $fk->to_is_dependent ? 'dot' : 'odot';
 	}
-	elsif ($fk->is_one_to_many)
+	elsif ($fk->is_many_to_one)
 	{
 	    $p{dir} = 'forward';
 	    $p{arrowhead} = $fk->from_is_dependent ? 'dot' : 'odot';
@@ -55,7 +55,7 @@ foreach my $t ($s->tables)
 	else
 	{
 	    $p{dir} = 'back';
-	    $p{arrowtail} = $fk->from_is_dependent ? 'invdot' : 'invodot';
+	    $p{arrowhead} = $fk->from_is_dependent ? 'invdot' : 'invodot';
 	    $p{arrowtail} = $fk->to_is_dependent ? 'dot' : 'odot';
 	}
 

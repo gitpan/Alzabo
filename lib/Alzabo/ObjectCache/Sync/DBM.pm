@@ -8,7 +8,7 @@ use base qw( Alzabo::ObjectCache::Sync );
 
 use Alzabo::Exceptions;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -30,12 +30,6 @@ sub sync_time
     return $self->dbm( read => $id );
 }
 
-sub clear
-{
-    return unless $SELF;
-    %{ $SELF->{times} } = ();
-}
-
 __END__
 
 =head1 NAME
@@ -43,6 +37,8 @@ __END__
 Alzabo::ObjectCache::Sync::DBM - Base class for syncing modules that use DBM files
 
 =head1 SYNOPSIS
+
+  package Alzabo::ObjectCache::Sync::SomeDBMImplementation;
 
   use base qw( Alzabo::ObjectCache::Sync::DBM );
 
@@ -53,7 +49,18 @@ a C<dbm> method and an optional C<import> method.
 
 =head1 INTERFACE
 
-todo
+=head2 import
+
+This method is where the subclass should do whatever setup it needs to
+do.  This could mean creating a new DBM file if needed and perhaps
+opening it.  It is desirable to do this here if the objects can be
+shared across multiple processes.
+
+=head2 dbm ( $mode, $id, $value, $preserve )
+
+The first argument will be either 'read' or 'write'.  The second is
+the object id.  The last two arguments are only relevant when the mode
+is 'write'.
 
 =head1 AUTHOR
 

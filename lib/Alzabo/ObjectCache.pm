@@ -6,7 +6,7 @@ use vars qw($SELF $VERSION %ARGS);
 # load this for use by Alzabo::Runtime::Row
 use Alzabo::Runtime::CachedRow;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.24 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.29 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -120,8 +120,8 @@ Alzabo::ObjectCache - A simple in-memory cache for row objects.
 
 =head1 SYNOPSIS
 
-  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::MemoryStore',
-                           sync  => 'Alzabo::ObjectCache::BerkeleySync',
+  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
+                           sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB',
                            dbm_file => 'somefile.db' );
 
 =head1 DESCRIPTION
@@ -142,10 +142,53 @@ object is no longer available.  Similarly if process 1 updates the
 database then if there is a cached object in process 2, it needs to
 know that it should fetch its data again.
 
+=head1 IMPORT
+
+This module is configured entirely through the parameters passed when
+it is imported.
+
+=head2 Parameters
+
+=over 4
+
+=item * store => 'Alzabo::ObjectCache::Store::Foo'
+
+This should be the name of a class that implements the
+Alzabo::ObjectCache object storing interface.
+
+The default is
+L<C<Alzabo::ObjectCache::Store::Memory>|"Alzabo::ObjectCache::Store::Memory">.
+
+=item * sync => 'Alzabo::ObjectCache::Sync::Foo'
+
+This should be the name of a class that implements the
+Alzabo::ObjectCache object syncing interface.
+
+Default is
+L<C<Alzabo::ObjectCache::Sync::Null>|"Alzabo::ObjectCache::Sync::Null">.
+
+=item * lru_size => $size
+
+This is the maximum number of objects you want the storing class to
+store at once.  If it is 0 or undefined, the default, the storage
+class will store an unlimited number of objects.
+
+=back
+
+All parameters given will be also be passed through to the import
+method of the storing and syncing class being used.
+
 =head1 LRU STORAGE
 
 Any storage module can be turned into an LRU cache by passing an
 lru_size parameter to this module when using it.
+
+For example:
+
+  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
+                           lru_size => 100,
+                           sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB',
+                           dbm_file => 'somefile.db' );
 
 =head1 CACHING SCENARIOS
 
@@ -199,7 +242,7 @@ Assume two process, ids 1 and 2.
 
 An C<Alzabo::Exception::NoSuchRow> exception is thrown.
 
-=item * Alzabo::ObjectCache::NullSync module is in use
+=item * Alzabo::ObjectCache::Sync::Null module is in use
 
 If the column(s) have been previously retrieved in process 2, then
 that data will be returned.  Otherwise, an
@@ -231,7 +274,7 @@ Assume two process, ids 1 and 2.
 
 An C<Alzabo::Exception::NoSuchRow> exception is thrown.
 
-=item * Alzabo::ObjectCache::NullSync module is in use
+=item * Alzabo::ObjectCache::Sync::Null module is in use
 
 The object will attempt to update the database.  This is a potential
 disaster if, in the meantime, another row with the same primary key
@@ -265,7 +308,7 @@ Assume two process, ids 1 and 2.
 
 The data from process 2's update is returned.
 
-=item * Alzabo::ObjectCache::NullSync module is in use
+=item * Alzabo::ObjectCache::Sync::Null module is in use
 
 The data from process 1's update is returned.
 
@@ -310,7 +353,7 @@ MySQL, where numbers could be re-used.
 =head2 Summary
 
 The most important thing to take from this is that you should B<never>
-use the C<Alzabo::ObjectCache::NullSync> class in a multi-process
+use the C<Alzabo::ObjectCache::Sync::Null> class in a multi-process
 situation.  It is really only safe if you are sure your code will only
 be running in a single process at a time.
 
@@ -318,40 +361,224 @@ In all other cases, either use no caching or use one of the other
 syncing classes to ensure that data really is synced across multiple
 processes.
 
-=head1 METHODS
+=head1 RACE CONDITIONS
 
-=head2 import
+It is important to note that there are small race conditions in the
+syncing scheme.  When data is requested from a row object, the row
+object first makes sure that it is up to date with the database.  If
+it is not, it refreshes itself.  Then, it returns the requested data
+(whether or or not it had to refresh).  It is possible that in the
+time between checking whether or not it is expired that an update
+could occur.  This would not be seen by the row object.
 
-=head3 Parameters
+I don't occur this a bug since it is impossible to work around and is
+unlikely to be a problem.  In a single process, this is not an issue.
+In a multi-process application, this is the price that is paid for
+caching.
+
+If this is a problem for your application then you should not use
+caching.
+
+=head1 SYNCING MODULES
+
+The following syncing modules are available with Alzabo:
+
+=head2 Alzabo::ObjectCache::Sync::Null
+
+This module simply emulates the syncing interface without doing any
+actual syncing, though it does track deleted objects.  This module is
+useful is you want to cache objects in a single process but you don't
+need the overhead of real syncing.
+
+=head2 Alzabo::ObjectCache::Sync::BerkeleyDB
+
+=head2 Alzabo::ObjectCache::Sync::SDBM_File
+
+=head2 Alzabo::ObjectCache::Sync::DB_File
+
+These three modules all use DBM files, via the relevant module, to do
+multi-process syncing.  They are listed in order from fastest to
+slowest.  Using DB_File is significantly slower than either BerkeleyDB
+or SDBM_File, which are both relatively fast.
+
+They all take the same parameters:
 
 =over 4
 
-=item * store => 'Alzabo::ObjectCache::StoringClass'
+=item * sync_dbm_file => $filename
 
-This should be the name of a class that implements the
-Alzabo::ObjectCache object storing interface.
+The file which should be used to store syncing data.
 
-Default is
-L<C<Alzabo::ObjectCache::MemoryStore>|Alzabo::ObjectCache::Store::Memory>.
+=item * clear_on_startup => $boolean
 
-=item * sync => 'Alzabo::ObjectCache::SyncingClass'
-
-This should be the name of a class that implements the
-Alzabo::ObjectCache object syncing interface.
-
-Default is
-L<C<Alzabo::ObjectCache::NullSync>|Alzabo::ObjectCache::Sync::Null>.
-
-=item * lru_size => $size
-
-This is the maximum number of objects you want the storing class to
-store at once.  If it is 0 or undefined, the default, the storage
-class will store an unlimited number of objects.
+Indicates whether or not the file should be cleared before it is first
+used.
 
 =back
 
-All parameters given will be passed to the import method of the
-storing and syncing class being used.
+=head2 Alzabo::ObjectCache::Sync::RDBMS
+
+This module uses an RDBMS to do syncing.  This does B<not> need to be
+the same database as your data is stored in, though it could be.
+
+If the database it is told to use does not contain the table it needs,
+it will use the C<Alzabo::Create> modules to create it.  If you have
+warnings turned on, this will cause a warning telling you that these
+modules were loaded, as having them loaded in any sort of persistent
+process is probably a waste of memory.
+
+The table it stores data in looks like this:
+
+  AlzaboObjectCacheSync
+  ----------------------
+  object_id       varchar(22)   primary key
+  sync_time       varchar(40)
+
+This modules take the following parameters:
+
+=over 4
+
+=item * sync_schema_name => $name
+
+This should be the name of the schema where you want syncing data to
+be stored.  If it doesn't exist, this module will attempt to create
+it.
+
+=item * sync_rdbms => $name (optional)
+
+If the schema given does not exist, then this parameter is required so
+this module knows what type of database it is connecting to.
+
+=item * sync_user => $user (optional)
+
+A username with which to connect to the database.
+
+=item * sync_password => $password (optional)
+
+A password with which to connect to the database.
+
+=item * sync_host => $host (optional)
+
+The host where the database lives.
+
+=item * sync_connect_params => { extra_param => 1 }
+
+Extra connection parameters.  These will simply be passed onto the
+relevant Driver module.
+
+=back
+
+=head2 Alzabo::ObjectCache::Sync::IPC
+
+This module is quite slow and is included mostly for historical
+reasons (it was one of the first syncing modules made).  I recommend
+against using it but if you must it takes the following parameters:
+
+=over 4
+
+=item * clear_on_startup => $boolean
+
+Indicates whether or not the file should be cleared before it is first
+used.
+
+=back
+
+=head1 STORAGE MODULES
+
+All of the storage modules may be turned into LRU caches by simply
+passing the L<lru_size parameter|LRU STORAGE>.
+
+The following storage modules are included with Alzabo:
+
+=head2 Alzabo::ObjectCache::Store::Null
+
+This module mimics the storage interface without actually storing
+anything.  It is useful if you want to use syncing without any
+storage.
+
+=head2 Alzabo::ObjectCache::Store::Memory
+
+This module simply stored cached objects in memory.
+
+=head2 Alzabo::ObjectCache::Store::BerkeleyDB
+
+This module stores serialized cached objects in a DBM file using the
+BerkeleyDB module.
+
+It takes these parameters:
+
+=over 4
+
+=item * store_dbm_file => $filename
+
+The file which should be used to store serialized objects.
+
+=item * clear_on_startup => $boolean
+
+Indicates whether or not the file should be cleared before it is first
+used.
+
+=back
+
+=head2 Alzabo::ObjectCache::Store::RDBMS
+
+This module uses an RDBMS to do store.  This does B<not> need to be
+the same database as your data is stored in, though it could be.
+
+For example, if you are using Oracle as your primary RDBMS, caching
+serialized objects in a MySQL database might be a performance boost.
+
+If the database it is told to use does not contain the table it needs,
+it will use the C<Alzabo::Create> modules to create it.  If you have
+warnings turned on, this will cause a warning telling you that these
+modules were loaded, as having them loaded in any sort of persistent
+process is probably a waste of memory.
+
+The table it stores data in looks like this:
+
+  AlzaboObjectCacheStore
+  ----------------------
+  object_id       varchar(22)   primary key
+  object_data     blob
+
+The actual type of the object_data column will vary depending on what
+RDBMS you are using.
+
+This modules take the following parameters:
+
+=over 4
+
+=item * store_schema_name => $name
+
+This should be the name of the schema where you want syncing data to
+be stored.  If it doesn't exist, this module will attempt to create
+it.
+
+=item * store_rdbms => $name (optional)
+
+If the schema given does not exist, then this parameter is required so
+this module knows what type of database it is connecting to.
+
+=item * store_user => $user (optional)
+
+A username with which to connect to the database.
+
+=item * store_password => $password (optional)
+
+A password with which to connect to the database.
+
+=item * store_host => $host (optional)
+
+The host where the database lives.
+
+=item * store_connect_params => { extra_param => 1 }
+
+Extra connection parameters.  These will simply be passed onto the
+relevant Driver module.
+
+=back
+
+=head1 Alzabo::ObjectCache METHODS
 
 =head2 new
 
@@ -375,12 +602,9 @@ L<C<delete_from_cache>|Alzabo::ObjectCache/delete_from_cache
 
 =head2 is_expired ($object)
 
-Objects cached in this class are never expired.
-
 =head3 Returns
 
-This always false for this class because there is no notion of
-expiration for this cache.
+Whether or not the given object is expired.
 
 =head2 is_deleted ($object)
 
@@ -420,7 +644,12 @@ store the new object.
 
 Call this method to completely clear the cache.
 
-=head1 STORING INTERFACE
+=head1 MAKING YOUR OWN SUBCLASSES
+
+It is relatively easy to create your own storage or syncing modules by
+following a fairly simple interface.
+
+=head2 Storage Interface
 
 The interface that any object storing module needs to implement is as
 follows:
@@ -451,11 +680,11 @@ This method deletes an object from the cache.
 
 Completely clears the cache.
 
-=head1 SYNCING INTERFACE
+=head2 Syncing Interface
 
 Any class that implements the syncing interface should inherit from
-L<C<Alzabo::ObjectCache::Sync>|Alzabo::ObjectCache::Sync>.  This class
-provides most of the functionality necessary to handle syncing
+L<C<Alzabo::ObjectCache::Sync>|"Alzabo::ObjectCache::Sync">.  This
+class provides most of the functionality necessary to handle syncing
 operations.
 
 The interface that any object storing module needs to implement is as
@@ -482,19 +711,8 @@ refreshed.
 This is called to update the state of the syncing object in regards to
 a particularl object.  The first parameter is the object's id.  The
 second is the time that the object was last refreshed.  The third
-parameter, which is optional, tells the syncing object whether or not
-to preserve an existing time for the object if it already has one.
-
-=head1 SEE ALSO
-
-Alzabo::ObjectCache::Store::Memory,
-Alzabo::ObjectCache::Store::BerkeleyDB,
-Alzabo::ObjectCache::Store::Null,
-Alzabo::ObjectCache::Sync::BerkeleyDB,
-Alzabo::ObjectCache::Sync::SDBM_File,
-Alzabo::ObjectCache::Sync::DB_File, Alzabo::ObjectCache::Sync::IPC,
-Alzabo::ObjectCache::Sync::Null, Alzabo::ObjectCache::Store,
-Alzabo::ObjectCache::Sync, Alzabo::ObjectCache::Sync::DBM
+parameter tells the syncing object whether or not to preserve an
+existing time for the object if it already has one.
 
 =head1 AUTHOR
 

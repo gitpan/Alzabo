@@ -2,7 +2,7 @@ package Alzabo::ObjectCache::Store::Null;
 
 use vars qw($SELF $VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -56,8 +56,7 @@ Alzabo::ObjectCache::Store::Null - Doesn't really store anything
 
 This class fakes the object storage mechanism.  It is useful if you
 want to use the syncing part of the cache to signal changes between
-multiple processes to in memory objects without storing the objects in
-memory and thus causing some bloat.
+multiple processes without actually caching the objects.
 
 =head1 AUTHOR
 

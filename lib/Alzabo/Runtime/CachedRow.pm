@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::Runtime::Row);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -103,6 +103,15 @@ sub select
     $self->check_cache;
 
     return $self->SUPER::select(@_);
+}
+
+sub select_hash
+{
+    my $self = shift;
+
+    $self->check_cache;
+
+    return $self->SUPER::select_hash(@_);
 }
 
 sub update

@@ -15,7 +15,7 @@ use vars qw($VERSION);
 
 use 5.005;
 
-$VERSION = '0.57';
+$VERSION = '0.58';
 
 1;
 
@@ -424,49 +424,6 @@ Examples:
 The documentation for the Alzabo::SQLMaker subclass for your RDBMS
 will contain a detailed list of all exportable functions.
 
-=head3 Referential integrity
-
-By default, Alzabo will maintain referential integrity in your
-database based on the relationships you have defined.  This can be
-turned off via L<< the
-C<Alzabo::Runtime::Schema-E<gt>set_referential_integrity>
-method|Alzabo::Runtime::Schema/set_referential_integrity >>.
-
-Alzabo enforces these referential integrity rules:
-
-=over 4
-
-=item * Inserts
-
-An attempt to insert a value into a table's foreign key column(s) will
-fail if the value does not exist in the foreign table.
-
-If a table is dependent on another table, any columns from the
-dependent table involved in the relationship will be treated as not
-nullable.
-
-If the relationship is one-to-one, all columns involved in the foreign
-key will be treated as if they had a unique constraint on them (as a
-group if there is more than one) unless any of the columns being
-inserted are NULL.
-
-No attempt is made to enforce constraints on a table's primary key, as
-that could conceivably make it impossible to insert a row into the
-table.
-
-=item * Updates
-
-Updates follow the same rules as inserts.  Since Alzabo does not allow
-you to update a row's primary key, the last rule above does not apply.
-
-=item * Deletes
-
-When a row is deleted, foreign tables which are dependent on the one
-being deleted will have the relevant rows deleted.  Otherwise, the
-foreign table's related column(s) will simply be set to NULL.
-
-=back
-
 =head3 Changing the schema
 
 In MySQL, there are a number of various types of integers.  The type
@@ -551,6 +508,49 @@ Third, there is no support for large objects.  This was considered but
 given that 7.1 now supports rows larger than 32K it was determined
 that supporting large objects was not worth the amount of effort
 reqiured.
+
+=head2 Referential integrity
+
+By default, Alzabo will maintain referential integrity in your
+database based on the relationships you have defined.  This can be
+turned off via L<< the
+C<Alzabo::Runtime::Schema-E<gt>set_referential_integrity>
+method|Alzabo::Runtime::Schema/set_referential_integrity >>.
+
+Alzabo enforces these referential integrity rules:
+
+=over 4
+
+=item * Inserts
+
+An attempt to insert a value into a table's foreign key column(s) will
+fail if the value does not exist in the foreign table.
+
+If a table is dependent on another table, any columns from the
+dependent table involved in the relationship will be treated as not
+nullable.
+
+If the relationship is one-to-one, all columns involved in the foreign
+key will be treated as if they had a unique constraint on them (as a
+group if there is more than one) unless any of the columns being
+inserted are NULL.
+
+No attempt is made to enforce constraints on a table's primary key, as
+that could conceivably make it impossible to insert a row into the
+table.
+
+=item * Updates
+
+Updates follow the same rules as inserts.  Since Alzabo does not allow
+you to update a row's primary key, the last rule above does not apply.
+
+=item * Deletes
+
+When a row is deleted, foreign tables which are dependent on the one
+being deleted will have the relevant rows deleted.  Otherwise, the
+foreign table's related column(s) will simply be set to NULL.
+
+=back
 
 =head2 Architecture
 

@@ -21,7 +21,7 @@ if ( eval { require DB_File } && ! $@ )
     require Alzabo::ObjectCache::Sync::DB_File;
 }
 
-if ( eval { require BerekeleyDB } && ! $@ )
+if ( eval { require BerkeleyDB } && ! $@ )
 {
     require Alzabo::ObjectCache::Sync::BerkeleyDB;
     require Alzabo::ObjectCache::Store::BerkeleyDB;
@@ -31,6 +31,9 @@ if ( eval { require SDBM_File } && ! $@ )
 {
     require Alzabo::ObjectCache::Sync::SDBM_File;
 }
+
+require Alzabo::ObjectCache::Store::RDBMS;
+require Alzabo::ObjectCache::Sync::RDBMS;
 
 use Alzabo;
 

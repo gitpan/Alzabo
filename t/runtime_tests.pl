@@ -12,6 +12,7 @@ BEGIN
     if ($ENV{OBJECTCACHE_PARAMS} && (my $c_params = eval $ENV{OBJECTCACHE_PARAMS}))
     {
 	require Alzabo::ObjectCache;
+	local $^W;  # Silence warning from Alzabo::ObjectCache::RDBMS
 	Alzabo::ObjectCache->import( %$c_params );
     }
 
@@ -36,7 +37,7 @@ $test->no_plan;
 $test->no_header(1);
 $test->no_ending(1);
 
-my $s = Alzabo::Runtime::Schema->load_from_file( name => $p->{db_name} );
+my $s = Alzabo::Runtime::Schema->load_from_file( name => $p->{schema_name} );
 
 eval { run_tests($s, %$p); };
 warn "Error running tests: $@" if $@;
@@ -213,13 +214,22 @@ sub run_tests
 		   {
 		       push @emp_proj, $row;
 		   } },
-	     "Fetch rows via ->rows_by_foreign_key method" );
+	     "Fetch rows via ->rows_by_foreign_key method (expect cursor)" );
     is( scalar @emp_proj, 2,
 	"Check that only two rows were returned" );
     is( $emp_proj[0]->select('employee_id'), $emp{bill}->select('employee_id'),
 	"Check that employee_id in employee_project is same as bill's" );
     is( $emp_proj[0]->select('project_id'), $proj{extend}->select('project_id'),
 	"Check that project_id in employee_project is same as extend project" );
+
+    my $emp_proj = $emp_proj[0];
+    $fk = $emp_proj_t->foreign_keys_by_table($emp_t);
+
+    my $emp;
+    eval_ok( sub { $emp = $emp_proj->rows_by_foreign_key( foreign_key => $fk ) },
+	     "Fetch rows via ->rows_by_foreign_key method (expect row)" );
+    is( $emp->select('employee_id'), $emp_proj->select('employee_id'),
+	"The returned row should have bill's employee_id" );
 
     $x = 0;
     my @rows;
@@ -386,7 +396,7 @@ sub run_tests
 
     eval { my $c = $emp_t->row_by_pk( pk => $id ) };
     my_isa_ok( $@, 'Alzabo::Exception::NoSuchRow',
-	    "Selecting a deleted row should throw an Alzabo::Exception::NoSuchRow exception" );
+	       "Selecting a deleted row should throw an Alzabo::Exception::NoSuchRow exception" );
 
     eval { $emp{bill}->select('name'); };
     my $expect = $Alzabo::ObjectCache::VERSION ? 'Alzabo::Exception::Cache::Deleted' : 'Alzabo::Exception::NoSuchRow';
@@ -797,6 +807,16 @@ sub run_tests
 	is( $rows[0]->select('name'), 'Timestamp',
 	    "That row should be named Timestamp" );
     }
+
+    if ( $ENV{OBJECTCACHE_PARAMS} )
+    {
+	eval_ok( sub { Alzabo::ObjectCache->clear },
+		 "Call ->clear on object cache" );
+    }
+    else
+    {
+	ok(1, "Dummy for ->clear without a cache");
+    }
 }
 
 my $pid;
@@ -998,6 +1018,15 @@ sub parent
     is( $rocko->select('name'), 'Rocko',
 	"The name of employee 1000 should now be 'Rocko'" );
 
+    $rocko->update( name => 'Bullo' );
+
+    # W.
+    print $c_write "1\n";
+
+    # X.
+    ($ok, $name) = parse_child_response( get_pipe_data($c_read) );
+    ok($ok, $name);
+
     close $c_read;
     close $c_write;
 }
@@ -1047,8 +1076,10 @@ sub child
     # refresh.
 
     # E.
-    $tag = "Employee row's name for pk $pk should be 'parent2'.  It is '" . $emp->select('name') . "'";
-    print $p_write ( $emp->select('name') eq 'parent2' ? "1:$tag" : "0:$tag" );
+
+    # use select_hash to make sure it checks the cache
+    $tag = "Employee row's name for pk $pk should be 'parent2'.  It is '" . {$emp->select_hash('name')}->{name} . "'";
+    print $p_write ( {$emp->select_hash('name')}->{name} eq 'parent2' ? "1:$tag" : "0:$tag" );
     print $p_write "\n";
 
     # F.
@@ -1134,6 +1165,14 @@ sub child
 
     # V.
     print $p_write "1\n";
+
+    # W.
+    get_pipe_data($p_read);
+
+    # X.
+    $tag = "Rocko's name should now be 'Bullo'.  It is '" . $e1000->select('name') . "'";
+    print $p_write ( $e1000->select('name') eq 'Bullo' ? "1:$tag" : "0:$tag" );
+    print $p_write "\n";
 
     close $p_write;
     close $p_read;

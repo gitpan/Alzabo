@@ -2,7 +2,7 @@ package Alzabo::ObjectCache::Sync::DB_File;
 
 use strict;
 
-use vars qw($SELF $VERSION $FILE);
+use vars qw($VERSION $FILE);
 
 use base qw( Alzabo::ObjectCache::Sync::DBM );
 
@@ -10,7 +10,7 @@ use Alzabo::Exceptions;
 use DB_File;
 use Fcntl qw( :flock O_RDONLY O_RDWR O_CREAT );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -105,28 +105,8 @@ Alzabo::ObjectCache::Sync::DB_File - Uses a Berkeley DB file to sync object cach
 
 This class implements object cache syncing between multiple processes
 using a Berkeley DB file to handle data storage.  It implements
-locking to make sure that there are no race conditions with
+locking to make sure that there are no race conditions when
 reading/writing data.
-
-=head1 IMPORT PARAMETERS
-
-=over 4
-
-=item * sync_dbm_file => $filename
-
-This parameter is required.  It is the name of the file which will be
-used to store the syncing data.  If the file does not exist, it will
-be created.  If it does exist it will not be overwritten.
-
-=item * clear_on_startup => $boolean
-
-If this is true, then a new file is B<always> created on when the
-module is loaded, overwriting any existing file.  This is generally
-desirable as an existing file may contain spurious entries from
-previous executions of the program.  However, in the interests of
-safety, this parameter defaults to false.
-
-=back
 
 =head1 AUTHOR
 

@@ -186,23 +186,11 @@ my @order = ( qw( Alzabo
 		  Alzabo::Runtime::JoinCursor
 		  Alzabo::Runtime::OuterJoinCursor
 		  Alzabo::MethodMaker
-		  Alzabo::ObjectCache
                   Alzabo::Runtime::ForeignKey
 		  Alzabo::Runtime::Column
 		  Alzabo::Runtime::Index
-		),
-	      [ qw( Alzabo::ObjectCache::Store::Memory
-                    Alzabo::ObjectCache::Store::BerkeleyDB
-                    Alzabo::ObjectCache::Store::Null
-		    Alzabo::ObjectCache::Sync::BerkeleyDB
-		    Alzabo::ObjectCache::Sync::SDBM_File
-		    Alzabo::ObjectCache::Sync::DB_File
-		    Alzabo::ObjectCache::Sync::IPC
-		    Alzabo::ObjectCache::Sync::DBM
-		    Alzabo::ObjectCache::Sync::Null
-		  ) ],
-
-	      qw( Alzabo::Exceptions
+		  Alzabo::ObjectCache
+		  Alzabo::Exceptions
                   Alzabo::FAQ
 		  Alzabo::Create::Schema
 		  Alzabo::Create::Table

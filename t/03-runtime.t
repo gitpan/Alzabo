@@ -5,7 +5,7 @@ BEGIN
     unless (defined $ENV{ALZABO_RDBMS_TESTS})
     {
 	print "1..0\n";
-	exit;
+#	exit;
     }
 }
 
@@ -30,6 +30,14 @@ $Data::Dumper::Indent = 0;
 my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
 die $@ if $@;
 
+# re-order the tests to prevent test failures with multi-process tests
+# & Pg.
+my @t;
+foreach my $db ( qw( mysql pg oracle sybase ) )
+{
+    push @t, grep { $_->{rdbms} eq $db } @$tests;
+}
+
 my @cache = ( [
 	       { store => 'Alzabo::ObjectCache::Store::Memory',
 		 sync  => 'Alzabo::ObjectCache::Sync::Null' },
@@ -41,6 +49,17 @@ my @cache = ( [
 		 lru_size => 2 },
 	       0,
 	      ],
+
+
+	      [
+	       { store => 'Alzabo::ObjectCache::Store::RDBMS',
+		 sync  => 'Alzabo::ObjectCache::Sync::RDBMS',
+		 ( map { 'store_' . $_ => $t[0]->{$_},
+			 'sync_' . $_  => $t[0]->{$_} }
+		   keys %{ $t[0] } )
+	       },
+	       1,
+	      ],
 	      [
 	       # no caching at all
 	       { store => 0,
@@ -49,7 +68,7 @@ my @cache = ( [
 	      ],
 	    );
 
-my $sync = 0;
+my $sync = 1;
 
 my %has;
 $has{DB_File} = eval { require DB_File } && $DB_File::VERSION >= 1.76 && ! $@;
@@ -132,8 +151,8 @@ foreach ( qw( BerkeleyDB SDBM_File DB_File IPC ) )
     }
 }
 
-my $TESTS_PER_RUN = 143;
-my $SYNC_TESTS_PER_RUN = 18;
+my $TESTS_PER_RUN = 146;
+my $SYNC_TESTS_PER_RUN = 19;
 
 #
 # For each test in @$tests, the non-sync tests will be run once.  For
@@ -143,20 +162,12 @@ my $SYNC_TESTS_PER_RUN = 18;
 #
 # For each count of $sync the sync tests will be run once.
 #
-my $test_count = ( ( $TESTS_PER_RUN * (@$tests + @cache - 1) ) +
+my $test_count = ( ( $TESTS_PER_RUN * (@t + @cache - 1) ) +
 		   ( $SYNC_TESTS_PER_RUN * $sync ) );
 
 my %SINGLE_RDBMS_TESTS = ( mysql => 11,
 			   pg => 11,
 			 );
-
-# re-order the tests to prevent test failures with multi-process tests
-# & Pg.
-my @t;
-foreach my $db ( qw( mysql pg oracle sybase ) )
-{
-    push @t, grep { $_->{rdbms} eq $db } @$tests;
-}
 
 my $test = shift @t;
 my $last_test_num;
@@ -166,7 +177,7 @@ my $last_test_num;
 #
 foreach my $rdbms (keys %SINGLE_RDBMS_TESTS)
 {
-    next unless grep { $_->{rdbms} eq $rdbms } $test, @$tests;
+    next unless grep { $_->{rdbms} eq $rdbms } $test, @t;
 
     if ( $test->{rdbms} eq $rdbms )
     {
@@ -223,7 +234,7 @@ foreach my $c (@cache)
     system( "$^X t/runtime_tests.pl" )
 	and die "Can't run '$^X runtime_tests.pl: $!";
 
-    my $cs = Alzabo::Create::Schema->load_from_file( name => $test->{db_name} );
+    my $cs = Alzabo::Create::Schema->load_from_file( name => $test->{schema_name} );
     $cs->delete;
     eval { $cs->drop(%$test); };
     warn $@ if $@;
@@ -261,7 +272,7 @@ if (@t)
 	system( "$^X t/runtime_tests.pl" )
 	    and die "Can't run '$^X runtime_tests.pl: $!";
 
-	my $cs = Alzabo::Create::Schema->load_from_file( name => $test->{db_name} );
+	my $cs = Alzabo::Create::Schema->load_from_file( name => $test->{schema_name} );
 	$cs->delete;
 	eval { $cs->drop(%$test); };
     }

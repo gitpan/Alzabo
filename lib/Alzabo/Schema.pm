@@ -17,7 +17,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 use Storable ();
 use Tie::IxHash ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.34 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.36 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -114,6 +114,15 @@ sub name
     return $self->{name};
 }
 
+sub has_table
+{
+    my $self = shift;
+
+    validate_pos( @_, { type => SCALAR } );
+
+    return $self->{tables}->FETCH(shift);
+}
+
 sub table
 {
     my $self = shift;
@@ -124,7 +133,7 @@ sub table
     Alzabo::Exception::Params->throw( error => "Table $name doesn't exist in schema" )
 	unless $self->{tables}->EXISTS($name);
 
-    return $self->{tables}->FETCH($name);
+    return $self->has_table($name);
 }
 
 sub tables
@@ -249,6 +258,13 @@ the schema.
 
 L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
+=head2 has_table ($name)
+
+=head3 Returns
+
+A true or false value depending on whether or not the table exists in
+the schema.
+
 =head2 start_transaction
 
 Starts a transaction.  Calls to this function may be nested and it
@@ -264,7 +280,7 @@ Finishes a transaction with a commit.  If you make multiple calls to
 C<start_transaction>, make sure to call this method the same number of
 times.
 
-=head2 run_in_transasction ( sub { code... } )
+=head2 run_in_transaction ( sub { code... } )
 
 This method takes a subroutine reference and wraps it in a transaction.
 

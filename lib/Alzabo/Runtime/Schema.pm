@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.35 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.37 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -613,13 +613,15 @@ L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =for pod_merge table
 
+=for pod_merge has_table
+
 =for pod_merge start_transaction
 
 =for pod_merge rollback
 
 =for pod_merge finish_transaction
 
-=for pod_merge run_in_transasction ( sub { code... } )
+=for pod_merge run_in_transaction ( sub { code... } )
 
 =for pod_merge driver
 
@@ -633,7 +635,7 @@ This information is never saved to disk.  This means that if you're
 operating in an environment where the schema object is reloaded from
 disk every time it is used, such as a CGI program spanning multiple
 requests, then you will have to make a new connection every time.  In
-a persistent evironment, this is not a problem.  In a mod_perl
+a persistent environment, this is not a problem.  In a mod_perl
 environment, you could load the schema and call the
 L<C<set_user>|Alzabo::Runtime::Schema/set_user ($user)> and
 L<C<set_password>|Alzabo::Runtime::Schema/set_password ($password)>
