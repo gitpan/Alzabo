@@ -6,13 +6,13 @@ use vars qw($VERSION);
 use Alzabo::Runtime;
 
 use Params::Validate qw( :all );
-Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
 use Time::HiRes qw(time);
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.63 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.66 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -87,7 +87,8 @@ sub insert
 				 $driver->get_last_id($self) );
 	}
 
-	# must come after call to ->get_last_id for MySQL
+	# must come after call to ->get_last_id for MySQL because the
+	# id will no longer be available after the transaction ends.
 	$driver->finish_transaction if @fk;
     };
     if (my $e = $@)
@@ -547,20 +548,22 @@ would generate something like:
 
 =item * order_by => see below
 
-This parameter can take one of three different things.  The simplest
+This parameter can take one of two different values.  The simplest
 form is to just give it a single column object.  Alternatively, you
-can give it an array reference to a list of column objects.  Finally
-you can give it a hash reference such as:
+can give it an array reference to a list of column objects and
+strings like this:
 
-  order_by => { columns => $column_object or \@column_objects,
-                sort => 'ASC' or 'DESC' }
+  order_by => [ $col1, $col2, 'DESC', $col3, 'ASC' ]
 
 =item * group_by => see below
 
-This parameter is exactly like the order_by parameter.
+This parameter can take either a single column object or an array of
+column objects.
 
-  group_by => { columns => $column_object or \@column_objects,
-                sort => 'ASC' or 'DESC' }
+Some RDBMS backends may also allow you to pass sorting identifiers
+just as with an order by clause.  However, for portability it is
+recommended that you simply use an order by clause in addition to your
+group by clause.
 
 =item * limit => $limit or [ $limit, $offset ]
 

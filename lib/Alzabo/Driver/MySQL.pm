@@ -10,7 +10,7 @@ use DBI;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.34 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.35 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -112,9 +112,6 @@ sub rollback
 {
     my $self = shift;
 
-    # Ugh, there's no way to know if you're operating on tables that
-    # support rollback or not so we just ignore exceptions.  This is
-    # so damn lame!
     eval { $self->SUPER::rollback };
 
     if ($@)

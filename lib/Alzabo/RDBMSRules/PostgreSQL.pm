@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -63,6 +63,7 @@ sub validate_column_type
     my $type = uc shift;
 
     my %simple_types = map { $_ => 1 } qw( ABSTIME
+                                           BIT
 					   BOOL
 					   BOOLEAN
 					   BOX
@@ -100,6 +101,8 @@ sub validate_column_type
 
     return $type if $simple_types{$type};
 
+    return $type if $type =~ /BIT\s+VARYING/;
+
     return $type if $type =~ /CHARACTER\s+VARYING/;
 
     return $type if $type =~ /\ABOX|CIRCLE|LINE|LSEG|PATH|POINT|POLYGON/;
@@ -115,7 +118,7 @@ sub validate_column_length
     if ( defined $column->length )
     {
 	Alzabo::Exception::RDBMSRules->throw( error => "Length is not supported except for char, varchar, decimal, float, and numeric columns (" . $column->name . " column)" )
-	    unless $column->type =~ /\A(?:(?:VAR)?CHAR|CHARACTER|DECIMAL|FLOAT|NUMERIC)\z/i;
+	    unless $column->type =~ /\A(?:(?:VAR)?CHAR|CHARACTER|DECIMAL|FLOAT|NUMERIC|BIT|BIT VARYING)\z/i;
     }
 
     if ( defined $column->precision )
@@ -162,7 +165,6 @@ sub validate_index
 
     foreach my $c ( $index->columns )
     {
-	my $prefix = $index->prefix($c);
 	Alzabo::Exception::RDBMSRules->throw( error => "PostgreSQL does not support index prefixes" )
 	    if defined $index->prefix($c)
     }
@@ -211,30 +213,33 @@ sub blob_type { return 'BYTEA' }
 
 sub column_types
 {
-    return qw( INTEGER
-	       INT2
-	       INT8
-	       NUMERIC
-	       FLOAT
-	       FLOAT4
+    return ( qw( INTEGER
+		 INT2
+		 INT8
+		 NUMERIC
+		 FLOAT
+		 FLOAT4
 
-	       CHAR
-	       VARCHAR
-	       TEXT
+		 CHAR
+		 VARCHAR
+		 TEXT
 
-               BYTEA
+		 BYTEA
 
-	       DATE
-	       TIME
-	       TIMESTAMP
-	       INTERVAL
+		 DATE
+		 TIME
+		 TIMESTAMP
+		 INTERVAL
 
-	       BOOLEAN
+		 BOOLEAN
 
-	       INET
-	       CIDR
-	       MACADDR
-	     );
+		 BIT
+	       ),
+	       'BIT VARYING',
+
+	     qw( INET
+		 CIDR
+		 MACADDR ) );
 }
 
 my %features = map { $_ => 1 } qw ( extended_column_types

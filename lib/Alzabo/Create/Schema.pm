@@ -14,14 +14,14 @@ use Alzabo::SQLMaker;
 use File::Spec;
 
 use Params::Validate qw( :all );
-Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
 use Storable ();
 use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.70 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.73 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -767,6 +767,37 @@ sub make_sql
     }
 }
 
+sub sync_backend_sql
+{
+    my $self = shift;
+
+    my $existing = $self->reverse_engineer( @_,
+					    name => $self->name,
+					    rdbms => $self->driver->driver_id,
+					  );
+
+    return $self->rules->schema_sql_diff( old => $existing,
+					  new => $self );
+}
+
+sub sync_backend
+{
+    my $self = shift;
+
+    $self->{driver}->connect(@_);
+
+    foreach my $statement ( $self->sync_existing_sql(@_) )
+    {
+	$self->driver->do( sql => $statement );
+    }
+
+    $self->set_instantiated(1);
+    my $driver = delete $self->{driver};
+    $self->{original} = Storable::dclone($self);
+    $self->{driver} = $driver;
+    delete $self->{original}{original};
+}
+
 sub drop
 {
     my $self = shift;
@@ -1012,19 +1043,11 @@ The name of the database with which to connect.
 See the L<C<new>|new> method documentation for an explanation of this
 parameter.
 
-=item * user => $user (optional)
-
-User name to use when connecting to database.
-
-=item * password => $password (optional)
-
-Password to use when connecting to database.
-
-=item * host => $host (optional)
-
-The host with which to connect.
-
 =back
+
+In addition, this method takes any parameters that can be used when
+connecting to the RDBMS, including C<user>, C<password>, C<host>, and
+C<port>.
 
 =head3 Returns
 
@@ -1199,10 +1222,10 @@ schema to be marked as instantiated.
 
 Wherever possible, existing data will be preserved.
 
-Any parameters are given are passed to the driver object when
-connecting to the database.  Generally, this will be the username and
-password, possibly a host name, and any other parameters that the
-driver might accept.
+=head3 Parameters
+
+This method takes any parameters that can be used when connecting to
+the RDBMS, including C<user>, C<password>, C<host>, and C<port>.
 
 =head2 instantiated
 
@@ -1230,10 +1253,36 @@ Drops the database/schema from the RDBMS.  This will cause the schema
 to be marked as not instantiated.  This method does not delete the
 Alzabo files from disk.  To do this, call the C<delete> method.
 
-Any parameters are given are passed to the driver object when
-connecting to the database.  Generally, this will be the username and
-password, possibly a host name, and any other parameters that the
-driver might accept.
+=head3 Parameters
+
+This method takes any parameters that can be used when connecting to
+the RDBMS, including C<user>, C<password>, C<host>, and C<port>.
+
+=head2 sync_backend
+
+This method will look at the schema as it exists in the RDBMS backend,
+and make any changes that are necessary in order to make this backend
+schema match the Alzabo schema object.
+
+After this method is called, the schema will be considered to be
+instantiated.
+
+=head3 Parameters
+
+This method takes any parameters that can be used when connecting to
+the RDBMS, including C<user>, C<password>, C<host>, and C<port>.
+
+=head2 sync_backend_sql
+
+=head3 Parameters
+
+This method takes any parameters that can be used when connecting to
+the RDBMS, including C<user>, C<password>, C<host>, and C<port>.
+
+=head3 Returns
+
+This method returns an array containing the set of SQL statements that
+would be used by the L<C<sync_backend_sql>|sync_backend_sql> method.
 
 =head2 delete
 
@@ -1247,12 +1296,6 @@ This method creates a new object identical to the one that the method
 was called on, except that this new schema has a different name, it
 does not yet exist on disk, its instantiation attribute is set to
 false.
-
-It is also worth noting that if you set the instantiation attribute to
-true immediately, then the new schema be able to generate 'diffs'
-against the last version of the schema instantiated in an RDBMS
-backend.  This is useful in the case where you have already copied the
-data from the old database to the new database in the RDBMS backend.
 
 =head3 Parameters
 

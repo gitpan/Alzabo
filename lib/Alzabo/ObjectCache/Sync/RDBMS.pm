@@ -4,11 +4,12 @@ use strict;
 
 use vars qw($VERSION $SCHEMA %CONNECT_PARAMS);
 
+use Alzabo::ObjectCache::Sync;
 use base qw(Alzabo::ObjectCache::Sync);
 
 use Digest::MD5 ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
 
 sub import
 {

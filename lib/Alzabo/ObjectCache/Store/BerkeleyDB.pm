@@ -5,9 +5,10 @@ use vars qw($SELF $VERSION);
 use Alzabo::Exceptions;
 use BerkeleyDB qw( DB_CREATE DB_INIT_MPOOL DB_INIT_CDB DB_NEXT DB_NOOVERWRITE DB_KEYEXIST DB_NOTFOUND DB_RMW DB_WRITECURSOR );
 
+use File::Basename ();
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -25,14 +26,18 @@ sub import
 	    or Alzabo::Exception::System->throw( error => "Can't delete '$p{store_dbm_file}': $!" );
     }
 
-    $ENV = BerkeleyDB::Env->new( -Flags => DB_CREATE | DB_INIT_MPOOL | DB_INIT_CDB )
+    my ($filename, $dir, $suffix) = File::Basename::fileparse( $p{store_dbm_file} );
+    $ENV = BerkeleyDB::Env->new( -Flags => DB_CREATE | DB_INIT_MPOOL | DB_INIT_CDB,
+				 -Home => $dir,
+			       )
 	or Alzabo::Exception->throw( error => "Can't create environment: $BerkeleyDB::Error\n" );
-    $DB = BerkeleyDB::Hash->new( -Filename => $p{store_dbm_file},
+
+    $DB = BerkeleyDB::Hash->new( -Filename => $filename . $suffix,
 				 -Mode => 0644,
 				 -Env => $ENV,
 				 -Flags => DB_CREATE,
 			       )
-	or Alzabo::Exception::System->throw( error => "Can't create '$p{store_dbm_file}': $! $BerkeleyDB::Error" );
+	or Alzabo::Exception::System->throw( error => "Can't create '$p{store_dbm_file}': $! - $BerkeleyDB::Error" );
 }
 
 sub new

@@ -8,7 +8,7 @@ require 'base.pl';
 
 require 'utils.pl';
 
-warn "Cleaning up databases created during testing\n";
+warn "\n# Cleaning up databases created during testing\n";
 
 print "1..1\n";
 print "ok 1\n";

@@ -1,82 +1,111 @@
 <table width="100%" cellspacing="5">
  <tr valign="top">
   <td>
-<form action="change_schema_name<% Alzabo::Config::mason_extension() %>">
- <input type="hidden" name="schema" value="<% $s->name %>">
- <input type="text" name="name" value="<% $s->name %>">
- <input type="submit" value="Change name">
-</form>
-  </td>
-  <td>
-<form action="delete_schema_confirm<% Alzabo::Config::mason_extension() %>">
- <input type="hidden" name="schema" value="<% $s->name %>">
- <input type="submit" value="Delete schema">
-</form>
-  </td>
- </tr>
- <tr>
-  <td><h2>Add a table</h2></td>
-  <td>
-   <form action="view_schema_sql<% Alzabo::Config::mason_extension() %>">
-   <input type="hidden" name="schema" value="<% $s->name %>">
-   <input type="submit" value="View schema SQL"><br>
-   This page allows you to actually have the SQL executed once you've viewed it.
-   </form>
-  </td>
- </tr>
- <tr>
-  <td>Table name:</td>
-  <td rowspan="3">
-% if ($s->instantiated) {
-   <form action="change_schema_instantiation<% Alzabo::Config::mason_extension() %>">
-   <p>
-   <b>Note:</b> This action only changes the schema object's internal
-   state.  It will not actually remove the schema from the backend
-   RDBMS.<br>
-   <input type="hidden" name="schema" value="<% $s->name %>">
-   <input type="hidden" name="instantiated" value="0">
-   <input type="submit" value="Mark schema as not instantiated">
-   </p>
-   </form>
-% } else {
-   <form action="change_schema_instantiation<% Alzabo::Config::mason_extension() %>">
-   <p>
-   <b>Note:</b> This action only changes the schema object's internal
-   state.  It will not actually create the schema in the backend
-   RDBMS.<br>
-   <input type="hidden" name="schema" value="<% $s->name %>">
-   <input type="hidden" name="instantiated" value="1">
-   <input type="submit" value="Mark schema as instantiated">
-   </p>
-   </form>
-% }
-  </td>
- </tr>
-<form action="add_table<% Alzabo::Config::mason_extension() %>" method="post">
- <tr>
-  <td colspan="2">
-   <input type="hidden" name="schema" value="<% $s->name %>">
-   <input type="textfield" name="table_name" size="20">
-  </td>
- </tr>
-
+   <table width="100%">
+    <tr>
+     <td>
+      <form action="change_schema_name<% Alzabo::Config::mason_extension() %>">
+       <input type="hidden" name="schema" value="<% $s->name %>">
+       <input type="text" name="name" value="<% $s->name %>">
+       <input type="submit" value="Change name">
+      </form>
+     </td>
+    </tr>
+    <tr>
+     <td>&nbsp;</td>
+    </tr>
+    <tr>
+     <td><h2>Add a table</h2></td>
+    </tr>
+    <tr>
+     <td>Table name:</td>
+    </tr>
+    <form action="add_table<% Alzabo::Config::mason_extension() %>" method="post">
+    <tr>
+     <td>
+      <input type="hidden" name="schema" value="<% $s->name %>">
+      <input type="textfield" name="table_name" size="20">
+     </td>
+    </tr>
 % if ($s->tables) {
- <tr>
-  <td colspan="2">
-   After table:
-   <select name="after">
+    <tr>
+     <td>
+      After table:
+      <select name="after">
 %   foreach my $t ($s->tables) {
-    <option value="<% $t->name %>"<% $t->name eq ($s->tables)[-1]->name ? ' selected' : '' %>><% $t->name %></option>
+       <option value="<% $t->name %>"<% $t->name eq ($s->tables)[-1]->name ? ' selected' : '' %>><% $t->name %></option>
 %   }
-   </select>
+      </select>
+     </td>
+    </tr>
+% }
+    <tr>
+     <td colspan="2"><input type="submit" value="Submit"></td>
+    </tr>
+    </form>
+   </table>
+  </td>
+  <td>
+   <table width="100%">
+    <tr>
+     <td>
+      <form action="delete_schema_confirm<% Alzabo::Config::mason_extension() %>">
+       <input type="hidden" name="schema" value="<% $s->name %>">
+       <input type="submit" value="Delete schema">
+      </form>
+     </td>
+    </tr>
+    <tr>
+     <td>&nbsp;</td>
+    </tr>
+    <tr>
+     <td>
+      <form action="view_schema_sql<% Alzabo::Config::mason_extension() %>">
+       <input type="hidden" name="schema" value="<% $s->name %>">
+       <input type="submit" value="View schema SQL"><br>
+       This page allows you to execute the SQL once you have viewed it.
+      </form>
+     </td>
+    </tr>
+    <tr>
+     <td>&nbsp;</td>
+    </tr>
+    <tr>
+     <td>
+      <form action="view_sync_sql<% Alzabo::Config::mason_extension() %>">
+       <input type="hidden" name="schema" value="<% $s->name %>">
+      <table width="100%">
+<& login_form.mas &>
+     </table>
+      <input type="submit" value="View Syncing SQL"><br>
+       This page shows you the SQL needed to sync up this schema object
+       and any corresponding schema in the RDBMS backend that may exist.
+      </form>
+     </td>
+    </tr>
+    <tr>
+     <td>
+      <form action="change_schema_instantiation<% Alzabo::Config::mason_extension() %>">
+      <p>
+      <input type="hidden" name="schema" value="<% $s->name %>">
+% if ($s->instantiated) {
+      <input type="hidden" name="instantiated" value="0">
+      <input type="submit" value="Mark schema as not instantiated">
+% } else {
+      <input type="hidden" name="instantiated" value="1">
+      <input type="submit" value="Mark schema as instantiated">
+% }
+      <br>
+      <b>Note:</b> This action only changes the schema object's internal
+      state.  It will not actually remove the schema from the backend
+      RDBMS.<br>
+      </p>
+      </form>
+     </td>
+    </tr>
+   </table>
   </td>
  </tr>
-% }
-
- <tr>
-  <td colspan="2"><input type="submit" value="Submit"></td>
- </tr>
-</form>
 </table>
 
 <%args>

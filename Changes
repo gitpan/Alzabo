@@ -1,4 +1,85 @@
-0.59
+0.60
+
+ENHANCEMENTS:
+
+- When passing order_by specifications, it is now possible to do this:
+
+  order_by => [ $col1, $col2, 'DESC', $col3, 'ASC' ]
+
+which allow for multiple levels of sorting as well as being much
+simpler to remember.
+
+- It is now possible to do something like
+
+  $table->select( select => [ 1, $column ] ... );
+
+and have it work.  In this case, every row returned by the cursor will
+start have 1 as its first element.
+
+- Added Alzabo::MySQL and Alzabo::PostgreSQL POD pages.  These pages
+document how Alzabo does (or does not) support various RDBMS specific
+features.
+
+- Remove Alzabo::Util.  Use Class::Factory::Util from CPAN instead.
+Class::Factory::Util is a slight revision of Alzabo::Util that has
+been separated from the Alzabo core code by TJ Mather.  Thanks TJ.
+
+- Add the ability to sync the RDBMS backend to the current state of
+the Alzabo schema.  This allows you to arbitrarily update the RDBMS
+schema to match the current state of the Alzabo schema.
+
+- Add support for SELECT and WHERE clauses that use MySQL's fulltext
+search features.
+
+- Add BIT and BIT VARYING as allowed types for Postgres.
+
+BUG FIXES:
+
+- Reverse engineering was not checking for fulltext indexes with
+MySQL.  These indexes were treated the same as other indexes.
+
+- Make sure Alzabo::SQLMaker always handles stringification of
+literals properly.
+
+- Improve recognition of default column lengths under MySQL (and
+ignore them).  Also improve recognition of default defaults (like
+'0000-00-00' for DATE columns) and ignore those.
+
+- When using the BerkeleyDB module for object syncing or storage, the
+Berkeley DB code itself creates a number of temporary files.  These
+will now be created in the same directory as the storage/syncing file
+specified.
+
+- Allow GROUP BY foo ASC/DESC for MySQL.  The MySQL manual claims this
+works.  In my testing, it accepts the syntax but doesn't actually
+respect the order requested.  Of course, you can always add order by
+clause with your group by and that seems to work just fine.
+
+- Don't allow a GROUP BY clause to follow an ORDER BY clause.  The
+reverse is still allowed.
+
+- MySQL: Allow fulltext indexes to include *text type columns without
+specifying a prefix.
+
+- Dropping a column that had an index on it would cause an error in
+the generated SQL diff where Alzabo would drop the column and then try
+to drop (the now non-existent) index.  The fix is simply to drop the
+indexes first.
+
+- Make caching code work under Perl 5.00503.
+
+- Make code warnings clean (I think) under Perl 5.00503;
+
+DEPRECATIONS:
+
+- The way order_by and group_by parameters are passed has changed a
+bit.  In particular, this form:
+
+  order_by => { columns => ..., sort => ... }
+
+has been deprecated in favor of a simpler syntax.
+
+.59
 
 ENHANCEMENTS:
 
@@ -54,6 +135,8 @@ properly.  Patch by Eric Hillman.
 
  ( where => [ $col_foo, '=', 1,
               $col_bar, '=', 2 ] )
+
+worked when it shouldn't.
 
 - Trying to do a select that involved a group by and a limit was not
 being allowed.

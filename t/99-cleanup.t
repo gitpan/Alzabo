@@ -9,7 +9,7 @@ require 'base.pl';
 
 require 'utils.pl';
 
-warn "Cleaning up files and databases created during testing\n";
+warn "\n# Cleaning up files and databases created during testing\n";
 
 my $dir = cwd;
 

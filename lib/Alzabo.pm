@@ -15,7 +15,7 @@ use vars qw($VERSION);
 
 use 5.005;
 
-$VERSION = '0.59';
+$VERSION = '0.60';
 
 1;
 
@@ -85,9 +85,9 @@ The section for your RDBMS:
 
 =over 4
 
-L<Alzabo - MySQL|"MySQL">
+L<Alzabo and MySQL|Alzabo::MySQL>
 
-L<Alzabo - PostgreSQL|"PostgreSQL">
+L<Alzabo and PostgreSQL|Alzabo::PostgreSQL>
 
 =back
 
@@ -508,29 +508,6 @@ The RDBMS to be used is specified when creating the schema.
 Currently, there is no easy way to convert a schema from one RDBMS to
 another, though this is a future goal.
 
-=head3 MySQL
-
-Alzabo does not provide support for all possible MySQL features but is
-trying to get there.  Missing features currently include table type
-and transactions.
-
-=head3 PostgreSQL
-
-Postgres support in Alzabo is currently missing several features.
-
-First, reverse engineering does not handle constraints (including
-foreign keys).  This will change in the future.
-
-Second, reverse engineering cannot determine from the existence of a
-sequence that the sequence is meant to be used for a particular column
-unless the sequence was created as a result of assigning the serial
-type to a column.
-
-Third, there is no support for large objects.  This was considered but
-given that 7.1 now supports rows larger than 32K it was determined
-that supporting large objects was not worth the amount of effort
-reqiured.
-
 =head2 Referential integrity
 
 By default, Alzabo will maintain referential integrity in your
@@ -690,10 +667,6 @@ and row objects based on the structure of your schema.
 =item * C<Alzabo::Exceptions>
 
 This object creates the exception subclasses used by Alzabo.
-
-=item * C<Alzabo::Util>
-
-Contains simple subroutines shared by various modules.
 
 =back
 

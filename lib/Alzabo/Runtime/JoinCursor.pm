@@ -6,13 +6,11 @@ use vars qw($VERSION);
 use Alzabo::Runtime;
 
 use Params::Validate qw( :all );
-Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
-
-1;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
 
 sub new
 {
@@ -107,6 +105,8 @@ sub all_rows
     $self->{errors} = \@errors;
     return @all;
 }
+
+1;
 
 __END__
 

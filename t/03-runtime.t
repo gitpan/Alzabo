@@ -151,7 +151,7 @@ foreach ( qw( BerkeleyDB SDBM_File DB_File IPC ) )
     }
 }
 
-my $TESTS_PER_RUN = 207;
+my $TESTS_PER_RUN = 233;
 my $SYNC_TESTS_PER_RUN = 19;
 
 #
@@ -165,7 +165,7 @@ my $SYNC_TESTS_PER_RUN = 19;
 my $test_count = ( ( $TESTS_PER_RUN * (@t + @cache - 1) ) +
 		   ( $SYNC_TESTS_PER_RUN * $sync ) );
 
-my %SINGLE_RDBMS_TESTS = ( mysql => 11,
+my %SINGLE_RDBMS_TESTS = ( mysql => 21,
 			   pg => 11,
 			 );
 
@@ -190,6 +190,8 @@ foreach my $rdbms (keys %SINGLE_RDBMS_TESTS)
 }
 
 print "1..$test_count\n";
+
+my $tests_pl = File::Spec->catfile( 't', 'runtime_tests.pl' );
 
 foreach my $c (@cache)
 {
@@ -231,8 +233,8 @@ foreach my $c (@cache)
 	$last_test_num += $SINGLE_RDBMS_TESTS{$_} if $_ eq $test->{rdbms};
     }
 
-    system( "$^X t/runtime_tests.pl" )
-	and die "Can't run '$^X runtime_tests.pl: $!";
+    system( "$^X $tests_pl" )
+	and die "Can't run '$^X $tests_pl: $!";
 
     my $cs = Alzabo::Create::Schema->load_from_file( name => $test->{schema_name} );
     $cs->delete;
@@ -269,8 +271,8 @@ if (@t)
 	$ENV{TEST_START_NUM} = $last_test_num;
 	$last_test_num += $TESTS_PER_RUN;
 
-	system( "$^X t/runtime_tests.pl" )
-	    and die "Can't run '$^X runtime_tests.pl: $!";
+	system( "$^X $tests_pl" )
+	    and die "Can't run '$^X $tests_pl: $!";
 
 	my $cs = Alzabo::Create::Schema->load_from_file( name => $test->{schema_name} );
 	$cs->delete;

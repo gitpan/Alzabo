@@ -5,9 +5,13 @@ use vars qw($VERSION $AUTOLOAD @EXPORT_OK %EXPORT_TAGS);
 
 use Alzabo::Exceptions;
 
+use Alzabo::SQLMaker;
 use base qw(Alzabo::SQLMaker);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
+use Params::Validate qw( :all );
+Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
 
 my $MADE_LITERALS;
 my %functions;
@@ -262,6 +266,24 @@ sub _make_literals
 		    );
     }
 
+    make_literal( literal => 'MATCH',
+		  min => 1,
+		  max => undef,
+		  quote => [0],
+		  groups => [ 'fulltext' ] );
+
+    make_literal( literal => 'AGAINST',
+		  min => 1,
+		  max => 1,
+		  quote => [1],
+		  groups => [ 'fulltext' ] );
+
+    make_literal( literal => 'IN_BOOLEAN_MODE',
+		  is_modifier => 1,
+		  groups => [ 'fulltext' ],
+		);
+
+
     %functions = map { $_ => 1 } @EXPORT_OK;
 
     $MADE_LITERALS = 1;
@@ -286,12 +308,64 @@ sub _subselect
     Alzabo::Exception::SQL->throw( error => "MySQL does not support subselects" );
 }
 
+sub select
+{
+    my $self = shift;
+
+    #
+    # Special check for [ MATCH( $foo_col, $bar_col ), AGAINST('foo bar') ]
+    # IN_BOOLEAN_MODE is optional
+    #
+    for ( my $i = 0; $i <= $#_; $i++ )
+    {
+	if ( UNIVERSAL::isa( $_[$i], 'Alzabo::SQLMaker::Literal' ) &&
+	     $_[$i]->as_string( $self->{driver} ) =~ /^\s*MATCH/i )
+	{
+	    $_[$i] = $_[$i]->as_string( $self->{driver} );
+
+	    $_[$i] .= ' ' . $_[$i + 1]->as_string( $self->{driver} );
+
+	    splice @_, $i + 1, 1;
+
+	    if ( defined $_[ $i + 1 ] &&
+		 UNIVERSAL::isa( $_[ $i + 1 ], 'Alzabo::SQLMaker::Literal' ) &&
+		 $_[ $i + 1 ]->as_string( $self->{driver} ) =~ /^\s*IN BOOLEAN MODE/i )
+	    {
+		$_[$i] .= ' ' . $_[$i + 1]->as_string( $self->{driver} );
+		splice @_, $i + 1, 1;
+	    }
+	}
+    }
+
+    $self->SUPER::select(@_);
+}
+
+sub condition
+{
+    my $self = shift;
+
+    #
+    # Special check for [ MATCH( $foo_col, $bar_col ), AGAINST('foo bar') ]
+    # IN_BOOLEAN_MODE is optional
+    #
+    if ( UNIVERSAL::isa( $_[0], 'Alzabo::SQLMaker::Literal' ) &&
+	 $_[0]->as_string( $self->{driver} ) =~ /^\s*MATCH/i )
+    {
+	$self->{last_op} = 'condition';
+	$self->{sql} .= join ' ', map { $_->as_string( $self->{driver} ) } @_;
+    }
+    else
+    {
+	$self->SUPER::condition(@_);
+    }
+}
+
 sub limit
 {
     my $self = shift;
     my ($max, $offset) = @_;
 
-    $self->_assert_last_op( qw( from function where and or condition order_by group_by asc desc ) );
+    $self->_assert_last_op( qw( from function where and or condition order_by group_by ) );
 
     if ($offset)
     {
@@ -315,6 +389,59 @@ sub get_limit
 sub sqlmaker_id
 {
     return 'MySQL';
+}
+
+sub group_by
+{
+    my $self = shift;
+
+    $self->_assert_last_op( qw( select from condition ) );
+
+    Alzabo::Exception::SQL->throw( error => "Cannot use group by in a '$self->{type}' statement" )
+	unless $self->{type} eq 'select';
+
+    validate_pos( @_, ( { type => SCALAR | OBJECT,
+			  callbacks =>
+			  { 'column_or_sort' => sub { UNIVERSAL::isa( $_[0], 'Alzabo::Column' ) ||
+				                      $_[0] =~ /^ASC|DESC$/i } } }
+		      ) x @_ );
+
+    $self->{sql} .= ' GROUP BY ';
+
+    my $x = 0;
+    my $last = '';
+    foreach my $i (@_)
+    {
+	if ( UNIVERSAL::isa( $i, 'Alzabo::Column' ) )
+	{
+	    unless ( $self->{tables}{ $i->table } )
+	    {
+		my $err = 'Cannot use column (';
+		$err .= join '.', $i->table->name, $i->name;
+		$err .= ") in \U$self->{type}\E unless its table is included in the FROM clause";
+		Alzabo::Exception::SQL->throw( error => $err );
+	    }
+
+	    # no comma needed for first column
+	    $self->{sql} .= ', ', if $x++;
+	    $self->{sql} .= join '.', $i->table->name, $i->name;
+
+	    $last = 'column';
+	}
+	else
+	{
+	    Alzabo::Exception::Params->throw( error => 'A sort specifier cannot follow another sort specifier in a GROUP BY clause' )
+		if $last eq 'sort';
+
+	    $self->{sql} .= " \U$i";
+
+	    $last = 'sort';
+	}
+    }
+
+    $self->{last_op} = 'group_by';
+
+    return $self;
 }
 
 1;
@@ -505,6 +632,19 @@ These are functions which don't fit into any other categories.
  PASSWORD
  MD5
  LOAD_FILE
+
+=head2 :fulltext
+
+These are functions related to MySQL's fulltext searching
+capabilities.
+
+ MATCH
+ AGAINST
+ IN_BOOLEAN_MODE
+
+NOTE: In MySQL 4.0 and greater, it is possible to say that a search is
+in boolean mode in order to change how MySQL handles the argument
+given to AGAINST.  This will not work with earlier versions.
 
 =head2 :common
 

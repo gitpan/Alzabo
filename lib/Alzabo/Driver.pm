@@ -4,13 +4,13 @@ use strict;
 use vars qw($VERSION);
 
 use Alzabo::Exceptions;
-use Alzabo::Util;
 
+use Class::Factory::Util;
 use DBI;
 use Params::Validate qw( :all );
-Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.52 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.55 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -31,7 +31,7 @@ sub new
 
 sub available
 {
-    return Alzabo::Util::subclasses(__PACKAGE__);
+    return Class::Factory::Util::subclasses(__PACKAGE__);
 }
 
 sub quote
@@ -390,12 +390,11 @@ use strict;
 use vars qw($VERSION);
 
 use Alzabo::Exceptions;
-use Alzabo::Util;
 
 use DBI;
 
 use Params::Validate qw( :all );
-Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
 $VERSION = '0.1';
 

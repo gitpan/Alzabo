@@ -1,0 +1,28 @@
+<p>
+The SQL was successfully executed.
+</p>
+
+<p>
+<a href="view_schema<% Alzabo::Config::mason_extension() %>?schema=<% $s->name | u %>">Back</a>
+</p>
+<%args>
+$s
+$user => undef
+$password => undef
+$host => undef
+$port => undef
+</%args>
+
+<%init>
+eval
+{
+    $s->sync_backend( user => $user,
+		      password => $password,
+		      host => $host,
+		      port => $port,
+		    );
+    $s->save_to_file;
+};
+
+$m->comp( '../common/exception', $@ ) if $@;
+</%init>

@@ -286,6 +286,18 @@ sub run_tests
     ok( $first_proj_id > $second_proj_id,
 	"Order by clause should cause project rows to come back in descending order of project id" );
 
+    $cursor = $s->join( tables   => [ $emp_t, $emp_proj_t, $proj_t ],
+			where    => [ $emp_t->column('employee_id'), '=', 1 ],
+			order_by => [ $proj_t->column('project_id'), 'desc' ] );
+
+    @rows = $cursor->next;
+    $first_proj_id = $rows[2]->select('project_id');
+    @rows = $cursor->next;
+    $second_proj_id = $rows[2]->select('project_id');
+
+    ok( $first_proj_id > $second_proj_id,
+	"Order by clause (alternate form) should cause project rows to come back in descending order of project id" );
+
     eval_ok( sub { $cursor = $s->join( select => [ $emp_t, $emp_proj_t, $proj_t ],
 				       tables => [ [ $emp_t, $emp_proj_t ],
 						   [ $emp_proj_t, $proj_t ] ],
@@ -343,7 +355,7 @@ sub run_tests
 	    "Left outer join should return 2 sets of rows" );
 
 	# re-order so that the set with 2 valid rows is always first
-	unless ( defined $sets[0]->[0]->select('outer_2_key') )
+	unless ( defined $sets[0]->[1] )
 	{
 	    my $set = shift @sets;
 	    push @sets, $set;
@@ -359,7 +371,7 @@ sub run_tests
 	    "The first row in the second set should have the name 'test12 (has no matching join row)'" );
 
 	ok( ! defined $sets[1]->[1],
-	    "The second row in the second set should not be defined\n" );
+	    "The second row in the second set should not be defined" );
 
 	eval_ok( sub { $cursor = $s->right_outer_join( tables =>
 						       [ $s->tables( 'outer_1', 'outer_2' ) ] ) },
@@ -371,7 +383,7 @@ sub run_tests
 	    "Right outer join should return 2 sets of rows" );
 
 	# re-order so that the set with 2 valid rows is always first
-	unless ( defined $sets[0]->[1]->select('outer_2_key') )
+	unless ( defined $sets[0]->[0] )
 	{
 	    my $set = shift @sets;
 	    push @sets, $set;
@@ -384,7 +396,7 @@ sub run_tests
 	    "The second row in the first set should have the name 'will match something'" );
 
 	ok( ! defined $sets[1]->[0],
-	    "The first row in the second set should not be defined\n" );
+	    "The first row in the second set should not be defined" );
 
 	is( $sets[1]->[1]->select('outer_2_name'), 'will match nothing',
 	    "The second row in the second set should have the name 'test12 (has no matching join row)'" );
@@ -887,6 +899,78 @@ sub run_tests
     is( $rows[0]->select('department_id'), $dep_id,
 	"Returned row's department_id should be $dep_id" );
 
+    # insert rows used to test order by with multiple columns
+    my $start_id = 999_990;
+    foreach ( [ qw( OB1 bad ) ],
+	      [ qw( OB1 worse ) ],
+	      [ qw( OB2 bad ) ],
+	      [ qw( OB2 worse ) ],
+	      [ qw( OB3 awful ) ],
+	      [ qw( OB3 bad ) ],
+	    )
+    {
+	$emp_t->insert( values => { employee_id => $start_id++,
+				    name => $_->[0],
+				    smell => $_->[1],
+				    dep_id => $dep_id } );
+    }
+
+    @rows = $emp_t->rows_where( where => [ $emp_t->column('employee_id'), 'BETWEEN',
+					   999_990, 999_996 ],
+				order_by => [ $emp_t->columns( 'name', 'smell' ) ] )->all_rows;
+    is( $rows[0]->select('name'), 'OB1',
+	"First row name should be OB1" );
+    is( $rows[0]->select('smell'), 'bad',
+	"First row smell should be bad" );
+    is( $rows[1]->select('name'), 'OB1',
+	"Second row name should be OB1" );
+    is( $rows[1]->select('smell'), 'worse',
+	"Second row smell should be bad" );
+    is( $rows[2]->select('name'), 'OB2',
+	"Third row name should be OB2" );
+    is( $rows[2]->select('smell'), 'bad',
+	"Third row smell should be bad" );
+    is( $rows[3]->select('name'), 'OB2',
+	"Fourth row name should be OB2" );
+    is( $rows[3]->select('smell'), 'worse',
+	"Fourth row smell should be worse" );
+    is( $rows[4]->select('name'), 'OB3',
+	"Fifth row name should be OB3" );
+    is( $rows[4]->select('smell'), 'awful',
+	"Fifth row smell should be awful" );
+    is( $rows[5]->select('name'), 'OB3',
+	"Sixth row name should be OB3" );
+    is( $rows[5]->select('smell'), 'bad',
+	"Sixth row smell should be bad" );
+
+    @rows = $emp_t->rows_where( where => [ $emp_t->column('employee_id'), 'BETWEEN',
+					   999_990, 999_996 ],
+				order_by => [ $emp_t->column('name'), 'desc', $emp_t->column('smell'), 'asc' ] )->all_rows;
+    is( $rows[0]->select('name'), 'OB3',
+	"First row name should be OB3" );
+    is( $rows[0]->select('smell'), 'awful',
+	"First row smell should be awful" );
+    is( $rows[1]->select('name'), 'OB3',
+	"Second row name should be OB3" );
+    is( $rows[1]->select('smell'), 'bad',
+	"Second row smell should be bad" );
+    is( $rows[2]->select('name'), 'OB2',
+	"Third row name should be OB2" );
+    is( $rows[2]->select('smell'), 'bad',
+	"Third row smell should be bad" );
+    is( $rows[3]->select('name'), 'OB2',
+	"Fourth row name should be OB2" );
+    is( $rows[3]->select('smell'), 'worse',
+	"Fourth row smell should be worse" );
+    is( $rows[4]->select('name'), 'OB1',
+	"Fifth row name should be OB1" );
+    is( $rows[4]->select('smell'), 'bad',
+	"Fifth row smell should be bad" );
+    is( $rows[5]->select('name'), 'OB1',
+	"Sixth row name should be OB1" );
+    is( $rows[5]->select('smell'), 'worse',
+	"Sixth row smell should be worse" );
+
     if ( $p{rdbms} eq 'mysql' )
     {
 	my $emp;
@@ -931,6 +1015,54 @@ sub run_tests
 	    "Only one row should have a timestamp value that is not null and that is less than the current time" );
 	is( $rows[0]->select('name'), 'Timestamp',
 	    "That row should be named Timestamp" );
+
+    TODO:
+	{
+	    local $TODO = "MySQL docs claim this should work but it doesn't work for me with 3.23.45\n";
+
+	    $statement = $s->select( select => [ $proj_t->column('name'),
+						 COUNT( $proj_t->column('name') ) ],
+				     tables => [ $emp_proj_t, $proj_t ],
+				     group_by => { columns => $proj_t->column('name'),
+						   sort => 'DESC' } );
+
+	    @rows = $statement->all_rows;
+
+	    is( $rows[0][0], 'Extend',
+		"First project should be Extend - via ->select" );
+	    is( $rows[1][0], 'Embrace',
+		"Second project should be Embrace - via ->select" );
+	    is( $rows[0][1], 3,
+		"First project should have 1 employee - via ->select" );
+	    is( $rows[1][1], 1,
+		"Second project should have 3 employees - via ->select" );
+
+	}
+
+	# Fulltext support tests
+	my $snuffle_id = $emp_t->insert( values => { name => 'snuffleupagus',
+						     smell => 'invisible',
+						     dep_id => $dep_id } )->select('employee_id');
+
+	@rows = $emp_t->rows_where( where => [ MATCH( $emp_t->column('name') ), AGAINST('abathraspus') ] )->all_rows;
+	is( @rows, 0,
+	    "Make sure that fulltext search doesn't give a false positive" );
+
+	@rows = $emp_t->rows_where( where => [ MATCH( $emp_t->column('name') ), AGAINST('snuffleupagus') ] )->all_rows;
+	is( @rows, 1,
+	    "Make sure that fulltext search for snuffleupagus returns 1 row" );
+	is( $rows[0]->select('employee_id'), $snuffle_id,
+	    "Make sure that the returned row is snuffleupagus" );
+
+	my $rows = $emp_t->function( select => [ $emp_t->column('employee_id'), MATCH( $emp_t->column('name') ), AGAINST('snuffleupagus') ],
+				     where => [ MATCH( $emp_t->column('name') ), AGAINST('snuffleupagus') ] );
+	my ($id, $score) = @$rows;
+	is( $id, $snuffle_id,
+	    "Returned row should still be snuffleupagus" );
+	like( $score, qr/\d+(?:\.\d+)?/,
+	      "Returned score should be some sort of number (integer or floating point)" );
+	ok( $score > 0,
+	    "The score should be greater than 0 because the match was successful" );
     }
     elsif ( $p{rdbms} eq 'pg' )
     {
@@ -1040,6 +1172,11 @@ sub run_tests
     {
 	ok(1, "Dummy for ->clear without a cache");
     }
+
+    eval { $emp_t->rows_where( where => [ $eid_c, '=', 9000,
+					  $eid_c, '=', 9002 ] ) };
+    isa_ok( $@, 'Alzabo::Exception::Params',
+	    "Exception from where clause as single arrayref with <>3 elements" );
 }
 
 my $pid;

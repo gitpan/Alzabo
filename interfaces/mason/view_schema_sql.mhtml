@@ -5,38 +5,7 @@
 <table width="50%">
  <form action="execute_sql<% Alzabo::Config::mason_extension() %>" method="post">
  <input type="hidden" name="schema" value="<% $s->name %>">
- <tr>
-  <td>
-   Username:
-  </td>
-  <td>
-   <input type="text" name="user">
-  </td>
- </tr>
- <tr>
-  <td>
-   Password:
-  </td>
-  <td>
-   <input type="password" name="password">
-  </td>
- </tr>
- <tr>
-  <td>
-   Host:
-  </td>
-  <td>
-   <input type="text" name="host">
-  </td>
- </tr>
- <tr>
-  <td>
-   Port:
-  </td>
-  <td>
-   <input type="text" name="port">
-  </td>
- </tr>
+<& login_form.mas &>
  <tr>
   <td colspan="2">
    <input type="submit" value="Execute SQL">

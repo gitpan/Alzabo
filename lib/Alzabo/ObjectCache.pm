@@ -6,7 +6,7 @@ use vars qw($SELF $VERSION %ARGS);
 # load this for use by Alzabo::Runtime::Row
 use Alzabo::Runtime::CachedRow;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.31 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -128,7 +128,7 @@ Alzabo::ObjectCache - A simple in-memory cache for row objects.
 
   use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
                            sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB',
-                           dbm_file => 'somefile.db' );
+                           sync_dbm_file => 'somefile.db' );
 
 =head1 DESCRIPTION
 
@@ -194,7 +194,7 @@ For example:
   use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
                            lru_size => 100,
                            sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB',
-                           dbm_file => 'somefile.db' );
+                           sync_dbm_file => 'somefile.db' );
 
 =head1 CACHING SCENARIOS
 

@@ -5,9 +5,10 @@ use vars qw($VERSION $AUTOLOAD @EXPORT_OK %EXPORT_TAGS);
 
 use Alzabo::Exceptions;
 
+use Alzabo::SQLMaker;
 use base qw(Alzabo::SQLMaker);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/;
 
 my $MADE_LITERALS;
 my %functions;
@@ -211,7 +212,7 @@ sub limit
     my $self = shift;
     my ($max, $offset) = @_;
 
-    $self->_assert_last_op( qw( from function where and or condition order_by group_by asc desc ) );
+    $self->_assert_last_op( qw( from function where and or condition order_by group_by ) );
 
     $self->{sql} .= " LIMIT $max";
     $self->{sql} .= " OFFSET $offset" if $offset;

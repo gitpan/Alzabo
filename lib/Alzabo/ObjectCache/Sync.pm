@@ -7,7 +7,7 @@ use strict;
 use Alzabo::Exceptions;
 use Time::HiRes qw( time );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -163,6 +163,8 @@ Alzabo::ObjectCache::Sync - Base class for syncing classes
 =head1 SYNOPSIS
 
   package Alzabo::ObjectCache::TelepathySync;
+
+  use Alzabo::ObjectCache::Sync;
   use base qw( Alzabo::ObjectCache::Sync );
 
 =head1 DESCRIPTION

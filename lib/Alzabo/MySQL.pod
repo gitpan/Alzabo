@@ -1,0 +1,97 @@
+=pod
+
+=head1 NAME
+
+Alzabo and MySQL
+
+=head1 DESCRIPTION
+
+This documentation is about what special support Alzabo has for MySQL,
+as well as what is lacking.
+
+MySQL support is based on the 3.23.* release series, with some support
+for features that are starting to appear in the 4.0.* releases.
+Earlier versions of MySQL will probably work with Alzabo, though
+Alzabo cannot magically make these releases support new features like
+fulltext indexes.
+
+=head2 Indexes
+
+=over 4
+
+=item *
+
+Alzabo supports the ability to specify prefixes when adding an index.
+Prefixes are required when attempting to index any sort of text or
+blob column.
+
+=item *
+
+Alzabo supports the creation of fulltext indexes and their use in
+SELECT and WHERE clauses.  This includes the ability to get back the
+score given for a match as part of a select, using the C<function> or
+C<select> methods of either table or schema objects.
+
+=back
+
+=head2 Reverse Engineering
+
+=over 4
+
+=item *
+
+When reverse engineering a schema, Alzabo knows that MySQL has
+"default defaults" for certain column types.  For example, if a DATE
+column is specified as NOT NULL but is not assigned a default, MySQL
+gives this column a default of '0000-00-00'.
+
+Because Alzabo knows about this, it will ignore these defaults when
+reverse engineering an RDBMS.
+
+=item *
+
+Similarly, Alzabo knows that MySQL assigns defaults "lengths" to many
+column types.  For example, if given INTEGER as a column type, MySQL
+will convert this to INTEGER(11) or INTEGER(10), depending on the
+version of MySQL being used.
+
+Again, Alzabo ignores these lengths when reverse engineering a schema.
+
+=back
+
+=head2 Transactions
+
+=over 4
+
+Alzabo will try to use transactions whenever appropriate.
+Unfortunately, there is no way to determine whether or not a given
+table supports transactions so Alzabo simply sets AutoCommit to 0,
+whether or not this will actually do anything.
+
+=back
+
+=head2 Constraints and Foreign Keys
+
+=over 4
+
+=item *
+
+Column constraints are treated as column attributes.
+
+=item *
+
+Foreign key constraints are not generated when generating SQL for a
+Postgres schema.  This will probably change in the future.
+
+=back
+
+=head2 Table Types
+
+=over 4
+
+As of now, there is no way to specify table specific attributes with
+Alzabo.
+
+=back
+
+=cut

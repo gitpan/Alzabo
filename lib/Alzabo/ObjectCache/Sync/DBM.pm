@@ -4,11 +4,12 @@ use strict;
 
 use vars qw($SELF $VERSION);
 
+use Alzabo::ObjectCache::Sync;
 use base qw( Alzabo::ObjectCache::Sync );
 
 use Alzabo::Exceptions;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
 
 1;
 

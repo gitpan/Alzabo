@@ -18,7 +18,7 @@ use Alzabo::Runtime::Table;
 
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -94,31 +94,29 @@ sub _process_by_clause
 {
     my ($sql, $by, $type) = @_;
 
-    my @c;
-    my $s;
+    my @items;
     if ( UNIVERSAL::isa( $by, 'Alzabo::Column' ) )
     {
-	@c = $by;
+	@items = $by;
     }
     elsif ( UNIVERSAL::isa( $by, 'ARRAY' ) )
     {
-	@c = @{ $by };
+	@items = @$by;
     }
     else
     {
 	Alzabo::Exception::Params->throw( error => "No columns provided for order by" )
 		unless $by->{columns};
 
-	@c = ( UNIVERSAL::isa( $by->{columns}, 'ARRAY' ) ?
-	       @{ $by->{columns} } :
-	       $by->{columns} );
+	push @items, ( UNIVERSAL::isa( $by->{columns}, 'ARRAY' ) ?
+		       @{ $by->{columns} } :
+		       $by->{columns} );
 
-	$s = lc $by->{sort} if exists $by->{sort};
+	push @items, lc $by->{sort} if exists $by->{sort};
     }
 
     my $method = "${type}_by";
-    $sql->$method(@c);
-    $sql->$s() if $s;
+    $sql->$method(@items);
 }
 
 

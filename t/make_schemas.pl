@@ -52,6 +52,9 @@ sub mysql_make_schema
 				     { column => $emp_t->column('smell') },
 				   ] );
 
+    $emp_t->make_index( columns => [ { column => $emp_t->column('name') } ],
+			fulltext => 1 );
+
     $s->make_table( name => 'department');
     my $dep_t = $s->table('department');
     $dep_t->make_column( name => 'department_id',

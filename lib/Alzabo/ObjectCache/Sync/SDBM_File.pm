@@ -4,6 +4,7 @@ use strict;
 
 use vars qw($VERSION $DB $FILE $LOCK_FILE);
 
+use Alzabo::ObjectCache::Sync::DBM;
 use base qw( Alzabo::ObjectCache::Sync::DBM );
 
 use Alzabo::Config;
@@ -11,7 +12,7 @@ use Alzabo::Exceptions;
 use Fcntl qw( :flock O_RDONLY O_RDWR O_CREAT );
 use SDBM_File;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
 
 1;
 

@@ -56,7 +56,6 @@ lib/Alzabo/SQLMaker/PostgreSQL.pm
 lib/Alzabo/ChangeTracker.pm
 lib/Alzabo/Exceptions.pm
 lib/Alzabo/MethodMaker.pm
-lib/Alzabo/Util.pm
 
 lib/Alzabo/ObjectCache.pm
 lib/Alzabo/ObjectCache/Store/BerkeleyDB.pm
@@ -75,6 +74,9 @@ lib/Alzabo/ObjectCache/Sync/SDBM_File.pm
 
 lib/Alzabo/FAQ.pod
 lib/Alzabo/QuickRef.pod
+
+lib/Alzabo/MySQL.pod
+lib/Alzabo/PostgreSQL.pod
 
 lib/PreInstall/Config.pm
 
@@ -122,7 +124,9 @@ interfaces/mason/delete_schema_confirm.mhtml
 interfaces/mason/delete_table.mhtml
 interfaces/mason/draw_graph.mhtml
 interfaces/mason/execute_sql.mhtml
+interfaces/mason/execute_sync_sql.mhtml
 interfaces/mason/index.mhtml
+interfaces/mason/login_form.mas
 interfaces/mason/move_column.mhtml
 interfaces/mason/move_table.mhtml
 interfaces/mason/new_schema.mhtml
@@ -135,6 +139,7 @@ interfaces/mason/view_column.mhtml
 interfaces/mason/view_graph.mhtml
 interfaces/mason/view_schema.mhtml
 interfaces/mason/view_schema_sql.mhtml
+interfaces/mason/view_sync_sql.mhtml
 interfaces/mason/view_table.mhtml
 
 interfaces/mason/styles_ie.css

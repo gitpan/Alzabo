@@ -40,17 +40,17 @@ my %prereq;
 
 {
     # extra prereqs for certain features
-    my @extra_prereq = ( [ 'the MySQL driver', [ [ 'DBD::mysql' => 2.0416 ] ], 'mysql' ],
-			 [ 'the PostgreSQL driver', [ [ 'DBD::Pg' => 0.95 ] ], 'pg' ],
-#			 [ 'the Oracle driver', [ [ 'DBD::Oracle' => 0 ] ], 'oracle' ],
-			 [ 'the IPC caching code', [ [ 'IPC::Shareable' => 0.54 ] ] ],
-			 [ 'the DB_File 1.x caching code', [ [ 'DB_File' => 1.76 ] ] ],
-			 [ 'the BerkeleyDB 2.x/3.x caching code', [ [ 'BerkeleyDB' => 0.15 ] ] ],
-			 [ 'the SDBM_File caching code', [ [ 'SDBM_File' => 0 ] ] ],
-			 [ 'the HTML::Mason based schema creation interface', [ [ 'HTML::Mason' => 0.896 ],
+    my @extra_prereq = ( [ 'to use the MySQL driver', [ [ 'DBD::mysql' => 2.1004 ] ], 'mysql' ],
+			 [ 'to use the PostgreSQL driver', [ [ 'DBD::Pg' => 0.95 ] ], 'pg' ],
+#			 [ 'to use the Oracle driver', [ [ 'DBD::Oracle' => 0 ] ], 'oracle' ],
+			 [ 'to use the IPC caching code', [ [ 'IPC::Shareable' => 0.54 ] ] ],
+			 [ 'to use the DB_File 1.x caching code', [ [ 'DB_File' => 1.76 ] ] ],
+			 [ 'to use the BerkeleyDB 2.x/3.x caching code', [ [ 'BerkeleyDB' => 0.15 ] ] ],
+			 [ 'to use the SDBM_File caching code', [ [ 'SDBM_File' => 0 ] ] ],
+			 [ 'to use the HTML::Mason based schema creation interface', [ [ 'HTML::Mason' => 0.896 ],
 										[ 'HTTP::BrowserDetect' => 0 ], ],
 			   undef, 'mason_schema' ],
-			 [ 'the HTML::Mason based data browser', , [ [ 'HTML::Mason' => 0.896 ],
+			 [ 'to use the HTML::Mason based data browser', , [ [ 'HTML::Mason' => 0.896 ],
 								     [ 'HTTP::BrowserDetect' => 0 ], ],
 			   undef, 'mason_browser' ],
 			 [ 'to view graphs of your schema in the schema creator',
@@ -142,11 +142,13 @@ if ( eval { require DBD::mysql } && $DBD::mysql::VERSION == 2.09 )
 %prereq = ( 'DBI' => 0,
 	    'Storable' => 0.7,
 	    'Tie::IxHash' => 0,
-	    'Exception::Class' => 0.8,
+	    'Exception::Class' => 0.97,
 	    'Time::HiRes' => 0,
 	    'Pod::Man' => 1.14,
 	    'Params::Validate' => 0.07,
 	    'Test::More' => 0.31,
+	    'Test::Harness' => 1.26,
+	    'Class::Factory::Util' => 1.2,
 	    %prereq );
 
 check_prereq(\%prereq);
@@ -157,7 +159,6 @@ my $realclean = join ' ', ( File::Spec->catfile( 'lib', 'Alzabo', 'Config.pm' ),
 			    File::Spec->catdir( 't', 'objectcache' ),
 			    File::Spec->catdir( 't', 'schemas' ),
 			    File::Spec->catfile( 't', 'SDBM_File.lock' ),
-			    '__db.*',
 			    'log.*' );
 
 WriteMakefile( NAME         => 'Alzabo',

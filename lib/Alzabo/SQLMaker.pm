@@ -4,12 +4,12 @@ use strict;
 use vars qw($VERSION $AUTOLOAD);
 
 use Alzabo::Exceptions;
-use Alzabo::Util;
 
+use Class::Factory::Util;
 use Params::Validate qw( :all );
-Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.27 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -20,26 +20,27 @@ sub make_literal
 
     validate( @_,
 	      { literal => { type => SCALAR },
-		min => { type => SCALAR },
-		max => { type => UNDEF | SCALAR },
+		min => { type => SCALAR, optional => 1 },
+		max => { type => UNDEF | SCALAR, optional => 1 },
 		groups => { type => ARRAYREF },
 		quote => { type => ARRAYREF, optional => 1 },
 		format => { type => SCALAR, optional => 1 },
+		is_modifier => { type => SCALAR, optional => 1 },
 	      } );
 
     my $valid = '';
-    if ( ! defined $p{max} || $p{min} > 0 || $p{max} > 0 )
+    if ( $p{min} || $p{max} )
     {
 	$valid .= 'validate_pos( @_, ';
 	$valid .= join ', ', ('1') x $p{min};
     }
 
-    if ( defined $p{max} && $p{max} > $p{min} )
+    if ( defined $p{min} && defined $p{max} && $p{max} > $p{min} )
     {
 	$valid .= ', ';
 	$valid .= join ', ', ('0') x ( $p{max} - $p{min} );
     }
-    elsif ( ! defined $p{max} )
+    elsif ( exists $p{min} && ! defined $p{max} )
     {
 	$valid .= ", ('1') x (\@_ - $p{min})";
     }
@@ -65,12 +66,17 @@ sub make_literal
 	push @args, $quote;
     }
 
+    if ( $p{is_modifier} )
+    {
+	push @args, '                                      is_modifier => 1';
+    }
+
     my $args = join ",\n", @args;
 
     my $code = <<"EOF";
 sub ${class}::$p{literal}
 {
-    shift if UNIVERSAL::isa( \$_[0], 'Alzabo::SQLMaker' );
+    shift if defined \$_[0] && UNIVERSAL::isa( \$_[0], 'Alzabo::SQLMaker' );
     $valid
     return Alzabo::SQLMaker::Literal->new( $args );
 }
@@ -106,7 +112,7 @@ sub load
 
 sub available
 {
-    return Alzabo::Util::subclasses(__PACKAGE__);
+    return Class::Factory::Util::subclasses(__PACKAGE__);
 }
 
 sub init
@@ -157,11 +163,15 @@ sub select
 	}
 	elsif ( UNIVERSAL::isa( $_, 'Alzabo::SQLMaker::Literal' ) )
 	{
-	    push @sql, $_->as_string;
+	    push @sql, $_->as_string( $self->{driver} );
+	}
+	elsif ( ! ref $_ )
+	{
+	    push @sql, $_;
 	}
 	else
 	{
-	    Alzabo::Exception::SQL->throw( error => 'Arguments to select must be either column objects, table objects, or literal objects' );
+	    Alzabo::Exception::SQL->throw( error => 'Arguments to select must be either column objects, table objects, literal objects, or plain scalars' );
 	}
     }
 
@@ -395,7 +405,7 @@ sub condition
     }
     elsif ( $lhs->isa('Alzabo::SQLMaker::Literal') )
     {
-	$self->{sql} .= $lhs->as_string;
+	$self->{sql} .= $lhs->as_string( $self->{driver} );
     }
 
     if ( $comp eq 'BETWEEN' )
@@ -509,21 +519,44 @@ sub order_by
     Alzabo::Exception::SQL->throw( error => "Cannot use order by in a '$self->{type}' statement" )
 	unless $self->{type} eq 'select';
 
-    validate_pos( @_, ( { isa => 'Alzabo::Column' } ) x @_ );
-
-    foreach my $c (@_)
-    {
-	unless ( $self->{tables}{ $c->table } )
-	{
-	    my $err = 'Cannot use column (';
-	    $err .= join '.', $c->table->name, $c->name;
-	    $err .= ") in \U$self->{type}\E unless its table is included in the FROM clause";
-	    Alzabo::Exception::SQL->throw( error => $err );
-	}
-    }
+    validate_pos( @_, ( { type => SCALAR | OBJECT,
+			  callbacks =>
+			  { 'column_or_sort' => sub { UNIVERSAL::isa( $_[0], 'Alzabo::Column' ) ||
+				                      $_[0] =~ /^ASC|DESC$/i } } }
+		      ) x @_ );
 
     $self->{sql} .= ' ORDER BY ';
-    $self->{sql} .= join ', ', map { join '.', $_->table->name, $_->name } @_;
+
+    my $x = 0;
+    my $last = '';
+    foreach my $i (@_)
+    {
+	if ( UNIVERSAL::isa( $i, 'Alzabo::Column' ) )
+	{
+	    unless ( $self->{tables}{ $i->table } )
+	    {
+		my $err = 'Cannot use column (';
+		$err .= join '.', $i->table->name, $i->name;
+		$err .= ") in \U$self->{type}\E unless its table is included in the FROM clause";
+		Alzabo::Exception::SQL->throw( error => $err );
+	    }
+
+	    # no comma needed for first column
+	    $self->{sql} .= ', ', if $x++;
+	    $self->{sql} .= join '.', $i->table->name, $i->name;
+
+	    $last = 'column';
+	}
+	else
+	{
+	    Alzabo::Exception::Params->throw( error => 'A sort specifier cannot follow another sort specifier in an ORDER BY clause' )
+		if $last eq 'sort';
+
+	    $self->{sql} .= " \U$i";
+
+	    $last = 'sort';
+	}
+    }
 
     $self->{last_op} = 'order_by';
 
@@ -534,7 +567,7 @@ sub group_by
 {
     my $self = shift;
 
-    $self->_assert_last_op( qw( select from condition order_by ) );
+    $self->_assert_last_op( qw( select from condition ) );
 
     Alzabo::Exception::SQL->throw( error => "Cannot use group by in a '$self->{type}' statement" )
 	unless $self->{type} eq 'select';
@@ -556,30 +589,6 @@ sub group_by
     $self->{sql} .= join ', ', map { join '.', $_->table->name, $_->name } @_;
 
     $self->{last_op} = 'group_by';
-
-    return $self;
-}
-
-sub asc
-{
-    shift->_asc_or_desc('asc');
-}
-
-sub desc
-{
-    shift->_asc_or_desc('desc');
-}
-
-sub _asc_or_desc
-{
-    my $self = shift;
-
-    $self->_assert_last_op( qw( order_by ) );
-
-    my $op = shift;
-    $self->{sql} .= " \U$op";
-
-    $self->{last_op} = $op;
 
     return $self;
 }
@@ -758,7 +767,7 @@ sub _bind_val
 
     my $val = shift;
 
-    return $val->as_string( $self->{driver} ) if UNIVERSAL::isa( $val, 'Alzabo::SQLMaker::Literal' );
+    return $val->as_string( $self->{driver} ) if defined $val && UNIVERSAL::isa( $val, 'Alzabo::SQLMaker::Literal' );
 
     push @{ $self->{bind} }, $val;
 
@@ -809,7 +818,7 @@ sub _virtual
 package Alzabo::SQLMaker::Literal;
 
 use Params::Validate qw( :all );
-Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
 sub new
 {
@@ -850,7 +859,12 @@ sub as_string
 	push @args, $self->{quote}[$i] ? $driver->quote( $self->{args}[$_] ) : $self->{args}[$_];
     }
 
-    my $sql = $self->{literal} . '(';
+    my $sql = $self->{literal};
+
+    return $sql if $self->{is_modifier};
+
+    $sql .= '(';
+
     if ( $self->{format} )
     {
 	$sql .= sprintf('%s', @args);
@@ -859,6 +873,7 @@ sub as_string
     {
 	$sql .= join ', ', @args;
     }
+
     $sql .= ')';
 
     return $sql;
@@ -1093,26 +1108,6 @@ L<C<where>|Alzabo::SQLMaker/where ( (Alzabo::Column object), $comparison, (Alzab
 L<C<and>|Alzabo::SQLMaker/and (same as where)>
 
 L<C<or>|Alzabo::SQLMaker/or (same as where)>
-
-=head3 Followed by
-
-L<C<asc>|Alzabo::SQLMaker/asc>
-
-L<C<desc>|Alzabo::SQLMaker/desc>
-
-=head3 Throws
-
-L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
-
-=head2 asc
-
-=head2 desc
-
-Modifies the sorting of an C<ORDER BY> clause.
-
-=head3 Follows
-
-L<C<order_by>|Alzabo::SQLMaker/order_by (Alzabo::Column objects)>
 
 =head3 Followed by
 

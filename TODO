@@ -17,6 +17,8 @@ Short term:
 
 Medium term:
 
+- Output Dia XML.
+
 - Add constraints to output SQL for Postgres.
 
 - Make a tool to convert schemas from one RDBMS to another.  This will
@@ -31,9 +33,6 @@ Medium term:
 
 - Attempt to guess relationships when reverse engineering a schema
   without foreign key information.
-
-- Support any and all SQL, of arbitrary complexity.  This is actually
-  a decent part of the way there already.
 
 - Rewrite data browser to not suck so much
 
@@ -65,3 +64,8 @@ Ongoing:
 - Robin Berjon suggested a single documentation 'page' that contains a
   list of all the method and what objects they apply to.  This exists
   as Alzabo::QuickRef.
+
+- Support any and all SQL, of arbitrary complexity.  This is fairly
+  far along, but there's probably more bits to handle (like outer
+  joins of >2 tables).
+

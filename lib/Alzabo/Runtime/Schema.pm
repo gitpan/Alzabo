@@ -6,11 +6,11 @@ use vars qw($VERSION);
 use Alzabo::Runtime;
 
 use Params::Validate qw( :all );
-Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.40 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -199,7 +199,7 @@ sub _outer_join
 
     my %p = @_;
 
-    my @select = UNIVERSAL::isa( $p{tables}->[0], 'ARRAY' ) ? @{ shift @{ $p{tables} } } : ( shift @{ $p{tables} }, pop @{ $p{tables} } );
+    my @select = defined $p{tables}->[0] && UNIVERSAL::isa( $p{tables}->[0], 'ARRAY' ) ? @{ shift @{ $p{tables} } } : ( shift @{ $p{tables} }, pop @{ $p{tables} } );
 
     # This gets flipped again later in the OuterJoinCursor object so
     # the results make sense
@@ -208,7 +208,7 @@ sub _outer_join
     # Tables for which we are not selecting but which are involved in
     # the join
     my %other_tables;
-    foreach ( UNIVERSAL::isa( $p{tables}->[0], 'ARRAY' ) ? map { @$_ } @{ $p{tables} } : @{ $p{tables} } )
+    foreach ( defined $p{tables}->[0] && UNIVERSAL::isa( $p{tables}->[0], 'ARRAY' ) ? map { @$_ } @{ $p{tables} } : @{ $p{tables} } )
     {
 	$other_tables{$_} = $_;
     }

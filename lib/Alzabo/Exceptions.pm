@@ -3,7 +3,7 @@ package Alzabo::Exceptions;
 use strict;
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
 
 my %e;
 
@@ -75,11 +75,7 @@ use Exception::Class (%e);
 
 if ($ENV{ALZABO_DEBUG})
 {
-    Exception::Class::Base->do_trace(1);
-    foreach my $class (keys %e)
-    {
-	$class->do_trace(1);
-    }
+    Exception::Class::Base->Trace(1);
 }
 
 package Alzabo::Exception::Driver;

@@ -1,0 +1,71 @@
+=pod
+
+=head1 NAME
+
+Alzabo and PostgreSQL
+
+=head1 DESCRIPTION
+
+This documentation is about what special support Alzabo has for PostgreSQL,
+as well as what is lacking.
+
+Postgres support is based on the 7.1 releases of Postgres.  Alzabo
+will probably work with the 7.0 releases as well.  Of course, features
+that were added to Postgres as part of the 7.1 releases will not work.
+
+=head2 Reverse Engineering
+
+=over 4
+
+=item *
+
+Currently, Alzabo does not handle constraints or foreign keys during
+reverse engineering.  This will change in the future.
+
+=item *
+
+Alzabo cannot determine from the existence of a sequence that the
+sequence is meant to be used for a particular column unless the
+sequence was created as a result of making a column's type SERIAL.
+
+This is because there is no link between the two in the Postgres' data
+dictionary tables and will probably never change.
+
+=back
+
+=head2 Transactions
+
+=over 4
+
+=item *
+
+Transactions are fully supported with Postgres.
+
+=back
+
+=head2 Outer joins
+
+=over 4
+
+=item *
+
+Left and right outer joins are supported.
+
+=item *
+
+Full outer joins are not supported.
+
+=back
+
+=head2 Pre-7.1 Large Objects
+
+=over 4
+
+=item *
+
+There is no support for externally stored large objects.  Upgrade to
+Postgres 7.1 or newer, which supports arbitrarily large rows.
+
+=back
+
+=cut

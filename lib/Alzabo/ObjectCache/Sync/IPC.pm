@@ -6,9 +6,10 @@ use IPC::Shareable;
 
 use vars qw($VERSION %IPC);
 
+use Alzabo::ObjectCache::Sync;
 use base qw( Alzabo::ObjectCache::Sync );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
 
 1;
 

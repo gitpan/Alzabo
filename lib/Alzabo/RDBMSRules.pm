@@ -4,11 +4,12 @@ use strict;
 use vars qw($VERSION);
 
 use Alzabo::Exceptions;
-use Alzabo::Util;
-use Params::Validate qw( validate validate_pos );
-Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.35 $ =~ /(\d+)\.(\d+)/;
+use Class::Factory::Util;
+use Params::Validate qw( validate validate_pos );
+Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.39 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -24,7 +25,7 @@ sub new
 
 sub available
 {
-    return Alzabo::Util::subclasses(__PACKAGE__);
+    return Class::Factory::Util::subclasses(__PACKAGE__);
 }
 
 # validation
@@ -305,6 +306,15 @@ sub table_sql_diff
     my %p = @_;
 
     my @sql;
+    foreach my $old_i ($p{old}->indexes)
+    {
+	unless ( eval { $p{new}->index( $old_i->id ) } )
+	{
+	    push @sql, $self->drop_index_sql($old_i)
+		if eval { $p{new}->columns( map { $_->name } $old_i->columns ) } && ! $@;
+	}
+    }
+
     foreach my $old_c ($p{old}->columns)
     {
 	unless ( my $new_c = eval { $p{new}->column( $old_c->name ) } )
@@ -324,14 +334,6 @@ sub table_sql_diff
 	else
 	{
 	    push @sql, $self->column_sql_add($new_c)
-	}
-    }
-
-    foreach my $old_i ($p{old}->indexes)
-    {
-	unless ( eval { $p{new}->index( $old_i->id ) } )
-	{
-	    push @sql, $self->drop_index_sql($old_i);
 	}
     }
 

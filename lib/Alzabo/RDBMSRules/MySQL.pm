@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.51 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.53 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -284,7 +284,7 @@ sub validate_index
 	if ( $c->is_blob )
 	{
 	    Alzabo::Exception::RDBMSRules->throw( error => 'Blob columns must have an index prefix' )
-		unless $prefix;
+		unless $prefix || $index->fulltext;
 	}
 
 	if ( $index->fulltext )
@@ -438,6 +438,7 @@ sub column_sql
     {
 	my $def = ( $self->type_is_numeric( $col->type ) ? $col->default :
 		    do { my $d = $col->default; $d =~ s/"/""/g; $d } );
+
 	@default = ( qq|DEFAULT "$def"| );
     }
 
@@ -602,6 +603,12 @@ sub alter_primary_key_sql
     return @sql;
 }
 
+my %ignored_defaults = ( DATETIME => '0000-00-00 00:00:00',
+			 DATE => '0000-00-00',
+			 DECIMAL => '0.00',
+			 FLOAT => '0.00',
+			 YEAR => '0000',
+		       );
 sub reverse_engineer
 {
     my $self = shift;
@@ -640,23 +647,27 @@ sub reverse_engineer
 	    }
 
 	    my %p;
-	    if ($type !~ /enum|set/i && $type =~ /(.+)\((\d+)(?:\s*,\s*(\d+))?\)$/)
+	    if ($type !~ /ENUM|SET/i && $type =~ /(\w+)\((\d+)(?:\s*,\s*(\d+))?\)$/)
 	    {
-		$type = $1;
+		$type = uc $1;
+		$type = 'INTEGER' if $type eq 'INT';
 
 		# skip defaults
-		unless ( $type eq 'tinyint' && $2 == 4 ||
-			 $type eq 'smallint' && $2 == 6 ||
-			 $type eq 'mediumint' && $2 == 6 ||
-			 $type eq 'int' && $2 == 11 ||
-			 $type eq 'bigint' && $2 == 21 )
+		unless ( $type eq 'TINYINT' && ( $2 == 4 || $2 == 3 ) ||
+			 $type eq 'SMALLINT' && ( $2 == 6 || $2 == 5 ) ||
+			 $type eq 'MEDIUMINT' && ( $2 == 6 || $2 == 5 ) ||
+			 $type eq 'INTEGER' && ( $2 == 11 || $2 == 10 )  ||
+			 $type eq 'BIGINT' && ( $2 == 21 || $2 == 20 ) )
 		{
 		    $p{length} = $2;
 		    $p{precision} = $3;
 		}
 	    }
-	    $type = 'integer' if $type eq 'int';
+
 	    $type = $self->_capitalize_type($type);
+
+	    $default = undef
+		if exists $ignored_defaults{$type} && $default eq $ignored_defaults{$type};
 
  	    my $c = $t->make_column( name => $row->[0],
 				     type => $type,
@@ -678,12 +689,14 @@ sub reverse_engineer
 	    $i{ $row->[2] }{cols}[ $row->[3] - 1 ]{prefix} = $row->[7]
 		if defined $row->[7];
 	    $i{ $row->[2] }{unique} = $row->[1] ? 0 : 1;
+	    $i{ $row->[2] }{fulltext} = $row->[9] && $row->[9] =~ /fulltext/i ? 1 : 0;
 	}
 
 	foreach my $index (keys %i)
 	{
-	    $t->make_index( columns => $i{$index}{cols},
-			    unique  => $i{$index}{unique} );
+	    $t->make_index( columns  => $i{$index}{cols},
+			    unique   => $i{$index}{unique},
+			    fulltext => $i{$index}{fulltext} );
 	}
     }
 }

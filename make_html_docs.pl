@@ -176,6 +176,8 @@ use File::Basename;
 use File::Path;
 
 my @order = ( qw( Alzabo
+		  Alzabo::MySQL
+		  Alzabo::PostgreSQL
 		  Alzabo::QuickRef
 		  Alzabo::Runtime
 		  Alzabo::Runtime::Schema
@@ -211,7 +213,6 @@ my @order = ( qw( Alzabo
 
 	      qw( Alzabo::Config
                   Alzabo::ChangeTracker
-		  Alzabo::Util
 		  Alzabo::ObjectCache::Sync
 		  Alzabo::Schema
 		  Alzabo::Table
@@ -338,24 +339,6 @@ sub pod2html
 
     fixup_html($out);
 
-    if ($out =~ m,Runtime/Table\.html,)
-    {
-	print "  Fixing up links in $out\n";
-
-	local *FILE;
-	open FILE, "<$out"
-	    or die "Can't read $out: $!\n";
-	my $file = join '', <FILE>;
-	close FILE;
-
-	$file =~ s,<em>Alzabo/Using SQL functions</em>,<a href="$htmlroot/Alzabo.html#using%20sql%20functions">Using SQL functions</a>,gi;
-
-	open FILE, ">$out"
-	    or die "Can't write to $out: $!\n";
-	print FILE $file;
-	close FILE;
-    }
-
     $made{$out} = 1;
 }
 
@@ -373,11 +356,27 @@ sub fixup_html
 
     $html = add_header($file, $html);
 
-    $html =~ s,<code>(value\(s\))</code>,$1,g;
-    $html =~ s,HTML::Mason,<a href="http://www.masonhq.com">HTML::Mason</a>,g;
+    $html =~ s,<code>(value\(s\))</code>,$1,gi;
+    $html =~ s,<code>(integer\(\d+\))</code>,$1,gi;
+    $html =~ s,HTML::Mason,<a href="http://www.masonhq.com">HTML::Mason</a>,gi;
     $html =~ s,(#.*)E<gt>(.*\n),$1>$2,gi;
-    $html =~ s,E&lt;gt&gt;,>,g;
-    $html =~ s,E&lt;lt&gt;,<,g;
+    $html =~ s,E&lt;gt&gt;,>,gi;
+    $html =~ s,E&lt;lt&gt;,<,gi;
+
+    $html =~ s,<hr>\s*<p>\s*<hr>,<hr>,gi;
+
+    if ( $file =~ m,Runtime/Table\.html, )
+    {
+	print "  Fixing up links in $file\n";
+
+	$html =~ s,<em>(?:Alzabo/)?Using SQL functions</em>,<a href="$htmlroot/Alzabo.html#using%20sql%20functions">Using SQL functions</a>,gi;
+    }
+    elsif ( $file =~ m,Runtime/PotentialRow\.html, )
+    {
+	print "  Fixing up links in $file\n";
+
+	$html =~ s,<em>referential integrity constraints</em>,<a href="$htmlroot/Alzabo.html#referential%20integrity">referential integrity constraints</a>,gi;
+    }
 
     open FILE, ">$file"
 	or die "Can't write to $file: $!\n";
@@ -515,7 +514,12 @@ sub module_description
 
     close MOD;
 
-    my ($desc) = $mod =~ /=head1 NAME\n+[\w:]+\s+-\s+(.*)\n/;
+    my ($desc) = $mod =~ /=head1 NAME\s*\n+[\w:]+\s+-\s+(.*)\n/;
+
+    unless (defined $desc)
+    {
+	($desc) = $mod =~ /=head1 NAME\s*\n+(.*)\n/;
+    }
 
     return $desc;
 }

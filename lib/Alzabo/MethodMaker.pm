@@ -4,12 +4,12 @@ use strict;
 use vars qw($VERSION $DEBUG);
 
 use Alzabo::Exceptions;
-use Alzabo::Runtime::Schema;
+use Alzabo::Runtime;
 
 use Params::Validate qw( :all );
-Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.45 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
@@ -585,8 +585,8 @@ sub make_hooks
 
     my $pre = "pre_$type";
     my $post = "post_$type";
-    return unless ( $class->can($pre) || $class->can($post) ||
-		    ( $type eq 'select' && $class->can('post_select_hash') ) );
+
+    return unless $class->can($pre) || $class->can($post);
 
     my $method = join '::', $class, $type;
 
