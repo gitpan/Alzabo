@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -111,7 +111,7 @@ sub validate_column_length
 
     if ( defined $column->length )
     {
-	Alzabo::Exception::RDBMSRules->throw( error => "Length is not supported except for char, varchar, decimal, float, numeric columns (" . $column->name . " column)" )
+	Alzabo::Exception::RDBMSRules->throw( error => "Length is not supported except for char, varchar, decimal, float, and numeric columns (" . $column->name . " column)" )
 	    unless $column->type =~ /\A(?:(?:VAR)CHAR|CHARACTER|DECIMAL|FLOAT|NUMERIC)\z/i;
     }
 

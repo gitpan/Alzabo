@@ -1,12 +1,180 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl5.6.0 -w
 
 use strict;
+
+package QuickRef::Parser;
+
+use Pod::Parser;
+
+@QuickRef::Parser::ISA = qw(Pod::Parser);
+
+sub command
+{
+    my $self = shift;
+    my ($cmd, $text, $line, $para) = @_;
+
+    $text =~ s/\s*$//;
+
+    if ( $self->{in_table} && ! $self->{in_over} && $self->{last_was_text} )
+    {
+	$self->{_html} .= "</td></tr>\n";
+    }
+
+    if ($cmd =~ /head(\d)/)
+    {
+	my $level = $1;
+
+	if ($level > 3)
+	{
+	    $self->{_html} .= "<h$level>$text</h$level>\n";
+	    return;
+	}
+
+	if ($self->{in_table})
+	{
+	    $self->{_html} .= "</table>\n<br><br>";
+	}
+
+	$self->{_html} .= qq|<a name="$text">|;
+
+	if ($level == 3)
+	{
+	    $self->{_html} .= qq|<table border="1" cellpadding="4">\n|;
+	    $self->{in_table} = 1;
+	}
+	elsif ($level < 3)
+	{
+	    $self->{in_table} = 0;
+	    $self->{in_items} = 0;
+	}
+
+	if ($self->{in_table})
+	{
+	    $self->{_html} .= qq|<tr valign=top><td colspan="4">\n|;
+	}
+
+	$self->{_html} .= "\n<h$level>$text</h$level>\n";
+
+	if ($self->{in_table})
+	{
+	    $self->{_html} .= "</td></tr>\n";
+	}
+
+	$self->{last_head} = $level;
+    }
+    elsif ($cmd eq 'over')
+    {
+	$self->{_html} .= "<tr valign=top><th>method</td><th>class/object</td><th>description</td><th>more info</td></tr>\n";
+	$self->{in_over} = 1;
+    }
+    elsif ($cmd eq 'back')
+    {
+	$self->{in_over} = 0;
+    }
+    elsif ($cmd eq 'item')
+    {
+	$text =~ s/\* //;
+
+	$self->{_html} .= qq|<a name="$text">|;
+
+	if ($text =~ /(\w+)\s+(\(.*?\))/)
+	{
+	    $text = "$1\n $2";
+	}
+
+	$self->{_html} .= "<tr valign=top><td><pre>$text</pre></td>\n";
+    }
+    elsif ($cmd eq 'for')
+    {
+	my ($col, $info) = $text =~ /\s*html\s+(\w+)=([^\n]+)/;
+
+	if ($col eq 'link')
+	{
+	    $self->{_html} .= "</td>";
+	}
+
+	$info =~ s,C<(.*?)>,<code>$1</code>,g;
+	$info =~ s!L<((?:<code>)?.*?(?:</code>)?)\|([^>]*)>!$self->_make_link($1,$2)!eg;
+	$info =~ s/E<(.*?)>/&$1;/g;
+
+	$self->{_html} .= "<td>$info</td>";
+	$self->{_html} .= "</tr>\n" if $col eq 'link';
+	$self->{last_col} = $col;
+    }
+
+    $self->{last_was_text} = 0;
+}
+
+sub verbatim
+{
+    my $self = shift;
+    my ($text, $line, $para) = @_;
+
+}
+
+sub textblock
+{
+    my $self = shift;
+    my ($text, $line, $para) = @_;
+
+    $text =~ s/\s*$//;
+
+    $text =~ s,B<(.*?)>,<strong>$1</strong>,g;
+    $text =~ s,C<(.*?)>,<code>$1</code>,g;
+    $text =~ s!L<((?:<code>)?.*?(?:</code>)?)\|([^>]*)>!$self->_make_link($1,$2)!eg;
+    $text =~ s/E<(.*?)>/&$1;/g;
+
+    if ($self->{in_table} && ! $self->{last_was_text})
+    {
+	if ($self->{in_over})
+	{
+	    $self->{_html} .= "<td>";
+	}
+	else
+	{
+	    $self->{_html} .= q|<tr valign=top><td colspan="4">|;
+	}
+    }
+
+    $self->{_html} .= "<p>$text</p>\n";
+
+    $self->{last_was_text} = 1;
+}
+
+sub _make_link
+{
+    my $self = shift;
+    my $linktext = shift;
+    my $link = shift;
+
+    if ($link =~ m,/,)
+    {
+	$link =~ s,/,.html#,;
+    }
+    else
+    {
+	$link .= '.html';
+    }
+    $link =~ s,::,/,g;
+
+    return qq|<a href="$self->{_htmlroot}/$link">$linktext</a>|;
+}
+
+sub interior_sequence
+{
+    my $self = shift;
+    my ($cmd, $arg, $seq) = @_;
+
+}
+
+package main;
 
 use Cwd;
 use File::Basename;
 use File::Path;
 
 my @order = ( qw( Alzabo
+		  Alzabo::QuickRef
 		  Alzabo::Runtime
 		  Alzabo::Runtime::Schema
 		  Alzabo::Runtime::Table
@@ -87,6 +255,7 @@ get_version();
 my %made;
 convert($from, 1);
 convert("$temp/Alzabo");
+make_quickref();
 make_index();
 
 sub get_version
@@ -300,9 +469,11 @@ sub module_description
     my $file = shift;
     $file =~ s,::,/,g;
 
+    my $ext = -e "$from/$file.pm" ? 'pm' : 'pod';
+
     local *MOD;
-    open MOD, "$from/$file.pm"
-	or die "Can't open $from/$file.pm: $!\n";
+    open MOD, "$from/$file.$ext"
+	or die "Can't open $from/$file.$ext: $!\n";
 
     my $mod = join '', <MOD>;
 
@@ -311,4 +482,49 @@ sub module_description
     my ($desc) = $mod =~ /=head1 NAME\n+[\w:]+\s+-\s+(.*)\n/;
 
     return $desc;
+}
+
+sub make_quickref
+{
+    my $from = "$from/Alzabo/QuickRef.pod";
+    my $to = "$to/Alzabo/QuickRef.html";
+
+    my $p = QuickRef::Parser->new;
+
+    $p->{_htmlroot} = $htmlroot;
+    $p->parse_from_file($from);
+
+    my $html = <<"EOF";
+<html>
+<head>
+<title>Alzabo Method Quick Reference</title>
+</head>
+<body>
+
+<p>
+<div align="center">
+<h2>Alzabo (version $version) - Method Quick Reference</h2>
+</div>
+</p>
+
+<p>
+<a href="$htmlroot">Index</a>
+</p>
+
+<hr>
+
+EOF
+
+    $html .= $p->{_html};
+    $html .= "\n</body></html>";
+
+    $html =~ s/<a name="NAME">\s+<h1>.*?<h1>/<h1>/gs;
+
+    open FILE, ">$to"
+	or die "Cannot write to $to: $!";
+    print FILE $html
+	or die "Cannot write to $to: $!";
+    close FILE;
+
+    $made{$to} = 1;
 }

@@ -21,9 +21,44 @@ $Data::Dumper::Indent = 0;
 
 my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
 
+my @cache = ( [
+	       { store => 'Alzabo::ObjectCache::MemoryStore',
+		 sync  => 'Alzabo::ObjectCache::NullSync' },
+	       0,
+	      ],
+	      [
+	       # no caching at all
+	       { store => 0,
+		 sync  => 0 },
+	       0,
+	      ],
+	    );
+
+my $sync = 0;
+if ( eval { require DB_File } && ! $@ )
+{
+    unshift @cache, [ { store => 'Alzabo::ObjectCache::MemoryStore',
+			sync  => 'Alzabo::ObjectCache::DBMSync',
+			dbm_file => 't/dbmsynctest.dbm',
+			clear_on_startup => 1,
+		      },
+		      1
+		    ];
+    $sync++;
+}
+if ( eval { require IPC::Shareable } && ! $@ )
+{
+    unshift @cache, [ { store => 'Alzabo::ObjectCache::MemoryStore',
+			sync  => 'Alzabo::ObjectCache::IPCSync' },
+		      1
+		    ];
+    $sync++;
+}
+
+
 my $TESTS_PER_RUN = 64;
-my $SYNC_TESTS_PER_RUN = 15;
-my $test_count = ($TESTS_PER_RUN * (@$tests + 3)) + ($SYNC_TESTS_PER_RUN * 2);
+my $SYNC_TESTS_PER_RUN = 17;
+my $test_count = ($TESTS_PER_RUN * (@$tests + (@cache - 1))) + ($SYNC_TESTS_PER_RUN * $sync);
 
 print "1..$test_count\n";
 
@@ -37,29 +72,8 @@ foreach my $db ( qw( mysql pg oracle sybase ) )
 
 my $test = shift @t;
 my $last_test_num;
-foreach my $c ( [ { store => 'Alzabo::ObjectCache::MemoryStore',
-		    sync  => 'Alzabo::ObjectCache::DBMSync',
-		    dbm_file => 't/dbmsynctest.dbm',
-		    clear_on_startup => 1,
-		  },
-		  1
-		],
-		[ { store => 'Alzabo::ObjectCache::MemoryStore',
-		    sync  => 'Alzabo::ObjectCache::IPCSync' },
-		  1
-		],
-		[
-		 { store => 'Alzabo::ObjectCache::MemoryStore',
-		   sync  => 'Alzabo::ObjectCache::NullSync' },
-		 0,
-		],
-		[
-		 # no caching at all
-		 { store => 0,
-		   sync  => 0 },
-		 0,
-		],
-	      )
+
+foreach my $c (@cache)
 {
     my $s;
     {

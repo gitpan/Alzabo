@@ -8,16 +8,33 @@ use lib '.', './t';
 
 require 'base.pl';
 
+my ($db, $tests);
+if ( eval { require DBD::mysql } && ! $@ )
+{
+    $db = 'MySQL';
+    $tests = 94;
+}
+elsif ( eval { require DBD::Pg } && ! $@ )
+{
+    $db = 'PostgreSQL';
+    $tests = 92;
+}
+else
+{
+    print "1..0\n";
+    exit;
+}
+
 my $cwd = Cwd::cwd();
 mkdir "$cwd/schemas", 0755
     or die "Can't make dir '$cwd/schemas' for testing: $!\n";
 
-print "1..94\n";
+print "1..$tests\n";
 
 ok(1);
 
 my $s = Alzabo::Create::Schema->new( name => 'foo',
-				     rdbms => 'MySQL',
+				     rdbms => $db,
 				   );
 
 ok( $s && ref $s,
@@ -26,11 +43,11 @@ ok( $s && ref $s,
 ok( $s->name eq 'foo',
     "Schema name should be 'foo' but it's " . $s->name );
 
-ok( ref $s->rules eq 'Alzabo::RDBMSRules::MySQL',
-    "Schema's rules should be in the 'Alzabo::RDBMSRules::MySQL' class but they're in the " . ref $s->rules . " class" );
+ok( ref $s->rules eq "Alzabo::RDBMSRules::$db",
+    "Schema's rules should be in the 'Alzabo::RDBMSRules::$db' class but they're in the " . ref $s->rules . " class" );
 
-ok( ref $s->driver eq 'Alzabo::Driver::MySQL',
-    "Schema's driver should be in the 'Alzabo::Driver::MySQL' class but they're in the " . ref $s->driver . " class" );
+ok( ref $s->driver eq "Alzabo::Driver::$db",
+    "Schema's driver should be in the 'Alzabo::Driver::$db' class but they're in the " . ref $s->driver . " class" );
 
 my $dir = Alzabo::Config->schema_dir;
 {
@@ -58,9 +75,10 @@ eval { $t1 = $s->table('footab'); };
 ok( ! $@ && $t1,
     "Unable to retrieve 'footab' from schema: $@" );
 
+my $att = $db eq 'MySQL' ? 'unsigned' : 'check > 5';
 eval { $t1->make_column( name => 'foo_pk',
 			 type => 'int',
-			 attributes => [ 'unsigned' ],
+			 attributes => [ $att ],
 			 sequenced => 1,
 			 nullable => 0,
 		       ); };
@@ -76,12 +94,12 @@ ok( defined $t1_c1,
 
 ok( $t1_c1->type eq 'int',
     "foo_pk type should be 'int'" );
-ok( $t1_c1->attributes == 1 && ($t1_c1->attributes)[0] eq 'unsigned',
-    "foo_pk should have one attribute, 'unsigned'" );
-ok( $t1_c1->has_attribute( attribute => 'UNSIGNED' ),
-    "foo_pk should have attribute 'UNSIGNED' (case-insensitive check)" );
-ok( ! $t1_c1->has_attribute( attribute => 'UNSIGNED', case_sensitive => 1 ),
-    "foo_pk should _not_ have attribute 'UNSIGNED' (case-sensitive check)" );
+ok( $t1_c1->attributes == 1 && ($t1_c1->attributes)[0] eq $att,
+    "foo_pk should have one attribute, '$att'" );
+ok( $t1_c1->has_attribute( attribute => uc $att ),
+    "foo_pk should have attribute '\U$att\E' (case-insensitive check)" );
+ok( ! $t1_c1->has_attribute( attribute => uc $att, case_sensitive => 1 ),
+    "foo_pk should _not_ have attribute '\U$att\E' (case-sensitive check)" );
 ok( ! $t1_c1->nullable,
     "foo_pk should not be nullable" );
 
@@ -423,12 +441,18 @@ ok( $index eq $index2,
     "The index retrieved from newt1 should be the same as the one first made but it is not");
 
 $t1->column('foo_pk')->set_type('varchar');
-ok( ! $t1->column('foo_pk')->attributes,
-    "The unsigned attribute should not have survived the change from 'int' to 'varchar'" );
+if ($db eq 'MySQL')
+{
+    ok( ! $t1->column('foo_pk')->attributes,
+	"The unsigned attribute should not have survived the change from 'int' to 'varchar'" );
+}
 
-eval { $t1->column('foo_pk')->set_type('text'); };
-ok( $@,
-    "Attempting to set a primary key column to the 'text' type should cause an error" );
+if ($db eq 'MySQL')
+{
+    eval { $t1->column('foo_pk')->set_type('text'); };
+    ok( $@,
+	"Attempting to set a primary key column to the 'text' type should cause an error" );
+}
 
 $tbi->set_type('varchar');
 $tbi->set_length( length => 20 );

@@ -5,7 +5,7 @@ use vars qw($VERSION $CACHE);
 
 use Alzabo::Runtime;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.43 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.44 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -537,10 +537,16 @@ that this row belongs to.
 
 =back
 
-Given a foreign key object, this method returns a
+Given a foreign key object, this method returns either an
+L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> object or an
 L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object for
-the rows in the table that the relationship is _to_, based on the
-value of the relevant column in the current row.
+the row(s) in the table that to which the relationship exists, based
+on the value of the relevant column(s) in the current row.
+
+The type of object returned is based on the cardinality of the
+relationship.  If the relationship says that there could only be one
+matching row, then a row object is returned, otherwise it returns a
+cursor.
 
 All other parameters given will be passed directly to the
 L<C<new>|new> method (such as the C<no_cache>

@@ -9,8 +9,16 @@ use Alzabo::ChangeTracker;
 require Alzabo::ObjectCache;
 require Alzabo::ObjectCache::MemoryStore;
 require Alzabo::ObjectCache::NullSync;
-require Alzabo::ObjectCache::IPCSync;
-require Alzabo::ObjectCache::DBMSync;
+
+if ( eval { require IPC::Shareable } && ! $@ )
+{
+    require Alzabo::ObjectCache::IPCSync;
+}
+
+if ( eval { require DB_File } && ! $@ )
+{
+    require Alzabo::ObjectCache::DBMSync;
+}
 
 use Alzabo;
 

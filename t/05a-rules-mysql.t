@@ -4,6 +4,12 @@ use Alzabo::Create;
 
 use lib '.', './t';
 
+unless ( eval { require DBD::mysql } && ! $@ )
+{
+    print "1..0\n";
+    exit;
+}
+
 require 'base.pl';
 
 print "1..6\n";

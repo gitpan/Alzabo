@@ -6,23 +6,35 @@ use vars qw($SELF $VERSION);
 
 use base qw( Alzabo::ObjectCache::Sync );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub _init
 {
     my $self = shift;
+    $self->{times} = {};
 }
 
 sub sync_time
 {
-    0;
+    my $self = shift;
+    my $id = shift;
+
+    return $self->{times}{$id}
 }
 
 sub update
 {
-    0;
+    my $self = shift;
+    my $id = shift;
+    my $time = shift;
+    my $overwrite = shift;
+
+    $self->{times}{$id} = $time
+	if ( $overwrite ||
+	     ! exists $self->{times}{$id} ||
+	     $self->{times}{$id} <= 0 );
 }
 
 __END__

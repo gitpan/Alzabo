@@ -7,7 +7,7 @@ use strict;
 use Alzabo::Exceptions;
 use Time::HiRes qw( time );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -105,11 +105,7 @@ sub is_deleted
     my $obj = shift;
     my $id = $obj->id;
 
-    if ( $self->{times}{$id} == -1 || $self->sync_time($id) == -1 )
-    {
-	$self->{times}{$id} = -1;
-	return 1;
-    }
+    return 1 if $self->sync_time($id) == -1;
     return 0;
 }
 

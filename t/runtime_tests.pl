@@ -527,6 +527,24 @@ sub parent
     ok( $name eq 'lazarus',
 	"Employee3's name should be 'lazarus' but it is '$name'" );
 
+    my $e1000 = eval { $s->table('employee')->insert( values => { employee_id => 1000,
+								  name => 'alive1',
+								  department_id => 1,
+								} ); };
+    $e1000->delete;
+
+    # S.
+    print $c_write "1\n";
+
+    # T.
+    get_pipe_data($c_read);
+
+    my $new_name = eval { $e1000->select('name') };
+    ok( ! $@,
+	"Attempt to retrieve employee_id 1000 caused an error: $@" );
+
+    ok( $new_name eq 'alive2',
+	"Employee 1000's name should be 'alive2' but it is $new_name" );
 
     close $c_read;
     close $c_write;
@@ -640,6 +658,17 @@ sub child
 		    0 :
 		    "emp3 name should be 'lazarus' but it is '$name'" );
     print $p_write "\n";
+
+    # S.
+    get_pipe_data($p_read);
+
+    eval { $s->table('employee')->insert( values => { employee_id => 1000,
+						      name => 'alive2',
+						      department_id => 1,
+						    } ); };
+
+    # T.
+    print $p_write "1\n";
 
     close $p_write;
     close $p_read;

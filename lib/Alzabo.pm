@@ -13,7 +13,7 @@ use Alzabo::Config;
 
 use vars qw($VERSION);
 
-$VERSION = '0.33';
+$VERSION = '0.34';
 
 1;
 
@@ -42,7 +42,7 @@ Its second function is as an RDBMS to object mapping system.  Once you
 have created a schema, you can use the
 L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table> and
 L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> classes to access its
-data.  These classes offer a low level interface to common operations
+data.  These classes offer a high level interface to common operations
 such as SQL SELECT, INSERT, DELETE, and UPDATE commands.
 
 A higher level interface can be created through the use of the
@@ -157,7 +157,7 @@ object's current state.  This can be though of as a SQL 'diff'.
 
 While this feature is quite useful, it can be confusing too.  The most
 surprising aspect of this is that if you create a schema via L<reverse
-engineering|Alzabo::Create::Schema->reverse_engineer> and then call
+engineering|Alzabo::Create::Schema/reverse_engineer> and then call
 L<C<Alzabo::Create::Schema-E<gt>make_sql>|Alzabo::Create::Schema/make_sql>,
 you will not get any SQL.  This is because the schema knows that it is
 instantiated and it also knows that it is the same as the version in
