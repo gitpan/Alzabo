@@ -266,42 +266,33 @@ This is the base class for schema objects..
 
 =head2 name
 
-=head3 Returns
-
-A string containing the name of the schema.
+Returns a string containing the name of the schema.
 
 =head2 table ($name)
 
-=head3 Returns
+Returns an L<C<Alzabo::Table>|Alzabo::Table> object representing the
+specified table.
 
-An L<C<Alzabo::Table>|Alzabo::Table> object representing the specified
-table.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+An L<C<Alzabo::Exception::Params>|Alzabo::Exceptions> exception is
+throws if the schema does not contain the table.
 
 =head2 tables (@optional_list)
 
-=head3 Returns
-
-If no arguments are given, returns a list of all
+If no arguments are given, this method returns a list of all
 L<C<Alzabo::Table>|Alzabo::Table> objects in the schema, or in a
 scalar context the number of such tables.  If one or more arguments
 are given, returns a list of table objects with those names, in the
 same order given (or the number of such tables in a scalar context,
 but this isn't terribly useful).
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+An L<C<Alzabo::Exception::Params>|Alzabo::Exceptions> exception is
+throws if the schema does not contain one or more of the specified
+tables.
 
 =head2 has_table ($name)
 
-=head3 Returns
-
-A true or false value depending on whether or not the table exists in
-the schema.
+Returns a boolean value indicating whether the table exists in the
+schema.
 
 =head2 begin_work
 
@@ -315,7 +306,8 @@ Rollback a transaction.
 =head2 commit
 
 Finishes a transaction with a commit.  If you make multiple calls to
-C<begin_work>, make sure to call this method the same number of times.
+C<begin_work()>, make sure to call this method the same number of
+times.
 
 =head2 run_in_transaction ( sub { code... } )
 
@@ -326,23 +318,16 @@ wrapped code would have returned.
 
 =head2 driver
 
-=head3 Returns
-
-The L<C<Alzabo::Driver>|Alzabo::Driver> subclass object for the
-schema.
+Returns the L<C<Alzabo::Driver>|Alzabo::Driver> object for the schema.
 
 =head2 rules
 
-=head3 Returns
-
-The L<C<Alzabo::RDBMSRules>|Alzabo::RDBMSRules> subclass object for
-the schema.
+Returns the L<C<Alzabo::RDBMSRules>|Alzabo::RDBMSRules> object for the
+schema.
 
 =head2 sqlmaker
 
-=head3 Returns
-
-The L<C<Alzabo::SQLMaker>|Alzabo::SQLMaker> subclass object for the
+Returns the L<C<Alzabo::SQLMaker>|Alzabo::SQLMaker> object for the
 schema.
 
 =head1 AUTHOR

@@ -170,7 +170,7 @@ C<Alzabo::ColumnDefinition>
 
 =head2 new
 
-=head3 Parameters
+This method takes the following parameters:
 
 =over 4
 
@@ -180,27 +180,12 @@ C<Alzabo::ColumnDefinition>
 
 =back
 
-=head3 Returns
-
-A new C<Alzabo::Create::ColumnDefinition> object.
+It returns a new C<Alzabo::Create::ColumnDefinition> object.
 
 =head2 alter
 
-This method allows you to change a column's type, length, and
-precision as a single operation and should be instead of calling
-C<set_type> followed by C<set_length>.
-
-=head3 Parameters
-
-=over 4
-
-=item * type => $type
-
-=item * length => $length (optional)
-
-=item * precision => $precision (optional)
-
-=back
+See the L<C<< Alzabo::Column->alter() >>|Alzabo::Column/alter> method
+for details.
 
 =for pod_merge type
 
@@ -208,13 +193,16 @@ C<set_type> followed by C<set_length>.
 
 Sets the object's type.
 
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+
 =for pod_merge length
 
 =for pod_merge precision
 
 =head2 set_length
 
-=head3 Parameters
+This method takes the following parameters:
 
 =over 4
 
@@ -227,6 +215,9 @@ Sets the object's type.
 Sets the column's length and precision.  The precision parameter is
 optional (though some column types may require it if the length is
 set).
+
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
 =for pod_merge owner
 

@@ -133,7 +133,19 @@ sub set_fulltext
     my $self = shift;
 
     validate_pos( @_, 1 );
+
+    my $old_val = $self->{fulltext};
+
     $self->{fulltext} = shift;
+
+    eval { $self->table->schema->rules->validate_index($self); };
+
+    if ($@)
+    {
+        $self->{fulltext} = $old_val;
+
+        rethrow_exception($@);
+    }
 }
 
 sub register_column_name_change
@@ -176,7 +188,7 @@ C<Alzabo::Index>
 
 =head2 new
 
-=head3 Parameters
+The constructor takes the following parameters:
 
 =over 4
 
@@ -208,9 +220,10 @@ Indicates whether or not this is a fulltext index.
 
 =back
 
-=head3 Returns
+Returns a new C<Alzabo::Create::Index> object.
 
-A new C<Alzabo::Create::Index> object.
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
 =for pod_merge table
 
@@ -218,9 +231,9 @@ A new C<Alzabo::Create::Index> object.
 
 =head2 add_column
 
-Add a column to the index.
+Adds a column to the index.
 
-=head3 Parameters
+This method takes the following parameters:
 
 =over 4
 
@@ -230,15 +243,21 @@ Add a column to the index.
 
 =back
 
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+
 =head2 delete_column (C<Alzabo::Create::Column> object)
 
-Delete the given column from the index.
+Deletes the given column from the index.
+
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
 =for pod_merge prefix
 
 =head2 set_prefix
 
-=head3 Parameters
+This method takes the following parameters:
 
 =over 4
 
@@ -248,11 +267,14 @@ Delete the given column from the index.
 
 =back
 
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+
 =for pod_merge unique
 
 =head2 set_unique ($boolean)
 
-Set whether or not the index is a unique index.
+Sets whether or not the index is a unique index.
 
 =for pod_merge fulltext
 
@@ -260,9 +282,12 @@ Set whether or not the index is a unique index.
 
 Set whether or not the index is a fulltext index.
 
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+
 =head2 register_column_name_change
 
-=head3 Parameters
+This method takes the following parameters:
 
 =over 4
 
@@ -274,8 +299,10 @@ The column (with the new name already set).
 
 =back
 
-Called by the owning table object when a column changes.  You should
-never need to call this yourself.
+This method is called by the table object which owns the index when a
+column name changes.  You should never need to call this yourself.
+
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =for pod_merge id
 

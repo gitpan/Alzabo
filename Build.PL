@@ -140,7 +140,6 @@ sub features
 
           { phrase     => 'to use the PostgreSQL driver',
             requires   => { 'DBD::Pg' => 1.13 },
-            recommends => { 'MIME::Base64' => 0 },
             test   => 'pg',
           },
 
@@ -322,7 +321,7 @@ EOF
 	my $do = Module::Build->prompt( "  Do tests with $name RDBMS?", 'yes' );
 	next unless $do =~ /^y/i;
 
-	print <<'EOF';
+	print <<"EOF";
 
 Please provide a username that can be used to connect to the $name
 RDBMS?  This user must have the ability to create a new

@@ -101,10 +101,8 @@ the RDBMS.  The order of the columns is significant.
 
 =head2 columns
 
-=head3 Returns
-
-An ordered list of the L<C<Alzabo::Column>|Alzabo::Column> objects
-that are being indexed.
+Returns an ordered list of the L<C<Alzabo::Column>|Alzabo::Column>
+objects that are being indexed.
 
 =head2 prefix (C<Alzabo::Column> object)
 
@@ -116,26 +114,20 @@ should only look at a certain portion of a field (the first N
 characters).  This prefix is required to index any sort of BLOB column
 in MySQL.
 
-=head3 Returns
-
 This method returns the prefix for the column in the index.  If there
 is no prefix for this column in the index, then it returns undef.
 
 =head2 unique
 
-=head3 Returns
-
-A boolean value indicating whether or not the index is a unique index.
+Returns a boolean value indicating whether the index is a unique
+index.
 
 =head2 fulltext
 
-=head3 Returns
-
-A boolean value indicating whether or not the index is a fulltext index.
+Returns a boolean value indicating whether the index is a fulltext
+index.
 
 =head2 function
-
-=head3 Returns
 
 For function indexes, this returns the function being indexed.
 
@@ -145,16 +137,13 @@ The id is generated from the table, column and prefix information for
 the index.  This is useful as a canonical name for a hash key, for
 example.
 
-=head3 Returns
-
-A string that is the id for the index.
+Returns a string that is the id which uniquely identifies the index in
+this schema.
 
 =head2 table
 
-=head3 Returns
-
-The L<C<Alzabo::Table>|Alzabo::Table> object to which the index
-belongs.
+Returns the L<C<Alzabo::Table>|Alzabo::Table> object to which the
+index belongs.
 
 =head1 AUTHOR
 

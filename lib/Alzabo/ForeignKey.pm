@@ -176,42 +176,33 @@ the necessary intermediate linking table for you.
 
 =head2 table_to
 
-=head3 Returns
-
-The relevant L<C<Alzabo::Table>|Alzabo::Table> object.
+Returns the relevant L<C<Alzabo::Table>|Alzabo::Table> object.
 
 =head2 columns_from
 
 =head2 columns_to
 
-=head3 Returns
-
-The relevant L<C<Alzabo::Column>|Alzabo::Column> object(s) for the
-property.
+Returns the relevant L<C<Alzabo::Column>|Alzabo::Column> object(s) for
+the property as an array.
 
 =head2 column_pairs
 
-=head3 Returns
-
-An array of array references.  The references are to two column array
-of L<C<Alzabo::Column>|Alzabo::Column> objects.  These two columns
-correspond in the tables being linked together.
+Returns an array of array references.  The references are to two
+column array of L<C<Alzabo::Column>|Alzabo::Column> objects.  These
+two columns correspond in the tables being linked together.
 
 =head2 cardinality
 
-=head3 Returns
-
-A two element array containing the two portions of the cardinality of
-the relationship.  Each portion will be either '1' or 'n'.
+Returns a two element array containing the two portions of the
+cardinality of the relationship.  Each portion will be either '1' or
+'n'.
 
 =head2 from_is_dependent
 
 =head2 to_is_dependent
 
-=head3 Returns
-
-A boolean value indicating whether there is a dependency from one
-table to the other.
+Returns a boolean value indicating whether there is a dependency from
+one table to the other.
 
 =head2 is_one_to_one
 
@@ -219,14 +210,10 @@ table to the other.
 
 =head2 is_many_to_one
 
-=head3 Returns
-
-A boolean value indicating what kind of relationship the object
-represents.
+Returns a boolean value indicating what kind of relationship the
+object represents.
 
 =head2 is_same_relationship_as ($fk)
-
-=head3
 
 Given a foreign key object, this returns true if the two objects
 represent the same relationship.  However, the two objects may
@@ -234,15 +221,11 @@ represent the same relationship from different table's points of view.
 
 =head2 id
 
-=head3
-
-A string uniquely identifying the foreign key.
+Returns a string uniquely identifying the foreign key.
 
 =head2 comment
 
-=head3 Returns
-
-The comment associated with the foreign key object, if any.
+Returns the comment associated with the foreign key object, if any.
 
 =head1 AUTHOR
 

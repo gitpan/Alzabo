@@ -607,17 +607,10 @@ when trying to maintain state in a web app, for example.
 Throws: L<C<Alzabo::Exception::Logic>|Alzabo::Exceptions>,
 L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
-=head3 Parameters
-
-=over 4
-
-=item * row_id => $row_id
-
-=back
-
-A string representation of a row's id (as returned by the L<C<<
+This method takes a single parameter, "row_id", which is the string
+representation of a row's id, as returned by the L<C<<
 Alzabo::Runtime::Row->id_as_string()
->>|Alzabo::Runtime::Row/id_as_string> method).
+>>|Alzabo::Runtime::Row/id_as_string> method.
 
 It returns a new L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>
 object.  If no rows in the database match the value(s) given then an

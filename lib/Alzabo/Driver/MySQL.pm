@@ -269,15 +269,15 @@ methods in Alzabo::Driver.
 =head2 connect, create_database, drop_database
 
 Besides the parameters listed in L<the Alzabo::Driver
-docs|Alzabo::Driver/Parameters for the connect, create_database, and
-drop_database>, these methods will also include any parameter starting
-with C<mysql_> in the DSN used to connect to the database.  This
-allows you to pass parameters such as C<mysql_default_file>.  See the
-L<DBD::mysql docs|DBD::mysql> for more details.
+docs|Alzabo::Driver/Parameters for connect(),
+create_database(), and drop_database()>, these methods will also
+include any parameter starting with C<mysql_> in the DSN used to
+connect to the database.  This allows you to pass parameters such as
+"mysql_default_file".  See the DBD::mysql docs for more details.
 
 =head2 schemas
 
-This method accepts optional C<host> and C<port> parameters.
+This method accepts optional "host" and "port" parameters.
 
 =head2 get_last_id
 

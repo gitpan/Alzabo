@@ -276,6 +276,15 @@ sub type_is_time
     return 1 if $type eq 'TIME';
 }
 
+sub type_is_time_interval
+{
+    my $self = shift;
+    my $col  = shift;
+    my $type = uc $col->type;
+
+    return 1 if $type eq 'INTERVAL';
+}
+
 sub type_is_blob
 {
     my $self = shift;
@@ -746,20 +755,20 @@ sub alter_primary_key_sql
 # change most aspects of a column definition make it very difficult to
 # properly change a table name and then change its column definitions,
 # so its easier just to recreate the table
-sub can_change_table_name
+sub can_alter_table_name
 {
     0;
 }
 
 # Not sure if this is possible
-sub change_table_attributes_sql
+sub alter_table_attributes_sql
 {
     my $self = shift;
 
     return $self->recreate_table_sql(@_);
 }
 
-sub change_column_name_sql
+sub alter_column_name_sql
 {
     my $self = shift;
     my $column = shift;

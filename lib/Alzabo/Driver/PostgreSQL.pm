@@ -254,8 +254,9 @@ methods in Alzabo::Driver.
 =head2 connect, create_database, drop_database
 
 Besides the parameters listed in L<the Alzabo::Driver
-docs|Alzabo::Driver/Parameters for the connect, create_database, and
-drop_database>, the following parameters are accepted:
+docs|Alzabo::Driver/Parameters for connect(),
+create_database(), and drop_database()>, the following parameters
+are accepted:
 
 =over 4
 
@@ -267,7 +268,7 @@ drop_database>, the following parameters are accepted:
 
 =head2 schemas
 
-This method accepts the same parameters as the C<connect> method.
+This method accepts the same parameters as the C<connect()> method.
 
 =head2 get_last_id
 
@@ -275,7 +276,9 @@ Returns the last id created for a sequenced column.
 
 =head2 identifier_length
 
-Returns the maximum identifier length allowed by the database.
+Returns the maximum identifier length allowed by the database.  This
+is really a guess based on the server version, since the actual value
+is set when the server is compiled.
 
 =head1 BUGS
 

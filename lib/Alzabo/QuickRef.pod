@@ -49,40 +49,40 @@ L<C<join>|Alzabo::QuickRef/join>.
 
 =item * load_from_file
 
-=for html type=class
+=for html_docs type=class
 
 Load an existing schema object from disk.  Returns a new schema
 object.
 
-=for html link=L<More|Alzabo::Create::Schema/load_from_file($name)>
+=for html_docs link=L<More|Alzabo::Create::Schema/load_from_file($name)>
 
 =item * set_user ($user)
 
-=for html type=object
+=for html_docs type=object
 
 Set the username to be used when connecting to the database.
 
-=for html link=L<More|Alzabo::Runtime::Schema/set_user ($user)>
+=for html_docs link=L<More|Alzabo::Runtime::Schema/set_user ($user)>
 
 =item * set_password ($password)
 
-=for html type=object
+=for html_docs type=object
 
 Set the password to be used when connecting to the database.
 
-=for html link=L<More|Alzabo::Runtime::Schema/set_password ($password)>
+=for html_docs link=L<More|Alzabo::Runtime::Schema/set_password ($password)>
 
 =item * set_host ($host)
 
-=for html type=object
+=for html_docs type=object
 
 Set the host to be used when connecting to the database.
 
-=for html link=L<More|Alzabo::Runtime::Schema/set_host ($host)>
+=for html_docs link=L<More|Alzabo::Runtime::Schema/set_host ($host)>
 
 =item * connect (%params)
 
-=for html type=object
+=for html_docs type=object
 
 Connect to the RDBMS.  This will use the previously set
 username/password/host, though these can be overridden by the
@@ -91,37 +91,37 @@ C<%params> given to the call.
 B<Important>: This method must be called before any data retrieval is
 attempted.
 
-=for html link=L<More|Alzabo::Runtime::Schema/connect (%params)>
+=for html_docs link=L<More|Alzabo::Runtime::Schema/connect (%params)>
 
 =item * join
 
-=for html type=object
+=for html_docs type=object
 
 Fetch rows from one or more tables based on a table join.  Returns
 either a L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor>
 or L<C<Alzabo::Runtime::JoinCursor>|Alzabo::Runtime::JoinCursor>
 object.
 
-=for html link=L<More|Alzabo::Runtime::Schema/join>
+=for html_docs link=L<More|Alzabo::Runtime::Schema/join>
 
 =item * function/select
 
-=for html type=object
+=for html_docs type=object
 
 Allows you to execute arbitrary column aggregate SQL functions such as
 C<AVG> or C<MAX> with a multi-table join.
 
-=for html link=L<More|Alzabo::Runtime::Schema/function and select>
+=for html_docs link=L<More|Alzabo::Runtime::Schema/function and select>
 
 =item * table ($name)
 
-=for html type=object
+=for html_docs type=object
 
 Returns an L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table> object.
 This is important because most of the row fetching operations are
 table object methods.
 
-=for html link=L<More|Alzabo::Runtime::Schema/table ($name)>
+=for html_docs link=L<More|Alzabo::Runtime::Schema/table ($name)>
 
 =back
 
@@ -154,54 +154,54 @@ more details.
 
 =item * insert
 
-=for html type=object
+=for html_docs type=object
 
 Insert a new row and return it.
 
-=for html link=L<More|Alzabo::Runtime::Table/insert>
+=for html_docs link=L<More|Alzabo::Runtime::Table/insert>
 
 =item * row_by_pk
 
-=for html type=object
+=for html_docs type=object
 
 Returns the row identified by the primary key give.
 
-=for html link=L<More|Alzabo::Runtime::Table/row_by_pk>
+=for html_docs link=L<More|Alzabo::Runtime::Table/row_by_pk>
 
 =item * rows_where
 
-=for html type=object
+=for html_docs type=object
 
 Retrieves a set of rows based on a where clause.  Please see the
 method documentation for details on how where clauses are constructed.
 
-=for html link=L<More|Alzabo::Runtime::Table/rows_where>
+=for html_docs link=L<More|Alzabo::Runtime::Table/rows_where>
 
 =item * all_rows
 
-=for html type=object
+=for html_docs type=object
 
 Retrieves all the rows in the table.
 
-=for html link=L<More|Alzabo::Runtime::Table/all_rows>
+=for html_docs link=L<More|Alzabo::Runtime::Table/all_rows>
 
 =item * function/select
 
-=for html type=object
+=for html_docs type=object
 
 Allows you to execute arbitrary column aggregate SQL functions such as
 C<AVG> or C<MAX>.
 
-=for html link=L<More|Alzabo::Runtime::Table/function and select>
+=for html_docs link=L<More|Alzabo::Runtime::Table/function and select>
 
 =item * potential_row
 
-=for html type=object
+=for html_docs type=object
 
 Make a new L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> in the
 "potential" state.
 
-=for html link=L<More|Alzabo::Runtime::Table/potential_row>
+=for html_docs link=L<More|Alzabo::Runtime::Table/potential_row>
 
 =back
 
@@ -214,34 +214,34 @@ retrieve the actual column values from it, update it, or delete it.
 
 =item * select (@list_of_column_names)
 
-=for html type=object
+=for html_docs type=object
 
 Given a list of column names, this method returns the values for those
 columns.
 
-=for html link=L<More|Alzabo::Runtime::Row/select (@list_of_column_names)>
+=for html_docs link=L<More|Alzabo::Runtime::Row/select (@list_of_column_names)>
 
 =item * update (%hash_of_columns_and_values)
 
-=for html type=object
+=for html_docs type=object
 
 Given a hash of columns and values, this method will update the
 database and the object to match those values.
 
-=for html link=L<More|Alzabo::Runtime::Row/update (%hash_of_columns_and_values)>
+=for html_docs link=L<More|Alzabo::Runtime::Row/update (%hash_of_columns_and_values)>
 
 =item * delete
 
-=for html type=object
+=for html_docs type=object
 
 Deletes the row from the database.  Further attempts to retrieve data
 from this row will throw an exception.
 
-=for html link=L<More|Alzabo::Runtime::Row/delete>
+=for html_docs link=L<More|Alzabo::Runtime::Row/delete>
 
 =item * rows_by_foreign_key
 
-=for html type=object
+=for html_docs type=object
 
 Given a foreign key object from the row's table to another table,
 returns either an L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>
@@ -252,7 +252,7 @@ value of the relevant column(s) in the current row.
 
 This method can also take a C<no_cache> and/or C<order_by> parameter.
 
-=for html link=L<More|Alzabo::Runtime::Row/rows_by_foreign_key>
+=for html_docs link=L<More|Alzabo::Runtime::Row/rows_by_foreign_key>
 
 =back
 
@@ -266,22 +266,22 @@ a few extra lines in your code.
 
 =item * next
 
-=for html type=object
+=for html_docs type=object
 
 Returns the next L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>
 object, or undef if there are no more.
 
-=for html link=L<More|Alzabo::Runtime::RowCursor/next>
+=for html_docs link=L<More|Alzabo::Runtime::RowCursor/next>
 
 =item * all_rows
 
-=for html type=object
+=for html_docs type=object
 
 Returns a list of all the remaining
 L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects, or an empty
 list if there are no more.
 
-=for html link=L<More|Alzabo::Runtime::RowCursor/all_rows>
+=for html_docs link=L<More|Alzabo::Runtime::RowCursor/all_rows>
 
 =back
 
@@ -298,25 +298,25 @@ C<Alzabo::Runtime::*> classes.
 
 =item * reverse_engineer
 
-=for html type=class
+=for html_docs type=class
 
 Connect to a database and reverse engineer a schema.  Returns a new
 schema object.
 
-=for html link=L<More|Alzabo::Create::Schema/reverse_engineer>
+=for html_docs link=L<More|Alzabo::Create::Schema/reverse_engineer>
 
 =item * load_from_file
 
-=for html type=class
+=for html_docs type=class
 
 Load an existing schema object from disk.  Returns a new schema
 object.
 
-=for html link=L<More|Alzabo::Create::Schema/load_from_file($name)>
+=for html_docs link=L<More|Alzabo::Create::Schema/load_from_file($name)>
 
 =item * create
 
-=for html type=object
+=for html_docs type=object
 
 If the schema has not yet been instantiated in an RDBMS, this method
 will instantiate the schema.  If it has been previously instantiated,
@@ -324,36 +324,36 @@ it will bring the schema in the RDBMS into sync with its object
 representation (altering tables/columns, etc.)  Where possible, exist
 data will be preserved.
 
-=for html link=L<More|Alzabo::Create::Schema/create>
+=for html_docs link=L<More|Alzabo::Create::Schema/create>
 
 =item * make_sql
 
-=for html type=object
+=for html_docs type=object
 
 Returns an array, each element of which is a SQL statement.  The SQL
 is either the SQL to create the schema from scratch or the SQL needed
 to update the RDBMS to match the current object.  See the
 L<C<create>|Alzabo::QuickRef/create> method for more details.
 
-=for html link=L<More|Alzabo::Create::Schema/make_sql>
+=for html_docs link=L<More|Alzabo::Create::Schema/make_sql>
 
 =item * drop
 
-=for html type=object
+=for html_docs type=object
 
 Drop the database from the RDBMS where it was created.  Does not
 remove the schema object itself from disk.
 
-=for html link=L<More|Alzabo::Create::Schema/drop>
+=for html_docs link=L<More|Alzabo::Create::Schema/drop>
 
 =item * delete
 
-=for html type=object
+=for html_docs type=object
 
 Delete the schema object files from disk.  Does not drop the database
 from the RDBMS.
 
-=for html link=L<More|Alzabo::Create::Schema/delete>
+=for html_docs link=L<More|Alzabo::Create::Schema/delete>
 
 =back
 

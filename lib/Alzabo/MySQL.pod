@@ -60,15 +60,15 @@ Again, Alzabo ignores these lengths when reverse engineering a schema.
 =item *
 
 All of this may lead to apparent inconsistencies when using the with
-the
-L<C<Alzabo::Create::Schema-E<gt>sync_backend>|Alzabo::Create::Schema/"sync_backend">
-or
-L<C<Alzabo::Create::Schema-E<gt>sync_backend_sql>|Alzabo::Create::Schema/"sync_backend_sql">
-methods.  If you are using this feature from the web based schema
-creator, you will see that even immediately after running the
-C<sync_backend> method, Alzabo may still think there are differences
-between the two schemas.  This is not a problem, as running the SQL
-Alzabo generates will not actually change your database.
+the L<C<< Alzabo::Create::Schema->sync_backend
+>>|Alzabo::Create::Schema/"sync_backend"> or L<C<<
+Alzabo::Create::Schema->sync_backend_sql
+>>|Alzabo::Create::Schema/"sync_backend_sql"> methods.  If you are
+using this feature from the web based schema creator, you will see
+that even immediately after running the C<sync_backend()> method,
+Alzabo may still think there are differences between the two schemas.
+This is not a problem, as running the SQL Alzabo generates will not
+actually change your database.
 
 =back
 
@@ -102,8 +102,7 @@ MySQL schema.  This will probably change in the future.
 
 =over 4
 
-As of now, there is no way to specify table specific attributes with
-Alzabo.
+These can be specified as a table attribute.
 
 =back
 

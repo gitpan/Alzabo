@@ -516,7 +516,7 @@ C<Alzabo::Table>
 
 =head2 new
 
-=head3 Parameters
+The constructor takes the following parameters:
 
 =over 4
 
@@ -526,19 +526,17 @@ The schema to which this table belongs.
 
 =item * name => $name
 
+=item * attributes => \@attributes
+
 =item * comment => $comment
 
 An optional comment.
 
 =back
 
-=head3 Returns
+It returns a new C<Alzabo::Create::Table> object.
 
-A new C<Alzabo::Create::Table> object.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =for pod_merge schema
 
@@ -547,6 +545,9 @@ L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 =head2 set_name ($name)
 
 Changes the name of the table.
+
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
 =for pod_merge column
 
@@ -560,43 +561,30 @@ Creates a new L<C<Alzabo::Create::Column>|Alzabo::Create::Column>
 object and adds it to the table.  This object is the function's return
 value.
 
-In addition, if the before or after parameter is given, the
-L<C<move_column>|move_column> method is called to move the new column.
+In addition, if a "before" or "after" parameter is given, the
+L<C<move_column()>|move_column> method is called to move the new
+column.
 
-This method takes all of the same parameters as the
-L<C<Alzabo::Create::Column>|Alzabo::Create::Column> method except the
-C<table> parameter, which is automatically added.
+This method takes all of the same parameters as the L<C<<
+Alzabo::Create::Column->new() >>|Alzabo::Create::Column> method except
+the "table" parameter, which is automatically supplied.
 
-=head3 Additional Parameters
+This method also accepts an additional parameter, "primary_key",
+indicating whether or not the column is part of the table's primary
+key.
 
-=over 4
+Returns a new L<C<Alzabo::Create::Column>|Alzabo::Create::Column> object.
 
-=item * primary_key => 0 or 1
-
-If this value is true, then the
-L<C<add_primary_key>|Alzabo::Create::Table/add_primary_key
-(Alzabo::Create::Column object)> method will be called after this new
-column is made in order to make a it a primary key for the table.
-
-=item * after => C<Alzabo::Create::Column> object
-
-... or ...
-
-=item * before => C<Alzabo::Create::Column> object
-
-=back
-
-=head3 Returns
-
-A new L<C<Alzabo::Create::Column>|Alzabo::Create::Column> object.
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
 =head2 add_column
 
-Adds a column to the table.  If a before or after parameter is given
-then the L<C<move_column>|move_column> method will be called to move
-the new column to the appropriate position.
+Adds a column to the table.  If a "before" or "after" parameter is
+given then the L<C<move_column()>|move_column> method will be called
+to move the new column to the appropriate position.
 
-=head3 Parameters
+It takes the following parameters:
 
 =over 4
 
@@ -610,21 +598,18 @@ the new column to the appropriate position.
 
 =back
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
 =head2 delete_column (C<Alzabo::Create::Column> object)
 
 Deletes a column from the table.
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 move_column
 
-=head3 Parameters
+This method takes the following parameters:
 
 =over 4
 
@@ -646,9 +631,7 @@ Move the column after this column.
 
 =back
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =for pod_merge primary_key
 
@@ -660,17 +643,13 @@ Make the given column part of the table's primary key.  The primary
 key is an ordered list of columns.  The given column will be added to
 the end of this list.
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 delete_primary_key (C<Alzabo::Create::Column> object)
 
 Delete the given column from the primary key.
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =for pod_merge foreign_keys
 
@@ -691,22 +670,22 @@ If the foreign key being made is 1..1 or 1..n, then a unique index
 will be created on the columns involved in the "1" side of the foreign
 key, unless they are the table's primary key.
 
-=head3 returns
+Returns a new
+L<C<Alzabo::Create::ForeignKey>|Alzabo::Create::ForeignKey> object.
 
-A new L<C<Alzabo::Create::ForeignKey>|Alzabo::Create::ForeignKey>
-object.
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 add_foreign_key (C<Alzabo::Create::ForeignKey> object)
 
 Adds the given foreign key to the table.
 
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+
 =head2 delete_foreign_key (C<Alzabo::Create::ForeignKey> object)
 
 Deletes the given foreign key from the table
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =for pod_merge index
 
@@ -716,30 +695,27 @@ L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 make_index
 
-Takes the same parameters as the
-L<C<Alzabo::Create::Index-E<gt>new>|Alzabo::Create::Index/new> method
-except for the C<table> parameter, which is automatically added.  The
-index object that is created is then added to the table.
+Takes the same parameters as the L<C<< Alzabo::Create::Index->new()
+>>|Alzabo::Create::Index/new> method except for the "table" parameter,
+which is automatically added.  The index object that is created is
+then added to the table.
 
-=head3 Returns
+Returns the new L<C<Alzabo::Create::Index>|Alzabo::Create::Index>
+object.
 
-A new L<C<Alzabo::Create::Index>|Alzabo::Create::Index> object.
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 add_index (C<Alzabo::Create::Index> object)
 
 Adds the given index to the table.
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 delete_index (C<Alzabo::Create::Index> object)
 
-Deletes an index from the table.
+Deletes the specified index from the table.
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =for pod_merge attributes
 
@@ -751,6 +727,9 @@ Sets the tables's attributes.  These are strings describing the table
 (for example, valid attributes in MySQL are "TYPE = INNODB" or
 "AUTO_INCREMENT = 100").
 
+You can also set table constraints as attributes.  Alzabo will
+generate correct SQL for both actual attributes and constraints.
+
 =head2 add_attribute ($attribute)
 
 Add an attribute to the column's list of attributes.
@@ -759,9 +738,12 @@ Add an attribute to the column's list of attributes.
 
 Delete the given attribute from the column's list of attributes.
 
-=head3 Throws
-
 L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+
+=head2 former_name
+
+If the table's name has been changed since the last time the schema
+was instantiated, this method returns the table's previous name.
 
 =for pod_merge comment
 

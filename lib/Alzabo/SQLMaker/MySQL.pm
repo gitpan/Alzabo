@@ -420,7 +420,7 @@ Alzabo::SQLMaker::MySQL - Alzabo SQL making class for MySQL
 
 =head1 DESCRIPTION
 
-MySQL-specific SQL creation.  It is worth noting that MySQL does not
+This class implementes MySQL-specific SQL creation.  MySQL does not
 allow subselects.  Any attempt to use a subselect (by passing an
 C<Alzabo::SQMaker> object in as parameter to a method) will result in
 an L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions> error.
@@ -428,8 +428,8 @@ an L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions> error.
 =head1 METHODS
 
 Almost all of the functionality inherited from Alzabo::SQLMaker is
-used as is.  The only overridden methods are C<limit> and
-C<get_limit>, as MySQL does allow for a C<LIMIT> clause in its SQL.
+used as is.  The only overridden methods are C<limit()> and
+C<get_limit()>, as MySQL does allow for a C<LIMIT> clause in its SQL.
 
 =head1 EXPORTED SQL FUNCTIONS
 

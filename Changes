@@ -1,3 +1,14 @@
+0.80  October 24, 2003
+
+ENHANCEMENTS:
+
+- Use the non-deprecated form of DBI->tables().
+
+- Added an is_time_interval method to Alzabo::Column.
+
+- Lots and lots of doc cleanup and re-formatting.
+
+
 0.79_04  October 18, 2003
 
 Identical to 0.79_03 except for minor POD changes in order to try to
@@ -53,10 +64,10 @@ ENHANCEMENTS:
 Postgres's "WITH OIDS".
 
 - Added support for functional indexes in Postgres, like
-"LOWER(some_col)".  Funded by Kineticode, LLC for Bricolage 2.0.
+"LOWER(some_col)".  Funded by Kineticode, Inc. for Bricolage 2.0.
 
 - Added column/table constraint/check reverse engineering for
-Postgres.  Funded by Kineticode, LLC for Bricolage 2.0.
+Postgres.  Funded by Kineticode, Inc. for Bricolage 2.0.
 
 - The SQL generated for Postgres schemas now includes foreign key
 constraints.

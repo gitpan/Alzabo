@@ -9,7 +9,7 @@ use Text::Autoformat qw(autoformat form);
 my $name;
 unless ( $name = $ARGV[0] )
 {
-    warn "$0 requires a schema name as an argument\n";
+    print "Usage: alzabo_to_ascii  schema\n";
     exit;
 }
 

@@ -263,7 +263,7 @@ sub tables
 
     $self->_check_dbh;
 
-    my @t = eval {  $self->{dbh}->tables; };
+    my @t = eval {  $self->{dbh}->tables( '', $self->{schema}->name, '%', '' ); };
     Alzabo::Exception::Driver->throw( error => $@ ) if $@;
 
     return @t;
@@ -638,29 +638,27 @@ Alzabo::Driver - Alzabo base class for RDBMS drivers
 =head1 DESCRIPTION
 
 This is the base class for all Alzabo::Driver modules.  To instantiate
-a driver call this class's C<new> method.  See L<SUBCLASSING
+a driver call this class's C<new()> method.  See L<SUBCLASSING
 Alzabo::Driver> for information on how to make a driver for the RDBMS
 of your choice.
 
 This class throws several, exceptions, one of which,
-Alzabo::Exception::Driver, has additional methods not present in other
-exception classes.  See L<Alzabo::Exception::Driver METHODS> for a
-description of these methods.
+C<Alzabo::Exception::Driver>, has additional methods not present in
+other exception classes.  See L<Alzabo::Exception::Driver METHODS> for
+a description of these methods.
 
 =head1 METHODS
 
 =head2 available
 
-=head3 Returns
-
-A list of names representing the available C<Alzabo::Driver>
+Returns a list of names representing the available C<Alzabo::Driver>
 subclasses.  Any one of these names would be appropriate as the
-C<rdbms> parameter for the
-L<C<Alzabo::Driver-E<gt>new>|Alzabo::Driver/new> method.
+"rdbms" parameter for the L<C<< Alzabo::Driver->new
+>>|Alzabo::Driver/new> method.
 
 =head2 new
 
-=head3 Parameters
+The constructor takes the following parameters:
 
 =over 4
 
@@ -672,40 +670,26 @@ The name of the RDBMS being used.
 
 =back
 
-=head3 Returns
+It returns a new C<Alzabo::Driver> object of the appropriate subclass.
 
-A new C<Alzabo::Driver> object of the appropriate subclass.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Eval>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Eval>|Alzabo::Exceptions>
 
 =head2 tables
 
-=head3 Returns
+Returns a list of strings containing the names of the tables in the
+database.  See the C<DBI> documentation of the C<DBI-E<gt>tables>
+method for more details.
 
-A list of strings containing the names of the tables in the database.
-See the C<DBI> documentation of the C<DBI-E<gt>tables> method for more
-details.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
 
 =head2 handle ($optional_dbh)
-
-=head3 Parameters
 
 This method takes one optional parameter, a connected DBI handle.  If
 this is given, then this handle is the new handle for the driver.
 
-=head3 Returns
+It returns the active database handle.
 
-The active database handle.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 Data Retrieval methods
 
@@ -719,7 +703,7 @@ use the functionality provided by the
 L<C<Alzabo::DriverStatement>|Alzabo::DriverStatement> class, which
 allows you to fetch results one row at a time.
 
-=head3 Parameters (for all methods below)
+These methods all accept the following parameters:
 
 =over 4
 
@@ -729,9 +713,9 @@ allows you to fetch results one row at a time.
 
 =item * limit => [ $max, optional $offset ] (optional)
 
-C<$offset> defaults to 0.
+The C<$offset> defaults to 0.
 
-This parameters has no effect for the methods that return only one
+This parameter has no effect for the methods that return only one
 row.  For the others, it causes the drivers to skip C<$offset> rows
 and then return only C<$max> rows.  This is useful if the RDBMS being
 used does not support C<LIMIT> clauses.
@@ -740,82 +724,64 @@ used does not support C<LIMIT> clauses.
 
 =head2 rows
 
-=head3 Returns
-
-An array of array references containing the data requested.
+Returns an array of array references containing the data requested.
 
 =head2 rows_hashref
 
-=head3 Returns
-
-An array of hash references containing the data requested.  The hash
-reference keys are the columns being selected.  All the key names are
-in uppercase.
+Returns an array of hash references containing the data requested.
+The hash reference keys are the columns being selected.  All the key
+names are in uppercase.
 
 =head2 one_row
 
-=head3 Returns
-
-An array or scalar containing the data returned, depending on context.
+Returns an array or scalar containing the data returned, depending on
+context.
 
 =head2 one_row_hash
 
-=head3 Returns
-
-A hash containing the data requested.  The hash keys are the columns
-being selected.  All the key names are in uppercase.
+Returns a hash containing the data requested.  The hash keys are the
+columns being selected.  All the key names are in uppercase.
 
 =head2 column
 
-=head3 Returns
-
-An array containing the values for the first column of each row
-returned.
+Returns an array containing the values for the first column of each
+row returned.
 
 =head2 do
 
 Use this for non-SELECT SQL statements.
 
-=head3 Returns
+Returns the number of rows affected.
 
-The number of rows affected.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
 
 =head2 statement
 
-=head3 Parameters
+This methods returns a new
+L<C<Alzabo::DriverStatement>|Alzabo::DriverStatement> handle, ready to
+return data via the L<C<< Alzabo::DriverStatement->next()
+>>|Alzabo::DriverStatement/next> or L<C<<
+Alzabo::DriverStatement->next_as_hash()
+>>|Alzabo::DriverStatement/next_as_hash> methods.
 
-=over 4
-
-=item * limit => [ $max, optional $offset ] (optional)
-
-=back
-
-C<$offset> defaults to 0.
-
-=head3 Returns
-
-A new L<C<Alzabo::DriverStatement>|Alzabo::DriverStatement> handle,
-ready to return data via the
-L<C<Alzabo::DriverStatement-E<gt>next>|Alzabo::DriverStatement/next>
-or
-L<C<Alzabo::DriverStatement-E<gt>next_as_hash>|Alzabo::DriverStatement/next_as_hash>
-methods.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
-
+Throws: L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
 
 =head2 rdbms_version
 
-=head3 Returns
+Returns the version string of the database backend currently in use.
+The form of this string will vary depending on which driver subclass
+is being used.
 
-The version string of the database backend currently in use.
+=head2 quote (@strings)
 
+This methods calls the underlying DBI handles C<quote()> method on the
+array of strings provided, and returns the quoted versions.
+
+=head2 quote_identifier (@strings)
+
+This methods calls the underlying DBI handles C<quote_identifier()>
+method on the array of strings provided, and returns the quoted
+versions.
 
 =head1 Alzabo::DriverStatement
 
@@ -828,65 +794,47 @@ doing this.
 Use this method in a while loop to fetch all the data from a
 statement.
 
-=head3 Returns
+Returns an array containing the next row of data for statement or an
+empty list if no more data is available.
 
-An array containing the next row of data for statement or an empty
-list if no more data is available.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
 
 =head2 next_as_hash
 
-For backwards compatibility, this is also available as C<next_hash>.
+For backwards compatibility, this is also available as C<next_hash()>.
 
-=head3 Returns
+Returns a hash containing the next row of data for statement or an
+empty list if no more data is available.  All the keys of the hash
+will be lowercased.
 
-A hash containing the next row of data for statement or an empty list
-if no more data is available.  All the keys of the hash will be
-lowercased.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
 
 =head2 all_rows
 
-=head3 Returns
-
 If the select for which this statement is cursor was for a single
-column (or aggregate value), then method returns an array containing
-each B<remaining> value from the database.
+column (or aggregate value), then this method returns an array
+containing each B<remaining> value from the database.
 
 Otherwise, it returns an array of array references, each one
 containing a returned row from the database.
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
 
 =head2 all_rows_hash
 
-=head3 Returns
+Returns an array of hashes, each hash representing a single row
+returned from the database.  The hash keys are all in lowercase.
 
-An array of hashes, each hash representing a single row returned from
-the database.  The hash keys are all in lowercase.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
 
 =head2 execute (@bind_values)
 
 Executes the associated statement handle with the given bound
 parameters.  If the statement handle is still active (it was
-previously executed and has more data left) then its C<finish> method
-will be called first.
+previously executed and has more data left) then its C<finish()>
+method will be called first.
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
 
 =head2 count
 
@@ -900,15 +848,12 @@ class also contain several methods specific to this subclass.
 
 =head2 sql
 
-=head3 Returns
-
-The SQL statement in use at the time the error occurred, if any.
+Returns the SQL statement in use at the time the error occurred, if
+any.
 
 =head2 bind
 
-=head3 Returns
-
-A array reference contaning the bound parameters for the SQL
+Returns an array reference contaning the bound parameters for the SQL
 statement, if any.
 
 =head1 SUBCLASSING Alzabo::Driver
@@ -963,7 +908,7 @@ is, and include the code you've written so far.
 The following methods are not implemented in C<Alzabo::Driver> itself
 and must be implemented in a subclass.
 
-=head3 Parameters for the connect, create_database, and drop_database
+=head3 Parameters for connect(), create_database(), and drop_database()
 
 =over 4
 
@@ -980,6 +925,9 @@ and must be implemented in a subclass.
 All of these default to undef.  See the appropriate DBD driver
 documentation for more details.
 
+After the driver is created, it will have access to its associated
+schema object in C<< $self->{schema} >>.
+
 =head2 connect
 
 Some drivers may accept or require more arguments than specified
@@ -987,7 +935,7 @@ above.
 
 Note that C<Alzabo::Driver> subclasses are not expected to cache
 connections.  If you want to do this please use C<Apache::DBI> under
-mod_perl or don't call C<connect> more than once per process.
+mod_perl or don't call C<connect()> more than once per process.
 
 =head2 create_database
 
@@ -999,12 +947,23 @@ specified above.
 
 Attempts to drop the database for the schema attached to the driver.
 
+=head2 schemas
+
+Returns a list of schemas in the specified RDBMS.  This method may
+accept some or all of the parameters which can be given to
+C<connect()>.
+
+=head2 supports_referential_integrity
+
+Should return a boolean value indicating whether or not the RDBMS
+supports referential integrity constraints.
+
 =head2 next_sequence_number (C<Alzabo::Column> object)
 
 This method is expected to return the value of the next sequence
 number based on a column object.  For some databases (MySQL, for
 example), the appropriate value is C<undef>.  This is accounted for in
-Alzabo code that calls this method.
+the Alzabo code that calls this method.
 
 =head2 begin_work
 
@@ -1021,9 +980,16 @@ basically the equivalent of calling commit.
 
 =head2 get_last_id
 
-=head3 Returns
+Returns the last primary key id created via a sequenced column.
 
-The last primary key id created via a sequenced column.
+=head2 rdbms_version
+
+Returns the version of the server to which the driver is connected.
+
+=head2 driver_id
+
+Returns the driver's name.  This should be something that can be
+passed to C<< Alzabo::Driver->new() >> as a "name" parameter.
 
 =head1 AUTHOR
 

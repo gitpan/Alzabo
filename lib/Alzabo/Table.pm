@@ -108,11 +108,16 @@ sub has_attribute
     my $self = shift;
     my %p = validate( @_, { attribute => { type => SCALAR },
 			    case_sensitive => { type => SCALAR,
-						optional => 1 } } );
+						default => 0 } } );
 
-    my $att = $p{case_sensitive} ? $p{attribute} : lc $p{attribute};
-
-    return exists $self->{attributes}{$att};
+    if ( $p{case_sensitive} )
+    {
+        return exists $self->{attributes}{ $p{attribute} };
+    }
+    else
+    {
+        return 1 if grep { lc $p{attribute} eq lc $_ } keys %{ $self->{attributes} };
+    }
 }
 
 sub foreign_keys
@@ -262,27 +267,22 @@ index, and column objects.
 
 =head2 schema
 
-=head3 Returns
-
-The L<C<Alzabo::Schema>|Alzabo::Schema> object to which this table
-belongs.
+Returns the L<C<Alzabo::Schema>|Alzabo::Schema> object to which this
+table belongs.
 
 =head2 name
 
-=head3 Returns
-
-The name of the table.
+Returns the name of the table.
 
 =head2 column ($name)
 
-=head3 Returns
+Returns the L<C<Alzabo::Column>|Alzabo::Column> object that matches
+the name given.
 
-The L<C<Alzabo::Column>|Alzabo::Column> object that matches the name
-given.
+An L<C<Alzabo::Exception::Params>|Alzabo::Exceptions> exception is
+throws if the table does not contain the column.
 
 =head2 columns (@optional_list_of_column_names)
-
-=head3 Returns
 
 If no arguments are given, returns a list of all
 L<C<Alzabo::Column>|Alzabo::Column> objects in the schema, or in a
@@ -290,23 +290,16 @@ scalar context the number of such tables.  If one or more arguments
 are given, returns a list of table objects with those names, in the
 same order given.
 
+An L<C<Alzabo::Exception::Params>|Alzabo::Exceptions> exception is
+throws if the table does not contain one or more of the specified
+columns.
+
 =head2 has_column ($name)
 
-=head3 Returns
-
-A true or false value depending on whether or not the column exists in
-the table.
+Returns a voolean value indicating whether the column exists in the
+table.
 
 =head2 primary_key
-
-A primary key is one or more columns which must be unique in each row
-of the table.  For a multi-column primary key, than the values of the
-columns taken in order must be unique.  The order of a multi-column
-key is significant as most RDBMS's will create an index on the primary
-key using the same column order as is specified and column order
-usually matters in indexes.
-
-=head3 Returns
 
 In array context, return an ordered list of column objects that make
 up the primary key for the table.  In scalar context, it returns the
@@ -314,36 +307,28 @@ first element of that list.
 
 =head2 primary_key_size
 
-=head3 Returns
-
-The number of columsn in the table's primary key.
+The number of columns in the table's primary key.
 
 =head2 column_is_primary_key (C<Alzabo::Column> object)
 
-This method is really only needed if you're not sure that column
-belongs to the table.  Otherwise just call the
-L<C<Alzabo::Column-E<gt>is_primary_key>|Alzabo::Column/is_primary_key>
-method on the column object.
-
-=head3 Returns
-
-A boolean value indicating whether or not the column given is part of
+Returns a boolean value indicating whether the column given is part of
 the table's primary key.
+
+This method is really only needed if you're not sure that the column
+belongs to the table.  Otherwise just call the
+L<C<< Alzabo::Column->is_primary_key >>|Alzabo::Column/is_primary_key>
+method on the column object.
 
 =head2 attributes
 
-A column's attributes are strings describing the column (for example,
-valid attributes in MySQL are 'UNSIGNED' or 'ZEROFILL'.
+A table's attributes are strings describing the table (for example,
+valid attributes in MySQL are thing like "TYPE = INNODB".
 
-=head3 Returns
-
-A list of strings.
+Returns a list of strings.
 
 =head2 has_attribute
 
-=head3 Parameters:
-
-This method can be used to test whether or not a column has a
+This method can be used to test whether or not a table has a
 particular attribute.  By default, the check is case-insensitive.
 
 =over 4
@@ -354,14 +339,12 @@ particular attribute.  By default, the check is case-insensitive.
 
 =back
 
-=head3 Returns
-
-A boolean value indicating whether or not the column has this
+Returns a boolean value indicating whether the table has this
 particular attribute.
 
 =head2 foreign_keys
 
-=head3 Parameters
+Thie method takes two parameters:
 
 =over 4
 
@@ -371,67 +354,64 @@ particular attribute.
 
 =back
 
-=head3 Returns
+It returns a list of L<C<Alzabo::ForeignKey>|Alzabo::ForeignKey>
+objects B<from> the given column B<to> the given table, if they exist.
+In scalar context, it returns the first item in the list.  There is no
+guarantee as to what the first item will be.
 
-A list of L<C<Alzabo::ForeignKey>|Alzabo::ForeignKey> objects from the
-given column to the given table, if they exist.  In scalar context,
-returns the first item in the list.  There is no guarantee as to what
-the first item will be.
+An L<C<Alzabo::Exception::Params>|Alzabo::Exceptions> exception is
+throws if the table does not contain the specified column.
 
 =head2 foreign_keys_by_table (C<Alzabo::Table> object)
 
-=head3 Returns
-
-A list of all the L<C<Alzabo::ForeignKey>|Alzabo::ForeignKey> objects
-to the given table.  In scalar context, returns the first item in the
-list.  There is no guarantee as to what the first item will be.
+Returns a list of all the L<C<Alzabo::ForeignKey>|Alzabo::ForeignKey>
+objects B<to> the given table.  In scalar context, it returns the
+first item in the list.  There is no guarantee as to what the first
+item will be.
 
 =head2 foreign_keys_by_column (C<Alzabo::Column> object)
 
 Returns a list of all the L<C<Alzabo::ForeignKey>|Alzabo::ForeignKey>
 objects that the given column is a part of, if any.  In scalar
-context, returns the first item in the list.  There is no guarantee as
-to what the first item will be.
+context, it returns the first item in the list.  There is no guarantee
+as to what the first item will be.
+
+An L<C<Alzabo::Exception::Params>|Alzabo::Exceptions> exception is
+throws if the table does not contain the specified column.
 
 =head2 all_foreign_keys
 
-=head3 Returns
-
-A list of all the L<C<Alzabo::ForeignKey>|Alzabo::ForeignKey> objects
-for this table.  In scalar context, returns the first item in the
-list.  There is no guarantee as to what the first item will be.
+Returns a list of all the L<C<Alzabo::ForeignKey>|Alzabo::ForeignKey>
+objects for this table.  In scalar context, it returns the first item
+in the list.  There is no guarantee as to what the first item will be.
 
 =head2 index ($index_id)
 
 This method expects an index id as returned by the
-L<C<Alzabo::Index-E<gt>id>|Alzabo::Index/id> method.
-
-=head3 Returns
+L<C<Alzabo::Index-E<gt>id>|Alzabo::Index/id> method as its parameter.
 
 The L<C<Alzabo::Index>|Alzabo::Index> object matching this id, if it
 exists in the table.
 
+An L<C<Alzabo::Exception::Params>|Alzabo::Exceptions> exception is
+throws if the table does not contain the specified index.
+
 =head2 has_index ($index_id)
 
 This method expects an index id as returned by the
-L<C<Alzabo::Index-E<gt>id>|Alzabo::Index/id> method.
+L<C<Alzabo::Index-E<gt>id>|Alzabo::Index/id> method as its parameter.
 
-=head3 Returns
-
-A boolean indicating whether or not the table has an index with the
+Returns a boolean indicating whether the table has an index with the
 same id.
 
 =head2 indexes
 
-=head3 Returns
-
-All the L<C<Alzabo::Index>|Alzabo::Index> objects for the table.
+Returns all the L<C<Alzabo::Index>|Alzabo::Index> objects for the
+table.
 
 =head2 comment
 
-=head3 Returns
-
-The comment associated with the table object, if any.
+Returns the comment associated with the table object, if any.
 
 =head1 AUTHOR
 

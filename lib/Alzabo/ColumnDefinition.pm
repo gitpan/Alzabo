@@ -52,38 +52,31 @@ Alzabo::ColumnDefinition - Holds the type attribute for a column
 =head1 DESCRIPTION
 
 This object holds information on a column that might need to be shared
-with another column.  The concept is that if a column is a key in two
-or more tables, then some of the information related to that column
-should change automatically for all tables (and all columns) whenever
-it is changed anywhere.  Right now this is only type ('VARCHAR',
-'NUMBER', etc) information.  This object also has an 'owner', which is
-the column which created it.
+with another column.  The reason for this is that if a column is a key
+in two or more tables, then some of the information related to that
+column should change automatically for all tables (and all columns)
+whenever it is changed anywhere.  Right now this is only type
+('VARCHAR', 'NUMBER', etc) information.  This object also has an
+'owner', which is the column which created it.
 
 =head1 METHODS
 
 =head2 type
 
-=head3 Returns
-
-The object's type as a string.
+Returns the object's type as a string.
 
 =head2 length
 
-=head3 Returns
-
-The length attribute of the column, or undef if there is none.
+Returns the length attribute of the column, or undef if there is none.
 
 =head2 precision
 
-=head3 Returns
-
-The precision attribute of the column, or undef if there is none.
+Returns the precision attribute of the column, or undef if there is
+none.
 
 =head2 owner
 
-=head3 Returns
-
-The L<C<Alzabo::Column>|Alzabo::Column> object that owns this
+Returns the L<C<Alzabo::Column>|Alzabo::Column> object that owns this
 definitions (the column that created it).
 
 =head1 AUTHOR

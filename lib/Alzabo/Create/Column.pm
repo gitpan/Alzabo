@@ -314,7 +314,7 @@ C<Alzabo::Column>
 
 =head2 new
 
-=head3 Parameters
+The constructor accepts the following parameters:
 
 =over 4
 
@@ -352,23 +352,19 @@ An optional comment.
 
 =back
 
-=head3 Returns
+It returns a new C<Alzabo::Create::Column> object.
 
-A new C<Alzabo::Create::Column> object.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =for pod_merge type
 
 =head2 alter
 
 This method allows you to change a column's type, length, and
-precision as a single operation and should be instead of calling
-C<set_type> followed by C<set_length>.
+precision as a single operation.  It should be instead of calling
+C<set_type()> followed by C<set_length()>.
 
-=head3 Parameters
+It takes the following parameters:
 
 =over 4
 
@@ -380,20 +376,31 @@ C<set_type> followed by C<set_length>.
 
 =back
 
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+
 =head2 set_type ($type)
 
 Sets the column's type.
 
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+
 =head2 set_table (C<Alzabo::Create::Table> object)
 
-Returns/sets the L<C<Alzabo::Create::Table>|Alzabo::Create::Table>
-object in which this column is located.
+Sets the L<C<Alzabo::Create::Table>|Alzabo::Create::Table> object in
+which this column is located.
+
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =for pod_merge name
 
 =head2 set_name ($name)
 
-Returns/sets the column's name (a string).
+Sets the column's name (a string).
+
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
 =for pod_merge nullable
 
@@ -402,9 +409,7 @@ Returns/sets the column's name (a string).
 Sets the nullability of the column (this determines whether nulls are
 allowed in the column or not).  Must be 0 or 1.
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =for pod_merge attributes
 
@@ -416,17 +421,20 @@ Sets the column's attributes.  These are strings describing the column
 (for example, valid attributes in MySQL are "PRIMARY KEY" or
 "AUTO_INCREMENT").
 
+Throws: L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+
 =head2 add_attribute ($attribute)
 
 Add an attribute to the column's list of attributes.
+
+Throws: L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
 =head2 delete_attribute ($attribute)
 
 Delete the given attribute from the column's list of attributes.
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
 =for pod_merge default
 
@@ -440,7 +448,7 @@ Sets the column's default value.
 
 =head2 set_length
 
-=head3 Parameters
+This method takes the following parameters:
 
 =over 4
 
@@ -450,9 +458,11 @@ Sets the column's default value.
 
 =back
 
-Sets the column's length and precision.  The precision parameter is
-optional (though some column types may require it if the length is
-set).
+This method sets the column's length and precision.  The precision
+parameter is optional (though some column types may require it if the
+length is set).
+
+Throws: L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
 =for pod_merge sequenced
 
@@ -460,9 +470,8 @@ set).
 
 Sets the value of the column's sequenced attribute.
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
 =for pod_merge is_primary_key
 
@@ -479,6 +488,11 @@ L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 Sets the
 L<C<Alzabo::Create::ColumnDefinition>|Alzabo::Create::ColumnDefinition>
 object which holds this column's type information.
+
+=head2 former_name
+
+If the column's name has been changed since the last time the schema
+was instantiated, this method returns the column's previous name.
 
 =for pod_merge comment
 

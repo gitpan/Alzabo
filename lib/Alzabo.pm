@@ -16,7 +16,7 @@ use vars qw($VERSION);
 
 use 5.006;
 
-$VERSION = '0.79_04';
+$VERSION = '0.80';
 $VERSION = eval $VERSION;
 
 
@@ -121,6 +121,25 @@ L<The FAQ|Alzabo::FAQ>.
 
 L<The quick reference|Alzabo::QuickRef> - A quick reference for the
 various methods of the Alzabo objects.
+
+=head1 SCRIPTS
+
+Alzabo comes with a few handy scripts in the F<eg/> directory of the
+distribution.  These are:
+
+=over 4
+
+=item * alzabo_grep
+
+Given a regex and a schema name, this script will print out the table
+and column name for all columns which match the regex.
+
+=item * alzabo_to_ascii
+
+Given a schema name, this script will generate a set of simple ASCII
+tables for the schema.
+
+=back
 
 =head1 SUPPORT
 

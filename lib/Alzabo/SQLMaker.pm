@@ -1182,45 +1182,46 @@ driver for the RDBMS of your choice.
 
 =head2 available
 
-=head3 Returns
-
-A list of names representing the available C<Alzabo::SQLMaker>
+Returns A list of names representing the available C<Alzabo::SQLMaker>
 subclasses.  Any one of these names would be appropriate as a
-parameter for the L<C<Alzabo::SQLMaker-E<gt>new>|"new"> method.
+parameter for the L<C<< Alzabo::SQLMaker->load() >>|"load"> method.
 
 =head2 load
 
 Load the specified subclass.
 
-=head3 Parameters
+This takes one parameter, the name of the RDBMS being used.
+
+Throws: L<C<Alzabo::Exception::Eval>|Alzabo::Exceptions>
+
+=head2 new
+
+This takes two parameters:
 
 =over 4
 
-=item * rdbms => $rdbms
+=item * driver
 
-The name of the RDBMS being used.
+The driver object being used by the schema.
+
+=item * quote_identifiers
+
+A boolean value indicating whether or not identifiers should be
+quoted.  This defaults to false.
 
 =back
-
-=head3 Returns
-
-The name of the C<Alzabo::SQLMaker> subclass that was loaded.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Eval>|Alzabo::Exceptions>
 
 =head1 GENERATING SQL
 
 This class can be used to generate SQL by calling methods that are the
-same as those used in SQL (C<select>, C<update>, etc.) in sequence,
-with the appropriate parameters.
+same as those used in SQL (C<select()>, C<update()>, etc.) in
+sequence, with the appropriate parameters.
 
-There are four entry point methods, L<C<select>|"select (Alzabo::Table
-and/or Alzabo::Column objects)">, L<C<insert>|"insert">,
-L<C<update>|"update (Alzabo::Table)">, and L<C<delete>|"delete">.
-Attempting call any other method without first calling one of these is
-an error.
+There are four entry point methods, L<C<select()>|"select
+(Alzabo::Table and/or Alzabo::Column objects)">,
+L<C<insert()>|"insert">, L<C<update()>|"update (Alzabo::Table)">, and
+L<C<delete()>|"delete">.  Attempting to call any other method without
+first calling one of these is an error.
 
 =head2 Entry Points
 
@@ -1231,29 +1232,45 @@ These methods are called as class methods and return a new object.
 This begins a select.  The columns to be selected are the column(s)
 passed in, and/or the columns of the table(s) passed in as arguments.
 
-=head3 Followed by
+Followed by:
 
-L<C<from>|"from (Alzabo::Table object, ...)">
+=over 4
+
+L<C<from()>|"from (Alzabo::Table object, ...)">
 
 L<C<** function>|"** function (Alzabo::Table object(s) and/or $string(s))">
 
+=back
+
 =head2 insert
 
-=head3 Followed by
+Followed by:
 
-L<C<into>|"into (Alzabo::Table object, optional Alzabo::Column objects)">
+=over 4
+
+L<C<into()>|"into (Alzabo::Table object, optional Alzabo::Column objects)">
+
+=back
 
 =head2 update (C<Alzabo::Table>)
 
-=head3 Followed by
+Followed by:
 
-L<C<set>|"set (Alzabo::Column object =E<gt> $value, ...)">
+=over 4
+
+L<C<set()>|"set (Alzabo::Column object =E<gt> $value, ...)">
+
+=back
 
 =head2 delete
 
-=head3 Followed by
+Followed by:
 
-L<C<from>|"from (Alzabo::Table object, ...)">
+=over 4
+
+L<C<from()>|"from (Alzabo::Table object, ...)">
+
+=back
 
 =head2 Other Methods
 
@@ -1266,31 +1283,37 @@ chain together method calls such as:
 
 The table(s) from which we are selecting data.
 
-=head3 Follows
+Follows:
 
-L<C<select>|"select (Alzabo::Table and/or Alzabo::Column objects)">
+=over 4
+
+L<C<select()>|"select (Alzabo::Table and/or Alzabo::Column objects)">
 
 L<C<** function>|"** function (Alzabo::Table object(s) and/or $string(s))">
 
-L<C<delete>|"delete">
+L<C<delete()>|"delete">
 
-=head3 Followed by
+=back
 
-L<C<where>|"where ( (Alzabo::Column object), $comparison, (Alzabo::Column object, $value, or Alzabo::SQLMaker object), [ see below ] )">
+Followed by:
 
-L<C<order_by>|"order_by (Alzabo::Column objects)">
+=over 4
 
-=head3 Throws
+L<C<where()>|"where <see below>">
 
-L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
+L<C<order_by()>|"order_by (Alzabo::Column objects)">
 
-=head2 where ( (C<Alzabo::Column> object or SQL function), $comparison, (C<Alzabo::Column> object, $value, or C<Alzabo::SQLMaker> object), [ see below ] )
+=back
 
-The first parameter must be an C<Alzabo::Column> object or SQL
-function.  The second is a comparison operator of some sort, given as
-a string.  The third argument can be one of three things.  It can be
-an C<Alzabo::Column> object, a value (a number or string), or an
-C<Alzabo::SQLMaker> object.  The latter is treated as a subselect.
+Throws: L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
+
+=head2 where <see below>
+
+The first parameter to where must be an C<Alzabo::Column> object or
+SQL function.  The second is a comparison operator of some sort, given
+as a string.  The third argument can be an C<Alzabo::Column> object, a
+value (a number or string), or an C<Alzabo::SQLMaker> object.  The
+latter is treated as a subselect.
 
 Values given as parameters will be properly quoted and escaped.
 
@@ -1303,117 +1326,141 @@ The C<IN> and <NOT IN> operators allow any number of additional
 parameters, which may be C<Alzabo::Column> objects, values, or
 C<Alzabo::SQLMaker> objects.
 
-=head3 Follows
+Follows:
 
-L<C<from>|"from (Alzabo::Table object, ...)">
+=over 4
 
-=head3 Followed by
+L<C<from()>|"from (Alzabo::Table object, ...)">
 
-L<C<and>|"and (same as where)">
+=back
 
-L<C<or>|"or (same as where)">
+Followed by:
 
-L<C<order_by>|"order_by (Alzabo::Column objects)">
+=over 4
 
-=head3 Throws
+L<C<and()>|"and (same as where)">
 
-L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
+L<C<or()>|"or (same as where)">
+
+L<C<order_by()>|"order_by (Alzabo::Column objects)">
+
+=back
+
+Throws: L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
 
 =head2 and (same as C<where>)
 
 =head2 or (same as C<where>)
 
-These methods take the same parameters as the L<C<where>|"where (
-(Alzabo::Column object), $comparison, (Alzabo::Column object, $value,
-or Alzabo::SQLMaker object), [ see below ] )"> method.  There is
-currently no way to group together comparison operators.
+These methods take the same parameters as the L<C<where()>|"where <see
+below>"> method.
 
-=head3 Follows
+Follows:
 
-L<C<where>|"where ( (Alzabo::Column object), $comparison, (Alzabo::Column object, $value, or Alzabo::SQLMaker object), [ see below ] )">
+=over 4
 
-L<C<and>|"and (same as where)">
+L<C<where()>|"where <see below>">
 
-L<C<or>|"or (same as where)">
+L<C<and()>|"and (same as where)">
 
-=head3 Followed by
+L<C<or()>|"or (same as where)">
 
-L<C<and>|"and (same as where)">
+=back
 
-L<C<or>|"or (same as where)">
+Followed by:
 
-L<C<order_by>|"order_by (Alzabo::Column objects)">
+=over 4
 
-=head3 Throws
+L<C<and()>|"and (same as where)">
 
-L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
+L<C<or()>|"or (same as where)">
+
+L<C<order_by()>|"order_by (Alzabo::Column objects)">
+
+=back
+
+Throws: L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
 
 =head2 order_by (C<Alzabo::Column> objects)
 
 Adds an C<ORDER BY> clause to your SQL.
 
-=head3 Follows
+Follows:
 
-L<C<from>|"from (Alzabo::Table object, ...)">
+=over 4
 
-L<C<where>|"where ( (Alzabo::Column object), $comparison, (Alzabo::Column object, $value, or Alzabo::SQLMaker object), [ see below ] )">
+L<C<from()>|"from (Alzabo::Table object, ...)">
 
-L<C<and>|"and (same as where)">
+L<C<where()>|"where <see below>">
 
-L<C<or>|"or (same as where)">
+L<C<and()>|"and (same as where)">
 
-=head3 Followed by
+L<C<or()>|"or (same as where)">
 
-L<C<limit>|"limit ($max, optional $offset)">
+=back
 
-=head3 Throws
+Followed by:
 
-L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
+=over 4
+
+L<C<limit()>|"limit ($max, optional $offset)">
+
+=back
+
+Throws: L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
 
 =head2 limit ($max, optional $offset)
 
 Specifies a limit on the number of rows to be returned.  The offset
 parameter is optional.
 
-=head3 Follows
+Follows:
 
-L<C<from>|"from (Alzabo::Table object, ...)">
+=over 4
 
-L<C<where>|"where ( (Alzabo::Column object), $comparison, (Alzabo::Column object, $value, or Alzabo::SQLMaker object), [ see below ] )">
+L<C<from()>|"from (Alzabo::Table object, ...)">
 
-L<C<and>|"and (same as where)">
+L<C<where()>|"where <see below>">
 
-L<C<or>|"or (same as where)">
+L<C<and()>|"and (same as where)">
 
-L<C<order_by>|"order_by (Alzabo::Column objects)">
+L<C<or()>|"or (same as where)">
 
-=head3 Followed by
+L<C<order_by()>|"order_by (Alzabo::Column objects)">
 
-Nothing.
+=back
 
-=head3 Throws
+=over 4
 
 L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
+
+=back
 
 =head2 into (C<Alzabo::Table> object, optional C<Alzabo::Column> objects)
 
 Used to specify what table an insert is into.  If column objects are
 given then it is expected that values will only be given for that
 object.  Otherwise, it assumed that all columns will be specified in
-the L<C<values>|"values (Alzabo::Column object =E<gt> $value, ...)">
+the L<C<values()>|"values (Alzabo::Column object =E<gt> $value, ...)">
 method.
 
-=head3 Follows
+Follows:
 
-L<C<insert>|"insert">
+=over 4
 
-=head3 Followed by
+L<C<insert()>|"insert">
 
-L<C<values>|"values (Alzabo::Column object =E<gt> $value, ...)">
+=back
 
-=head3 Throws
+Followed by:
 
-L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
+=over 4
+
+L<C<values()>|"values (Alzabo::Column object =E<gt> $value, ...)">
+
+=back
+
+Throws: L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
 
 =head2 values (C<Alzabo::Column> object => $value, ...)
 
@@ -1421,17 +1468,15 @@ This method expects to recive an structured like a hash where the keys
 are C<Alzabo::Column> objects and the values are the value to be
 inserted into that column.
 
-=head3 Follows
+Follows:
 
-L<C<into>|"into (Alzabo::Table object, optional Alzabo::Column objects)">
+=over 4
 
-=head3 Followed by
+L<C<into()>|"into (Alzabo::Table object, optional Alzabo::Column objects)">
 
-Nothing.
+=back
 
-=head3 Throws
-
-L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
 
 =head2 set (C<Alzabo::Column> object => $value, ...)
 
@@ -1439,55 +1484,39 @@ This method'a parameter are exactly like those given to the
 L<C<values>|values ( Alzabo::Column object =E<gt> $value, ... )>
 method.
 
-=head3 Follows
+Follows:
 
-L<C<update>|"update (Alzabo::Table)">
+=over 4
 
-=head3 Followed by
+L<C<update()>|"update (Alzabo::Table)">
 
-L<C<where>|"where ( (Alzabo::Column object), $comparison, (Alzabo::Column object, $value, or Alzabo::SQLMaker object), [ see below ] )">
+=back
 
-=head3 Throws
+Followed by:
 
-L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
+=over 4
 
-=head2 Retrieving SQL
+L<C<where()>|"where <see below>">
+
+=back
+
+Throws: L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
+
+=head1 RETRIEVING SQL FROM THE OBJECT
 
 =head2 sql
 
-This can be called at any time though obviously it will not return
-valid SQL unless called at a natural end point.  In the future, an
-exception may be thrown if called when the SQL is not in a valid
+This method can be called at any time, though obviously it will not
+return valid SQL unless called at a natural end point.  In the future,
+an exception may be thrown if called when the SQL is not in a valid
 state.
 
-=head3 Returns
-
-The SQL generated so far.
+Returns the SQL generated so far as a string.
 
 =head2 bind
 
-=head3 Returns
-
-An array reference containing the parameters to be bound to the SQL
-statement.
-
-=head2 get_limit
-
-This method may return undef even if the L<C<limit>|"limit ($max,
-optional $offset)"> method was called.  Some RDBMS's have special SQL
-syntax for C<LIMIT> clauses.  For those that don't support this, the
-L<C<Alzabo::Driver>|Alzabo::Driver> module takes a C<limit> parameter.
-The return value of this method can be passed in as that parameter in
-all cases.
-
-=head3 Returns
-
-If the RDBMS does not support C<LIMIT> clauses, the return value is an
-array reference containing two values, the maximum number of rows
-allowed and the row offset (the first row that should be used).
-
-If the RDBMS does support C<LIMIT> clauses, then the return value is
-C<undef>.
+Returns an array reference containing the parameters to be bound to
+the SQL statement.
 
 =head1 SUBCLASSING Alzabo::SQLMaker
 
@@ -1496,11 +1525,42 @@ requires only that the L<virtual methods|"Virtual Methods"> listed
 below be implemented.
 
 In addition, you may choose to override any of the other methods
-listed in L<over-rideable methods|"Over-Rideable Methods">.  For
-example, the MySQL subclass override the L<C<_subselect>|"_subselect">
-method because MySQL cannot support sub-selects.
+described in this documentation.  For example, the MySQL subclass
+override the L<C<_subselect()>|"_subselect"> method because MySQL
+cannot support sub-selects.
 
-=head2 Virtual Methods
+Subclasses are also expected to offer for export various sets of
+functions matching SQL functions.  See the C<Alzabo::SQLMaker::MySQL>
+subclass implementation for details.
+
+=head1 VIRTUAL METHODS
+
+The following methods must be implemented by the subclass:
+
+=head2 limit
+
+See above for the definition of this method.
+
+=head2 get_limit
+
+This method may return C<undef> even if the L<C<limit()>|"limit ($max,
+optional $offset)"> method was called.  Some RDBMS's have special SQL
+syntax for C<LIMIT> clauses.  For those that don't support this, the
+L<C<Alzabo::Driver>|Alzabo::Driver> module takes a "limit" parameter.
+
+The return value of this method can be passed in as that parameter.
+
+If the RDBMS does not support C<LIMIT> clauses, the return value is an
+array reference containing two values, the maximum number of rows
+allowed and the row offset (the first row that should be used).
+
+If the RDBMS does support C<LIMIT> clauses, then the return value is
+C<undef>.
+
+=head2 sqlmaker_id
+
+Returns the subclass's name.  This should be something that can be
+passed to C<< Alzabo::SQLMaker->load() >> as a parameter.
 
 =head1 AUTHOR
 

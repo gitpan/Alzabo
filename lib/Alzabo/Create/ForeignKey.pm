@@ -138,7 +138,7 @@ C<Alzabo::ForeignKey>
 
 =head2 new
 
-Parameters:
+The constructor takes the following parameters:
 
 =over 4
 
@@ -162,10 +162,10 @@ An optional comment.
 
 =back
 
-=head3 Returns
+It returns a new
+L<C<Alzabo::Create::ForeignKey>|Alzabo::Create::ForeignKey> object.
 
-A new L<C<Alzabo::Create::ForeignKey>|Alzabo::Create::ForeignKey>
-object.
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =for pod_merge table_from
 
@@ -179,13 +179,17 @@ object.
 
 =head2 set_columns_from (C<Alzabo::Create::Column> object(s))
 
-Set the column(s) that the relation is from.  This can be either a
-single a column object or a reference to an array of column objects.
+Sets the column(s) that the relation is from.  This can be either a
+single column object or a reference to an array of column objects.
+
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 set_columns_to (C<Alzabo::Create::Column> object(s))
 
-Set the column(s) that the relation is to.  This can be either a
-single a column object or a reference to an array of column objects.
+Sets the column(s) that the relation is to.  This can be either a
+single column object or a reference to an array of column objects.
+
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =for pod_merge cardinality
 
@@ -199,31 +203,33 @@ single a column object or a reference to an array of column objects.
 
 =for pod_merge is_many_to_one
 
-=for pod_merge is_same_relationship_as ($fk)
-
 =head2 set_cardinality (\@cardinality) see above for details
 
-Sets the cardinality value of the relation.
+Sets the cardinality of the foreign key.
+
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 set_from_is_dependent ($boolean)
 
-Indicates whether or not the first table in the relationship is
+Indicates whether or not the first table in the foreign key is
 dependent on the other (i.e. whether the 'from' table is dependent on
 the 'to' table).
 
 =head2 set_to_is_dependent ($boolean)
 
-Indicates whether or not the second table in the relationship is
+Indicates whether or not the second table in the foreign key is
 dependent on the other (i.e. whether the 'to' table is dependent on
 the 'from' table).
 
 =for pod_merge id
 
+=for pod_merge is_same_relationship_as ($fk)
+
 =for pod_merge comment
 
 =head2 set_comment ($comment)
 
-Set the comment for the foreign key object.
+Sets the comment for the foreign key object.
 
 =head1 AUTHOR
 

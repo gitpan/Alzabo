@@ -340,7 +340,7 @@ the database.
 
 =head1 METHODS
 
-See C<L<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>.
+See L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>.
 
 =head1 AUTHOR
 

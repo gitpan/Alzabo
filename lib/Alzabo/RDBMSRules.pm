@@ -115,6 +115,11 @@ sub type_is_time
     shift()->_virtual;
 }
 
+sub type_is_time_interval
+{
+    shift()->_virtual;
+}
+
 sub type_is_blob
 {
     shift()->_virtual;
@@ -276,22 +281,22 @@ sub alter_primary_key_sql
     shift()->_virtual;
 }
 
-sub can_change_table_name
+sub can_alter_table_name
 {
     1;
 }
 
-sub can_change_column_name
+sub can_alter_column_name
 {
     1;
 }
 
-sub change_table_name_sql
+sub alter_table_name_sql
 {
     shift()->_virtual;
 }
 
-sub change_column_name_sql
+sub alter_column_name_sql
 {
     shift()->_virtual;
 }
@@ -398,9 +403,9 @@ sub schema_sql_diff
             {
                 $changed_name{$old_name} = 1;
 
-                if ( $self->can_change_table_name )
+                if ( $self->can_alter_table_name )
                 {
-                    push @sql, $self->change_table_name_sql($new_t);
+                    push @sql, $self->alter_table_name_sql($new_t);
                 }
                 else
                 {
@@ -480,9 +485,9 @@ sub table_sql_diff
 	{
             if ( $old_name ne $new_c->name )
             {
-                if ( $self->can_change_column_name )
+                if ( $self->can_alter_column_name )
                 {
-                    push @sql, $self->change_column_name_sql($new_c);
+                    push @sql, $self->alter_column_name_sql($new_c);
                 }
                 else
                 {
@@ -573,7 +578,7 @@ sub table_sql_diff
         {
             $alter_attributes = 1;
 
-            push @sql, $self->change_table_attributes_sql( new => $p{new},
+            push @sql, $self->alter_table_attributes_sql( new => $p{new},
                                                            old => $p{old},
                                                          );
 
@@ -589,9 +594,9 @@ sub table_sql_diff
             {
                 $alter_attributes = 1;
 
-                push @sql, $self->change_table_attributes_sql( new => $p{new},
-                                                               old => $p{old},
-                                                             );
+                push @sql, $self->alter_table_attributes_sql( new => $p{new},
+                                                              old => $p{old},
+                                                            );
 
                 last;
             }
@@ -626,7 +631,7 @@ Alzabo::RDBMSRules - Base class for Alzabo RDBMS rulesets
 =head1 DESCRIPTION
 
 This class is the base class for all C<Alzabo::RDBMSRules> modules.
-To instantiate a subclass call this class's C<new> method.  See the
+To instantiate a subclass call this class's C<new()> method.  See the
 L<SUBCLASSING Alzabo::RDBMSRules> section for information on how to
 make a ruleset for the RDBMS of your choice.
 
@@ -636,54 +641,40 @@ make a ruleset for the RDBMS of your choice.
 
 A list of names representing the available C<Alzabo::RDBMSRules>
 subclasses.  Any one of these names would be appropriate as the
-C<rdbms> parameter for the
-L<C<Alzabo::RDBMSRules-E<gt>new>|Alzabo::RDBMSRules/new> method.
+"rdbms" parameter for the L<C<< Alzabo::RDBMSRules->new()
+>>|Alzabo::RDBMSRules/new> method.
 
 =head2 new
 
-=head3 Parameters
-
-=over 4
-
-=item * rdbms => $rdbms_name
-
-The name of the RDBMS being used.
-
-=back
+The constructor always accepts one parameter, "rdbms", which is the
+name of the RDBMS to be used.
 
 Some subclasses may accept additional values.
 
-=head3 Returns
+The constructor returns a new C<Alzabo::RDBMSRules> object of the
+appropriate subclass.
 
-A new C<Alzabo::RDBMSRules> object of the appropriate subclass.
+Throws: L<C<Alzabo::Exception::Eval>|Alzabo::Exceptions>
 
 =head2 schema_sql (C<Alzabo::Create::Schema> object)
 
-=head3 Returns
-
-A list of SQL statements.
+Returns a list of SQL statements which would create the given schema.
 
 =head2 index_sql (C<Alzabo::Create::Index> object)
 
-=head3 Returns
-
-A list of SQL statements.
+Returns a list of SQL statements to create the specified index.
 
 =head2 drop_table_sql (C<Alzabo::Create::Table> object)
 
-=head3 Returns
-
-A list of SQL statements.
+Returns a list of SQL statements to drop the specified table.
 
 =head2 drop_index_sql (C<Alzabo::Create::Index> object)
 
-=head3 Returns
-
-A list of SQL statements.
+Returns a list of SQL statements to drop the specified index.
 
 =head2 schema_sql_diff
 
-=head3 Parameters
+This method takes two parameters:
 
 =over 4
 
@@ -693,16 +684,12 @@ A list of SQL statements.
 
 =back
 
-Given two schema objects, this method compares them and generates the
-SQL necessary to turn the 'old' one into the 'new' one.
-
-=head3 Returns
-
-An array of SQL statements.
+This method compares the two schema objects and returns an array of
+SQL statements which turn the "old" schema into the "new" one.
 
 =head2 table_sql_diff
 
-=head3 Parameters
+This method takes two parameters:
 
 =over 4
 
@@ -712,12 +699,31 @@ An array of SQL statements.
 
 =back
 
-Given two table objects, this method compares them and generates the
-SQL necessary to turn the 'old' one into the 'new' one.
+This method compares the two table objects and returns an array of
+SQL statements which turn the "old" table into the "new" one.
 
-=head3 Returns
+=head2 type_is_numeric (C<Alzabo::Column> object)
 
-An array of SQL statements.
+Returns a boolean indicating whether or not the column is numeric
+(integer or floating point).
+
+=head2 quote_identifiers
+
+Returns true or false to indicate whether or not the generated DDL SQL
+statements should have their identifiers quoted or not.  This may be
+overridden by subclasses.  It defaults to false.
+
+=head2 can_alter_table_name
+
+If this is true, then when syncing a schema, the object will call
+C<alter_table_name_sql()> to change the table's name.  Otherwise it
+will call C<recreate_table_sql()>.
+
+=head2 can_alter_column_name
+
+If this is true, then when syncing a schema, the object will call
+C<alter_column_name_sql()> to change the table's name.  Otherwise it
+will call C<recreate_table_sql()>.
 
 =head2 Virtual Methods
 
@@ -726,9 +732,7 @@ class itself and must be implemented in its subclasses.
 
 =head2 column_types
 
-=head3 Returns
-
-A list of valid column type specifiers.
+Returns a list of valid column types.
 
 =head2 feature ($feature)
 
@@ -743,8 +747,8 @@ Features that may be asked for:
 =item * extended_column_types
 
 Column types that must be input directly from a user, as opposed to
-being chosen from a list.  MySQL's ENUM and SET column types are
-examples of such types.
+being chosen from a list.  MySQL's ENUM and SET types are examples of
+such types.
 
 =item * index_column_prefixes
 
@@ -755,51 +759,42 @@ to index only a portion of a large text column.
 
 This should be self-explanatory.
 
+=item * functional_indexes
+
+Indexes on functions, as supported by PostgreSQL.
+
 =back
 
 =head2 validate_schema_name (C<Alzabo::Schema> object)
 
-=head3 Returns
-
-A boolean value indicate whether the object's name is valid.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+Throws an L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions> if
+the schema's name is not valid.
 
 =head2 validate_table_name (C<Alzabo::Create::Table> object)
 
-=head3 Returns
-
-A boolean value indicate whether the object's name is valid.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+Throws an L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions> if
+the table's name is not valid.
 
 =head2 validate_column_name (C<Alzabo::Create::Column> object)
 
-=head3 Returns
-
-A boolean value indicate whether the object's name is valid.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+Throws an L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions> if
+the column's name is not valid.
 
 =head2 validate_column_type ($type_as_string)
 
-=head3 Returns
+Throws an L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions> if
+the type is not valid.
 
-A canonized version of the type.
+This method returns a canonized version of the type.
 
-=head3 Throws
+=head2 validate_column_length (C<Alzabo::Create::Column> object)
 
-L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+Throws an L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions> if
+the length or precision is not valid for the given column.
 
 =head2 validate_column_attribute
 
-=head3 Parameters
+This method takes two parameters:
 
 =over 4
 
@@ -812,84 +807,52 @@ L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 This method is a bit different from the others in that it takes an
 existing column object and a B<potential> attribute.
 
-=head3 Returns
-
-A boolean value indicating whether or not this attribute is acceptable
-for the column.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+It throws an L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions> if
+the attribute is is not valid for the column.
 
 =head2 validate_primary_key (C<Alzabo::Create::Column> object)
 
-=head3 Returns
-
-Returns a boolean value indicating whether or not the given column can
-be part of its table's primary key.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+Throws an L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions> if
+the column is not a valid primary key for its table.
 
 =head2 validate_sequenced_attribute (C<Alzabo::Create::Column> object)
 
-Given a column object, indicates whether or not the column can be
-sequenced.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+Throws an L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions> if
+the column cannot be sequenced.
 
 =head2 validate_index (C<Alzabo::Create::Index> object)
 
-=head3 Returns
-
-A boolean value indicating whether or not the index is valid.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+Throws an L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions> if
+the index is not valid.
 
 =head2 table_sql (C<Alzabo::Create::Table> object)
 
-=head3 Returns
-
-A list of SQL statements.
+Returns an array of SQL statements to create the specified table.
 
 =head2 column_sql (C<Alzabo::Create::Column> object)
 
-=head3 Returns
-
-A list of SQL statements.
+Returns an array of SQL statements to create the specified column.
 
 =head2 foreign_key_sql (C<Alzabo::Create::ForeignKey> object)
 
-=head3 Returns
-
-A list of SQL statements.
+Returns an array of SQL statements to create the specified foreign
+key.
 
 =head2 drop_column_sql (C<Alzabo::Create::Column> object)
 
-=head3 Returns
-
-A list of SQL statements.
+Returns an array of SQL statements to drop the specified column.
 
 =head2 drop_foreign_key_sql (C<Alzabo::Create::ForeignKey> object)
 
-=head3 Returns
-
-A list of SQL statements.
+Returns an array of SQL statements to drop the specified foreign key.
 
 =head2 column_sql_add (C<Alzabo::Create::Column> object)
 
-=head3 Returns
-
-A list of SQL statements.
+Returns an array of SQL statements to add the specified column.
 
 =head2 column_sql_diff
 
-=head3 Parameters
+This method takes two parameters:
 
 =over 4
 
@@ -899,16 +862,12 @@ A list of SQL statements.
 
 =back
 
-Given two column objects, this method compares them and generates the
-SQL necessary to turn the 'old' one into the 'new' one.
-
-=head3 Returns
-
-A list of SQL statements.
+This method compares the two table objects and returns an array of
+SQL statements which turn the "old" table into the "new" one.
 
 =head2 index_sql_diff
 
-=head3 Parameters
+This method takes two parameters:
 
 =over 4
 
@@ -918,16 +877,12 @@ A list of SQL statements.
 
 =back
 
-Given two index objects, this method compares them and generates the
-SQL necessary to turn the 'old' one into the 'new' one.
-
-=head3 Returns
-
-A list of SQL statements.
+This method compares the two index objects and returns an array of
+SQL statements which turn the "old" index into the "new" one.
 
 =head2 alter_primary_key_sql
 
-=head3 Parameters
+This method takes two parameters:
 
 =over 4
 
@@ -937,20 +892,87 @@ A list of SQL statements.
 
 =back
 
-Given two table objects, this method compares them and generates the
-SQL necessary to give change the primary key from the 'old' one's
-primary key to the 'new' one's primary key.
+This method compares the two table objects and returns an array of SQL
+statements which alter the "old" one's primary key to match the "new"
+one's.
 
-=head3 Returns
+=head2 alter_table_name_sql (C<Alzabo::Create::Table> object)
 
-A list of SQL statements.
+Given a table, this method is expected to change the table's name from
+C<< $table->former_name >> to C<< $table->name >>.  This will only be
+called if the rules object returns true for C<can_alter_table_name()>.
+
+=head2 alter_column_name_sql (C<Alzabo::Create::Table> object)
+
+Given a column, this method is expected to change the table's name
+from C<< $column->former_name >> to C<< $column->name >>.  This will
+only be called if the rules object returns true for
+C<can_alter_column_name()>.
+
+=head2 recreate_table_sql
+
+This method takes two parameters:
+
+=over 4
+
+=item * new => C<Alzabo::Create::Table> object
+
+=item * old => C<Alzabo::Create::Table> object
+
+=back
+
+This method is expected to drop the old table and create the new one.
+
+However, it B<must> preserve all the data stored in the old table,
+excluding data in columns that are being dropped.  Additionally, if
+there are sequences associated with columns in the old table, they
+should not be dropped.
+
+This method will only be called if either C<can_alter_table_name()> or
+C<can_alter_column_name()> return false.
 
 =head2 reverse_engineer (C<Alzabo::Create::Schema> object)
 
 Given a schema object (which presumably has no tables), this method
 uses the schema's L<C<Alzabo::Driver>|Alzabo::Driver> object to
 connect to an existing database and reverse engineer it into the
-appopriate Alzabo objects.
+appropriate Alzabo objects.
+
+=head2 type_is_integer (C<Alzabo::Column> object)
+
+Returns a boolean indicating whether or not the column is an integer
+type.
+
+=head2 type_is_floating_point (C<Alzabo::Column> object)
+
+Returns a boolean indicating whether or not the column is a floating
+point type.
+
+=head2 type_is_character (C<Alzabo::Column> object)
+
+Returns a boolean indicating whether or not the column is a character
+type.  This is defined as any type which is defined to store text,
+regardless of length.
+
+=head2 type_is_date (C<Alzabo::Column> object)
+
+Returns a boolean indicating whether or not the column is a date type.
+This is B<not> true for datetime types.
+
+=head2 type_is_datetime (C<Alzabo::Column> object)
+
+Returns a boolean indicating whether or not the column is a datetime
+type.  This is B<not> true for date types.
+
+=head2 type_is_time (C<Alzabo::Column> object)
+
+Returns a boolean indicating whether or not the column is a time type.
+This is B<not> true for datetime types.
+
+=head2 type_is_time_interval (C<Alzabo::Column> object)
+
+Returns a boolean indicating whether or not the column is a time
+interval type.
 
 =head1 SUBCLASSING Alzabo::RDBMSRules
 
@@ -969,7 +991,7 @@ FooDB:
 
  use base qw(Alzabo::RDBMSRules);
 
-The next step is to implement a C<new> method and the methods listed
+The next step is to implement a C<new()> method and the methods listed
 under the section L<Virtual Methods>.  The new method should look a
 bit like this:
 

@@ -52,4 +52,12 @@ Full outer joins are not supported.
 
 =back
 
+=head2 Constraints
+
+Column constraints can be specified as column attributes.  Table
+constraints can be specified as table attributes.
+
+Foreign key constraints are generated automatically based on the
+relationships defined by your schema.
+
 =cut

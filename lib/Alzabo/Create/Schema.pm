@@ -1071,7 +1071,7 @@ C<Alzabo::Schema>
 
 =head2 new
 
-=head3 Parameters
+This constructor takes the following parameters:
 
 =over 4
 
@@ -1089,18 +1089,14 @@ method.  These are values such as 'MySQL', 'PostgreSQL', etc.
 
 =back
 
-=head3 Returns
+It returns a new C<Alzabo::Create::Schema> object.
 
-A new C<Alzabo::Create::Schema> object.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
 L<C<Alzabo::Exception::System>|Alzabo::Exceptions>
 
 =head2 load_from_file
 
-=head3 Parameters
+This constructor takes the following parameters:
 
 =over 4
 
@@ -1108,15 +1104,11 @@ L<C<Alzabo::Exception::System>|Alzabo::Exceptions>
 
 =back
 
-Returns a schema object previously saved to disk.
+Returns a schema object previously saved to disk, as specified by the
+"name" parameters.
 
-=head3 Returns
-
-The C<Alzabo::Create::Schema> object specified by the name parameter.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::System>|Alzabo::Exceptions>
 
 =head2 reverse_engineer
 
@@ -1127,13 +1119,9 @@ changes will lead to SQL diffs, as opposed to SQL to create the
 database from scratch.
 
 The schema object returned by this method will have its instantiated
-attribute set as true.  This means that calling the C<make_sql> method
-on the object won't generate any SQL.  To do this you'd have to first
-call
-L<C<$schema-E<gt>set_instantiated(0)>|Alzabo::Create::Schema/set_instantiated
-($bool)> and then L<C<$schema-E<gt>make_sql>|make_sql>.
+attribute set as true.
 
-=head3 Parameters
+It takes the following parameters:
 
 =over 4
 
@@ -1149,12 +1137,10 @@ parameter.
 =back
 
 In addition, this method takes any parameters that can be used when
-connecting to the RDBMS, including C<user>, C<password>, C<host>, and
-C<port>.
+connecting to the RDBMS, including "user", "password", "host", and
+"port".
 
-=head3 Returns
-
-A new C<Alzabo::Create::Schema> object.
+Returns a new C<Alzabo::Create::Schema> object.
 
 =head2 Other Methods
 
@@ -1162,10 +1148,14 @@ A new C<Alzabo::Create::Schema> object.
 
 =head2 set_name ($name)
 
-Change the schema name.  Since schemas are saved on disk with
+Changes the schema name.  Since schemas are saved on disk with
 filenames based on the schema name, this deletes the files for the old
-name.  Call L<C<save_to_file>|save_to_file> immediately afterwards if
-you want to make sure you have a copy of the schema saved.
+name.  Call L<C<save_to_file()>|save_to_file> immediately afterwards
+if you want to make sure you have a copy of the schema saved.
+
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::System>|Alzabo::Exceptions>
 
 =for pod_merge table
 
@@ -1176,30 +1166,32 @@ you want to make sure you have a copy of the schema saved.
 =head2 make_table
 
 This method makes a new table and adds it to the schema, the
-parameters given are passed directly to the
-L<C<Alzabo::Create::Table-E<gt>new>|Alzabo::Create::Table/new> method.
-The schema parameter is filled in automatically.
+parameters given are passed directly to the L<C<<
+Alzabo::Create::Table->new() >>|Alzabo::Create::Table/new> method.
+The "schema" parameter is filled in automatically.
 
-=head3 Returns
+If a "before" or "after" parameter is given then the
+L<C<move_table()>|move_table> method will be called to move the new
+table to the appropriate position.
 
-The L<C<Alzabo::Create::Table>|Alzabo::Create::Table> object created.
+Returns a new L<C<Alzabo::Create::Table>|Alzabo::Create::Table>
+object.
+
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
 =head2 delete_table (C<Alzabo::Create::Table> object)
 
 Removes the given table from the schema.  This method will also delete
 all foreign keys in other tables that point at the given table.
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 add_table
 
-Add a table to the schema.  If a before or after parameter is given
-then the L<C<move_table>|move_table> method will be called to move the
-new table to the appropriate position.
+Add a table to the schema.
 
-=head3 Parameters
+This methods takes the following parameters:
 
 =over 4
 
@@ -1213,20 +1205,17 @@ new table to the appropriate position.
 
 =back
 
-=head3 Returns
+Returns a new L<C<Alzabo::Create::Table>|Alzabo::Create::Table>
+object.
 
-The L<C<Alzabo::Create::Table>|Alzabo::Create::Table> object created.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 move_table
 
 Allows you to change the order of the tables as they are stored in the
 schema.
 
-=head3 Parameters
+This method takes the following parameters:
 
 =over 4
 
@@ -1248,28 +1237,25 @@ Move the table after this table.
 
 =back
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 add_relationship
 
 Creates a relationship between two tables.  This involves creating
 L<C<Alzabo::Create::ForeignKey>|Alzabo::Create::ForeignKey> objects in
-both tables.  If the C<columns_from> and C<columns_to> parameters are
+both tables.  If the "columns_from" and "columns_to" parameters are
 not specified then the schema object attempts to calculate the proper
 values for these attributes.
 
 To do this, Alzabo attempts to determine the dependencies of the
 tables.  If you have specified a cardinality of 1..1, or n..1, in
 cases where both tables are independent, or where they are both
-dependent (which makes little sense, but it's your code, so...) then
-the C<table_from> is treated as being the dependent table for the
-purposes of determining
+dependent then the "table_from" is treated as being the dependent
+table for the purposes of determining
 
 If no columns with the same names exist in the other table, then
-columns with those names will be created.  Otherwise, add_relationship
-changes the dependent columns so that their
+columns with those names will be created.  Otherwise,
+C<add_relationship()> changes the dependent columns so that their
 L<C<Alzabo::Create::ColumnDefinition>|Alzabo::Create::ColumnDefinition>
 objects are the same as the columns in the table upon which they are
 dependent, meaning that changes to the type of one column affects both
@@ -1277,11 +1263,11 @@ at the same time.
 
 If you want to make a multi-column relationship, the assumption is
 that the order of the columns is significant.  In other words, the
-first column in the C<columns_from> parameter is assumed to correspond
-to the first column in hte C<columns_to> parameter and so on.
+first column in the "columns_from" parameter should correspond to the
+first column in hte "columns_to" parameter and so on.
 
-The number of columns given in C<columns_from> and C<columns_to> must
-be the same except when creating a many to many relationship.
+The number of columns given in "columns_from" and "columns_to" must be
+the same except when creating a many to many relationship.
 
 If the cardinality is many to many then a new table will be created to
 link the two tables together.  This table will contain the primary
@@ -1289,7 +1275,7 @@ keys of both the tables passed into this function.  It will contain
 foreign keys to both of these tables as well, and these tables will be
 linked to this new table.
 
-=head3 Parameters
+This method takes the following parameters:
 
 =over 4
 
@@ -1318,9 +1304,7 @@ names of those it's linking.
 
 =back
 
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 create
 
@@ -1334,41 +1318,37 @@ schema to be marked as instantiated.
 
 Wherever possible, existing data will be preserved.
 
-=head3 Parameters
-
 This method takes any parameters that can be used when connecting to
-the RDBMS, including C<user>, C<password>, C<host>, and C<port>.
+the RDBMS, including "user", "password", "host", and "port".
 
 =head2 instantiated
 
-=head3 Returns
-
-The value of the schema's instantiated attribute.  It is true if the
-schema has been created in an RDBMS backend, otherwise it is false.
+Returns a boolean value indicating whether the schema has been created
+in an RDBMS backend, otherwise it is false.
 
 =head2 set_instantiated ($bool)
 
 Set the schema's instantiated attribute as true or false.
 
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+
 =head2 make_sql
 
-=head3 Returns
-
-An array containing the SQL statements necessary to either create the
-database from scratch or update the database to match the schema
-object.  See the L<C<create>|Alzabo::Create::Schema/create> method for
-more details.
+Returns an array containing the SQL statements necessary to either
+create the database from scratch or update the database to match the
+schema object.  See the L<C<create()>|Alzabo::Create::Schema/create>
+method for more details.
 
 =head2 drop
 
 Drops the database/schema from the RDBMS.  This will cause the schema
 to be marked as not instantiated.  This method does not delete the
-Alzabo files from disk.  To do this, call the C<delete> method.
-
-=head3 Parameters
+Alzabo files from disk.  To do this, call the C<delete()> method.
 
 This method takes any parameters that can be used when connecting to
-the RDBMS, including C<user>, C<password>, C<host>, and C<port>.
+the RDBMS, including "user", "password", "host", and "port".
+
+Throws: L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
 
 =head2 sync_backend
 
@@ -1376,7 +1356,7 @@ This method will look at the schema as it exists in the RDBMS backend,
 and make any changes that are necessary in order to make this backend
 schema match the Alzabo schema object.  If there is no corresponding
 schema in the RDBMS backend, then this method is equivalent to the
-L<C<create>|Alzabo::Create::Schema/create> method.
+L<C<create()>|Alzabo::Create::Schema/create> method.
 
 After this method is called, the schema will be considered to be
 instantiated.
@@ -1389,34 +1369,31 @@ account for these.
 In the end, this means that Alzabo may never think that a schema in
 the RDBMS exactly matches the state of the Alzabo schema object.  Even
 immediately after running this method, running it again may still
-cause it to execute SQL commands.  Fortunately, the SQL it generates
+2cause it to execute SQL commands.  Fortunately, the SQL it generates
 will not cause anything to break.
 
-=head3 Parameters
-
 This method takes any parameters that can be used when connecting to
-the RDBMS, including C<user>, C<password>, C<host>, and C<port>.
+the RDBMS, including "user", "password", "host", and "port".
+
+Throws: L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
 
 =head2 sync_backend_sql
 
-=head3 Parameters
-
-This method takes any parameters that can be used when connecting to
-the RDBMS, including C<user>, C<password>, C<host>, and C<port>.
-
-=head3 Returns
-
-This method returns an array containing the set of SQL statements that
-would be used by the L<C<sync_backend_sql>|sync_backend_sql> method.
-
 If there is no corresponding schema in the RDBMS backend, then this
 method returns the SQL necessary to create the schema from scratch.
+
+This method takes any parameters that can be used when connecting to
+the RDBMS, including "user", "password", "host", and "port".
+
+Throws: L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
 
 =head2 delete
 
 Removes the schema object from disk.  It does not delete the database
 from the RDBMS.  To do this you must call the L<C<drop>|drop> method
 first.
+
+Throws: L<C<Alzabo::Exception::System>|Alzabo::Exceptions>
 
 =head2 clone
 
@@ -1425,7 +1402,7 @@ was called on, except that this new schema has a different name, it
 does not yet exist on disk, its instantiation attribute is set to
 false.
 
-=head3 Parameters
+It takes the following parameters:
 
 =over 4
 
@@ -1433,13 +1410,16 @@ false.
 
 =back
 
-=head3 Returns
+This method returns a new Alzabo::Create::Schema object.
 
-A new Alzabo::Create::Schema object.
+Throws: L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>,
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
 =head2 save_to_file
 
 Saves the schema to a file on disk.
+
+Throws: L<C<Alzabo::Exception::System>|Alzabo::Exceptions>
 
 =head2 is_saved
 

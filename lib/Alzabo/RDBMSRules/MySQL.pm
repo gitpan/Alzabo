@@ -372,6 +372,8 @@ sub type_is_time
     return 1 if $type eq /\A(?:DATETIME|TIME)\z/;
 }
 
+sub type_is_time_interval { 0 }
+
 sub type_is_blob
 {
     my $self = shift;
@@ -737,7 +739,7 @@ sub alter_primary_key_sql
     return @sql;
 }
 
-sub change_table_name_sql
+sub alter_table_name_sql
 {
     my $self = shift;
     my $table = shift;
@@ -745,7 +747,7 @@ sub change_table_name_sql
     return 'RENAME TABLE ' . $table->former_name . ' TO ' . $table->name;
 }
 
-sub change_table_attributes_sql
+sub alter_table_attributes_sql
 {
     my $self = shift;
     my %p = @_;
@@ -753,7 +755,7 @@ sub change_table_attributes_sql
     return 'ALTER TABLE ' . $p{new}->name . ' ' . join ' ', $p{new}->attributes;
 }
 
-sub change_column_name_sql
+sub alter_column_name_sql
 {
     my $self = shift;
     my $column = shift;

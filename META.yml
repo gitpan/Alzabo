@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name: Alzabo
-version: 0.79_04
+version: 0.80
 license: perl
 distribution_type: module
 requires:
@@ -25,7 +25,7 @@ conflicts: {}
 provides:
   Alzabo:
     file: lib/Alzabo.pm
-    version: 0.79_04
+    version: 0.80
   Alzabo::BackCompat:
     file: lib/Alzabo/BackCompat.pm
     version: 2

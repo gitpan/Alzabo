@@ -121,6 +121,11 @@ sub is_time
     $_[0]->table->schema->rules->type_is_time($_[0]);
 }
 
+sub is_time_internval
+{
+    $_[0]->table->schema->rules->type_is_time_interval($_[0]);
+}
+
 sub is_blob
 {
     $_[0]->table->schema->rules->type_is_blob($_[0]);
@@ -164,38 +169,30 @@ This object represents a column.  It holds data specific to a column.
 
 =head2 table
 
-=head3 Returns
-
-The table object in which this column is located.
+Returns the table object to which this column belongs.
 
 =head2 name
 
-=head3 Returns
-
-The column's name as a string.
+Returns the column's name as a string.
 
 =head2 nullable
 
-=head3 Returns
-
-A boolean value indicating whether or not NULLs are allowed in this
-column.
+Returns a boolean value indicating whether or not NULLs are allowed in
+this column.
 
 =head2 attributes
 
 A column's attributes are strings describing the column (for example,
 valid attributes in MySQL are 'UNSIGNED' or 'ZEROFILL'.
 
-=head3 Returns
-
-A list of strings.
+This method returns a list of strings of such strings.
 
 =head2 has_attribute
 
-=head3 Parameters:
-
 This method can be used to test whether or not a column has a
 particular attribute.  By default, the check is case-insensitive.
+
+It takes the following parameters:
 
 =over 4
 
@@ -205,16 +202,12 @@ particular attribute.  By default, the check is case-insensitive.
 
 =back
 
-=head3 Returns
-
-A boolean value indicating whether or not the column has this
-particular attribute.
+It returns a boolean value indicating whether or not the column has
+this particular attribute.
 
 =head2 type
 
-=head3 Returns
-
-The column's type as a string.
+Returns the column's type as a string.
 
 =head2 sequenced
 
@@ -230,98 +223,80 @@ table with a single column primary key.  Setting the column as
 sequenced means its value never has to be provided to when calling
 C<Alzabo::Runtime::Table-E<gt>insert>.
 
-=head3 Returns
-
-A boolean value indicating whether or not this column is sequenced.
+Returns a boolean value indicating whether or not this column is
+sequenced.
 
 =head2 default
 
-=head3 Returns
-
-The default value of the column as a string, or undef if there is
-no default.
+Returns the default value of the column as a string, or undef if there
+is no default.
 
 =head2 length
 
-=head3 Returns
-
-The length attribute of the column, or undef if there is none.
+Returns the length attribute of the column, or undef if there is none.
 
 =head2 precision
 
-=head3 Returns
-
-The precision attribute of the column, or undef if there is none.
+Returns the precision attribute of the column, or undef if there is
+none.
 
 =head2 is_primary_key
 
-=head3 Returns
-
-A boolean value indicating whether or not this column is part of its
-table's primary key.
+Returns a boolean value indicating whether or not this column is part
+of its table's primary key.
 
 =head2 is_numeric
 
-=head3 Returns
-
-A boolean value indicating whether the column is a numeric type
-column.
+Returns a boolean value indicating whether the column is a numeric
+type column.
 
 =head2 is_integer
 
-=head3 Returns
-
-A boolean value indicating whether the column is a numeric type
-column.
+Returns a boolean value indicating whether the column is a numeric
+type column.
 
 =head2 is_floating_point
 
-=head3 Returns
-
-A boolean value indicating whether the column is a numeric type
-column.
+Returns a boolean value indicating whether the column is a numeric
+type column.
 
 =head2 is_character
 
-=head3 Returns
-
-A boolean value indicating whether the column is a character type
-column.
+Returns a boolean value indicating whether the column is a character
+type column.
 
 This is true only for any columns which are defined to hold I<text>
 data, regardless of size.
 
 =head2 is_date
 
-=head3 Returns
-
-A boolean value indicating whether the column is a date type column.
+Returns a boolean value indicating whether the column is a date type
+column.
 
 =head2 is_datetime
 
-=head3 Returns
-
-A boolean value indicating whether the column is a datetime type
-column.
+Returns a boolean value indicating whether the column is a datetime
+type column.
 
 =head2 is_time
 
-=head3 Returns
+Returns a boolean value indicating whether the column is a time type
+column.
 
-A boolean value indicating whether the column is a time type column.
+=head2 is_time_interval
+
+Returns a boolean value indicating whether the column is a time
+interval type column.
 
 =head2 is_blob
 
-=head3 Returns
-
-A boolean value indicating whether the column is a blob column.
+Returns a boolean value indicating whether the column is a blob
+column.
 
 This is true for any columns defined to hold binary data, regardless
 of size.
 
 =head2 generic_type
-
-=head3
 
 This methods returns one of the following strings:
 
@@ -348,19 +323,17 @@ This methods returns one of the following strings:
 =head2 definition
 
 The definition object is very rarely of interest.  Use the
-L<C<type>|type> method if you are only interested in the column's
+L<C<type()>|type> method if you are only interested in the column's
 type.
 
-=head3 Returns
 
-The L<C<Alzabo::ColumnDefinition>|Alzabo::ColumnDefinition> object
-which holds this column's type information.
+This methods returns the
+L<C<Alzabo::ColumnDefinition>|Alzabo::ColumnDefinition> object which
+holds this column's type information.
 
 =head2 comment
 
-=head3 Returns
-
-The comment associated with the column object, if any.
+Returns the comment associated with the column object, if any.
 
 =head1 AUTHOR
 

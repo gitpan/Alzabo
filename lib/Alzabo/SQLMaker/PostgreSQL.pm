@@ -249,10 +249,9 @@ PostgreSQL-specific SQL creation.
 
 =head1 METHODS
 
-Almost all of the functionality inherited from Alzabo::SQLMaker is
-used as is.  The only overridden methods are C<limit> and
-C<get_limit>, as PostgreSQL does allow for a C<LIMIT> clause in its
-SQL.
+Almost all of the functionality inherited from C<Alzabo::SQLMaker> as
+is.  The only overridden methods are C<limit()> and C<get_limit()>, as
+PostgreSQL does allow for a C<LIMIT> clause in its SQL.
 
 =head1 EXPORTED SQL FUNCTIONS
 

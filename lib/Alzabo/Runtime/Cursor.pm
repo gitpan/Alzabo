@@ -90,16 +90,12 @@ row of the set.
 
 =head2 count
 
-=head3 Returns
-
-The number of rows returned by the cursor so far.
+Returns the number of rows returned by the cursor so far.
 
 =head2 next_as_hash
 
-=head3 Returns
-
-The next row or rows in a hash, where the hash key is the table name
-and the hash value is the row object.
+Returns the next row or rows in a hash, where the hash key is the
+table name and the hash value is the row object.
 
 =head1 AUTHOR
 

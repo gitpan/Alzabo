@@ -59,7 +59,7 @@ Alzabo::Debug - Creates constants used to turn on debugging
 This module creates constants used by other modules in order to
 determine what debugging output should be generated.
 
-The interface is current experimental.
+The interface is currently experimental.
 
 =head1 USAGE
 
@@ -82,8 +82,8 @@ A stack trace will be generated any time SQL is generated.
 
 =item * METHODMAKER
 
-The C<Alzabo::MethodMaker> module will generate output describing the
-methods it is creating.
+The C<Alzabo::MethodMaker> module will generate verbose output
+describing the methods it is creating.
 
 =item * REVERSE_ENGINEER
 

@@ -282,7 +282,7 @@ how this is done.
 =item * Alzabo::Exception
 
 This is the base class for all exceptions generated within Alzabo (all
-exceptions should return true for C<$@-E<gt>isa('Alzabo::Exception')>
+exceptions should return true for C<< $@->isa('Alzabo::Exception') >>
 except those that are generated via internal Perl errors).
 
 =item * Alzabo::Exception::Driver
@@ -307,8 +307,8 @@ that does not actually exist in the specified table.
 =item * Alzabo::Exception::NotNullable
 
 An attempt was made to set a non-nullable column to C<NULL>.  The
-C<column_name>, C<table_name>, and C<schema_name> fields can be used
-to identify the exact column.
+"column_name", "table_name", and "schema_name" fields can be used to
+identify the exact column.
 
 =item * Alzabo::Exception::Panic
 
