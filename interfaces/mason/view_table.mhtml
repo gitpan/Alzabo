@@ -18,13 +18,13 @@
  </tr>
 
 % if ( $t->all_foreign_keys || $t->indexes ) {
- <tr>
+ <tr valign="top">
   <td>
 
 %   if ($t->all_foreign_keys) {
    <table width="100%" border="1" align="center" cellspacing="0" cellpadding="0">
     <tr>
-     <td colspan="3" align="center"><h4>Foreign keys</h4></td>
+     <td colspan="3" align="center"><b>Foreign keys</b></td>
     </tr>
     <tr valign="middle">
      <td align="center"><b>From</b></td>
@@ -34,22 +34,32 @@
 %     foreach my $fk ($t->all_foreign_keys) {
     <tr valign="top">
      <td align="center">
-<& &Alzabo::Config::mason_url_path . '/common/href', text => $fk->column_from->name, path => 'view_column' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $t->name, column => $fk->column_from->name } &>
+%       foreach my $c_from ($fk->columns_from) {
+<& &Alzabo::Config::mason_url_path . '/common/href', text => $c_from->name, path => 'view_column' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $t->name, column => $c_from->name } &>
+%         unless ($c_from->name eq ($fk->columns_from)[-1]->name) {
+<br>
+%         }
+%       }
  (<% join '..', $fk->min_max_from %>)
      </td>
      <td align="center">
+%       foreach my $c_to ($fk->columns_to) {
 <& &Alzabo::Config::mason_url_path . '/common/href', text => $fk->table_to->name, path => 'view_table' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $fk->table_to->name } &>
  .
- <& &Alzabo::Config::mason_url_path . '/common/href', text => $fk->column_to->name, path => 'view_column' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $fk->table_to->name, column => $fk->column_to->name } &>
+<& &Alzabo::Config::mason_url_path . '/common/href', text => $c_to->name, path => 'view_column' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $fk->table_to->name, column => $c_to->name } &>
+%         unless ($c_to->name eq ($fk->columns_to)[-1]->name) {
+<br>
+%         }
+%       }
  (<% join '..', $fk->min_max_to %>)
      </td>
      <td align="center">
 <form action="delete_foreign_key<% Alzabo::Config::mason_extension() %>">
  <input type="hidden" name="schema" value="<% $s->name %>">
- <input type="hidden" name="table_from" value="<% $t->name %>">
+ <input type="hidden" name="table_from" value="<% $fk->table_from->name %>">
  <input type="hidden" name="table_to" value="<% $fk->table_to->name %>">
- <input type="hidden" name="column_from" value="<% $fk->column_from->name %>">
- <input type="hidden" name="column_to" value="<% $fk->column_to->name %>">
+ <input type="hidden" name="column_from" value="<% ($fk->columns_from)[0]->name %>">
+ <input type="hidden" name="fk_id" value="<% $fk->id %>">
  <input type="submit" value="Delete">
 </form>
 %     }
@@ -62,7 +72,7 @@
 %   if ($t->indexes) {
    <table width="100%" border="1" align="center" cellspacing="0" cellpadding="0">
     <tr>
-     <td align="center"><h4>Indexes</h4></td>
+     <td align="center"><b>Indexes</b></td>
     </tr>
 %     foreach my $i ($t->indexes) {
     <tr valign="top">

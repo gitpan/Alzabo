@@ -3,7 +3,7 @@ $schema
 $table_from
 $table_to
 $column_from
-$column_to
+$fk_id
 </%args>
 
 <%init>
@@ -18,8 +18,7 @@ eval
     foreach my $fk ( $t->foreign_keys( table => $s->table($table_to),
 				       column => $t->column($column_from) ) )
     {
-	$t->delete_foreign_key($fk)
-	    if $column_to eq $fk->column_to->name;
+	$t->delete_foreign_key($fk) if  $fk->id eq $fk_id;
     }
 
     $s->save_to_file;

@@ -7,7 +7,7 @@ use Alzabo::Create;
 
 use base qw(Alzabo::Index);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -36,7 +36,7 @@ sub new
 
 sub add_column
 {
-    my Alzabo::Create::Index $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $new_name = $p{column}->name;
@@ -57,7 +57,7 @@ sub add_column
 
 sub delete_column
 {
-    my Alzabo::Create::Index $self = shift;
+    my $self = shift;
     my $c = shift;
 
     Alzabo::Exception::Params->throw( error => "Column " . $c->name . " is not part of index." )
@@ -68,7 +68,7 @@ sub delete_column
 
 sub set_prefix
 {
-    my Alzabo::Create::Index $self = shift;
+    my $self = shift;
     my %p = @_;
 
     Alzabo::Exception::Params->throw( error => "Column " . $p{column}->name . " is not part of index." )
@@ -96,14 +96,14 @@ sub set_prefix
 
 sub set_unique
 {
-    my Alzabo::Create::Index $self = shift;
+    my $self = shift;
 
     $self->{unique} = shift;
 }
 
 sub register_column_name_change
 {
-    my Alzabo::Create::Index $self = shift;
+    my $self = shift;
     my %p = @_;
 
     return unless $self->{columns}->EXISTS( $p{old_name} );

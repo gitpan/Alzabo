@@ -1,20 +1,26 @@
-Success!
+<p>
+The SQL was succesfully executed.
+</p>
 
+<p>
+<a href="view_schema<% Alzabo::Config::mason_extension() %>?schema=<% $s->name | u %>">Back</a>
+</p>
 <%args>
 $s
-$user
-$password
+$user => undef
+$password => undef
+$host => undef
 </%args>
 
 <%init>
-
 eval
 {
     $s->create( user => $user,
-		password => $password );
+		password => $password,
+		host => $host,
+	      );
     $s->save_to_file;
 };
 
 $m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
-
 </%init>

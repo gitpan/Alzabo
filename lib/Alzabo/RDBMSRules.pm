@@ -6,7 +6,7 @@ use vars qw($VERSION);
 use Alzabo::Exceptions;
 use Alzabo::Util;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.27 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.30 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -137,7 +137,7 @@ sub index_sql
     $sql .= ' UNIQUE' if $index->unique;
     $sql .= " INDEX $index_name ON " . $index->table->name . ' ( ';
 
-    $sql .= join ', ', ( map { my $sql = join '.', $_->table->name, $_->name;
+    $sql .= join ', ', ( map { my $sql = $_->name;
 			       $sql .= '(' . $index->prefix($_) . ')' if $index->prefix($_);
 			       $sql; } @cols );
 
@@ -286,6 +286,14 @@ sub table_sql_diff
 	}
     }
 
+    foreach my $old_i ($old->indexes)
+    {
+	unless ( eval { $new->index( $old_i->id ) } )
+	{
+	    push @sql, $self->drop_index_sql($old_i);
+	}
+    }
+
     foreach my $new_i ($new->indexes)
     {
 	if ( my $old_i = eval { $old->index( $new_i->id ) } )
@@ -299,44 +307,36 @@ sub table_sql_diff
 	}
     }
 
-    foreach my $old_i ($old->indexes)
-    {
-	unless ( eval { $new->index( $old_i->id ) } )
-	{
-	    push @sql, $self->drop_index_sql($old_i);
-	}
-    }
-
     foreach my $new_fk ($new->all_foreign_keys)
     {
-	if ( my @old_fk = eval { $old->foreign_keys( table => $new_fk->table_to,
-						     column => $new_fk->column_from ) } )
+	my @fk = grep { $new_fk->id eq $_->id } $old->all_foreign_keys;
+
+	if (@fk == 1)
 	{
-	    foreach my $old_fk (@old_fk)
-	    {
-		if ( $old_fk->column_to->name eq $new_fk->column_to->name )
-		{
-		    push @sql, $self->foreign_key_sql_diff( new => $new_fk,
-							    old => $old_fk );
-		}
-		else
-		{
-		    push @sql, $self->foreign_key_sql($new_fk)
-		}
-	    }
+	    push @sql, $self->foreign_key_sql_diff( new => $new_fk,
+						    old => $fk[0] );
+	}
+	elsif (@fk > 1)
+	{
+	    Alzabo::Exception::RDBMSRules->throw( error => "More than one foreign key had the same id in " . $old->name );
+	}
+	else
+	{
+	    push @sql, $self->foreign_key_sql($new_fk)
 	}
     }
 
     foreach my $old_fk ($old->all_foreign_keys)
     {
-	unless ( my @new_fk = eval { $new->foreign_keys( table => $old_fk->table_to,
-							 column => $old_fk->column_from ) } )
+	my @fk = grep { $old_fk->id eq $_->id } $new->all_foreign_keys;
+
+	if (! @fk)
 	{
-	    foreach my $new_fk (@new_fk)
-	    {
-		push @sql, $self->drop_foreign_key_sql($old_fk)
-		    unless $old_fk->column_to->name eq $new_fk->column_to->name;
-	    }
+	    push @sql, $self->drop_foreign_key_sql($old_fk);
+	}
+	elsif (@fk > 1)
+	{
+	    Alzabo::Exception::RDBMSRules->throw( error => "More than one foreign key had the same id in " . $new->name );
 	}
     }
 

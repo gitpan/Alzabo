@@ -7,15 +7,13 @@ use Alzabo;
 
 use Tie::IxHash;
 
-#use fields qw( columns table unique );
-
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub columns
 {
-    my Alzabo::Index $self = shift;
+    my $self = shift;
 
     my @c;
     foreach my $c ($self->{columns}->Keys)
@@ -28,7 +26,7 @@ sub columns
 
 sub prefix
 {
-    my Alzabo::Index $self = shift;
+    my $self = shift;
     my $c = shift;
 
     Alzabo::Exception::Params->throw( error => "Column " . $c->name . " is not part of index." )
@@ -39,14 +37,14 @@ sub prefix
 
 sub unique
 {
-    my Alzabo::Index $self = shift;
+    my $self = shift;
 
     return $self->{unique};
 }
 
 sub id
 {
-    my Alzabo::Index $self = shift;
+    my $self = shift;
 
     return join '___', ( $self->{table}->name,
 			 map { $_->name, $self->prefix($_) || () }
@@ -55,7 +53,7 @@ sub id
 
 sub table
 {
-    my Alzabo::Index $self = shift;
+    my $self = shift;
 
     return $self->{table};
 }

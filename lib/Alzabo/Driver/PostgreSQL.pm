@@ -8,7 +8,7 @@ use DBD::Pg;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -23,11 +23,13 @@ sub new
 sub connect
 {
     my $self = shift;
+    my %p = @_;
 
     $self->{tran_count} = undef;
 
-    return if $self->{dbh} && $self->{dbh}->ping;
+    return if $self->{dbh} && $self->{dbh}->ping && ! $p{force};
 
+    $self->disconnect if $self->{dbh};
     $self->{dbh} = $self->_make_dbh( @_, name => $self->{schema}->name );
 }
 
@@ -47,9 +49,9 @@ sub drop_database
 {
     my $self = shift;
 
-    my $dbh = $self->_make_dbh( @_, name => 'template1' );
-
     $self->{dbh}->disconnect if $self->{dbh};
+
+    my $dbh = $self->_make_dbh( @_, name => 'template1' );
 
     eval { $dbh->do( "DROP DATABASE " . $self->{schema}->name ); };
     my $e = $@;
@@ -141,7 +143,7 @@ sub finish_transaction
 	warn "$callee called commit without corresponding begin_tran call\n";
     }
 
-    # Don't actually commit to we reach 'uber-commit'
+    # Don't actually commit until we reach 'uber-commit'
     return if $self->{tran_count};
 
     unless ( $self->{dbh}->{AutoCommit} )
@@ -229,6 +231,15 @@ This functions exactly as described in Alzabo::Driver.
 =head2 get_last_id
 
 Returns the last id created for a sequenced column.
+
+=head1 BUGS
+
+In testing, I found that there were some problems using Postgres in a
+situation where you start the app, connect to the database, get some
+data, fork, reconnect, and and then get more data.  I suspect that
+this has more to do with the DBD::Pg driver and/or Postgres itself
+than Alzabo.  I don't believe this would be a problem with an app
+which forks before ever connecting to the database (such as mod_perl).
 
 =head1 AUTHOR
 

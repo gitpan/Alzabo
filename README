@@ -7,7 +7,7 @@ reverse engineering an existing data model.
 Its second function is as a RDBMS to object mapping system. Once you
 have created a schema, you can use the Alzabo::Runtime::Table and
 Alzabo::Runtime::Row classes to access its data. These classes offer a
-low level interface to common operations such as SQL SELECT, INSERT,
+high level interface to common operations such as SQL SELECT, INSERT,
 DELETE, and UPDATE commands.
 
 To take it a step further, you could then aggregate a set of rows from
@@ -21,8 +21,63 @@ form is available at http://alzabo.sourceforge.net/docs/
 
 Install information is in the INSTALL file.
 
+UPGRADING
+
+If you have an older version of Alzabo installed and you want to
+continue to use older schema objects you need to do the following
+steps _before_ installation.
+
+Run the convert.pl script in the eg/ directory.  By default, it will
+attempt to convert all your schemas.  This script generates files
+containing Perl code which will recreate your schema with the latest
+of version of Alzabo.  
+
+Once you've run the convert.pl script for the all schemas you need to
+upgrade, install the latest version of Alzabo.  Then run the files
+created by the convert.pl script.  This overwrites your old files so
+_make backups first_!
+
+BUGS
+
+- Postgres, Perl 5.6.0+ and the 03-runtime.t test
+
+Running the 03-runtime.t test with Perl 5.6.0 (or 5.6.1 trial1) and
+Postgres produces a bunch of strange warning messages something like
+this:
+
+ (in cleanup) dbih_getcom handle 'DBI::db=HASH(0x847d9c4)' is not a
+DBI handle (has no magic) at blib/lib/Alzabo/Driver.pm line 268 during
+global destruction.
+SV = RV(0x8474158) at 0x847d79c
+  REFCNT = 1
+  FLAGS = (ROK)
+  RV = 0x847d9c4
+
+However, the tests still pass.  I suspect this occurs because the
+03-runtime test does a lot of forking and this may be doing strange
+things to the internal state of the DBI objects.  If this also occurs
+during normal operations I will try to track it down but since I don't
+use 5.6.0 much, other than for compatibility testing, I may need some
+assistance.
+
+- Forking apps and Postgres
+
+In testing, I found that there were some problems using Postgres in a
+situation where you start the app, connect to the database, get some
+data, fork, reconnect, and and then get more data.  I suspect that
+this has more to do with the DBD::Pg driver and/or Postgres itself
+than Alzabo.  I don't believe this would be a problem with an app
+which forks before ever connecting to the database (such as mod_perl).
+I have structured the test suite to avoid this problem in testing but
+forewarned is forearmed (or something like that).
 
 CREDITS
 
 Thanks very much to Randal Schwartz for spending time with me on IRC
 helping me find problems with the install process.
+
+
+Various bug reports and assistance from:
+
+Robert Goff
+Randal Schwartz

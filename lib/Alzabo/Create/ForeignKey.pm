@@ -7,7 +7,7 @@ use Alzabo::Create;
 
 use base qw(Alzabo::ForeignKey);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -19,8 +19,8 @@ sub new
 
     my $self = bless {}, $class;
 
-    $self->set_column_from( $p{column_from} );
-    $self->set_column_to( $p{column_to} );
+    $self->set_columns_from( $p{columns_from} );
+    $self->set_columns_to( $p{columns_to} );
 
     $self->set_min_max_from( $p{min_max_from} );
     $self->set_min_max_to( $p{min_max_to} );
@@ -28,23 +28,37 @@ sub new
     return $self;
 }
 
-sub set_column_from
+sub set_columns_from
 {
-    my Alzabo::Create::ForeignKey $self = shift;
+    my $self = shift;
+    my $c = UNIVERSAL::isa( $_[0], 'ARRAY' ) ? shift : [ shift ];
 
-    $self->{column_from} = shift;
+    if ( exists $self->{columns_to} )
+    {
+	Alzabo::Exception::Params->throw( error => "The number of columns in each part of the relationship must be the same" )
+	    unless @{ $self->{columns_to} } == @$c;
+    }
+
+    $self->{columns_from} = $c;
 }
 
-sub set_column_to
+sub set_columns_to
 {
-    my Alzabo::Create::ForeignKey $self = shift;
+    my $self = shift;
+    my $c = UNIVERSAL::isa( $_[0], 'ARRAY' ) ? shift : [ shift ];
 
-    $self->{column_to} = shift;
+    if ( exists $self->{columns_from} )
+    {
+	Alzabo::Exception::Params->throw( error => "The number of columns in each part of the relationship must be the same" )
+	    unless @{ $self->{columns_from} } == @$c;
+    }
+
+    $self->{columns_to} = $c;
 }
 
 sub set_min_max_from
 {
-    my Alzabo::Create::ForeignKey $self = shift;
+    my $self = shift;
     my $mm = shift;
 
     Alzabo::Exception::Params->throw( error => "Incorrect number of min/max elements" )
@@ -64,7 +78,7 @@ sub set_min_max_from
 
 sub set_min_max_to
 {
-    my Alzabo::Create::ForeignKey $self = shift;
+    my $self = shift;
     my $mm = shift;
 
     Alzabo::Exception::Params->throw( error => "Incorrect number of min/max elements" )
@@ -105,9 +119,13 @@ Parameters:
 
 =over 4
 
-=item * column_from => C<Alzabo::Create::Column> object
+=item * columns_from => C<Alzabo::Create::Column> object(s)
 
-=item * column_to => C<Alzabo::Create::Column> object
+=item * columns_to => C<Alzabo::Create::Column> object(s)
+
+These two parameters may be either a single column or a reference to
+an array columns.  The number of columns in the two parameters must
+match.
 
 =item * min_max_from => see below
 
@@ -130,17 +148,21 @@ object.
 
 =for pod_merge table_to
 
-=for pod_merge column_from
+=for pod_merge columns_from
 
-=for pod_merge column_to
+=for pod_merge columns_to
 
-=head2 set_column_from (C<Alzabo::Create::Column> object)
+=for pod_merge column_pairs
 
-Set the column that the relation is from.
+=head2 set_columns_from (C<Alzabo::Create::Column> object(s))
 
-=head2 set_column_to (C<Alzabo::Create::Column> object)
+Set the column(s) that the relation is from.  This can be either a
+single a column object or a reference to an array of column objects.
 
-Set the column that the relation is to.
+=head2 set_columns_to (C<Alzabo::Create::Column> object(s))
+
+Set the column(s) that the relation is to.  This can be either a
+single a column object or a reference to an array of column objects.
 
 =for pod_merge min_max_from
 

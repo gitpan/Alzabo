@@ -7,7 +7,7 @@ use Config;
 
 use Alzabo::Exceptions;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -16,16 +16,18 @@ sub subclasses
     my $base = shift;
 
     $base =~ s,::,/,g;
+    $base .= '.pm';
 
-    $base = $Config{installsitelib} . "/$base";
+    # remove '.pm'
+    my $dir = substr( $INC{$base}, 0, (length $INC{$base}) - 3 );
 
-    opendir DIR, $base
-	or Alzabo::Exception::System->throw( error => "Cannot open directory $base: $!" );
+    opendir DIR, $dir
+	or Alzabo::Exception::System->throw( error => "Cannot open directory $dir: $!" );
 
-    my @packages = map { substr($_, 0, length($_) - 3) } grep { substr($_, -3) eq '.pm' && -f "$base/$_" } readdir DIR;
+    my @packages = map { substr($_, 0, length($_) - 3) } grep { substr($_, -3) eq '.pm' && -f "$dir/$_" } readdir DIR;
 
     closedir DIR
-	or Alzabo::Exception::System->throw( error => "Cannot close directory $base: $!" );
+	or Alzabo::Exception::System->throw( error => "Cannot close directory $dir: $!" );
 
     return @packages;
 }

@@ -13,7 +13,7 @@ use Alzabo::Config;
 
 use vars qw($VERSION);
 
-$VERSION = '0.20';
+$VERSION = '0.30';
 
 1;
 
@@ -86,7 +86,7 @@ L<Alzabo - Exceptions|"Exceptions">
 
 L<Alzabo - Usage Examples|"Usage Examples">
 
-Depending on what RDBMS you are using:
+The section for your RDBMS:
 
 =over 4
 
@@ -116,12 +116,18 @@ ERRORS|Alzabo::Runtime::Cursor/"HANDLING ERRORS"> section.
 L<Alzabo::Runtime::RowCursor> - A cursor object that returns only a
 single row.
 
-L<Alzabo::Runtime::RowCursor> - A cursor object that returns multiple
+L<Alzabo::Runtime::JoinCursor> - A cursor object that returns multiple
 rows.
 
 L<Alzabo::MethodMaker> - One of the most useful parts of Alzabo.  This
 module can be used to auto-generate methods based on the structure of
 your schema.
+
+L<Alzabo::ObjectCache> - This describes how to select the caching
+modules you want to use.  It contains a number of scenarios and
+descibes how they are affected by caching.  If you plan on using
+Alzabo in a multi-process environment (such as mod_perl) this is very
+important.
 
 L<Alzabo::Exceptions> - Describes the nature of all the exceptions
 used in Alzabo.
@@ -314,9 +320,9 @@ L<C<Alzabo::MethodMaker>|Alzabo::MethodMaker>;
 
   # I'm assuming that the pluralize_english subroutine pluralizes
   # things as one would expect.
-  use Alzabo::MethodMaker( schema    => 'movies',
-                           all       => 1,
-                           pluralize => \&pluralize_english );
+  use Alzabo::MethodMaker( schema      => 'movies',
+                           all         => 1,
+                           name_maker  => \&method_namer );
 
   my $schema = Alzabo::Runtime::Schema->load_from_file( name => 'movies' );
 
@@ -346,39 +352,37 @@ relationships.
 
   sub update_location
   {
+      my $self = shift; # this is the row object
       my %data = @_;
       if ( $data{parent_location_id} )
       {
+	  my $parent_location_id = $data{parent_location_id};
 	  my $location_t = $schema->table('Location');
-          my $location = $location_t->row_by_pk( pk => $data{parent_location_id} );
-          do
-          {
+          while ( my $location = eval { $location_t->row_by_pk( pk => $parent_location_id ) } )
+	  {
               die "Insert into location would create loop"
                   if $location->select('parent_location_id') == $data{location_id};
 
-              # get the current location's parent location
-              $location = $location_t->row_by_pk( pk => $location->select('parent_location_id') );
-          } while ($location);
+	      $parent_location_id = $location->select('parent_location_id');
+          }
       }
   }
 
 Once again, let's rewrite the code to use
 L<C<Alzabo::MethodMaker>|Alzabo::MethodMaker>:
 
-
   sub update_location
   {
+      my $self = shift; # this is the row object
       my %data = @_;
       if ( $data{parent_location_id} )
       {
-          my $location = $schema->Location->row_by_pk( pk => $data{parent_location_id} );
-          do
-          {
+	  my $location = $self;
+          while ( my $location = eval { $location->parent } )
+	  {
               die "Insert into location would create loop"
                   if $location->parent_location_id == $data{location_id};
-
-              $location = $location_t->row_by_pk( pk => $location->parent_location_id );
-          } while ($location);
+          }
       }
   }
 
@@ -450,7 +454,7 @@ are necessary to allow indexes on blob/text columns.
 
 =head3 PostgreSQL
 
-Postgres support in Alzabo us currently missing several features.
+Postgres support in Alzabo is currently missing several features.
 
 First, reverse engineering does not handle constraints (including
 foreign keys).  This will change in the future.

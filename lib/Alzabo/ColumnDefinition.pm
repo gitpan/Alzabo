@@ -5,36 +5,34 @@ use vars qw($VERSION);
 
 use Alzabo;
 
-#use fields qw( owner type length precision );
-
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub type
 {
-    my Alzabo::ColumnDefinition $self = shift;
+    my $self = shift;
 
     return $self->{type};
 }
 
 sub length
 {
-    my Alzabo::ColumnDefinition $self = shift;
+    my $self = shift;
 
     return $self->{length};
 }
 
 sub precision
 {
-    my Alzabo::ColumnDefinition $self = shift;
+    my $self = shift;
 
     return $self->{precision};
 }
 
 sub owner
 {
-    my Alzabo::ColumnDefinition $self = shift;
+    my $self = shift;
 
     return $self->{owner};
 }

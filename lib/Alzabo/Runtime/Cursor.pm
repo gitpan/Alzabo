@@ -5,9 +5,7 @@ use vars qw($VERSION);
 
 use Alzabo::Runtime;
 
-use fields qw( errors no_cache statement );
-
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
 
 1;
 

@@ -8,7 +8,7 @@
 <table width="100%" cellspacing="0">
 
  <tr>
-  <td colspan="5" align="center"><& .title, $s, $t, $c, $fk &></td>
+  <td colspan="5" align="center"><& .title, $s, $t, $c &></td>
  </tr>
 
 % if ($s) {
@@ -29,13 +29,11 @@ $schema => undef
 $table => undef
 $column => undef
 $foreign_key_table_to => undef
-$foreign_key_column_from => undef
-$foreign_key_column_to => undef
+$foreign_key_columns_from => undef
+$foreign_key_columns_to => undef
 </%args>
 
 <%init>
-use Alzabo::Config;
-
 my $s;
 my %args;
 my ($comp, @args);
@@ -62,28 +60,11 @@ if ($column)
     $args{c} = $c;
 }
 
-my $fk;
-if ( $foreign_key_table_to && $foreign_key_column_from &&
-     $foreign_key_column_to )
-{
-    eval
-    {
-	my $tt = $s->table($foreign_key_table_to);
-	my $cf = $t->column($foreign_key_column_from);
-	my $ct = $tt->column($foreign_key_column_to);
-	$fk = $t->foreign_key( table_to => $tt,
-			       column_from => $cf,
-			       column_to => $ct  );
-    };
-    $m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
-    $args{fk} = $fk;
-}
-
 </%init>
 
 <%def .title>
 <%init>
-my ( $s, $t, $c, $fk ) = @_;
+my ( $s, $t, $c ) = @_;
 
 my @t;
 if (defined $s)

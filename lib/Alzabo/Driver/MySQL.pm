@@ -10,7 +10,7 @@ use DBD::mysql;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.26 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.27 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -20,7 +20,6 @@ sub new
     my $class = ref $proto || $proto;
 
     my $self = bless {}, $class;
-    $self->{prepare_method} = 'prepare_cached';
 
     return $self;
 }
@@ -28,9 +27,11 @@ sub new
 sub connect
 {
     my $self = shift;
+    my %p = @_;
 
-    return if $self->{dbh} && $self->{dbh}->ping;
+    return if $self->{dbh} && $self->{dbh}->ping && ! $p{force};
 
+    $self->disconnect if $self->{dbh};
     $self->{dbh} = $self->_make_dbh(@_);
 }
 

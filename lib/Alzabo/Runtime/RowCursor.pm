@@ -6,9 +6,8 @@ use vars qw($VERSION);
 use Alzabo::Runtime;
 
 use base qw( Alzabo::Runtime::Cursor );
-use fields qw( table );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/;
 
 1;
 

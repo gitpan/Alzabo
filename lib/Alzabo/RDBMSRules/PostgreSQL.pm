@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -263,24 +263,25 @@ sub column_sql
     if ( defined $col->default )
     {
 	my $def = ( $col->is_character ?
-		    do { my $d = $col->default; $d =~ s/"/""/g; qq|"$d"| } :
+		    do { my $d = $col->default; $d =~ s/"/""/g; qq|'$d'| } :
 		    $col->default );
-	@default = ( qq|DEFAULT $def| );
+	@default = ( "DEFAULT $def" );
     }
 
+    my $type = $col->type;
     my @length;
     if ( defined $col->length )
     {
 	my $length = '(' . $col->length;
-	$length .= ', ', $col->precision if defined $col->precision;
+	$length .= ', ' . $col->precision if defined $col->precision;
 	$length .= ')';
-	@length = $length;
+	$type .= $length;
     }
 
     my $sql .= join '  ', ( $col->name,
-			    $col->type,
-			    @length,
+			    $type,
 			    @default,
+			    $col->nullable ? 'NULL' : 'NOT NULL',
 			    $col->attributes );
 
     return $sql;
@@ -360,9 +361,9 @@ sub column_sql_add
     if ( $col->default )
     {
 	my $def = ( $col->is_character ?
-		    do { my $d = $col->default; $d =~ s/"/""/g; qq|"$d"| } :
+		    do { my $d = $col->default; $d =~ s/"/""/g; qq|'$d'| } :
 		    $col->default );
-	$default = ( qq|DEFAULT $def| );
+	$default = ( 'DEFAULT $def' );
 
 	push @sql, ( 'ALTER TABLE ' . $col->table->name . ' ALTER COLUMN ' . $col->name . " SET $default" );
     }
@@ -375,8 +376,10 @@ sub column_sql_diff
     my $self = shift;
     my %p = @_;
 
-    return $self->drop_column_sql($p{new})
+    return $self->drop_column_sql( new_table => $p{new}->table,
+				   old => $p{old} )
 	if $self->column_sql($p{new}) ne $self->column_sql($p{old});
+
 
     return;
 }
@@ -437,9 +440,10 @@ EOF
 		$p{default} =
 		    $driver->one_row( sql => 'SELECT adsrc FROM pg_attrdef WHERE adrelid = ? AND adnum = ?',
 				      bind => [ $t_oid, $row->[4] ] );
+		# strip quotes Postgres added
+		for ($p{default}) { s/^'//; s/'$//; }
 	    }
 
-	    # length is only relevant for char & varchar columns
 	    if ( $row->[3] =~ /char/ )
 	    {
 		# The real length is the value of: a.atttypmod - ((int32) sizeof(int32))
@@ -449,6 +453,13 @@ EOF
 		# really get at it.  On my linux machine this is 4.  A
 		# better way of doing this would be welcome.
 		$p{length} = $row->[6] - 4;
+	    }
+	    if ( $row->[3] eq 'numeric' )
+	    {
+		# see comment above.
+		my $num = $row->[6] - 4;
+		$p{length} = ($num >> 16) & 0xffff;
+		$p{precision} = $num & 0xffff;
 	    }
 
 	    $t->make_column( name => $row->[1],

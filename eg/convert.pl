@@ -9,39 +9,35 @@ use Getopt::Long;
 my $V = $Alzabo::VERSION;
 
 use vars qw($name);
-my $s = Alzabo::Create::Schema->load_from_file( name => $ARGV[0] );
+
+unless (@ARGV)
+{
+    @ARGV = Alzabo::Config::available_schemas();
+    print "No arguments given.  Converting all schemas\n\n";
+}
 
 my @eval;
+foreach my $s_name (@ARGV)
+{
+    @eval = ();
 
-push @eval, "use strict;\n\nuse Alzabo::Create::Schema;\n\n";
+    my $s = Alzabo::Create::Schema->load_from_file( name => $s_name );
 
-push @eval, "my (\$t, \$d);\n";
+    push @eval, "use strict;\n\nuse Alzabo::Create::Schema;\n\n";
 
-dump_schema($s, 'schema');
+    push @eval, "my (\$t, \$d);\n";
 
-push @eval, "\$schema->save_to_file;\n";
+    dump_schema($s, 'schema');
 
-print <<"EOF";
+    push @eval, "\$schema->save_to_file;\n";
 
-The code necessary to recreate $ARGV[0] schema has been created.  You
-can either save it disk as a file or evaluate it in place.  Evaluating
-it in place will cause your existing $ARGV[0] schema files to be
-overwritten.  This is not recommended unless you have made a backup of
-your files.
+    print <<"EOF";
 
-save or eval?
+The code necessary to recreate the $s_name schema has been created.
 
 EOF
 
-my $action = prompt( 'Save or eval?', 'save' );
-
-if ($action =~ /^eval$/i)
-{
-    evaluate_schema();
-}
-else
-{
-    save_schema();
+    save_schema($s_name);
 }
 
 sub dump_schema
@@ -211,11 +207,13 @@ sub dump_foreign_key
 {
     my $fk = shift;
 
-    my $id1 = join "\0", map { $fk->$_()->name } qw( column_from column_to table_from table_to );
+    my @from_id = ( $V < 0.25 ? qw( column_from column_to ) : qw( columns_from columns_to ) );
+    my $id1 = join "\0", map { $_->name } map { $fk->$_() } @from_id, qw( table_from table_to );
     $id1 .= "\0";
     $id1 .= join "\0", $fk->min_max_from, $fk->min_max_to;
 
-    my $id2 = join "\0", map { $fk->$_()->name } qw( column_to column_from table_to table_from );
+    my @to_id = ( $V < 0.25 ?qw( column_to column_from ) : qw( columns_to columns_from ) );
+    my $id2 = join "\0", map { $_->name } map { $fk->$_() } @to_id, qw( table_to table_from );
     $id2 .= "\0";
     $id2 .= join "\0", $fk->min_max_to, $fk->min_max_from;
 
@@ -229,12 +227,23 @@ sub dump_foreign_key
 	push @eval, "\t$_ => \$$name\->table('$table'),";
     }
 
-    foreach ( qw( column_from column_to ) )
+    foreach my $key ( $V < 0.25 ? qw( column_from column_to ) : qw( columns_from columns_to ) )
     {
-	my $table = $fk->$_()->table->name;
-	my $column = $fk->$_()->name;
+	my ($table, $columns);
+	if ( $V < 0.25 )
+	{
+	    $table = $fk->$key()->table->name;
+	    $columns = $fk->$key()->name;
+	    $columns = "'$columns'";
+	}
+	else
+	{
+	    $table = ($fk->$key())[0]->table->name;
+	    $columns = join ', ', map { "'$_'" } map { $_->name } $fk->$key();
+	}
 
-	push @eval, "\t$_ => \$$name\->table('$table')->column('$column'),";
+	$key =~ s/_/s_/ if $V < 0.25;
+	push @eval, "\t$key => [ \$$name\->table('$table')->columns($columns) ],";
     }
 
     foreach ( qw( min_max_from min_max_to ) )
@@ -262,17 +271,10 @@ sub dump_column_ownership
     push @eval, "\$$name\->table('$table')->column('$column')->set_definition( \$d );\n";
 }
 
-sub evaluate_schema
-{
-    eval join '', @eval;
-    die $@ if $@;
-
-    print "The converted $ARGV[0] schema has been saved\n";
-}
-
 sub save_schema
 {
-    my $file = prompt( "File to which schema should be written?", "$ARGV[0].schema" );
+    my $s_name = shift;
+    my $file = prompt( "File to which schema should be written?", "$s_name.schema" );
 
     local *S;
     open S, ">$file" or die "Cannot open file '$file': $!\n";
@@ -282,10 +284,11 @@ sub save_schema
     print <<"EOF";
 The schema has been saved to $file.
 
-To use this file, simply run:
+To use this file, you will first have to install the newer version of
+Alzabo.  Then you can simply run:
 
  $^X $file
 
-This will overwrite the existing files for the $ARGV[0] schema
+This will overwrite the existing files for the $s_name schema
 EOF
 }

@@ -8,6 +8,10 @@ use URI;
 
 my $uri = URI->new($url);
 
-$r->send_cgi_header("Location: " . $uri->canonical . "\n\n");
+$r->method('GET');
+$r->headers_in->unset('Content-length');
+
+$r->header_out( Location => $uri->canonical );
+$m->clear_buffer;
 $m->abort(REDIRECT);
 </%init>

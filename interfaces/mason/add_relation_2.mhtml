@@ -2,8 +2,8 @@
 $schema
 $table_from
 $table_to
-$column_from
-$column_to
+@columns_from
+@columns_to
 $min_max_from_1
 $min_max_from_2
 $min_max_to_1
@@ -13,6 +13,16 @@ $min_max_to_2
 <%init>
 use Alzabo::Config;
 
+if ($ARGS{more})
+{
+    delete $ARGS{more};
+    $m->comp( Alzabo::Config::mason_url_path() . '/common/redirect',
+	      url =>
+	      $m->comp( Alzabo::Config::mason_url_path() . '/common/make_url',
+			path => 'add_relation' . Alzabo::Config::mason_extension(),
+			query => \%ARGS ) );
+}
+
 my $s;
 eval
 {
@@ -20,13 +30,13 @@ eval
 
     my $t_from = $s->table($table_from);
     my $t_to = $s->table($table_to);
-    my $c_from = $t_from->column($column_from);
-    my $c_to = $t_to->column($column_to);
+    my @c_from = $t_from->columns(@columns_from);
+    my @c_to = $t_to->columns(@columns_to);
 
     $s->add_relation( table_from => $t_from,
 		      table_to   => $t_to,
-		      column_from => $c_from,
-		      column_to   => $c_to,
+		      columns_from => \@c_from,
+		      columns_to   => \@c_to,
 		      min_max_from => [$min_max_from_1, $min_max_from_2],
 		      min_max_to   => [$min_max_to_1, $min_max_to_2],
 		    );
@@ -34,9 +44,9 @@ eval
     $s->save_to_file;
 };
 
-$m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+$m->comp( Alzabo::Config::mason_url_path() . '/common/exception', $@ ) if $@;
 
-$m->comp( &Alzabo::Config::mason_url_path . '/common/redirect', url => 'view_table' . Alzabo::Config::mason_extension() . '?schema=' . $s->name . '&table=' . $table_from );
+$m->comp( Alzabo::Config::mason_url_path() . '/common/redirect', url => 'view_table' . Alzabo::Config::mason_extension() . '?schema=' . $s->name . '&table=' . $table_from );
 
 </%init>
 

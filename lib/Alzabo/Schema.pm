@@ -12,9 +12,7 @@ use Alzabo::SQLMaker;
 use Storable ();
 use Tie::IxHash ();
 
-#use fields qw( name driver tables );
-
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.28 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.30 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -69,7 +67,7 @@ sub _cached_schema
     if (exists $CACHE{$name}{$class}{object})
     {
 	my $mtime = (stat($file))[9]
-	    or Alzabo::Exception::System->throw( error => "can't stat $file" );
+	    or Alzabo::Exception::System->throw( error => "can't stat $file: $!" );
 
 	return $CACHE{$name}{$class}{object}
 	    if $mtime <= $CACHE{$name}{$class}{mtime};
@@ -88,14 +86,14 @@ sub _save_to_cache
 
 sub name
 {
-    my Alzabo::Schema $self = shift;
+    my $self = shift;
 
     return $self->{name};
 }
 
 sub table
 {
-    my Alzabo::Schema $self = shift;
+    my $self = shift;
     my $name = shift;
 
     Alzabo::Exception::Params->throw( error => "Table $name doesn't exist in schema" )
@@ -106,7 +104,7 @@ sub table
 
 sub tables
 {
-    my Alzabo::Schema $self = shift;
+    my $self = shift;
 
     if (@_)
     {
@@ -118,21 +116,21 @@ sub tables
 
 sub driver
 {
-    my Alzabo::Schema $self = shift;
+    my $self = shift;
 
     return $self->{driver};
 }
 
 sub rules
 {
-    my Alzabo::Schema $self = shift;
+    my $self = shift;
 
     return $self->{rules};
 }
 
 sub sqlmaker
 {
-    my Alzabo::Schema $self = shift;
+    my $self = shift;
 
     return $self->{sql};
 }

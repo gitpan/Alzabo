@@ -64,6 +64,11 @@
  </tr>
 
  <tr>
+  <td><b>Host:</b></td>
+  <td><input type="text" name="host" size="20"></td>
+ </tr>
+
+ <tr>
   <td><b>RDBMS:</b></td>
   <td>
    <select name="rdbms">

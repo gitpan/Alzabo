@@ -7,15 +7,13 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::Table);
 
-#use fields qw(prefetch groups);
-
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.36 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub insert
 {
-    my Alzabo::Runtime::Table $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $vals = delete $p{values};
@@ -38,20 +36,18 @@ sub insert
 	}
     }
 
-    my @fk;
     foreach my $c ($self->columns)
     {
-	push @fk, $self->foreign_keys_by_column($c);
-
 	next if $c->is_primary_key;
 
 	Alzabo::Exception::Params->throw( error => "Column " . $c->name . " cannot be null." )
-            unless defined $vals->{ $c->name } || $c->null;
+	    unless defined $vals->{ $c->name } || $c->nullable || defined $c->default;
+
+	delete $vals->{ $c->name }
+	    if ! defined $vals->{ $c->name } && defined $c->default;
     }
 
-    $driver->start_transaction( table => $self,
-				id => 'insert' ) if @fk;
-
+    $driver->start_transaction;
 
     my $sql = ( $self->schema->sqlmaker->
 		insert->
@@ -61,9 +57,9 @@ sub insert
     my %id;
     eval
     {
-	foreach my $fk (@fk)
+	foreach my $fk ( $self->all_foreign_keys )
 	{
-	    $fk->register_insert( $vals->{ $fk->column_from->name } );
+	    $fk->register_insert( map { $_->name => $vals->{ $_->name } } $fk->columns_from );
 	}
 
 	$self->schema->driver->do( sql => $sql->sql,
@@ -83,16 +79,15 @@ sub insert
     }
     else
     {
-	$driver->finish_transaction( table => $self,
-				     id => 'insert' ) if @fk;
+	$driver->finish_transaction;
     }
 
-    return $self->row_by_pk( pk => \%id, %p );
+    return $self->row_by_pk( pk => \%id, %p, insert => 1 );
 }
 
 sub row_by_pk
 {
-    my Alzabo::Runtime::Table $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $pk_val = exists $p{pk} ? $p{pk} : $p{id};
@@ -121,7 +116,7 @@ sub row_by_pk
 
 sub row_by_id
 {
-    my Alzabo::Runtime::Table $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my (undef, undef, %pk) = split ';:;_;:;', $p{row_id};
@@ -131,28 +126,19 @@ sub row_by_id
 
 sub rows_where
 {
-    my Alzabo::Runtime::Table $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $sql = $self->_make_sql;
 
-    if ( $p{where} )
-    {
-	$p{where} = [ $p{where} ] unless UNIVERSAL::isa( $p{where}[0], 'ARRAY' );
-	my $x = 0;
-	foreach ( @{ $p{where} } )
-	{
-	    my $op = $x++ ? 'and' : 'where';
-	    $sql->$op(@$_);
-	}
-    }
+    $sql = $self->_add_where_clause( $sql, %p );
 
     return $self->_cursor_by_sql( %p, sql => $sql );
 }
 
 sub all_rows
 {
-    my Alzabo::Runtime::Table $self = shift;
+    my $self = shift;
 
     my $sql = $self->_make_sql(@_);
 
@@ -161,7 +147,7 @@ sub all_rows
 
 sub _make_sql
 {
-    my Alzabo::Runtime::Table $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $sql = ( $self->schema->sqlmaker->
@@ -173,7 +159,7 @@ sub _make_sql
 
 sub _cursor_by_sql
 {
-    my Alzabo::Runtime::Table $self = shift;
+    my $self = shift;
     my %p = @_;
 
     if ( exists $p{order_by} )
@@ -210,21 +196,45 @@ sub _cursor_by_sql
 
 sub row_count
 {
-    my Alzabo::Runtime::Table $self = shift;
+    my $self = shift;
 
     my $sql = $self->schema->sqlmaker->select->count('*')->from($self);
-    return $self->schema->driver->one_row( sql => $sql->sql );
+
+    $self->_add_where_clause($sql, @_);
+
+    return $self->schema->driver->one_row( sql => $sql->sql,
+					   bind => $sql->bind );
+}
+
+sub _add_where_clause
+{
+    my $self = shift;
+    my $sql = shift;
+    my %p = @_;
+
+    if ( $p{where} )
+    {
+	$p{where} = [ $p{where} ] unless UNIVERSAL::isa( $p{where}[0], 'ARRAY' );
+	my $x = 0;
+	foreach ( @{ $p{where} } )
+	{
+	    my $op = $x++ ? 'and' : 'where';
+	    $sql->$op(@$_);
+	}
+    }
+
+    return $sql;
 }
 
 sub set_prefetch
 {
-    my Alzabo::Runtime::Table $self = shift;
+    my $self = shift;
     $self->{prefetch} = $self->_canonize_prefetch(@_);
 }
 
 sub _canonize_prefetch
 {
-    my Alzabo::Runtime::Table $self = shift;
+    my $self = shift;
 
     foreach my $c (@_)
     {
@@ -237,14 +247,14 @@ sub _canonize_prefetch
 
 sub prefetch
 {
-    my Alzabo::Runtime::Table $self = shift;
+    my $self = shift;
 
     return ref $self->{prefetch} ? @{ $self->{prefetch} } : ();
 }
 
 sub add_group
 {
-    my Alzabo::Runtime::Table $self = shift;
+    my $self = shift;
 
     my @names = map { $_->name } @_;
     foreach my $col (@_)
@@ -259,7 +269,7 @@ sub add_group
 
 sub group_by_column
 {
-    my Alzabo::Runtime::Table $self = shift;
+    my $self = shift;
     my $col = shift;
 
     return exists $self->{groups}{$col} ? @{ $self->{groups}{$col} } : $col;

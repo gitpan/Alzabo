@@ -53,9 +53,14 @@ lib/Alzabo/SQLMaker/PostgreSQL.pm
 lib/Alzabo/ChangeTracker.pm
 lib/Alzabo/Exceptions.pm
 lib/Alzabo/MethodMaker.pm
-lib/Alzabo/ObjectCache.pm
-lib/Alzabo/ObjectCacheIPC.pm
 lib/Alzabo/Util.pm
+
+lib/Alzabo/ObjectCache.pm
+lib/Alzabo/ObjectCache/MemoryStore.pm
+lib/Alzabo/ObjectCache/Sync.pm
+lib/Alzabo/ObjectCache/DBMSync.pm
+lib/Alzabo/ObjectCache/IPCSync.pm
+lib/Alzabo/ObjectCache/NullSync.pm
 
 lib/PreInstall/Config.pm
 
@@ -63,8 +68,11 @@ t/00-cleanup.t
 t/01-compile.t
 t/02-create.t
 t/03-runtime.t
+t/04-rev_engineer.t
 t/05a-rules-mysql.t
 t/99-cleanup.t
+t/make_schemas.pl
+t/runtime_tests.pl
 t/utils.pl
 
 eg/convert.pl
@@ -93,19 +101,11 @@ interfaces/mason/new_schema.mhtml
 interfaces/mason/reverse_engineer.mhtml
 interfaces/mason/schema_menubar
 interfaces/mason/table_menubar
-interfaces/mason/uninstantiate_schema.mhtml
+interfaces/mason/change_schema_instantiation.mhtml
 interfaces/mason/view_column.mhtml
 interfaces/mason/view_schema.mhtml
 interfaces/mason/view_schema_sql.mhtml
 interfaces/mason/view_table.mhtml
-
-utilities/data_browser/autohandler
-utilities/data_browser/browse_schema.mhtml
-utilities/data_browser/browse_table.mhtml
-utilities/data_browser/change_row.mhtml
-utilities/data_browser/delete_row.mhtml
-utilities/data_browser/index.mhtml
-utilities/data_browser/schema_menubar
 
 mason/common/exception
 mason/common/href

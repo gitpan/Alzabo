@@ -5,66 +5,80 @@ use vars qw($VERSION);
 
 use Alzabo;
 
-#use fields qw( table_from table_to column_from column_to min_max_from min_max_to cardinality );
-
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub table_from
 {
-    my Alzabo::ForeignKey $self = shift;
+    my $self = shift;
 
-    return $self->column_from->table;
+    return ($self->columns_from)[0]->table;
 }
 
 sub table_to
 {
-    my Alzabo::ForeignKey $self = shift;
+    my $self = shift;
 
-    return $self->column_to->table;
+    return ($self->columns_to)[0]->table;
 }
 
-sub column_from
+sub columns_from
 {
-    my Alzabo::ForeignKey $self = shift;
+    my $self = shift;
 
-    return $self->{column_from};
+    return wantarray ? @{ $self->{columns_from} } : $self->{columns_from}[0];
 }
 
-sub column_to
+sub columns_to
 {
-    my Alzabo::ForeignKey $self = shift;
+    my $self = shift;
 
-    return $self->{column_to};
+    return wantarray ? @{ $self->{columns_to} } : $self->{columns_to}[0];
 }
 
-sub column_links
+sub column_pairs
 {
-    my Alzabo::ForeignKey $self = shift;
+    my $self = shift;
 
-    return [ $self->{column_from} => $self->{column_to} ];
+    return ( map { [ $self->{columns_from}[$_] => $self->{columns_to}[$_] ] }
+	     0..$#{ $self->{columns_from} } );
 }
 
 sub min_max_from
 {
-    my Alzabo::ForeignKey $self = shift;
+    my $self = shift;
 
     return @{ $self->{min_max_from} };
 }
 
 sub min_max_to
 {
-    my Alzabo::ForeignKey $self = shift;
+    my $self = shift;
 
     return @{ $self->{min_max_to} };
 }
 
 sub cardinality
 {
-    my Alzabo::ForeignKey $self = shift;
+    my $self = shift;
 
     return ( $self->{min_max_from}->[1], $self->{min_max_to}->[1] );
+}
+
+sub id
+{
+    my $self = shift;
+
+    return join '___', ( ( map { $_->name }
+			   $self->table_from,
+			   $self->table_to,
+			   $self->columns_from,
+			   $self->columns_to,
+			 ),
+			 $self->min_max_from,
+			 $self->min_max_to,
+		       );
 }
 
 __END__
@@ -99,12 +113,12 @@ The properties that make up a foreign key are:
 
 =over 4
 
-=item * column_from
+=item * columns_from
 
 The column in the owning table that corresponds to some column in
 'table_to'.
 
-=item * column_to
+=item * columns_to
 
 The column to which there is a correspondence.
 
@@ -130,14 +144,26 @@ then the cardinality of the relationship would be 1..n.
 
 =head2 table_to
 
-=head2 column_from
+=head3 Returns
 
-=head2 column_to
+The relevant L<C<Alzabo::Table>|Alzabo::Table> object.
+
+=head2 columns_from
+
+=head2 columns_to
 
 =head3 Returns
 
-The relevant L<C<Alzabo::Table>|Alzabo::Table> or
-L<C<Alzabo::Column>|Alzabo::Column> object for the property.
+The relevant L<C<Alzabo::Column>|Alzabo::Column> object(s) for the
+property.
+
+=head2 column_pairs
+
+=head3 Returns
+
+An array of array references.  The references are to two column array
+of L<C<Alzabo::Column>|Alzabo::Column> objects.  These two columns
+correspond in the tables being linked together.
 
 =head2 min_max_from
 

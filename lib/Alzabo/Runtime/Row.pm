@@ -1,57 +1,59 @@
 package Alzabo::Runtime::Row;
 
 use strict;
-use vars qw($VERSION $CACHE_CLASS);
+use vars qw($VERSION $CACHE);
 
 use Alzabo::Runtime;
 
-#use fields qw( id table data cache );
-
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.33 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/;
 
 1;
-
-sub import
-{
-    return if defined $CACHE_CLASS;
-
-    shift;
-    my $class = shift || 'Alzabo::ObjectCache';
-
-    eval "use $class";
-    die $@ if $@;
-
-    $CACHE_CLASS = $class;
-}
 
 sub new
 {
     my $proto = shift;
     my $class = ref $proto || $proto;
+    my %p = @_;
 
-    if ($CACHE_CLASS)
+    if ( defined $CACHE && $CACHE && ! $p{insert} )
     {
-	my $row = $CACHE_CLASS->new->fetch_object( $class->id(@_) );
-	return $row if $row;
+	my $row = $CACHE->fetch_object( $class->id(@_) );
+	if ($row)
+	{
+	    $row->check_cache;
+	    return $row;
+	}
+    }
+    elsif (! defined $CACHE)
+    {
+	# If the module isn't loaded we assume the user doesn't want
+	# caching done we stick a 0 in $CACHE to prevent going through
+	# this code again
+	$CACHE = $Alzabo::ObjectCache::VERSION ? Alzabo::ObjectCache->new : 0;
     }
 
     my $self = bless {}, $class;
-    $self->_init(@_);
+
+    $self->{table} = $p{table};
+    $self->{id} = $self->_make_id_hash(%p);
+    $self->{cache} = $CACHE if $CACHE && (! $p{no_cache});
+
+    $self->{cache}->delete_from_cache($self)
+	if $p{insert} && $self->{cache};
+
+    $self->_init(%p);
 
     $self->{cache}->store_object($self)
 	if $self->{cache};
+    $self->{cache}->register_change($self) if $self->{cache} && $p{insert};
 
     return $self;
 }
 
 sub _init
 {
-    my Alzabo::Runtime::Row $self = shift;
+    my $self = shift;
     my %p = @_;
-
-    $self->{table} = $p{table};
-    $self->{id} = $self->_make_id_hash(%p);
-    $self->{cache} = $CACHE_CLASS->new if defined $CACHE_CLASS && (! $p{no_cache});
 
     while (my ($k, $v) = each %{ $self->{id} })
     {
@@ -79,7 +81,7 @@ sub _init
 
 sub _make_id_hash
 {
-    my Alzabo::Runtime::Row $self = shift;
+    my $self = shift;
     my %p = @_;
 
     return $p{id} if ref $p{id};
@@ -94,58 +96,77 @@ sub _make_id_hash
 
 sub get_data
 {
-    my Alzabo::Runtime::Row $self = shift;
+    my $self = shift;
     my @cols = @_;
 
     my %select;
+    my %data;
     foreach my $c (@cols)
     {
-	foreach my $s ( $self->table->group_by_column($c) )
+	if ($self->{cache})
 	{
-	    $select{$s} = 1 unless exists $self->{data}{$s};
+	    foreach my $s ( $self->table->group_by_column($c) )
+	    {
+		if ( exists $self->{data}{$s} )
+		{
+		    $data{$s} = $self->{data}{$s};
+		}
+		else
+		{
+		    $select{$s} = 1;
+		}
+	    }
+	}
+	else
+	{
+	    $select{$c} = 1;
 	}
     }
 
-    my $driver = $self->table->schema->driver;
-
-    my ($pk1, @pk) = $self->table->primary_key;
-
-    my $sql = ( $self->table->schema->sqlmaker->
-		select( $self->table->columns( sort keys %select ) )->
-		from( $self->table ) );
-    $self->_where($sql);
-
-    my @row = $driver->one_row( sql => $sql->sql,
-				bind => $sql->bind )
-	or $self->_no_such_row_error;
-
-    my %hash;
-    @hash{ sort keys %select } = @row;
-
-    $self->{cache}->register_refresh($self) if $self->{cache};
-
-    while (my ($k, $v) = each %hash)
+    if (keys %select)
     {
-	$self->{data}{$k} = $v;
+	my $driver = $self->table->schema->driver;
+
+	my $sql = ( $self->table->schema->sqlmaker->
+		    select( $self->table->columns( sort keys %select ) )->
+		    from( $self->table ) );
+	$self->_where($sql);
+
+	my @row = $driver->one_row( sql => $sql->sql,
+				    bind => $sql->bind )
+	    or $self->_no_such_row_error;
+
+	@data{ sort keys %select } = @row;
+
+	$self->{cache}->register_refresh($self) if $self->{cache};
+
+	if ($self->{cache})
+	{
+	    while (my ($k, $v) = each %data)
+	    {
+		$self->{data}{$k} = $v;
+	    }
+	}
     }
+
+    return \%data;
 }
 
 sub select
 {
-    my Alzabo::Runtime::Row $self = shift;
+    my $self = shift;
     my @cols = @_;
 
     $self->check_cache if $self->{cache};
 
-    my @needed = grep { ! exists $self->{data}{$_} } @cols;
-    $self->get_data(@needed) if @needed;
+    my $data = $self->get_data(@cols);
 
-    return wantarray ? @{ $self->{data} }{@cols} : $self->{data}{ $cols[0] };
+    return wantarray ? @{ $data }{@cols} : $data->{ $cols[0] };
 }
 
 sub update
 {
-    my Alzabo::Runtime::Row $self = shift;
+    my $self = shift;
     my %data = @_;
 
     if ($self->{cache})
@@ -153,6 +174,8 @@ sub update
 	Alzabo::Exception::Cache::Expired->throw( error => "Cannot update expired object" )
 	    unless $self->check_cache;
     }
+
+    $self->_no_such_row_error if $self->{deleted};
 
     my $driver = $self->table->schema->driver;
 
@@ -176,9 +199,8 @@ sub update
 	    delete $data{$k};
 	    next;
 	}
-
 	Alzabo::Exception::Params->throw( error => "Column " . $c->name . " cannot be null." )
-	    unless defined $data{$k} || $c->null;
+	    unless defined $data{$k} || $c->nullable || defined $c->default;
 
 	push @fk, $self->table->foreign_keys_by_column($c)
 	    if $self->table->schema->referential_integrity;
@@ -187,9 +209,7 @@ sub update
     return unless keys %data;
 
     # If we have foreign keys we'd like all the fiddling to be atomic.
-    $driver->start_transaction( table => $self->table,
-				id => [ values %{ $self->{id} } ],
-				fk => \@fk ) if @fk && $self->table->schema->referential_integrity;
+    $driver->start_transaction;
 
     my $sql = ( $self->table->schema->sqlmaker->
 		update( $self->table ) );
@@ -206,7 +226,7 @@ sub update
 	{
 	    foreach my $fk (@fk)
 	    {
-		$fk->register_update( $data{ $fk->column_from->name } );
+		$fk->register_update( map { $_->name => $data{ $_->name } } $fk->columns_from );
 	    }
 	}
     };
@@ -217,25 +237,27 @@ sub update
     }
     else
     {
-	$driver->finish_transaction( table => $self->table,
-				     id => [ values %{ $self->{id} } ],
-				     fk => \@fk ) if @fk && $self->table->schema->referential_integrity;
+	$driver->finish_transaction;
     }
+
     $self->{cache}->register_change($self) if $self->{cache};
 
-    while (my ($k, $v) = each %data)
+    if ($self->{cache})
     {
-	$self->{data}{$k} = $v;
+	while (my ($k, $v) = each %data)
+	{
+	    $self->{data}{$k} = $v;
+	}
     }
 }
 
 sub delete
 {
-    my Alzabo::Runtime::Row $self = shift;
+    my $self = shift;
 
     if ($self->{cache})
     {
-	Alzabo::Exception::Cache::Expired->throw( 'Cannot delete an expired object' )
+	Alzabo::Exception::Cache::Expired->throw( error => 'Cannot delete an expired object' )
 	    unless $self->check_cache;
     }
 
@@ -246,9 +268,7 @@ sub delete
     {
 	@fk = $self->table->all_foreign_keys;
 
-	$driver->start_transaction( table => $self->table,
-				    id => $self->id,
-				    fk => \@fk ) if @fk;
+	$driver->start_transaction;
     }
 
     my $sql = ( $self->table->schema->sqlmaker->
@@ -257,9 +277,6 @@ sub delete
 
     eval
     {
-	$driver->do( sql => $sql->sql,
-		     bind => $sql->bind );
-
 	if ($self->table->schema->referential_integrity)
 	{
 	    foreach my $fk (@fk)
@@ -267,6 +284,10 @@ sub delete
 		$fk->register_delete($self);
 	    }
 	}
+
+	$driver->do( sql => $sql->sql,
+		     bind => $sql->bind );
+
     };
     if ($@)
     {
@@ -275,12 +296,11 @@ sub delete
     }
     else
     {
-	$driver->finish_transaction( table => $self->table,
-				     id => $self->id,
-				     fk => \@fk ) if @fk && $self->table->schema->referential_integrity;
+	$driver->finish_transaction;
     }
 
     $self->{cache}->register_delete($self) if $self->{cache};
+    $self->{deleted} = 1;
 }
 
 sub _where
@@ -296,7 +316,7 @@ sub _where
 
 sub check_cache
 {
-    my Alzabo::Runtime::Row $self = shift;
+    my $self = shift;
 
     Alzabo::Exception::Cache::Deleted->throw( error => "Object has been deleted" )
 	if $self->{cache}->is_deleted($self);
@@ -310,7 +330,14 @@ sub check_cache
 	    $self->{data}{$k} = $v;
 	}
 
-	$self->get_data( $self->table->prefetch ) if $self->table->prefetch;
+	if ($self->table->prefetch)
+	{
+	    $self->get_data( $self->table->prefetch );
+	}
+	else
+	{
+	    $self->{cache}->register_refresh($self) if $self->{cache};
+	}
 
 	return 0;
     }
@@ -320,23 +347,23 @@ sub check_cache
 
 sub table
 {
-    my Alzabo::Runtime::Row $self = shift;
+    my $self = shift;
 
     return $self->{table};
 }
 
 sub rows_by_foreign_key
 {
-    my Alzabo::Runtime::Row $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $fk = delete $p{foreign_key};
 
-    my $fk_val = $self->select( $fk->column_from->name );
+    my %fk_vals = map { $_->name => $self->select( $_->name ) } $fk->columns_from;
 
-    if ( $fk->column_to->is_primary_key && scalar $fk->table_to->primary_key == 1 )
+    if ( ( grep { $_->is_primary_key } $fk->columns_to ) == scalar $fk->table_to->primary_key )
     {
-	return $fk->table_to->row_by_pk( pk => $fk_val, %p );
+	return $fk->table_to->row_by_pk( pk => \%fk_vals, %p );
     }
     else
     {
@@ -345,7 +372,7 @@ sub rows_by_foreign_key
 	    $p{where} = [ $p{where} ] unless UNIVERSAL::isa( $p{where}[0], 'ARRAY' );
 	}
 
-	push @{ $p{where} }, [ $fk->column_to, '=', $fk_val ];
+	push @{ $p{where} }, map { [ $_->[1], '=', $fk_vals{ $_->[0]->name } ] } $fk->column_pairs;
 	return $fk->table_to->rows_where(%p);
     }
 }
@@ -353,7 +380,7 @@ sub rows_by_foreign_key
 # Class or object method
 sub id
 {
-    my Alzabo::Runtime::Row $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $table = ref $self ? $self->table : $p{table};
@@ -375,7 +402,7 @@ sub id
 
 sub _no_such_row_error
 {
-    my Alzabo::Runtime::Row $self = shift;
+    my $self = shift;
 
     my $err = 'Unable to find a row in ' . $self->table->name . ' where ';
     my @vals;
@@ -408,22 +435,16 @@ These objects represent actual rows from the database containing
 actual data.  They can be created via their new method or via an
 Alzabo::Runtime::Table object.
 
-=head1 import METHOD
+=head1 CACHING
 
-This method is called when you C<use> this class.  You can pass a
-string to the module via the C<use> function.  This string is assumed
-to be the name of a class which does caching and that has a specific
-interface that C<Alzabo::Runtime::Row> expects (see the CACHING
-CLASSES section for more details).  The C<Alzabo::Runtime::Row> class
-will attempt to load the class you have specified and will then use it
-for all future caching operations.
+This module attempts to use the
+L<C<Alzabo::ObjectCache>|Alzabo::ObjectCache> module if it has already
+been loaded when a new row is created.  It will use the cache to store
+objects after they are created as well as using it check object
+expiration and deletion.
 
-The default is to use the
-L<C<Alzabo::ObjectCache>|Alzabo::ObjectCache> class.  If you are
-programming in a persistent environment it is highly recommended that
-you read L<C<Alzabo::ObjectCache> CAVEATS
-section|Alzabo::ObjectCache/CAVEATS> for more information on how that
-class works.
+In addition, using the cache allows the object to cache the results of
+column fetches.  This is an additional performance gain.
 
 =head1 METHODS
 

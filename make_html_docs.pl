@@ -19,8 +19,14 @@ my @order = ( qw( Alzabo
 		  Alzabo::Runtime::Index
 		  Alzabo::MethodMaker
 		  Alzabo::ObjectCache
-		  Alzabo::ObjectCacheIPC
-		  Alzabo::Exceptions
+		),
+	      [ qw( Alzabo::ObjectCache::MemoryStore
+		    Alzabo::ObjectCache::NullSync
+		    Alzabo::ObjectCache::DBMSync
+		    Alzabo::ObjectCache::IPCSync
+		  ) ],
+
+	      qw( Alzabo::Exceptions
 		  Alzabo::Create::Schema
 		  Alzabo::Create::Table
 		  Alzabo::Create::Column
@@ -30,12 +36,16 @@ my @order = ( qw( Alzabo
 		  Alzabo::Driver
 		),
 	      [ qw( Alzabo::Driver::MySQL Alzabo::Driver::PostgreSQL ) ],
+
 	      'Alzabo::RDBMSRules',
 	      [ qw( Alzabo::RDBMSRules::MySQL Alzabo::RDBMSRules::PostgreSQL ) ],
+
 	      'Alzabo::SQLMaker',
 	      [ qw( Alzabo::SQLMaker::MySQL Alzabo::SQLMaker::PostgreSQL ) ],
+
 	      qw( Alzabo::ChangeTracker
 		  Alzabo::Util
+		  Alzabo::ObjectCache::Sync
 		  Alzabo::Schema
 		  Alzabo::Table
 		  Alzabo::Column

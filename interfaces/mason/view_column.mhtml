@@ -28,15 +28,15 @@
      <td>Change length/precision:</td>
     </tr>
     <tr>
-     <td><input type="textfield" name="length" value="<% $c->length ? $c->length : '' %>" size="5">,
-         <input type="textfield" name="precision" value="<% $c->precision ? $c->precision : '' %>" size="5"></td>
+     <td><input type="textfield" name="length" value="<% defined $c->length ? $c->length : '' %>" size="5">,
+         <input type="textfield" name="precision" value="<% defined $c->precision ? $c->precision : '' %>" size="5"></td>
     </tr>
 
     <tr valign="top">
      <td>Change default:</td>
     </tr>
     <tr>
-     <td><input type="textfield" name="default" value="<% $c->default ? $c->default : '' %>" size="20"></td>
+     <td><input type="textfield" name="default" value="<% defined $c->default ? $c->default : '' %>" size="20"></td>
     </tr>
 
     <tr>
@@ -61,7 +61,7 @@
 
     <tr>
      <td>
-      Allow nulls: <input type="checkbox" name="null" <% $c->null ? 'checked="checked"' : '' %>><br>
+      Allow nulls: <input type="checkbox" name="null" <% $c->nullable ? 'checked="checked"' : '' %>><br>
       Primary key: <input type="checkbox" name="primary_key" <% $c->is_primary_key ? 'checked="checked"' : '' %>><br>
       Sequenced: <input type="checkbox" name="sequenced" <% $c->sequenced ? 'checked="checked"' : '' %>>
      </td>

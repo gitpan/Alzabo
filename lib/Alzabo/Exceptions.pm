@@ -3,7 +3,7 @@ package Alzabo::Exceptions;
 use strict;
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
 
 my %e;
 
@@ -79,7 +79,6 @@ use vars qw($VERSION);
 use Exception::Class;
 
 use base qw( Exception::Class::Base );
-use fields qw( sql bind );
 
 $VERSION = '0.1';
 

@@ -1,24 +1,35 @@
 Short term:
 
-- make it possible to have a multi-column foreign key
+- Alzabo::ObjectCache::DBIStore - this module will also do syncing all
+  in one.  This will allow the caching/syncing to occur across
+  multiple machines with multiple processes.
 
-- Centralize caching into Alzabo::ObjectCache and make it take options
-  on a storage mechanism (memory, file, etc) and a locking method
-  (ipc, file, dbm, etc).  This is similar to how Apache::Session works.
+- Make multiple row classes (one for caching and for non-caching).
+Maybe also create null row class (always return undef).
+
+- expand regression tests for core API - SQLMaker, RDBMSRules,
+MethodMaker, Runtime;:Table->set_group
 
 - After conversion, make local $table->{prefetch} work (tied scalar).
+  I'm no longer sure this is possible.  My most recent attempt caused
+  inexplicable test failures.
 
-- save objects to disk in something a bit more robust than a
-  serialized object form.  Probably this will be some sort of XML.
-
-- write up a comparison to other similar modules/tools.  Class::DBI,
-  DbFramework, Bingo::CarbonX, DBIx::RecordSet, Tangram.
+- Give the options to save objects to disk in something a bit more
+  robust than a serialized object form.  Barrie Slaymaker is working
+  on a generic XML language for database schema modelling, to be
+  called DBML.
 
 - non-Mason interface (curses, plain CGI)
 
-- expand regression tests for core API
+- make caching system more atomic.  I'm sure there are subtle race
+conditions in there that should be fixed (timestamps are generated
+more than once, which could be a problem, for one).
 
 Medium term:
+
+- support any and all SQL, of arbitrary complexity.
+
+- rewrite data browser to not suck so much
 
 - expand data browser to be configurable between sessions (for
   example, to use textarea fields for certain things)

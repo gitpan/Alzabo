@@ -6,48 +6,65 @@
  <tr valign="top">
   <td>
    <h3>Table: <% $t_from->name %></h3>
-   <select name="column_from">
+% foreach my $c (@columns_from) {
+   <input type="hidden" name="columns_from" value="<% $c %>">
+   <% $c %><br>
+% }
+   <select name="columns_from">
 % foreach my $c ($t_from->columns) {
+%   next if grep { $_ eq $c->name } @columns_from;
     <option value="<% $c->name %>"<% eval { $t_to->column( $c->name ) } ? ' selected' : '' %>><% $c->name %></option>
 % }
    </select>
    <br>
    <select name="min_max_from_1">
 % foreach my $mm (@min_max_1) {
-    <option value="<% $mm %>"><% $mm %></option>
+    <option value="<% $mm %>"<% $min_max_from_1 eq $mm ? ' selected' : '' %>><% $mm %></option>
 % }
    </select>
   ..
    <select name="min_max_from_2">
 % foreach my $mm (@min_max_2) {
-    <option value="<% $mm %>"><% $mm %></option>
+    <option value="<% $mm %>"<% $min_max_from_2 eq $mm ? ' selected' : '' %>><% $mm %></option>
 % }
    </select>
   </td>
   <td>
    <h3>Table: <% $t_to->name %></h3>
-   <select name="column_to">
+% foreach my $c (@columns_to) {
+   <input type="hidden" name="columns_to" value="<% $c %>">
+   <% $c %><br>
+% }
+   <select name="columns_to">
 % foreach my $c ($t_to->columns) {
+%   next if grep { $_ eq $c->name } @columns_to;
     <option value="<% $c->name %>"><% $c->name %></option>
 % }
    </select>
    <br>
    <select name="min_max_to_1">
 % foreach my $mm (@min_max_1) {
-    <option value="<% $mm %>"><% $mm %></option>
+    <option value="<% $mm %>""<% $min_max_to_1 eq $mm ? ' selected' : '' %>><% $mm %></option>
 % }
    </select>
   ..
    <select name="min_max_to_2">
 % foreach my $mm (@min_max_2) {
-    <option value="<% $mm %>"><% $mm %></option>
+    <option value="<% $mm %>"<% $min_max_to_2 eq $mm ? ' selected' : '' %>><% $mm %></option>
 % }
    </select>
   </td>
  </tr>
+% if ( @columns_from < $t_from->columns - 1 && @columns_to < $t_to->columns - 1) {
  <tr valign="top">
   <td colspan="2">
-   <input type="submit" value="Submit">
+   <input type="submit" name="more" value="Add More Columns">
+  </td>
+ </tr>
+% }
+ <tr valign="top">
+  <td colspan="2">
+   <input type="submit" name="submit" value="Submit">
   </td>
  </tr>
 </table> 
@@ -57,6 +74,12 @@
 $schema
 $table_from
 $table_to
+$min_max_from_1 => '0'
+$min_max_from_2 => 'n'
+$min_max_to_1 => '1'
+$min_max_to_2 => '1'
+@columns_from => ()
+@columns_to => ()
 </%args>
 
 <%init>
@@ -65,8 +88,8 @@ eval
 {
     $s = Alzabo::Create::Schema->load_from_file( name => $schema );
 
-    $t_to = $s->table($table_to);
     $t_from = $s->table($table_from);
+    $t_to = $s->table($table_to);
 };
 
 my @min_max_1 = qw(0 1);

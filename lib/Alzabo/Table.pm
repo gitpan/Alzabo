@@ -7,29 +7,27 @@ use Alzabo;
 
 use Tie::IxHash;
 
-#use fields qw( schema name columns indexes pk fk );
-
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.30 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub schema
 {
-    my Alzabo::Table $self = shift;
+    my $self = shift;
 
     return $self->{schema};
 }
 
 sub name
 {
-    my Alzabo::Table $self = shift;
+    my $self = shift;
 
     return $self->{name};
 }
 
 sub column
 {
-    my Alzabo::Table $self = shift;
+    my $self = shift;
     my $name = shift;
 
     Alzabo::Exception::Params->throw( error => "Column $name doesn't exist in $self->{name}" )
@@ -40,7 +38,7 @@ sub column
 
 sub columns
 {
-    my Alzabo::Table $self = shift;
+    my $self = shift;
 
     if (@_)
     {
@@ -52,14 +50,14 @@ sub columns
 
 sub primary_key
 {
-    my Alzabo::Table $self = shift;
+    my $self = shift;
 
     return $self->{pk}->Values;
 }
 
 sub column_is_primary_key
 {
-    my Alzabo::Table $self = shift;
+    my $self = shift;
     my $col = shift;
 
     my $name = $col->name;
@@ -71,7 +69,7 @@ sub column_is_primary_key
 
 sub foreign_keys
 {
-    my Alzabo::Table $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $c_name = $p{column}->name;
@@ -91,7 +89,7 @@ sub foreign_keys
 
 sub foreign_keys_by_table
 {
-    my Alzabo::Table $self = shift;
+    my $self = shift;
     my $name = shift->name;
 
     my $fk = $self->{fk};
@@ -109,7 +107,7 @@ sub foreign_keys_by_table
 
 sub foreign_keys_by_column
 {
-    my Alzabo::Table $self = shift;
+    my $self = shift;
     my $col = shift;
 
     Alzabo::Exception::Params->throw( error => "Column " . $col->name . " doesn't exist in $self->{name}" )
@@ -130,15 +128,21 @@ sub foreign_keys_by_column
 
 sub all_foreign_keys
 {
-    my Alzabo::Table $self = shift;
+    my $self = shift;
 
+    my %seen;
     my @fk;
     my $fk = $self->{fk};
     foreach my $t (keys %$fk)
     {
 	foreach my $c ( keys %{ $fk->{$t} } )
 	{
-	    push @fk, @{ $fk->{$t}{$c} };
+	    foreach my $key ( @{ $fk->{$t}{$c} } )
+	    {
+		next if $seen{$key};
+		push @fk, $key;
+		$seen{$key} = 1;
+	    }
 	}
     }
 
@@ -147,7 +151,7 @@ sub all_foreign_keys
 
 sub index
 {
-    my Alzabo::Table $self = shift;
+    my $self = shift;
     my $id = shift;
 
     Alzabo::Exception::Params->throw( error => "Index $id doesn't exist in $self->{name}" )
@@ -158,7 +162,7 @@ sub index
 
 sub indexes
 {
-    my Alzabo::Table $self = shift;
+    my $self = shift;
 
     return $self->{indexes}->Values;
 }

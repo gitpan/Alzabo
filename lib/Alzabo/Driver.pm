@@ -8,9 +8,7 @@ use Alzabo::Util;
 
 use DBI;
 
-#use fields qw( dbh prepare_method schema );
-
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.37 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.39 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -25,8 +23,6 @@ sub new
     my $self = "Alzabo::Driver::$p{rdbms}"->new(@_);
 
     $self->{schema} = $p{schema};
-
-    $self->{prepare_method} ||= 'prepare';
 
     return $self;
 }
@@ -173,16 +169,15 @@ sub _prepare_and_execute
     my $self = shift;
     my %p = @_;
 
-    Alzabo::Exception::Driver->throw( error => "Attempt to access the database without database handle.  Was ->connect caled?" )
+    Alzabo::Exception::Driver->throw( error => "Attempt to access the database without database handle.  Was ->connect called?" )
 	unless $self->{dbh};
 
     my @bind = exists $p{bind} ? ( ref $p{bind} ? @{ $p{bind} } : $p{bind} ) : ();
 
-    my $prep = $self->{prepare_method};
     my $sth;
     eval
     {
-	$sth = $self->{dbh}->$prep( $p{sql} );
+	$sth = $self->{dbh}->prepare( $p{sql} );
 	$sth->execute(@bind);
     };
     if ($@)
@@ -234,7 +229,6 @@ sub statement
     my $self = shift;
 
     return Alzabo::DriverStatement->new( dbh => $self->{dbh},
-					 prepare_method => $self->{prepare_method},
 					 @_ );
 }
 
@@ -332,8 +326,6 @@ use Alzabo::Util;
 
 use DBI;
 
-use fields qw( dbh sth sql bind );
-
 $VERSION = '0.1';
 
 1;
@@ -346,9 +338,7 @@ sub new
 
     my $self = bless {}, $class;
 
-    my $prep = $p{prepare_method};
-
-    Alzabo::Exception::Params->throw( error => "Alzabo::DriverStatement->new called with 'dbh' parameter" )
+    Alzabo::Exception::Params->throw( error => "Alzabo::DriverStatement->new called without 'dbh' parameter" )
 	unless $p{dbh};
 
     $self->{limit} = $p{limit} ? $p{limit}[0] : 0;
@@ -360,7 +350,7 @@ sub new
     $self->{sql} = $p{sql};
     eval
     {
-	$self->{sth} = $self->{dbh}->$prep( $p{sql} );
+	$self->{sth} = $self->{dbh}->prepare( $p{sql} );
 
 	$self->{bind} = exists $p{bind} ? ( ref $p{bind} ? $p{bind} : [ $p{bind} ] ) : [];
 	$self->{sth}->execute( @{ $self->{bind} } );
@@ -718,10 +708,9 @@ this:
  5:      my %p = @_;
  6:
  7:      my $self = bless {}, $class;
- 8:      $self->{prepare_method} = 'prepare';
- 9:
- 10:     return $self;
- 11:  }
+ 8:
+ 9:      return $self;
+ 10:  }
 
 The hash %p contains any values passed to the
 C<Alzabo::Driver-E<gt>new> method by its caller.
@@ -729,11 +718,6 @@ C<Alzabo::Driver-E<gt>new> method by its caller.
 Lines 1-7 should probably be copied verbatim into your own C<new>
 method.  Line 5 can be deleted if you don't need to look at the
 parameters.
-
-Line 8 sets an internal hash entry.  This is a string that defines
-which C<DBI> method to use to prepare a statement.  For some databases
-(such as Oracle), it may be advantageous to change this to
-C<prepare_cached>.
 
 Look at the included C<Alzabo::Driver> subclasses for examples.  Feel
 free to contact me for further help if you get stuck.  Please tell me

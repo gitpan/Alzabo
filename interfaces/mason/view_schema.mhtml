@@ -19,7 +19,8 @@
   <td>
    <form action="view_schema_sql<% Alzabo::Config::mason_extension() %>">
    <input type="hidden" name="schema" value="<% $s->name %>">
-   <input type="submit" value="View schema SQL">
+   <input type="submit" value="View schema SQL"><br>
+   This page allows you to actually have the SQL executed once you've viewed it.
    </form>
   </td>
  </tr>
@@ -27,17 +28,27 @@
   <td>Table name:</td>
   <td rowspan="3">
 % if ($s->instantiated) {
-   <form action="uninstantiate_schema<% Alzabo::Config::mason_extension() %>">
-   <input type="hidden" name="schema" value="<% $s->name %>">
-   <input type="submit" value="Mark schema as not instantiated">
-   </form>
-
+   <form action="change_schema_instantiation<% Alzabo::Config::mason_extension() %>">
+   <p>
    <b>Note:</b> This action only changes the schema object's internal
    state.  It will not actually remove the schema from the backend
-   RDBMS.
-
+   RDBMS.<br>
+   <input type="hidden" name="schema" value="<% $s->name %>">
+   <input type="hidden" name="instantiated" value="0">
+   <input type="submit" value="Mark schema as not instantiated">
+   </p>
+   </form>
 % } else {
-   &nbsp;
+   <form action="change_schema_instantiation<% Alzabo::Config::mason_extension() %>">
+   <p>
+   <b>Note:</b> This action only changes the schema object's internal
+   state.  It will not actually create the schema in the backend
+   RDBMS.<br>
+   <input type="hidden" name="schema" value="<% $s->name %>">
+   <input type="hidden" name="instantiated" value="1">
+   <input type="submit" value="Mark schema as instantiated">
+   </p>
+   </form>
 % }
   </td>
  </tr>

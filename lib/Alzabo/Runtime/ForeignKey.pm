@@ -7,83 +7,102 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::ForeignKey);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub register_insert
 {
-    my Alzabo::Runtime::ForeignKey $self = shift;
-    my $newval = shift;
+    my $self = shift;
+    my %vals = @_;
 
-    $self->_check_existence($newval);
+    # if we're inserting into a table we don't check if its primary
+    # key exists elsewhere, no matter what the cardinality of the
+    # relation.  Otherwise, we end up in cycles where it is impossible
+    # to insert things into the table.
+    foreach my $pair ( $self->column_pairs )
+    {
+	next if $pair->[0]->is_primary_key;
+	if ( !defined $vals{ $pair->[0]->name } && ($self->min_max_from)[0] eq '1' )
+	{
+	    Alzabo::Exception::ReferentialIntegrity->throw( error => 'Referential integrity requires that this column (' . $self->table_from->name . '.' . $pair->[0]->name . ') not be null.' )
+	}
+
+	$self->_check_existence( $pair->[1] => $vals{ $pair->[0]->name } )
+	    if defined $vals{ $pair->[0]->name };
+    }
 }
 
 sub register_update
 {
-    my Alzabo::Runtime::ForeignKey $self = shift;
-    my $newval = shift;
+    my $self = shift;
+    my %vals = @_;
 
     my $driver = $self->table_from->schema->driver;
 
-    $self->_check_existence($newval);
-
-    if ( ! defined $newval && ($self->min_max_from)[0] eq '1' )
+    foreach my $pair ( $self->column_pairs )
     {
-	Alzabo::Exception::ReferentialIntegrity->throw( error => 'Referential integrity requires that this column (' . $self->table_from->name . '.' . $self->column_from->name . ') not be null.' );
-    }
-
-    # This should rarely be triggered.
-    unless ( ($self->min_max_to)[1] eq 'n' )
-    {
-	my $sql = 'SELECT COUNT(*) FROM  ' . $self->table_from->name . ' WHERE ' . $self->column_from->name . ' = ?';
-	Alzabo::Exception::ReferentialIntegrity->throw( error => "Value ($newval) already exists in table " . $self->table_from->name . '.' )
-	    if $driver->one_row( sql => $sql,
-				 bind => $newval );
-    }
-}
-
-sub _check_existence
-{
-    my Alzabo::Runtime::ForeignKey $self = shift;
-    my $newval = shift;
-
-    my $driver = $self->table_from->schema->driver;
-
-    if (defined $newval)
-    {
-	# if we're inserting into a table we don't check if its
-	# primary key exists elsewhere, no matter what the relation.
-	# Otherwise, we end up in cycles where it is impossible to
-	# insert things into the table.
-	unless ($self->column_from->is_primary_key)
+	if ( !defined $vals{ $pair->[0]->name } && ($self->min_max_from)[0] eq '1' )
 	{
-	    my $sql = 'SELECT 1 FROM  ' . $self->table_to->name . ' WHERE ' . $self->column_to->name . ' = ?';
+	    Alzabo::Exception::ReferentialIntegrity->throw( error => 'Referential integrity requires that this column (' . $self->table_from->name . '.' . $pair->[0]->name . ') not be null.' )
+	}
 
-	    unless ( $driver->one_row( sql => $sql,
-				       bind => $newval ) )
+	$self->_check_existence( $pair->[1] => $vals{ $pair->[0]->name } )
+	    if defined $vals{ $pair->[0]->name };
+
+	# This should rarely be triggered.
+	unless ( ($self->min_max_to)[1] eq 'n' )
+	{
+	    my $sql = ( $self->table->schema->sql->
+			count('*')->
+			from( $self->table_form )->
+			where( $pair->[0], '=', $vals{ $pair->[0]->name } )
+		      );
+
+	    if ( $driver->one_row( sql => $sql->sql,
+				   bind => $sql->bind ) )
 	    {
-		Alzabo::Exception::ReferentialIntegrity->throw( error => 'Foreign key must exist in foreign table.  No rows in ' . $self->table_to->name . ' where ' . $self->column_to->name . " = $newval" );
+		Alzabo::Exception::ReferentialIntegrity->throw( error => "Value (" . $vals{ $pair->[0]->name } . ") already exists in table " . $self->table_from->name . '.' );
 	    }
 	}
     }
 }
 
+sub _check_existence
+{
+    my $self = shift;
+    my ($col, $val) = @_;
+
+    my $driver = $self->table_from->schema->driver;
+
+    my $sql = ( $self->table_from->schema->sqlmaker->
+		select->count('*')->
+		from( $self->table_to )
+	      );
+
+    $sql->where( $col, '=', $val );
+
+    unless ( $driver->one_row( sql => $sql->sql,
+			       bind => $sql->bind ) )
+    {
+	Alzabo::Exception::ReferentialIntegrity->throw( error => 'Foreign key must exist in foreign table.  No rows in ' . $self->table_to->name . ' where ' . $col->name . " = $val" );
+    }
+}
+
 sub register_delete
 {
-    my Alzabo::Runtime::ForeignKey $self = shift;
+    my $self = shift;
     my $row = shift;
 
     my $delete = ($self->min_max_to)[0] eq '1';
-    my $update = ! $self->column_to->is_primary_key;
+    my @update = grep { ! $_->is_primary_key } $self->columns_to;
 
-    return unless $delete || $update;
+    return unless $delete || @update;
 
     # Make the rows in the other table that contain the relation to
     # the row being deleted.
-    my $col = $self->column_from->name;
-
-    my $cursor = $self->table_to->rows_where( where => [ $self->column_to, '=', $row->select($col) ] );
+    my @where = map { [ $_->[1], '=', $row->select( $_->[0]->name ) ] } $self->column_pairs;
+    my $cursor = $self->table_to->rows_where( where => \@where );
     while ( my $row = $cursor->next_row )
     {
 	($cursor->errors)[0]->rethrow if $cursor->errors;
@@ -94,17 +113,16 @@ sub register_delete
 
 	if ($delete)
 	{
+	    local %DELETED = %DELETED;
 	    $DELETED{ $row->id } = 1;
 	    # dependent relationship so delete other row (may begin a
 	    # chain reaction!)
 	    $row->delete;
-
-	    delete $DELETED{ $row->id };
 	}
-	elsif ($update)
+	elsif (@update)
 	{
-	    # not dependent so set the column to null
-	    $row->update( $self->column_to->name => undef );
+	    # not dependent so set the column(s) to null
+	    $row->update( map { $_->name => undef } @update );
 	}
     }
 }
@@ -140,9 +158,9 @@ C<Alzabo::ForeignKey>
 
 =for pod_merge table_to
 
-=for pod_merge column_from
+=for pod_merge columns_from
 
-=for pod_merge column_to
+=for pod_merge columns_to
 
 =for pod_merge min_max_from
 

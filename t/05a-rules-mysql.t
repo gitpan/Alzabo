@@ -50,7 +50,7 @@ eval { $t4->make_column( name => 'foo2',
 ok( $@,
     "Attempt to make 'text' column with a length parameter succeeded" );
 ok( $@->isa('Alzabo::Exception::RDBMSRules'),
-    "Attempt to make 'text' column with a length parameter failed with unexpect exception: $@" );
+    "Attempt to make 'text' column with a length parameter failed with unexpected exception: $@" );
 
 
 

@@ -17,9 +17,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-#use fields qw( driver_name instantiated original rules );
-
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.50 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.52 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -79,7 +77,7 @@ sub reverse_engineer
 
 sub set_name
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
 
     my $name = shift;
     return if $self->{name} && $name eq $self->{name};
@@ -102,14 +100,14 @@ sub set_name
 
 sub set_instantiated
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
 
     $self->{instantiated} = shift;
 }
 
 sub make_table
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
     my %p = @_;
 
     $self->add_table( table => Alzabo::Create::Table->new( schema => $self,
@@ -121,7 +119,7 @@ sub make_table
 
 sub add_table
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $table = $p{table};
@@ -144,7 +142,7 @@ sub add_table
 
 sub delete_table
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
     my $table = shift;
 
     Alzabo::Exception::Params->throw( error => "Table " . $table->name ." doesn't exist in schema" )
@@ -163,7 +161,7 @@ sub delete_table
 
 sub move_table
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
     my %p = @_;
 
     if ( exists $p{before} && exists $p{after} )
@@ -202,7 +200,7 @@ sub move_table
 
 sub register_table_name_change
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
     my %p = @_;
 
     Alzabo::Exception::Params->throw( error => "Table $p{old_name} doesn't exist in schema" )
@@ -214,7 +212,7 @@ sub register_table_name_change
 
 sub add_relation
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $tracker = Alzabo::ChangeTracker->new;
@@ -228,15 +226,40 @@ sub add_relation
 	return;
     }
 
+    Alzabo::Exception::Params->throw( error => "Must provide 'table_from' or 'columns_from' parameter" )
+	unless $p{table_from} || $p{columns_from};
 
-    Alzabo::Exception::Params->throw( error => "Must provide 'table_from' or 'column_from' parameter" )
-	unless $p{table_from} || $p{column_from};
+    Alzabo::Exception::Params->throw( error => "Must provide 'table_to' or 'columns_to' parameter" )
+	unless $p{table_to} || $p{columns_to};
 
-    Alzabo::Exception::Params->throw( error => "Must provide 'table_to' or 'column_to' parameter" )
-	unless $p{table_to} || $p{column_to};
+    $p{columns_from} = ( defined $p{columns_from} ? ( UNIVERSAL::isa( $p{columns_from}, 'ARRAY') ?
+						      $p{columns_from} :
+						      [ $p{columns_from} ] ) :
+			 undef );
 
-    my $f_table = $p{table_from} || $p{column_from}->table;
-    my $t_table = $p{table_to} || $p{column_to}->table;
+    $p{columns_to} = ( defined $p{columns_to} ? ( UNIVERSAL::isa( $p{columns_to}, 'ARRAY') ?
+						  $p{columns_to} :
+						  [ $p{columns_to} ] ) :
+		       undef );
+
+    my $f_table = $p{table_from} || $p{columns_from}->[0]->table;
+    my $t_table = $p{table_to} || $p{columns_to}->[0]->table;
+
+    if ( $p{columns_from} && $p{columns_to} )
+    {
+	Alzabo::Exception::Params->throw( error => "Cannot create a relationship with differing numbers of columns on either side of the relation" )
+	    unless @{ $p{columns_from} } == @{ $p{columns_to} };
+    }
+
+    foreach ( [ columns_from => $f_table ], [ columns_to => $t_table ] )
+    {
+	my ($key, $table) = @$_;
+	if ( defined $p{$key} )
+	{
+	    Alzabo::Exception::Params->throw( error => "All the columns in a given side of the relationship must be from the same table" )
+		if grep { $_->table ne $table } @{ $p{$key} };
+	}
+    }
 
     # Determined later.  This is the column that the relationship is
     # to.  As in table A/column B maps _to_ table X/column Y
@@ -254,16 +277,16 @@ sub add_relation
 
     ($col_from, $col_to) = $self->$method( table_from   => $f_table,
 					   table_to     => $t_table,
-					   column_from  => $p{column_from},
-					   column_to    => $p{column_to},
+					   columns_from => $p{columns_from},
+					   columns_to   => $p{columns_to},
 					   min_max_from => $p{min_max_from},
 					   min_max_to   => $p{min_max_to},
 					 );
 
     eval
     {
-	$f_table->make_foreign_key( column_from => $col_from,
-				    column_to   => $col_to,
+	$f_table->make_foreign_key( columns_from => $col_from,
+				    columns_to   => $col_to,
 				    min_max_from => $p{min_max_from},
 				    min_max_to   => $p{min_max_to} );
     };
@@ -273,11 +296,14 @@ sub add_relation
 	$@->rethrow;
     }
 
-    my $fk;
+    my @fk;
     eval
     {
-	$fk = $f_table->foreign_keys( table => $t_table,
-				      column => $col_from );
+	foreach my $c ( @$col_from )
+	{
+	    push @fk, $f_table->foreign_keys( table => $t_table,
+					      column => $c );
+	}
     };
     if ($@)
     {
@@ -285,7 +311,7 @@ sub add_relation
 	$@->rethrow;
     }
 
-    $tracker->add( sub { $f_table->delete_foreign_key($fk) } );
+    $tracker->add( sub { $f_table->delete_foreign_key($_) foreach @fk } );
 
     if ($p{min_max_to}->[1] ne 'n')
     {
@@ -298,26 +324,26 @@ sub add_relation
 
     ($col_from, $col_to) = $self->$method( table_from => $t_table,
 					   table_to   => $f_table,
-					   column_from => $col_to,
-					   column_to   => $col_from,
+					   columns_from => $col_to,
+					   columns_to   => $col_from,
 					   min_max_from => $p{min_max_to},
 					   min_max_to   => $p{min_max_from},
 					 );
 
     if ($p{min_max_from}->[0] eq '1')
     {
-	$col_from->null(0);
+	$_->nullable(0) foreach @{ $p{columns_from} };
     }
 
     if ($p{min_max_to}->[0] eq '1')
     {
-	$col_to->null(0);
+	$_->nullable(0) foreach @{ $p{columns_to} };
     }
 
     eval
     {
-	$t_table->make_foreign_key( column_from => $col_from,
-				    column_to   => $col_to,
+	$t_table->make_foreign_key( columns_from => $col_from,
+				    columns_to   => $col_to,
 				    min_max_from => $p{min_max_to},
 				    min_max_to   => $p{min_max_from} );
     };
@@ -335,6 +361,7 @@ sub _check_add_relation_args
 
     foreach my $t ( $p{table_from}, $p{table_to} )
     {
+	next unless defined $t;
 	Alzabo::Exception::Params->throw( error => "Table " . $t->name . " doesn't exist in schema" )
 	    unless $self->{tables}->EXISTS( $t->name );
     }
@@ -361,13 +388,13 @@ sub _check_add_relation_args
 
 sub _create_to_1_relationship
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
     my %p = @_;
 
-    return @p{ 'column_from', 'column_to' }
-	if $p{column_from} && $p{column_to};
+    return @p{ 'columns_from', 'columns_to' }
+	if $p{columns_from} && $p{columns_to};
 
-    # Add this column to the table which _must_ participate in the
+    # Add these columns to the table which _must_ participate in the
     # relationship, if there is one.  This reduces NULL values.
     # Otherwise, just add to the first table specified in the
     # relation.
@@ -394,35 +421,36 @@ sub _create_to_1_relationship
 
     # Determine whether there is a column in 'to' table we can use.
     my $col_to;
-    if ( $p{"column_$order[1]"} )
+    if ( $p{"columns_$order[1]"} )
     {
-	$col_to = $p{"column_$order[1]"};
+	$col_to = $p{"columns_$order[1]"};
     }
     else
     {
 	my @c = $t_table->primary_key;
 
-	# Is there a way to handle this properly?
-	Alzabo::Exception::Params->throw( error => $t_table->name . " has a multiple column primary key." )
-	    if @c > 1;
 	Alzabo::Exception::Params->throw( error => $t_table->name . " has no primary key." )
-	    if @c == 0;
+	    unless @c;
 
-	$col_to = $c[0];
+	$col_to = \@c;
     }
 
     my ($col_from);
-    if ($p{"column_$order[0]"})
+    if ($p{"columns_$order[0]"})
     {
-	$col_from = $p{"column_$order[0]"};
+	$col_from = $p{"columns_$order[0]"};
     }
     else
     {
-	my $new_col = $self->_add_foreign_key_column( table_from => $f_table,
-						      table_to   => $t_table,
-						      column     => $col_to );
+	my @new_col;
+	foreach my $c ( @$col_to )
+	{
+	    push @new_col, $self->_add_foreign_key_column( table_from => $f_table,
+							   table_to   => $t_table,
+							   column     => $c );
+	}
 
-	$col_from = $new_col;
+	$col_from = \@new_col;
     }
 
     return ($col_from, $col_to);
@@ -434,43 +462,47 @@ sub _create_to_1_relationship
 # 'n' rows in the 'to' table.
 sub _create_to_n_relationship
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $f_table = $p{table_from};
     my $t_table = $p{table_to};
 
     my $col_from;
-    if ( $p{column_from} )
+    if ( $p{columns_from} )
     {
-	$col_from = $p{column_from};
+	$col_from = $p{columns_from};
     }
     else
     {
 	my @c = $f_table->primary_key;
 
 	# Is there a way to handle this properly?
-	Alzabo::Exception::Params->throw( error => $f_table->name . " has a multiple column primary key." )
-	    if @c > 1;
 	Alzabo::Exception::Params->throw( error => $f_table->name . " has no primary key." )
-	    if @c == 0;
+	    unless @c;
 
-	$col_from = $c[0];
+	$col_from = \@c;
     }
 
-    # If the column this links to in the 'to' table is not specified
-    # explicitly we assume that the user wants to have this coumn
-    # created/adjusted in the 'to' table.
     my $col_to;
-    if ($p{column_to})
+    if ($p{columns_to})
     {
-	$col_to = $p{column_to};
+	$col_to = $p{columns_to};
     }
     else
     {
-	$col_to = $self->_add_foreign_key_column( table_from => $t_table,
-						  table_to   => $f_table,
-						  column     => $col_from );
+	# If the columns this links to in the 'to' table ares not specified
+	# explicitly we assume that the user wants to have this coumn
+	# created/adjusted in the 'to' table.
+	my @new_col;
+	foreach my $c ( @$col_from )
+	{
+	    push @new_col, $self->_add_foreign_key_column( table_from => $t_table,
+							   table_to   => $f_table,
+							   column     => $c );
+	}
+
+	$col_to = \@new_col;
     }
 
     return ($col_from, $col_to);
@@ -488,7 +520,7 @@ sub _create_to_n_relationship
 # good thing.
 sub _add_foreign_key_column
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $tracker = Alzabo::ChangeTracker->new;
@@ -530,7 +562,7 @@ sub _add_foreign_key_column
 
 sub _create_linking_table
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $tracker = Alzabo::ChangeTracker->new;
@@ -539,105 +571,78 @@ sub _create_linking_table
     my $t2 = $p{table_to};
 
     my $t1_col;
-    if ($p{column_from})
+    if ($p{columns_from})
     {
-	$t1_col = $p{column_from};
+	$t1_col = $p{columns_from};
     }
     else
     {
 	my @c = $t1->primary_key;
 
-	# Is there a way to handle this properly?
-	Alzabo::Exception::Params->throw( error => $t1->name . " has a multiple column primary key." )
-	    if @c > 1;
 	Alzabo::Exception::Params->throw( error => $t1->name . " has no primary key." )
-	    if @c == 0;
+	    unless @c;
 
-	$t1_col = $c[0];
+	$t1_col = \@c;
     }
 
     my $t2_col;
-    if ($p{column_to})
+    if ($p{columns_to})
     {
-	$t2_col = $p{column_to};
+	$t2_col = $p{columns_to};
     }
     else
     {
 	my @c = $t2->primary_key;
 
-	# Is qthere a way to handle this properly?
-	Alzabo::Exception::Params->throw( error => $t2->name . " has a multiple column primary key." )
-	    if @c > 1;
 	Alzabo::Exception::Params->throw( error => $t2->name . " has no primary key." )
-	    if @c == 0;
+	    unless @c;
 
-	$t2_col = $c[0];
+	$t2_col = \@c;
     }
 
     # First we create the table.
     my $linking;
-    $linking = $self->make_table( name => $p{name} || $p{table_from}->name . '_' . $p{table_to}->name );
+    my $name;
+
+    if ( exists $p{name} )
+    {
+	$name = $p{name}
+    }
+    elsif ( lc $p{table_from}->name eq $p{table_from}->name )
+    {
+	$name = join '_', $p{table_from}->name, $p{table_to}->name;
+    }
+    else
+    {
+	$name = join '', $p{table_from}->name, $p{table_to}->name;
+    }
+
+    $linking = $self->make_table( name => $name );
     $tracker->add( sub { $self->delete_table($linking) } );
 
     eval
     {
-	$linking->make_column( name => $t1_col->name,
-			       definition => $t1_col->definition );
-    };
-    if ($@)
-    {
-	$tracker->backout;
-	$@->rethrow;
-    }
-
-    eval
-    {
-
-	$linking->make_column( name => $t2_col->name,
-			       definition => $t2_col->definition );
-    };
-    if ($@)
-    {
-	$tracker->backout;
-	$@->rethrow;
-    }
-
-    eval
-    {
-	foreach my $c ( $t1_col, $t2_col )
+	foreach my $c ( @$t1_col, @$t2_col )
 	{
-	    $linking->add_primary_key( $linking->column( $c->name ) );
+	    $linking->make_column( name => $c->name,
+				   definition => $c->definition,
+				   primary_key => 1,
+				 );
 	}
-    };
-    if ($@)
-    {
-	$tracker->backout;
-	$@->rethrow;
-    }
 
-    eval
-    {
 	$self->add_relation( table_from => $t1,
 			     table_to   => $linking,
 			     min_max_from => [ $p{min_max_from}->[0], 'n' ],
 			     min_max_to   => [ '1', '1' ],
-			     column_from => $t1_col,
-			     column_to   => $linking->column( $t1_col->name ) );
-    };
-    if ($@)
-    {
-	$tracker->backout;
-	$@->rethrow;
-    }
+			     columns_from => $t1_col,
+			     columns_to   => [ $linking->columns( map { $_->name } @$t1_col ) ] );
 
-    eval
-    {
 	$self->add_relation( table_from => $t2,
 			     table_to   => $linking,
 			     min_max_from => [ $p{min_max_to}->[0], 'n' ],
 			     min_max_to   => [ '1', '1' ],
-			     column_from => $t2_col,
-			     column_to   => $linking->column( $t2_col->name ) );
+			     columns_from => $t2_col,
+			     columns_to   => [ $linking->columns( map { $_->name } @$t2_col ) ] );
     };
 
     if ($@)
@@ -649,14 +654,14 @@ sub _create_linking_table
 
 sub instantiated
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
 
     return $self->{instantiated};
 }
 
 sub create
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my @sql = $self->make_sql;
@@ -678,7 +683,7 @@ sub create
 
 sub make_sql
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
 
     if ($self->{instantiated})
     {
@@ -693,7 +698,7 @@ sub make_sql
 
 sub drop
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
     my %p = @_;
 
     $self->{driver}->drop_database(%p);
@@ -702,7 +707,7 @@ sub drop
 
 sub delete
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $name = $p{name} || $self->name;
@@ -723,7 +728,7 @@ sub delete
 
 sub save_to_file
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
 
     my $schema_dir = Alzabo::Config::schema_dir;
     unless (-e "$schema_dir/$self->{name}")
@@ -760,7 +765,7 @@ sub save_to_file
 
 sub make_runtime_clone
 {
-    my Alzabo::Create::Schema $self = shift;
+    my $self = shift;
 
     my $clone = Storable::dclone($self);
 
@@ -1012,7 +1017,7 @@ L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 Creates a relationship between two tables.  This involves creating
 L<C<Alzabo::Create::ForeignKey>|Alzabo::Create::ForeignKey> objects in
-both tables.  If the C<column_from> and C<column_to> parameters are
+both tables.  If the C<columns_from> and C<columns_to> parameters are
 not specified then the schema object attempts to calculate the proper
 values for these attributes.
 
@@ -1023,13 +1028,22 @@ linking table.  If the C<min_max_from> and C<min_max_to> are both 0..(1
 or n) then it also assumes that the C<table_from> table is dependent.
 In all other cases, it uses the primary key from the C<table_from>.
 
-If no column with the same name exists in the other table, then a
-column with that name will be created.  Otherwise, it changes the
-dependent column so that its
+If no columns with the same names exist in the other table, then
+columns with that name will be created.  Otherwise, it changes the
+dependent columns so that their
 L<C<Alzabo::Create::ColumnDefinition>|Alzabo::Create::ColumnDefinition>
-object is the same as the column in the table upon which it is
-dependent, meaning that changes to the type of one column affect both
+objects are the same as the columns in the table upon which it is
+dependent, meaning that changes to the type of one column affects both
 at the same time.
+
+If you want to make multi-column relation, the assumption is that the
+order of the columns is significant.  In other words, the first column
+in the C<columns_from> parameter is assumed to correspond to the first
+column in hte C<columns_to> parameter and so on.
+
+The number of columns given in C<column_from> and C<columns_to> must
+be the same except when both C<min_max_...> parameters have are (0 or
+1)..n.
 
 If both the C<min_max_from> and C<min_max_to> parameters are (0 or
 1)..n then a new table will be created to link the two tables
@@ -1042,13 +1056,13 @@ table.
 
 =over 4
 
-=item * table_from => C<Alzabo::Create::Table> object (optional if column_from is provided)
+=item * table_from => C<Alzabo::Create::Table> object (optional if columns_from is provided)
 
-=item * table_to => C<Alzabo::Create::Table> object (optional if column_to is provided)
+=item * table_to => C<Alzabo::Create::Table> object (optional if columns_to is provided)
 
-=item * column_from => C<Alzabo::Create::Column> object (optional if table_from is provided)
+=item * columns_from => C<Alzabo::Create::Column> object (optional if table_from is provided)
 
-=item * column_to => C<Alzabo::Create::Column> object (optional if table_to is provided)
+=item * columns_to => C<Alzabo::Create::Column> object (optional if table_to is provided)
 
 =item * min_max_from => (see below)
 

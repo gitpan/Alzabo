@@ -7,15 +7,13 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::Schema);
 
-#use fields qw( user password host maintain_integrity );
-
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.23 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub load_from_file
 {
-    my Alzabo::Runtime::Schema $self = shift;
+    my $self = shift;
 
     $self->_load_from_file(@_);
 }
@@ -27,56 +25,56 @@ sub _schema_file_type
 
 sub user
 {
-    my Alzabo::Runtime::Schema $self = shift;
+    my $self = shift;
 
     return $self->{user};
 }
 
 sub password
 {
-    my Alzabo::Runtime::Schema $self = shift;
+    my $self = shift;
 
     return $self->{password};
 }
 
 sub host
 {
-    my Alzabo::Runtime::Schema $self = shift;
+    my $self = shift;
 
     return $self->{host};
 }
 
 sub referential_integrity
 {
-    my Alzabo::Runtime::Schema $self = shift;
+    my $self = shift;
 
     return defined $self->{maintain_integrity} ? $self->{maintain_integrity} : 0;
 }
 
 sub set_user
 {
-    my Alzabo::Runtime::Schema $self = shift;
+    my $self = shift;
 
     $self->{user} = shift;
 }
 
 sub set_password
 {
-    my Alzabo::Runtime::Schema $self = shift;
+    my $self = shift;
 
     $self->{password} = shift;
 }
 
 sub set_host
 {
-    my Alzabo::Runtime::Schema $self = shift;
+    my $self = shift;
 
     $self->{host} = shift;
 }
 
 sub set_referential_integrity
 {
-    my Alzabo::Runtime::Schema $self = shift;
+    my $self = shift;
     my $val = shift;
 
     $self->{maintain_integrity} = $val if defined $val;
@@ -84,7 +82,7 @@ sub set_referential_integrity
 
 sub connect
 {
-    my Alzabo::Runtime::Schema $self = shift;
+    my $self = shift;
 
     my %p;
     $p{user} = $self->user if defined $self->user;
@@ -95,7 +93,7 @@ sub connect
 
 sub join
 {
-    my Alzabo::Runtime::Schema $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $select = $p{select} || $p{tables};
@@ -107,6 +105,7 @@ sub join
 		select( map {$_->primary_key} @$select )->
 		from( @{ $p{tables} } ) );
 
+    my $y = 0;
     for (my $x = 0; $x < @{ $p{tables} } - 1; $x++)
     {
 	my $cur_t = $p{tables}->[$x];
@@ -123,8 +122,11 @@ sub join
 	Alzabo::Exception::Params->throw( error => "The " . $cur_t->name . " table has more than 1 foreign key to the " . $next_t->name . " table" )
 	    if @fk > 1;
 
-	my $op = $x ? 'and' : 'where';
-	$sql->$op( $fk[0]->column_from, '=', $fk[0]->column_to );
+	foreach my $cp ( $fk[0]->column_pairs )
+	{
+	    my $op = $y++ ? 'and' : 'where';
+	    $sql->$op( $cp->[0], '=', $cp->[1] );
+	}
     }
 
     if ( $p{where} )

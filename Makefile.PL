@@ -1,21 +1,38 @@
-use ExtUtils::MakeMaker qw( prompt WriteMakefile );
-use Text::Wrap;
-
 use 5.005;
 use strict;
+$^W = 1;
 
 use Cwd;
 use Data::Dumper;
+use ExtUtils::MakeMaker qw( prompt WriteMakefile );
+use Text::Wrap;
 
 use vars qw(%extra %config %test @TESTS);
 
-goto MAKEFILE if $ARGV[0] eq '--dist';
+goto MAKEFILE if @ARGV && $ARGV[0] eq '--dist';
+
+eval { require Alzabo::Config; };
+
+if ( ! $@ && Alzabo::Config::available_schemas() )
+{
+    print <<'EOF';
+
+You appear to have schemas created with an older version of Alzabo.
+If you want to continue to use these, you will need to run the
+convert.pl script in the eg/ directory _before_ installing this
+version of Alzabo.
+EOF
+    exit unless prompt( '  Continue?', 'no' ) =~ /^y/i;
+}
 
 {
-    $config{root_dir} = prompt( q[
-Please select a root directory for Alzabo (schema files will be 
-stored under this root.
-], find_possible_root() );
+    print <<'EOF';
+
+Please select a root directory for Alzabo (schema files will be stored
+under this root.
+EOF
+
+    $config{root_dir} = prompt( '  Alzabo root?', find_possible_root() );
 
     unless (-e $config{root_dir})
     {
@@ -33,13 +50,13 @@ my %prereq;
 
 {
     # extra prereqs for certain features
-    my %extra_prereq = ( 'the MySQL driver' => [ { 'Digest::MD5' => 0,
-						   'DBD::mysql' => 0 },
-						 'mysql' ],
-			 'the PostgreSQL driver' => [ { 'DBD::Pg' => 0 },
-						      'pg' ]
-			 #'the Oracle driver' => [ { 'DBD::Oracle' => 0 },
-			 #			      'oracle' ],
+    my @extra_prereq = ( [ 'the MySQL driver', 'DBD::mysql' => 0, 'mysql' ],
+			 [ 'the PostgreSQL driver', 'DBD::Pg' => 0, 'pg' ],
+#			 [ 'the Oracle driver', 'DBD::Oracle', 0, 'oracle' ],
+			 [ 'the IPC caching system', 'IPC::Shareable', 0.54 ],
+			 [ 'the DBM caching system', 'DB_File', 1.76 ],
+			 [ 'the HTML::Mason based schema creation interface', 'HTML::Mason', 0.896, undef, 'mason_schema' ],
+			 [ 'the HTML::Mason based data browser', 'HTML::Mason', 0.896, undef, 'mason_browser' ],
 		       );
 
     print <<'EOF';
@@ -49,27 +66,25 @@ These questions help the installer determine what additional
 system checks to perform.
 EOF
 
-    foreach my $k ( keys %extra_prereq )
+    foreach my $p ( @extra_prereq )
     {
-	my $yesno = prompt( "\nDo you plan to use $k?", 'no' );
+	print "\n";
+	my $requires = $p->[1];
+	$requires .= " (version $p->[2])" if $p->[2];
+	print "\u$p->[0] requires $requires.\n";
+	my $yesno = prompt( "  Use $p->[0]?", has_module($p->[1], $p->[2]) ? 'yes' : 'no' );
 	if ( $yesno && $yesno !~ /\A[Nn]/)
 	{
-	    %prereq = ( %prereq, %{ $extra_prereq{$k}[0] } );
-	    $test{ $extra_prereq{$k}[1] } = 1;
+	    $prereq{ $p->[1] } = $p->[2];
+	    $test{ $p->[3] } = 1 if $p->[3];
+	    $extra{ $p->[4] } = 1 if $p->[4];
 	}
     }
 }
 
 {
-    eval { require Alzabo::Config; };
-
-    $extra{mason_schema} = prompt( "\nDo you plan to install the HTML::Mason based schema creation interface?", 'no' ) =~ /\Ay/i;
-    $extra{mason_browser} = prompt( "\nDo you plan to install the HTML::Mason based data browser?", 'no' ) =~ /\Ay/i;
-
-    if ( $extra{mason_schema} || $extra{mason_browser} )
+    if ( $prereq{'HTML::Mason'} )
     {
-	$prereq{'HTML::Mason'} = 0.895;
-
 	my $default = $Alzabo::Config::CONFIG{mason_web_dir};
 	$default =~ s,/alzabo\Z,,;
 
@@ -78,12 +93,15 @@ EOF
 	    print "\n *** The directory you selected does not exist ***\n"
 		if $config{mason_web_dir};
 
-	    $config{mason_web_dir} = prompt('
-Where would you like to install the mason components for
-this interface (this must be under your component root)?
-NOTE: The installer will create an \'alzabo\'
-subdirectory under the directory given.
-', $default || '' );
+	    print <<'EOF';
+
+Where would you like to install the mason components for this
+interface (this must be under your component root)?  NOTE: The
+installer will create an 'alzabo' subdirectory under the directory
+given.
+EOF
+
+	    $config{mason_web_dir} = prompt( '  Alzabo Mason directory?', $default || '' );
 	} while ( ! -e $config{mason_web_dir} );
 
 	$default = $Alzabo::Config::CONFIG{mason_url_path};
@@ -91,10 +109,14 @@ subdirectory under the directory given.
 
 	do
 	{
-	    $config{mason_url_path} = prompt("
+	    print <<"EOF";
+
 This directory ($config{mason_web_dir}) translates to what absolute
-path on your web server (Do not include the server name here)?
-", $default || '' );
+path on your web server?  NOTE: you should not include the server name
+here.
+EOF
+
+	    $config{mason_url_path} = prompt( '  URL Path to Alzabo Mason directory?', $default || '' );
 	} while ( ! defined $config{mason_url_path} );
 
 	foreach ( qw( mason_web_dir mason_url_path ) )
@@ -105,9 +127,17 @@ path on your web server (Do not include the server name here)?
 	$config{mason_web_dir} .= '/alzabo';
 	$config{mason_url_path} .= '/alzabo';
 
-	$extra{mason_extension} = prompt( "
-What extension would you like to use for the mason components?
-", $Alzabo::Config::CONFIG{mason_extension} || '.mhtml' );
+	print <<'EOF';
+
+You can pick a custom file extension for the mason components.  Only
+components called as top level components will be given this
+extension.  Components intended only for use by other components have
+no extension at all
+EOF
+
+
+	$extra{mason_extension} = prompt( '  Mason component file extension?',
+					  $Alzabo::Config::CONFIG{mason_extension} || '.mhtml' );
 	$config{mason_extension} = $extra{mason_extension};
     }
 }
@@ -127,8 +157,7 @@ get_test_setup();
 	    'Storable' => 0,
 	    'Tie::IxHash' => 0,
 	    'Exception::Class' => 0.8,
-	    'Tie::Cache' => 0,
-	    'IPC::Shareable' => 0,
+	    'Time::HiRes' => 0,
 	    %prereq );
 
 check_prereq(\%prereq);
@@ -139,7 +168,7 @@ WriteMakefile( 'NAME'	=> 'Alzabo',
 	       'VERSION_FROM' => 'lib/Alzabo.pm',
 	       PREREQ_PM => \%prereq,
 
-	       realclean => { FILES => './lib/Alzabo/Config.pm schemas' },
+	       realclean => { FILES => './lib/Alzabo/Config.pm schemas t/dbmsynctest.dbm' },
 
 	       AUTHOR => 'Dave Rolsky <autarch@urth.org>',
 	       ABSTRACT => 'Perl data modelling tool',
@@ -175,9 +204,10 @@ sub install_module
     $prompt .= "(version $version) " if $version;
     $prompt .= "not found.
 I can try to install this using the CPAN module but it
-may require me to be running as root.  Install?";
-
-    return unless prompt( $prompt, 'y' ) =~ /^y/i;
+may require me to be running as root.
+";
+    print $prompt;
+    return unless prompt( "  Install $module?", 'y' ) =~ /^y/i;
 
     my $cwd = cwd();
 
@@ -267,39 +297,47 @@ sub get_test_setup
     {
 	my $name = $names{$_};
 
-	print qq[
+	print <<'EOF';
+
 The information from the following questions are used solely for
 testing the pieces of Alzabo that require a real database for proper
 testing.
-];
+EOF
 
-	my $do = prompt( qq[
-Do tests with $name RDBMS?
-], 'yes' );
+	my $do = prompt( "  Do tests with $name RDBMS?", 'yes' );
 	next unless $do =~ /^y/i;
 
-	my $user = prompt( qq[
+	print <<'EOF';
+
 Please provide a username that can be used to connect to the $name
 RDBMS?  This user must have the ability to create a new
-database/schema.  Username?
-] );
+database/schema.
+EOF
+
+	my $user = prompt( '  Username?' );
 	my $password;
 	if ($user)
 	{
-	    $password = prompt( qq[
-What password should be used with the $user username?
-] );
+	    $password = prompt( "  Password for $user?" );
 	}
 
-	my $host = prompt( qq[
-What host is the $name RDBMS located on (skip this if its localhost)?
-] );
+	print <<"EOF";
 
-	my $db_name = prompt( qq[
+What host is the $name RDBMS located on.  Press enter to skip this if
+the database server is located on the localhost or can be determined
+in another way (for example, Oracle can use TNS to find the database).
+EOF
+
+	my $host = prompt( '  Host?' );
+
+	print <<'EOF';
+
 Please provide database name should be used for testing.  A
 database/schema with this name will be created and dropped during the
-testing process.  Database name?
-], 'test_alzabo' );
+testing process.
+EOF
+
+	my $db_name = prompt( '  Database name?', "test_alzabo_$_" );
 
 	push @TESTS, { rdbms => $_, user => $user, password => $password, host => $host, db_name => $db_name };
     }

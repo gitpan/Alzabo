@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.35 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.37 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -143,7 +143,7 @@ sub validate_column_length
 	if (defined $column->length)
 	{
 	    Alzabo::Exception::RDBMSRules->throw( error => "Max display value is too long.  Maximum allowed value is 255." )
-		if $1 > 255;
+		if $column->length > 255;
 
 	    Alzabo::Exception::RDBMSRules->throw( error => "Max display value specified without floating point precision." )
 		unless defined $column->precision;
@@ -359,18 +359,18 @@ sub column_sql
 	@default = ( qq|DEFAULT "$def"| );
     }
 
+    my $type = $col->type;
     my @length;
     if ( defined $col->length )
     {
 	my $length = '(' . $col->length;
-	$length .= ', ', $col->precision if defined $col->precision;
+	$length .= ', ' . $col->precision if defined $col->precision;
 	$length .= ')';
-	@length = $length;
+	$type .= $length;
     }
 
     my $sql .= join '  ', ( $col->name,
-			    $col->type,
-			    @length,
+			    $type,
 			    @unsigned,
 			    @default,
 			    sort values %attr );
@@ -421,15 +421,16 @@ sub column_sql_diff
 
     my $new_sql = $self->column_sql($new);
 
-    my $sql = 'ALTER TABLE ' . $new->table->name . ' CHANGE COLUMN ' . $new->name . ' ' . $new_sql
+    my $sql;
+    $sql = 'ALTER TABLE ' . $new->table->name . ' CHANGE COLUMN ' . $new->name . ' ' . $new_sql
 	if $new_sql ne $self->column_sql($old);
 
-    return $sql || ();
+    return $sql ? $sql : ();
 }
 
 sub foreign_key_sql_diff
 {
-    return;
+    return ();
 }
 
 sub alter_primary_key_sql

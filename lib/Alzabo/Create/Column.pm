@@ -7,7 +7,7 @@ use Alzabo::Create;
 
 use base qw(Alzabo::Column);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.25 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.26 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -25,7 +25,7 @@ sub new
 
 sub _init
 {
-    my Alzabo::Create::Column $self = shift;
+    my $self = shift;
     my %p = @_;
 
     Alzabo::Exception::Params->throw( error => 'No table provided' )
@@ -61,14 +61,14 @@ sub _init
 
 sub set_table
 {
-    my Alzabo::Create::Column $self = shift;
+    my $self = shift;
 
     $self->{table} = shift;
 }
 
 sub set_name
 {
-    my Alzabo::Create::Column $self = shift;
+    my $self = shift;
     my $name = shift;
 
     my $old_name = $self->{name};
@@ -91,7 +91,7 @@ sub set_name
 *set_null = \&set_nullable;
 sub set_nullable
 {
-    my Alzabo::Create::Column $self = shift;
+    my $self = shift;
     my $n = shift;
 
     Alzabo::Exception::Params->throw( error => "Invalid value for nullable attribute: $n" )
@@ -105,21 +105,21 @@ sub set_nullable
 
 sub set_default
 {
-    my Alzabo::Create::Column $self = shift;
+    my $self = shift;
 
     $self->{default} = shift;
 }
 
 sub set_length
 {
-    my Alzabo::Create::Column $self = shift;
+    my $self = shift;
 
     $self->{definition}->set_length(@_);
 }
 
 sub set_attributes
 {
-    my Alzabo::Create::Column $self = shift;
+    my $self = shift;
 
     tie %{ $self->{attributes} }, 'Tie::IxHash';
 
@@ -131,7 +131,7 @@ sub set_attributes
 
 sub add_attribute
 {
-    my Alzabo::Create::Column $self = shift;
+    my $self = shift;
     my $attr = shift;
 
     $attr =~ s/^\s+//;
@@ -145,7 +145,7 @@ sub add_attribute
 
 sub delete_attribute
 {
-    my Alzabo::Create::Column $self = shift;
+    my $self = shift;
     my $attr = shift;
 
     Alzabo::Exception::Params->throw( error => "Column " . $self->name . " doesn't have attribute $attr" )
@@ -156,7 +156,7 @@ sub delete_attribute
 
 sub set_type
 {
-    my Alzabo::Create::Column $self = shift;
+    my $self = shift;
     my $t = shift;
 
     $self->{definition}->set_type($t);
@@ -164,7 +164,7 @@ sub set_type
 
 sub set_sequenced
 {
-    my Alzabo::Create::Column $self = shift;
+    my $self = shift;
     my $s = shift;
 
     Alzabo::Exception::Params->throw( error => "Invalid value for sequenced attribute: $s" )
@@ -178,7 +178,7 @@ sub set_sequenced
 
 sub set_definition
 {
-    my Alzabo::Create::Column $self = shift;
+    my $self = shift;
     my $d = shift;
 
     $self->{definition} = $d;

@@ -9,7 +9,7 @@ use Tie::IxHash;
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.31 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.36 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -39,8 +39,15 @@ sub new
 
 sub set_name
 {
-    my Alzabo::Create::Table $self = shift;
+    my $self = shift;
     my $name = shift;
+
+    my @i;
+    if ($self->{indexes})
+    {
+	@i = $self->indexes;
+	$self->delete_index($_) foreach @i;
+    }
 
     my $old_name = $self->{name};
     $self->{name} = $name;
@@ -48,13 +55,14 @@ sub set_name
     {
 	$self->schema->rules->validate_table_name($self);
     };
-    $self->{name} = $old_name if $@;
+    $self->add_index($_) foreach @i;
     if ($@)
     {
+	$self->{name} = $old_name;
 	$@->rethrow;
     }
 
-    if ( $old_name && $self->schema->table($old_name) )
+    if ( $old_name && eval { $self->schema->table($old_name) } )
     {
 	$self->schema->register_table_name_change( table => $self,
 						   old_name => $old_name );
@@ -69,7 +77,7 @@ sub set_name
 
 sub make_column
 {
-    my Alzabo::Create::Table $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $is_pk = delete $p{primary_key};
@@ -86,7 +94,7 @@ sub make_column
 
 sub add_column
 {
-    my Alzabo::Create::Table $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $col = $p{column};
@@ -111,7 +119,7 @@ sub add_column
 
 sub delete_column
 {
-    my Alzabo::Create::Table $self = shift;
+    my $self = shift;
     my $col = shift;
 
     Alzabo::Exception::Params->throw( error => "Column $col doesn't exist in $self->{name}" )
@@ -123,7 +131,7 @@ sub delete_column
     {
 	$self->delete_foreign_key($fk);
 
-	foreach my $other_fk ($fk->table_to->foreign_keys_by_column( $fk->column_to ) )
+	foreach my $other_fk ($fk->table_to->foreign_keys_by_column( $fk->columns_to ) )
 	{
 	    $fk->table_to->delete_foreign_key( $other_fk );
 	}
@@ -139,7 +147,7 @@ sub delete_column
 
 sub move_column
 {
-    my Alzabo::Create::Table $self = shift;
+    my $self = shift;
     my %p = @_;
 
     if ( exists $p{before} && exists $p{after} )
@@ -178,12 +186,12 @@ sub move_column
 
 sub add_primary_key
 {
-    my Alzabo::Create::Table $self = shift;
+    my $self = shift;
     my $col = shift;
 
     my $name = $col->name;
     Alzabo::Exception::Params->throw( error => "Column $name doesn't exist in $self->{name}" )
-	unless exists $self->{columns}{$name};
+	unless $self->{columns}->EXISTS($name);
 
     Alzabo::Exception::Params->throw( error => "Column $name is already a primary key" )
 	if $self->{pk}->EXISTS($name);
@@ -197,7 +205,7 @@ sub add_primary_key
 
 sub delete_primary_key
 {
-    my Alzabo::Create::Table $self = shift;
+    my $self = shift;
     my $col = shift;
 
     my $name = $col->name;
@@ -212,53 +220,62 @@ sub delete_primary_key
 
 sub make_foreign_key
 {
-    my Alzabo::Create::Table $self = shift;
+    my $self = shift;
 
     $self->add_foreign_key( Alzabo::Create::ForeignKey->new( @_ ) );
 }
 
 sub add_foreign_key
 {
-    my Alzabo::Create::Table $self = shift;
+    my $self = shift;
     my $fk = shift;
 
-    push @{ $self->{fk}{ $fk->table_to->name }{ $fk->column_from->name } }, $fk;
+    foreach my $c ( $fk->columns_from )
+    {
+	push @{ $self->{fk}{ $fk->table_to->name }{ $c->name } }, $fk;
+    }
 }
 
 sub delete_foreign_key
 {
-    my Alzabo::Create::Table $self = shift;
+    my $self = shift;
     my $fk = shift;
 
-    Alzabo::Exception::Params->throw( error => "Column " . $fk->column_from->name . " doesn't exist in $self->{name}" )
-	unless exists $self->{columns}{ $fk->column_from->name };
+    foreach my $c ( $fk->columns_from )
+    {
+	Alzabo::Exception::Params->throw( error => "Column " . $c->name . " doesn't exist in $self->{name}" )
+	    unless $self->{columns}->EXISTS( $c->name );
+    }
 
     Alzabo::Exception::Params->throw( error => "No foreign keys to " . $fk->table_to->name . " exist in $self->{name}" )
 	unless exists $self->{fk}{ $fk->table_to->name };
 
-    Alzabo::Exception::Params->throw( error => "Column " . $fk->column_from->name . " is not a foreign key to " . $fk->table_to->name . " in $self->{name}" )
-	unless exists $self->{fk}{ $fk->table_to->name }{ $fk->column_from->name };
-
-    my @current_fk = @{ $self->{fk}{ $fk->table_to->name }{ $fk->column_from->name } };
     my @new_fk;
-    foreach my $current_fk (@current_fk)
+    foreach my $c ( $fk->columns_from )
     {
-	unless ($fk eq $current_fk)
+	Alzabo::Exception::Params->throw( error => "Column " . $c->name . " is not a foreign key to " . $fk->table_to->name . " in $self->{name}" )
+	    unless exists $self->{fk}{ $fk->table_to->name }{ $c->name };
+
+	foreach my $current_fk ( @{ $self->{fk}{ $fk->table_to->name }{ $c->name } } )
 	{
-	    push @new_fk, $current_fk;
+	    push @new_fk, $current_fk unless $current_fk eq $fk;
 	}
     }
-    if (@new_fk)
+
+    foreach my $c ( $fk->columns_from )
     {
-	$self->{fk}{ $fk->table_to->name }{ $fk->column_from->name } = \@new_fk;
-    }
-    else
-    {
-	delete $self->{fk}{ $fk->table_to->name }{ $fk->column_from->name };
+	if (@new_fk)
+	{
+	    $self->{fk}{ $fk->table_to->name }{ $c->name } = \@new_fk;
+	}
+	else
+	{
+	    delete $self->{fk}{ $fk->table_to->name }{ $c->name };
+	}
     }
 
     delete $self->{fk}{ $fk->table_to->name }
-	unless keys %{  $self->{fk}{ $fk->table_to->name } };
+	unless keys %{ $self->{fk}{ $fk->table_to->name } };
 }
 
 sub make_index
@@ -295,7 +312,7 @@ sub delete_index
 
 sub register_table_name_change
 {
-    my Alzabo::Create::Table $self = shift;
+    my $self = shift;
     my %p = @_;
 
     $self->{fk}{ $p{table}->name } = delete $self->{fk}{ $p{old_name} }
@@ -304,7 +321,7 @@ sub register_table_name_change
 
 sub register_column_name_change
 {
-    my Alzabo::Create::Table $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $new_name = $p{column}->name;

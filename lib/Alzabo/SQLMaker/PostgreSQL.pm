@@ -7,7 +7,7 @@ use Alzabo::Exceptions;
 
 use base qw(Alzabo::SQLMaker);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -51,11 +51,6 @@ sub _valid_function
     shift;
 
     return $functions{ lc shift };
-}
-
-sub _subselect
-{
-    Alzabo::Exception::SQL->throw( error => "PostgreSQL does not support subselects" );
 }
 
 sub limit

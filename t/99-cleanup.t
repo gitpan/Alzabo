@@ -13,6 +13,7 @@ warn "Cleaning up files and databases created during testing\n";
 my $dir = cwd;
 
 rmtree( "$dir/schemas", $Test::Harness::verbose );
+unlink 't/dbmsynctest.dbm';
 
 ok(1);
 

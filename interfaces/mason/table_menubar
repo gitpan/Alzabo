@@ -12,7 +12,7 @@
    <font size="-1"><& &Alzabo::Config::mason_url_path . '/common/href', text => '<', path => 'move_column' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $t->name, before => $c[ $y - 1 ]->name, column => $c->name } &></font>
 %         }
    <font size="-1"><& &Alzabo::Config::mason_url_path . '/common/href', text => $c->name, path => 'view_column' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $t->name, column => $c->name } &></font>
-%         if ($t->column_is_primary_key($c)) {
+%         if ($c->is_primary_key) {
 <font size="-1"> : <b>pk</b></font>
 %         }
 %         if ( $c[ $y + 1 ] ) {

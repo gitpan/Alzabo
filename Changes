@@ -1,3 +1,123 @@
+0.30
+
+- The convert.pl script in eg/ has been updated to handle the new
+release.  IMPORTANT: I forgot to include a mention of this in the last
+release but you need to run the script _before_ installing a new
+version of Alzabo.
+
+- Many improvements and updates to Alzabo::MethodMaker.  Highlights
+include fixing a bug that prevented the insert and update methods from
+being created, a new callback system that allows you to specify all
+the method names to be generated, and a new 'self_relations' option
+for tables that have parent/child relationships with themself.
+
+- Fix handling of NULL columns for inserts and updates.  Now, Alzabo
+only throws an exception if the column is not nullable and has no
+default.  If it has a default and is specified as NULL then it will
+not be included in the INSERT clause (in which case the RDBMS should
+insert the default value itself).
+
+- Fix bugs in Postgres reverse engineering.  Defaults were not handled
+properly, nor were numeric column type length and precision.
+
+- The schema creator and data browser now allow you to enter the host
+for database connections where needed.
+
+- Foreign keys can now span multiple columns.  This means you can have
+a relation from foo.foo_id and foo.index_id to bar.foo_id and
+bar.index_id.  This required some changes to the interface for the
+foreign key objects.  Notably, the Alzabo::ForeignKey->column_from and
+Alzabo::ForeignKey->column_to methods are now
+Alzabo::ForeignKey->columns_from and Alzabo::ForeignKey->columns_to.
+In addition, the parameters given to the
+Alazbo::Create::Schema->add_relation have changed.
+
+- Major changes to caching architecture.  The caching code has been
+split up.  There is now a 'storing' class, which holds onto the
+objects (the cache).  Then there is a 'sync' class.  This class
+handles expiration and deletion tracking.  These two classes can be
+mixed and matched.  Right now there is only one storage class (which
+stores the objects in memory).  There are 3 syncing classes.  One,
+NullSync, doesn't actually sync objects.  It does track deletions, but
+not expirations.  The others, IPCSync and DBMSync, use IPC or DBM
+files to track expiration and deletion of objects.
+
+- Doing this work highlighted some bugs in the caching/syncing code.
+One oversight was that if you deleted an object and then inserted
+another row with the exact same primary key, the cache continued to
+think the object was deleted.  Other bugs also surfaced.  These have
+been fixed and the test suite has been updated so caching should be
+stable (if not, I'll have to cry).
+
+- When viewing an existing column in the schema creator, defaults,
+lengths, and precision of 0 were not being shown.
+
+- Alzabo::Runtime::Table->row_count can now take a where clause.
+
+- Fix bugs in Alzabo::Create::Table.  This was causing problems with
+indexes when the table name was changed.
+
+- Fixed a bug in Alzabo::Util that caused the test cases to fail if
+Alzabo hadn't been previously installed.  Reported by Robert Goff.
+
+- The SQLMaker class is now smarter about not letting you make bad
+SQL.  For example, if you try to make a WHERE clause with tables not
+mentioned in the FROM clause, it will throw an exception.  This will
+hopefully help catch logic errors in your code a bit sooner.
+
+- Removed use of prepare_cached in Alzabo::Driver.  This has the
+potential to cause some strange errors under Alzabo.  Because of the
+way Alzabo works, it is possible to have a Cursor object holding onto
+a statement handle that needs to be used elsewhere (by a row object,
+for example).  It is safer to let a new statement handle be created in
+this case.
+
+INCOMPATIBILITIES
+
+- See the note above about the changes required to support
+multi-column foreign keys.
+
+- Because of the aforementioned changes to the caching architecture,
+caching just does not work the way it used.
+
+1. By default, there is no caching at all.
+
+2. To get the old behavior, which defaulted to an in-process memory
+cache with no inter-process syncing (meaning deletes are tracked but
+there is no such thing as expiration), you can do this in your code:
+
+  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::MemoryStore',
+                           sync  => 'Alzabo::ObjectCache::NullSync' );
+
+or just:
+
+  use Alzabo::ObjectCache;  # the above modules are the defaults
+
+3. To get the behavior of the old Alzabo::ObjectCacheIPC module, do:
+
+  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::MemoryStore',
+                           sync  => 'Alzabo::ObjectCache::IPCSync' );
+
+However, the new DBMSync module will probably scale better, and
+performance should be about the same for smaller applications.  To use
+it, do:
+
+  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::MemoryStore',
+                           sync  => 'Alzabo::ObjectCache::DBMSync' );
+
+4. If you run without any caching at all then the Alzabo::Runtime::Row
+class's behavior has changed somewhat.  In particular, selects or
+updates against a deleted object will always throw an
+Alzabo::Exception::NoSuchRow exception.  Before, the behavior wasn't
+very well defined.
+
+Please read the section on clearing the cache in the
+Alzabo::ObjectCache module, as this is an important concept.  By
+default, the caching and syncing modules will just grow unchecked.
+You need to clear at the appropriate points (usually your
+application's entry points) in order to keep them under control.
+
+
 0.20
 
 - Preliminary Postgres support.  There is no support yet for
@@ -13,7 +133,7 @@ properties of your objects themselves.
 
 - Reworking/expanding/clarifying/editing of the docs.
 
-- Add sort_by and limit options whenever creating a cursor.
+- Add order_by and limit options whenever creating a cursor.
 
 - Method documentation POD from the Alzabo::* modules is merged into
 the relevant Alzabo::Create::* and Alzabo::Runtime::* modules during

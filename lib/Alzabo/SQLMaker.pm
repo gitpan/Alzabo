@@ -6,7 +6,7 @@ use vars qw($VERSION $AUTOLOAD);
 use Alzabo::Exceptions;
 use Alzabo::Util;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -116,6 +116,22 @@ sub from
     $self->{sql} .= ' FROM ';
     $self->{sql} .= join ', ', map { $_->name } @_;
 
+    $self->{tables} = [ @_ ];
+
+    if ($self->{type} eq 'SELECT')
+    {
+	foreach my $c ( @{ $self->{columns} } )
+	{
+	    unless ( grep { $_ eq $c->table } @{ $self->{tables} } )
+	    {
+		my $err = 'Cannot select column (';
+		$err .= join '.', $c->table->name, $c->name;
+		$err .= ') unless its table is included in the FROM clause';
+		Alzabo::Exception::SQL->throw( error => $err );
+	    }
+	}
+    }
+
     $self->{last_op} = 'from';
 
     return $self;
@@ -173,6 +189,16 @@ sub _condition
     my $comp = shift;
     my $rhs = shift;
 
+    unless ( grep { $_ eq $col->table } @{ $self->{tables} } )
+    {
+	die $@ if $@;
+	my $err = 'Cannot use column (';
+	$err .= join '.', $col->table->name, $col->name;
+	$err .= ") in \U$self->{type}\E unless its table is included in the ";
+	$err .= $self->{type} eq 'update' ? 'UPDATE' : 'FROM';
+	$err .= ' clause';
+	Alzabo::Exception::SQL->throw( error => $err );
+    }
 
     $self->{sql} .= join '.', $col->table->name, $col->name;
 
@@ -200,6 +226,7 @@ sub _condition
 					   '(' . $self->_subselect($_) . ')' :
 					   $self->_rhs($col, $_) ) } $rhs, @_;
 	$self->{sql} .= ')';
+
 	return;
     }
 
@@ -244,6 +271,15 @@ sub _rhs
 
     if ( UNIVERSAL::isa( $rhs, 'Alzabo::Column' ) )
     {
+	unless ( grep { $_ eq $rhs->table } @{ $self->{tables} } )
+	{
+	    my $err = 'Cannot use column (';
+	    $err .= join '.', $rhs->table->name, $rhs->name;
+	    $err .= ") in \U$self->{type}\Q unless its table is included in the ";
+	    $err .= $self->{type} eq 'update' ? 'UPDATE' : 'FROM';
+	    $err .= ' clause';
+	    Alzabo::Exception::SQL->throw( error => $err );
+	}
 	return join '.', $rhs->table->name, $rhs->name;
     }
     else
@@ -257,7 +293,7 @@ sub _subselect
     my $self = shift;
     my $sql = shift;
 
-    push @{ $self->{bind} }, $sql->bind;
+    push @{ $self->{bind} }, @{ $sql->bind };
     return $sql->sql;
 }
 
@@ -270,8 +306,21 @@ sub order_by
     Alzabo::Exception::SQL->throw( error => "Cannot use order by in a '$self->{type}' statement" )
 	unless $self->{type} eq 'select';
 
+    foreach my $c (@_)
+    {
+	unless ( grep {  $_ eq $c->table } @{ $self->{tables} } )
+	{
+	    my $err = 'Cannot use column (';
+	    $err .= join '.', $c->table->name, $c->name;
+	    $err .= ") in \U$self->{type}\E unless its table is included in the ";
+	    $err .= $self->{type} eq 'update' ? 'UPDATE' : 'FROM';
+	    $err .= ' clause';
+	    Alzabo::Exception::SQL->throw( error => $err );
+	}
+    }
+
     $self->{sql} .= ' ORDER BY ';
-    $self->{sql} .= join ', ', map { $_->isa('Alzabo::Column') ? join '.', $_->table->name, $_->name : $_ } @_;
+    $self->{sql} .= join ', ', map { join '.', $_->table->name, $_->name } @_;
 
     $self->{last_op} = 'order_by';
 
@@ -280,16 +329,12 @@ sub order_by
 
 sub asc
 {
-    my $self = shift;
-
-    $self->_asc_or_desc('asc');
+    shift->_asc_or_desc('asc');
 }
 
 sub desc
 {
-    my $self = shift;
-
-    $self->_asc_or_desc('desc');
+    shift->_asc_or_desc('desc');
 }
 
 sub _asc_or_desc
@@ -328,6 +373,18 @@ sub into
     $self->_assert_last_op( qw( insert ) );
 
     my $table = shift;
+    $self->{tables} = [ $table ];
+
+    foreach my $c (@_)
+    {
+	unless ( grep { $_ eq $c->table } @{ $self->{tables} } )
+	{
+	    my $err = 'Cannot into column (';
+	    $err .= join '.', $c->table->name, $c->name;
+	    $err .= ') because its table was not the one specified in the INTO clause';
+	    Alzabo::Exception::SQL->throw( error => $err );
+	}
+    }
 
     $self->{columns} = [ @_ ? @_ : $table->columns ];
 
@@ -393,6 +450,7 @@ sub update
     my $table = shift;
 
     $self->{sql} = 'UPDATE ' . $table->name;
+    $self->{tables} = [ $table ];
 
     $self->{type} = 'update';
     $self->{last_op} = 'update';
@@ -415,6 +473,14 @@ sub set
     my @set;
     while ( my ($col, $val) = splice @vals, 0, 2 )
     {
+	unless ( $self->{tables}[0] eq $col->table )
+	{
+	    my $err = 'Cannot set column (';
+	    $err .= join '.', $col->table->name, $col->name;
+	    $err .= ') unless its table is included in the UPDATE clause';
+	    Alzabo::Exception::SQL->throw( error => $err );
+	}
+
 	push @set, $col->name . ' = ' . $self->_bind_val($col, $val);
     }
     $self->{sql} .= join ', ', @set;

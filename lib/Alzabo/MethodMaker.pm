@@ -5,21 +5,23 @@ use vars qw($VERSION $DEBUG);
 
 use Alzabo::Runtime::Schema;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
 1;
+
+# types of methods that can be made
+my @options = qw( foreign_keys insert linking_tables lookup_tables
+		  row_columns self_relations tables table_columns update );
 
 sub import
 {
     my $class = shift;
     my %p = @_;
 
-
     return unless exists $p{schema};
-    return unless grep { exists $p{$_} && $p{$_} }
-	qw( all table_columns row_columns foreign_keys insert tables update );
+    return unless grep { exists $p{$_} && $p{$_} } 'all', @options;
 
     my $maker = $class->new(%p);
 
@@ -31,8 +33,7 @@ sub new
     my $class = shift;
     my %p = @_;
 
-    map { $p{$_} = 1 } qw( foreign_keys insert linking_tables lookup_tables row_columns tables table_columns update )
-	if delete $p{all};
+    map { $p{$_} = 1 } @options if delete $p{all};
 
     my $s = eval { Alzabo::Runtime::Schema->load_from_file( name => delete $p{schema} ); };
     warn $@ if $@ && $DEBUG;
@@ -49,14 +50,17 @@ sub new
 	do
 	{
 	    $class_root = caller($x++);
-	    last unless $class_root;
+	    die "No base class could be determined\n" unless $class_root;
 	} while ( $class_root->isa(__PACKAGE__) );
     }
-    die "No base class could be determined\n" unless $class_root;
 
-    $p{pluralize} = \&pluralize unless ref $p{pluralize};
+    $p{pluralize} = sub { return shift } unless ref $p{pluralize};
 
-    my $self = bless { opts => \%p, class_root => $class_root, schema => $s }, $class;
+    my $self;
+
+    $p{name_maker} = sub { $self->name(@_) } unless ref $p{name_maker};
+
+    $self = bless { opts => \%p, class_root => $class_root, schema => $s }, $class;
 
     return $self;
 }
@@ -103,7 +107,7 @@ sub make
 	}
 	if ( $self->{opts}{insert} )
 	{
-	    $self->make_insert_method;
+	    $self->make_insert_method($t);
 	}
 	if ( $self->{opts}{update} )
 	{
@@ -129,17 +133,18 @@ EOF
 
 sub make_table_method
 {
-    my $class = shift;
+    my $self = shift;
     my $t = shift;
 
-    my $method = join '::', ref $t->schema, $t->name;
+    my $name = $self->{opts}{name_maker}->( type => 'table',
+					    table => $t );
+    return if $t->schema->can($name);
 
+    my $method = join '::', $self->{schema_class}, $name;
+
+    warn "Making table access method $method: returns table\n" if $DEBUG;
     {
 	no strict 'refs';
-
-	return if $t->schema->can( $t->name );
-
-	warn "Making table access method $method: returns table\n" if $DEBUG;
 	*{$method} = sub { return $t; };
     }
 }
@@ -194,14 +199,15 @@ sub make_table_column_methods
 
     foreach my $c ( $t->columns )
     {
-	my $method = join '::', $self->{table_class}, $c->name;
+	my $name = $self->{opts}{name_maker}->( type => 'table_column',
+						column => $c );
+	next if $t->can($name);
 
+	my $method = join '::', $self->{table_class}, $name;
+
+	warn "Making column object $method: returns column object\n" if $DEBUG;
 	{
 	    no strict 'refs';
-
-	    return if $t->can( $c->name );
-
-	    warn "Making column object $method: returns column object\n" if $DEBUG;
 	    *{$method} = sub { return $c };
 	}
     }
@@ -214,15 +220,17 @@ sub make_row_column_methods
 
     foreach my $c ( $t->columns )
     {
-	my $col_name = $c->name;
-	my $method = join '::', $self->{row_class}, $col_name;
+	my $name = $self->{opts}{name_maker}->( type => 'row_column',
+						column => $c );
+	next if $self->{row_class}->can($name);
 
+	my $method = join '::', $self->{row_class}, $name;
+
+	my $col_name = $c->name;
+
+	warn "Making column access $method: returns scalar value of column\n" if $DEBUG;
 	{
 	    no strict 'refs';
-
-	    return if $self->{row_class}->can( $col_name );
-
-	    warn "Making column access $method: returns scalar value of column\n" if $DEBUG;
 	    *{$method} = sub { return shift->select($col_name); };
 	}
     }
@@ -236,6 +244,16 @@ sub make_foreign_key_methods
     foreach my $other_t ( $t->schema->tables )
     {
 	my @fk = $t->foreign_keys_by_table($other_t);
+
+	if ( @fk == 2 && $fk[0]->table_from eq $fk[0]->table_to &&
+	     $fk[1]->table_from eq $fk[1]->table_to )
+	{
+	    unless ( ($fk[0]->min_max_from)[1] eq '1' && ($fk[0]->min_max_to)[1] eq '1' )
+	    {
+		$self->make_self_relation($fk[0]) if $self->{opts}{self_relations};
+	    }
+	    next;
+	}
 
 	# No way to auto-create methods when there is more (or less)
 	# than one relationship between the two tables.
@@ -251,25 +269,27 @@ sub make_foreign_key_methods
 	{
 	    if ( $self->{opts}{linking_tables} )
 	    {
-		next if $self->make_linking_table_method($fk);
+		$self->make_linking_table_method($fk);
 	    }
 	    if ( $self->{opts}{lookup_tables} )
 	    {
-		next if $self->make_lookup_table_method($fk);
+		$self->make_lookup_table_method($fk);
 	    }
 	}
 
 	# Pluralize the name of the table the relationship is to.
 	if ( ($fk->min_max_from)[1] eq 'n' )
 	{
-	    my $method = join '::', $self->{row_class}, $self->{opts}{pluralize}->( $other_t->name );
+	    my $name = $self->{opts}{name_maker}->( type => 'foreign_key',
+						    foreign_key => $fk,
+						    plural => 1 );
+	    next if $self->{row_class}->can($name);
 
+	    my $method = join '::', $self->{row_class}, $name;
+
+	    warn "Making foreign key $method: returns row cursor\n" if $DEBUG;
 	    {
 		no strict 'refs';
-
-		return if $self->{row_class}->can( $self->{opts}{pluralize}->( $other_t->name ) );
-
-		warn "Making foreign key $method: returns row cursor\n" if $DEBUG;
 		*{$method} =
 		    sub { my $self = shift;
 			  return $self->rows_by_foreign_key( foreign_key => $fk, @_ ); };
@@ -278,14 +298,16 @@ sub make_foreign_key_methods
 	# Singular method name
 	else
 	{
-	    my $method = join '::', $self->{row_class}, $other_t->name;
+	    my $name = $self->{opts}{name_maker}->( type => 'foreign_key',
+						    foreign_key => $fk,
+						    plural => 0 );
+	    next if $self->{row_class}->can($name);
 
+	    my $method = join '::', $self->{row_class}, $name;
+
+	    warn "Making foreign key $method: returns single row\n" if $DEBUG;
 	    {
 		no strict 'refs';
-
-		return if $self->{row_class}->can( $other_t->name );
-
-		warn "Making foreign key $method: returns single row\n" if $DEBUG;
 		*{$method} =
 		    sub { my $self = shift;
 			  return $self->rows_by_foreign_key( foreign_key => $fk, @_ ); };
@@ -294,38 +316,104 @@ sub make_foreign_key_methods
     }
 }
 
+sub make_self_relation
+{
+    my $self = shift;
+    my $fk = shift;
+
+    my (@pairs, @reverse_pairs);
+    if ( ($fk->min_max_from)[1] eq 'n' && ($fk->min_max_to)[1] eq '1' )
+    {
+	@pairs = map { [ $_->[0], $_->[1]->name ] } $fk->column_pairs;
+	@reverse_pairs = map { [ $_->[1], $_->[0]->name ] } $fk->column_pairs;
+    }
+    else
+    {
+	@pairs = map { [ $_->[1], $_->[0]->name ] } $fk->column_pairs;
+	@reverse_pairs = map { [ $_->[0], $_->[1]->name ] } $fk->column_pairs;
+    }
+
+    my $name = $self->{opts}{name_maker}->( type => 'self_relation',
+					    foreign_key => $fk,
+					    parent => 1 );
+    return if $self->{table_class}->can($name);
+
+    my $parent = join '::', $self->{row_class}, $name;
+
+    my $table = $fk->table_from;
+
+    warn "Making self-relation method $parent: returns single row\n" if $DEBUG;
+    {
+	no strict 'refs';
+	*{$name} =
+	    sub { my $self = shift;
+		  my @where = map { [ $_->[0], '=', $self->select( $_->[1] ) ] } @pairs;
+		  return $table->rows_where( where => \@where,
+					     @_ )->next_row; };
+    }
+
+    $name = $self->{opts}{name_maker}->( type => 'self_relation',
+					 foreign_key => $fk,
+					 parent => 0 );
+    return if $self->{table_class}->can($name);
+
+    my $children = join '::', $self->{row_class}, $name;
+
+    warn "Making self-relation method $children: returns row cursor\n" if $DEBUG;
+    {
+	no strict 'refs';
+	*{$children} =
+	    sub { my $self = shift;
+		  my @where = map { [ $_->[0], '=', $self->select( $_->[1] ) ] } @reverse_pairs;
+		  return $table->rows_where( where => \@where,
+					     @_ ); };
+    }
+}
+
 sub make_linking_table_method
 {
     my $self = shift;
     my $fk = shift;
 
-    return unless $fk->table_to->primary_key == 2;
+    my @fk = $fk->table_to->all_foreign_keys;
+    return if @fk != 2;
 
-    my $t = $fk->table_from;
-
-    my $non_link = (grep { $_->name ne $fk->column_to->name } $fk->table_to->primary_key)[0];
-
-    # The foreign key from the linking table to the _other_ table
-    my $fk_2 = $fk->table_to->foreign_keys_by_column( $non_link );
-
-    my $method = $fk->table_to->name;
-    my $tname = $t->name;
-    $method =~ s/^$tname\_?//;
-    $method =~ s/?_$tname$//;
-
-    $method = join '::', $self->{row_class}, $self->{opts}{pluralize}->($method);
-
+    my $fk_2;
+    foreach my $c ( $fk->table_to->columns )
     {
-	my $s = $t->schema;
-	my @t = ( $fk->table_to->name, $fk_2->table_to->name );
-	my $select = [ $t[1] ];
-	my $col_from = $fk->column_from->name;
+	# skip the column where the foreign key is from the linking
+	# table to the source table
+	next if eval { $fk->table_to->foreign_keys( table => $fk->table_from,
+						    column => $c) };
 
+	# The foreign key from the linking table to the _other_ table
+	$fk_2 = $fk->table_to->foreign_keys_by_column($c);
+	last;
+    }
+
+    return unless $fk_2;
+
+    # Return unless all the columns in the linking table are part of
+    # the link.
+    return unless ( $fk->table_to->primary_key ==
+		    ( $fk->table_from->primary_key + $fk_2->table_to->primary_key ) );
+
+    my $name = $self->{opts}{name_maker}->( type => 'linking_table',
+					    foreign_key => $fk,
+					    foreign_key_2 => $fk_2,
+					  );
+
+    return if $self->{row_class}->can($name);
+
+    my $method = join '::', $self->{row_class}, $name;
+
+    my $s = $fk->table_to->schema;
+    my @t = ( $fk->table_to->name, $fk_2->table_to->name );
+    my $select = [ $t[1] ];
+
+    warn "Making linking table method $method: returns row cursor\n" if $DEBUG;
+    {
 	no strict 'refs';
-
-	return if $self->{row_class}->can( $self->{opts}{pluralize}->($method) );
-
-	warn "Making linking table method $method: returns row cursor\n" if $DEBUG;
 	*{$method} =
 	    sub { my $self = shift;
 		  my %p = @_;
@@ -333,7 +421,11 @@ sub make_linking_table_method
 		  {
 		      $p{where} = [ $p{where} ] unless UNIVERSAL::isa( $p{where}[0], 'ARRAY' );
 		  }
-		  push @{ $p{where} }, [ $non_link, '=', $self->select($col_from) ];
+		  foreach my $pair ( $fk->column_pairs )
+		  {
+		      push @{ $p{where} }, [ $pair->[1], '=', $self->select( $pair->[0]->name ) ];
+		  }
+
 		  return $s->join( tables => \@t,
 				   select => $select,
 				   @_ ); };
@@ -349,17 +441,16 @@ sub make_lookup_table_method
 
     return unless $fk->table_to->primary_key == 1;
 
-    my $t = $fk->table_from;
+    my $name = $self->{opts}{name_maker}->( type => 'lookup_table',
+					    foreign_key => $fk );
+    return if $self->{row_class}->can($name);
+
+    my $method = join '::', $self->{row_class}, $name;
 
     my $non_pk_name = (grep { ! $_->is_primary_key } $fk->table_to->columns)[0]->name;
-    my $method = join '::', $self->{row_class}, $non_pk_name;
-
+    warn "Making lookup table $method: returns scalar value of column\n" if $DEBUG;
     {
 	no strict 'refs';
-
-	return if $self->{row_class}->can( $non_pk_name );
-
-	warn "Making lookup table $method: returns scalar value of column\n" if $DEBUG;
 	*{$method} =
 	    sub { my $self = shift;
 		  return $self->rows_by_foreign_key( foreign_key => $fk, @_ )->select($non_pk_name) };
@@ -371,12 +462,16 @@ sub make_lookup_table_method
 sub make_insert_method
 {
     my $self = shift;
+    my $table = shift;
 
-    my $method = join '::', $self->{table_class}, 'insert';
+    my $name = $self->{opts}{name_maker}->( type => 'insert',
+					    table => $table );
+
+    my $method = join '::', $self->{table_class}, $name;
 
     {
 	no strict 'refs';
-	return if $self->{table_class}->can('insert');
+	return if *{$method}{CODE};
     }
 
     my $msg = "Making insert method $method";
@@ -395,24 +490,28 @@ EOF
 EOF
     }
 
-    warn "$msg\n" if $DEBUG;
     $code .= <<'EOF';
     $self->SUPER::insert(%p);
 }
 EOF
 
+    warn "$msg\n" if $DEBUG;
     eval $code;
 }
 
 sub make_update_method
 {
     my $self = shift;
+    my $table = shift;
 
-    my $method = join '::', $self->{row_class}, 'update';
+    my $name = $self->{opts}{name_maker}->( type => 'update',
+					    table => $table );
+
+    my $method = join '::', $self->{row_class}, $name;
 
     {
 	no strict 'refs';
-	return if $self->{row_class}->can('update');
+	return if *{$method}{CODE};
     }
 
     my $msg = "Making update method $method";
@@ -431,19 +530,59 @@ EOF
 EOF
     }
 
-    warn "$msg\n" if $DEBUG;
     $code .= <<'EOF';
     $self->SUPER::update(%p);
 }
 EOF
 
+    warn "$msg\n" if $DEBUG;
     eval $code;
 }
 
-sub pluralize
+sub name
 {
-    return shift;
+    my $self = shift;
+    my %p = @_;
+
+    return $p{table}->name if $p{type} eq 'table';
+
+    return $p{column}->name if $p{type} eq 'table_column';
+
+    return $p{column}->name if $p{type} eq 'row_column';
+
+    if ( $p{type} eq 'foreign_key' )
+    {
+	if ($p{plural})
+	{
+	    return $self->{opts}{pluralize}->( $p{foreign_key}->table_to->name );
+	}
+	else
+	{
+	    return $p{foreign_key}->table_to->name;
+	}
+    }
+
+    if ( $p{type} eq 'linking_table' )
+    {
+	my $method = $p{foreign_key}->table_to->name;
+	my $tname = $p{foreign_key}->table_from->name;
+	$method =~ s/^$tname\_?//;
+	$method =~ s/_?$tname$//;
+
+	return $self->{opts}{pluralize}->($method);
+    }
+
+    return (grep { ! $_->is_primary_key } $p{foreign_key}->table_to->columns)[0]->name
+	if $p{type} eq 'lookup_table';
+
+    return $p{parent} ? 'parent' : 'children'
+	if $p{type} eq 'self_relation';
+
+    return $p{type} if grep { $p{type} eq $_ } qw( insert update );
+
+    die "unknown type in call to naming sub: $p{type}\n";
 }
+
 
 __END__
 
@@ -465,24 +604,117 @@ section|Alzabo::MethodMaker/SYNOPSIS>.
 
 =head1 PARAMETERS
 
-=head3 schema ($schema_name)
+=head3 schema => $schema_name
 
 This parameter is B<required>.
 
-=head3 class_root ($class_name)
+=head3 class_root => $class_name
 
 If given, this will be used as the root of the class names generated
 by this module.  This root should not end in '::'.  If none is given,
 then the calling module's name is used as the root.  See L<Class
 Names> for more information.
 
-=head3 all ($bool)
+=head3 all => $bool
 
 This tells this module to make all of the methods it possibly can.
 See L<METHOD CREATION OPTIONS|METHOD CREATION OPTIONS> for more
 details.
 
-=head3 pluralize (\&pluralize)
+=head3 name => \&naming_sub
+
+If this option is given, then this callback will be called any time a
+method name needs to be generated.  This allows you to have full
+control over the resulting names.  Otherwise names are generated as
+described in the documentation.
+
+The callback will receive a hash containing the following parameters:
+
+=over 4
+
+=item * type => $method_type
+
+This will always be the same as one of the parameters you give to the
+import method.  It will be one of the following: C<foreign_key>,
+C<insert>, C<linking_table>, C<lookup_table>, C<row_column>,
+C<self_relation>, C<table>, C<table_column>, or C<update>.
+
+=back
+
+The following parameters vary from case to case:
+
+When the type is C<table>:
+
+=over 4
+
+=item * table => Alzabo::Table object
+
+This parameter will be passed when the type is C<table>.  It is the
+table object the schema object's method will return.
+
+=back
+
+When the type is C<table_column> or C<row_column>:
+
+=over 4
+
+=item * column => Alzabo::Column object
+
+When the type is C<table_column>, this is the column object the method
+will return.  When the type is C<row_column>, then it is the column
+whose B<value> the method will return.
+
+=back
+
+When the type is C<foreign_key>, C<linking_table>, C<lookup_table>, or
+C<self_relation>:
+
+=over 4
+
+=item * foreign_key => Alzabo::ForeignKey object
+
+This is the foreign key on which the method is based.
+
+=back
+
+When the type is C<foreign_key>:
+
+=over 4
+
+=item * plural => $bool
+
+This indicates whether or not the method that is being created will
+return a cursor object (true) or a row object (false).
+
+=back
+
+When the type is C<linking_table>:
+
+=over 4
+
+=item * foreign_key_2 => Alzabo::ForeignKey object
+
+When making a linking table method, two foreign keys are used.  The
+C<foreign_key> is from the table being linked from to the linking
+table.  This parameter is the foreign key from the linking table to
+the table being linked to.
+
+=back
+
+When the type is C<self_relation>:
+
+=over 4
+
+=item * parent => $boolean
+
+This indicates whether or not the method being created will return
+parent objects (true) or child objects (false).
+
+=back
+
+=head3 pluralize => \&pluralize - DEPRECATED
+
+This option has been deprecated in favor of the C<name> option.
 
 Some of the methods are designed to return an
 L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object.
@@ -524,7 +756,7 @@ to it.
 <class root>::Row::<table name>
 
 With a root of 'My::Stuff', and a schema with only two tables, 'movie'
-and 'image', this would result in the class names:
+and 'image', this would result in the following class names:
 
  My::Stuff::Schema
  My::Stuff::Table::movie
@@ -534,11 +766,11 @@ and 'image', this would result in the class names:
 
 =head2 Loading Classes
 
-For each class that an object is blessed into, this module attempts to
-load that class via a C<use> statement.  If there is no module found
-this will not cause an error.  If this class defines any methods that
-have the same name as those this module generates, then this module
-will not attempt to generate them.
+For each class into which an object is blessed, this module will
+attempt to load that class via a C<use> statement.  If there is no
+module found this will not cause an error.  If this class defines any
+methods that have the same name as those this module generates, then
+this module will not attempt to generate them.
 
 =head3 C<validate_insert> and C<validate_update> methods
 
@@ -612,6 +844,8 @@ Take these tables as an example.
   title                     person_id
                             role_name
 
+=head4 Name generation
+
 When creating the method that returns rows from the C<credit> table
 for the movie row objects, we will attempt to first pluralize the word
 'credit'.  Let's assume that pluralization returns the word 'credits'.
@@ -626,6 +860,9 @@ C<$credit_row-E<gt>movie> which will return the
 L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> object containing the
 movie_id of the credit row.
 
+NOTE: This option must be true if you want any of the following
+options to be used.
+
 =head3 linking_tables ($bool)
 
 A linking table, as defined here, is a table with a two column primary
@@ -635,8 +872,7 @@ relationships.  If both C<foreign_keys> and C<linking_tables> are
 true, then methods will be created that skip the intermediate linking
 tables
 
-The method name that is used is generated according to the following
-rules:
+=head4 Name generation
 
 Start with the name of the linking table.  Let's assume that we have a
 linking table named 'movie_image' that links together a movie table
@@ -669,11 +905,6 @@ we will end up with the following methods:
  $image->movie_posters
  $image->movie_premieres
 
-The name formation rules used herein are no doubt not appropriate to
-all languages and circumstances.  Patches are welcome.  In the future
-there might be a callback parameter added for this type of name
-formations.
-
 =head3 lookup_tables ($bool)
 
 A lookup table is defined as a two column table with a one column
@@ -691,10 +922,37 @@ the B<data> in this column.  As an example, take the following tables:
 
 When given a restaurant table row, we already know its cuisine_id
 value.  However, what we really want in most contexts is the value of
-C<cuisine.description>.  In the above example, this module would
-create a method C<$restaurant_row-E<gt>cuisine> that returns the value
-of C<cuisine.description> in the row with the cuisine_id in that
+C<cuisine.description>.
+
+=head4 Name generation
+
+In the above example, this module would create a method
+C<$restaurant_row-E<gt>cuisine> that returns the value of
+C<cuisine.description> in the row with the cuisine_id in that
 restaurant table row.
+
+=head3 self_relations ($bool)
+
+A self relation is when a table has a parent/child relationship with
+itself.  Here is an example:
+
+ location
+ --------
+ location_id
+ name
+ parent_location_id
+
+NOTE: If the relationship has a cardinality of 1..1 then no methods
+will be created, as this option is really intended for parent/child
+relationships.  This may change in the future.
+
+=head4 Name generation
+
+It is not possible to create the relationship methods via the usual
+method, because the same name would be used for both methods.  In this
+case, the default is to create C<parent> and C<children> methods in
+the row object.  The C<parent> method returns a single row object,
+while the C<children> method returns a cursor.
 
 =head1 AUTHOR
 

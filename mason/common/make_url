@@ -10,10 +10,10 @@ my $host  = $ARGS{host};
 my $port  = $ARGS{port};
 my $path  = $ARGS{path};
 my $text  = $ARGS{text};
-my $refQuery = $ARGS{query};
+my $query = $ARGS{query};
 
 # Screening Function -- this should expect a reference to the URI object
-my $refScreener = $ARGS{"screen"};
+my $screener = $ARGS{"screen"};
 
 # Go through defaults
 if ($host && !$proto)
@@ -26,10 +26,10 @@ if ($host && !$port && $r->get_server_port() != 80)
     $port = $r->get_server_port();
 }
 
-my $urlString = '';
+my $url_string = '';
 my $qs;
 my $auth;
-my @queryString;
+my @query_string;
 
 # Do some formatting...
 if($user && $pass)
@@ -49,33 +49,37 @@ if ($host && $port && $port != 80)
 # The URL string thus far...
 if ($host)
 {
-    $urlString .= "$proto://$auth" . $host;
-    $urlString .= '/' unless substr($path, 0, 1) eq '/';
+    $url_string .= "$proto://$auth" . $host;
+    $url_string .= '/' unless substr($path, 0, 1) eq '/';
 }
-$urlString .= $path;
+$url_string .= $path;
 
 # Deal with a query string, if applicable
-if($refQuery)
+if($query)
 {
     my $non_escape = '^A-Za-z0-9_';
-    while(my($key, $value) = each(%$refQuery)) {
+    while(my($key, $value) = each(%$query)) {
 	$key = URI::Escape::uri_escape($key, $non_escape);
-	$value = URI::Escape::uri_escape(defined $value ? $value : '', $non_escape);
-	push @queryString, "$key=$value";
+
+	foreach my $v ( UNIVERSAL::isa( $value, 'ARRAY' ) ? @$value : $value )
+	{
+	    $v = URI::Escape::uri_escape(defined $v ? $v : '', $non_escape);
+	    push @query_string, "$key=$v";
+	}
     }
 }
-$qs = join '&', @queryString;
+$qs = join '&', @query_string;
 if($qs)
 {
-    $urlString .= "?$qs";
+    $url_string .= "?$qs";
 }
 
 # Did the user submit a screening function?  Call it!
-my $uri = URI->new($urlString);
+my $uri = URI->new($url_string);
 
-if ($refScreener)
+if ($screener)
 {
-    $refScreener->($uri);
+    $screener->($uri);
 }
 
 return $uri->canonical;

@@ -7,22 +7,20 @@ use Alzabo;
 
 use Tie::IxHash;
 
-#use fields qw( name table attributes nullable definition sequenced default );
-
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.23 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub table
 {
-    my Alzabo::Column $self = shift;
+    my $self = shift;
 
     return $self->{table};
 }
 
 sub name
 {
-    my Alzabo::Column $self = shift;
+    my $self = shift;
 
     return $self->{name};
 }
@@ -30,21 +28,21 @@ sub name
 *null = \&nullable;
 sub nullable
 {
-    my Alzabo::Column $self = shift;
+    my $self = shift;
 
     return $self->{nullable};
 }
 
 sub attributes
 {
-    my Alzabo::Column $self = shift;
+    my $self = shift;
 
     return keys %{ $self->{attributes} };
 }
 
 sub has_attribute
 {
-    my Alzabo::Column $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $att = $p{case_sensitive} ? $p{attribute} : lc $p{attribute};
@@ -54,70 +52,70 @@ sub has_attribute
 
 sub type
 {
-    my Alzabo::Column $self = shift;
+    my $self = shift;
 
     return $self->definition->type;
 }
 
 sub sequenced
 {
-    my Alzabo::Column $self = shift;
+    my $self = shift;
 
     return $self->{sequenced};
 }
 
 sub default
 {
-    my Alzabo::Column $self = shift;
+    my $self = shift;
 
     return $self->{default};
 }
 
 sub length
 {
-    my Alzabo::Column $self = shift;
+    my $self = shift;
 
     return $self->definition->length;
 }
 
 sub precision
 {
-    my Alzabo::Column $self = shift;
+    my $self = shift;
 
     return $self->definition->precision;
 }
 
 sub definition
 {
-    my Alzabo::Column $self = shift;
+    my $self = shift;
 
     return $self->{definition};
 }
 
 sub is_primary_key
 {
-    my Alzabo::Column $self = shift;
+    my $self = shift;
 
     return $self->table->column_is_primary_key($self);
 }
 
 sub is_numeric
 {
-    my Alzabo::Column $self = shift;
+    my $self = shift;
 
     return $self->table->schema->rules->type_is_numeric( $self->type );
 }
 
 sub is_character
 {
-    my Alzabo::Column $self = shift;
+    my $self = shift;
 
     return $self->table->schema->rules->type_is_char( $self->type );
 }
 
 sub is_blob
 {
-    my Alzabo::Column $self = shift;
+    my $self = shift;
 
     return $self->table->schema->rules->type_is_blob( $self->type );
 }

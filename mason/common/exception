@@ -6,7 +6,7 @@
 <body>
 
 <table width="100%">
- <tr>
+ <tr valign="top">
   <td bgcolor="#ffeeee">
    Error message:
   </td>
@@ -15,7 +15,7 @@
   </td>
  </tr>
 % if ( UNIVERSAL::isa($exc, 'Exception::Class::Base') ) {
- <tr>
+ <tr valign="top">
   <td bgcolor="#ffeeee">
    Error class:
   </td>
@@ -24,9 +24,9 @@
   </td>
  </tr>
 %   if ($exc->trace) {
- <tr>
+ <tr valign="top">
   <td bgcolor="#ffeeee">
-   Trace
+   Trace:
   </td>
   <td bgcolor="#eeffff">
    <pre>
@@ -35,8 +35,16 @@
   </td>
  </tr>
 %   }
-%   if ( $exc->isa('Alzabo::Driver::Exception') ) {
- <tr>
+<tr valign="top">
+ <td bgcolor="#ffeeee">
+  Process id:
+ </td>
+ <td bgcolor="#eeffff">
+  <% $exc->pid %>
+ </td>
+</tr>
+%   if ( $exc->isa('Alzabo::Exception::Driver') ) {
+ <tr valign="top">
   <td bgcolor="#ffeeee">
    SQL:
   </td>
@@ -44,7 +52,7 @@
    <% $exc->sql %>
   </td>
  </tr>
- <tr>
+ <tr valign="top">
   <td bgcolor="#ffeeee">
    Bind values:
   </td>

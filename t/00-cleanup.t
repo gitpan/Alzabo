@@ -11,6 +11,7 @@ require 't/utils.pl';
 my $dir = cwd;
 
 rmtree( "$dir/schemas", $Test::Harness::verbose );
+unlink 't/dbmsynctest.dbm';
 
 ok(1);
 

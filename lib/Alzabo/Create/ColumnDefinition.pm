@@ -7,7 +7,7 @@ use Alzabo::Create;
 
 use base qw(Alzabo::ColumnDefinition);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -25,7 +25,7 @@ sub new
 
 sub _init
 {
-    my Alzabo::Create::ColumnDefinition $self = shift;
+    my $self = shift;
     my %p = @_;
 
     $self->{owner} = $p{owner};
@@ -35,7 +35,7 @@ sub _init
 
 sub set_type
 {
-    my Alzabo::Create::ColumnDefinition $self = shift;
+    my $self = shift;
     my $type = shift;
 
     $type =~ s/\A\s+//;
@@ -56,7 +56,7 @@ sub set_type
 
 sub set_length
 {
-    my Alzabo::Create::ColumnDefinition $self = shift;
+    my $self = shift;
     my %p = @_;
 
     my $old_length = $self->{length};
