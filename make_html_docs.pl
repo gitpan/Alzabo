@@ -39,7 +39,7 @@ sub command
 
 	if ($level == 3)
 	{
-	    $self->{_html} .= qq|<table border="1" cellpadding="4">\n|;
+	    $self->{_html} .= qq|<table width="100%" border="1" cellpadding="4">\n|;
 	    $self->{in_table} = 1;
 	}
 	elsif ($level < 3)
@@ -195,6 +195,7 @@ my @order = ( qw( Alzabo
 		  ) ],
 
 	      qw( Alzabo::Exceptions
+                  Alzabo::FAQ
 		  Alzabo::Create::Schema
 		  Alzabo::Create::Table
 		  Alzabo::Create::Column
@@ -285,8 +286,9 @@ sub convert
     {
 	convert_dir(@_);
     }
-    elsif ( -f _ && substr($thing, -3) eq '.pm' )
+    elsif ( -f _ && ( substr($thing, -3) eq '.pm' || substr($thing, -4) eq '.pod' ) )
     {
+	return if $thing =~ /QuickRef/;
 	if ($_[1])
 	{
 	    my $skip = $thing;
@@ -323,7 +325,7 @@ sub pod2html
     my $module = $in;
     $module =~ s,^.*(?=Alzabo),, or return;
     return if $module =~ /PreInstall/;
-    $module =~ s/\.pm//;
+    $module =~ s/\.p(?:m|od)//;
 
     my $out = "$to/$module.html";
 
@@ -332,7 +334,7 @@ sub pod2html
 
     print "Creating $out\n";
 
-    system("perl5.6.0 /usr/bin/pod2html --infile=$in --outfile=$out --htmlroot=$htmlroot")
+    system("$^X /usr/bin/pod2html --infile=$in --outfile=$out --htmlroot=$htmlroot")
 	and die "error: $!\n";
 
     add_header($out);
@@ -377,7 +379,7 @@ EOF
     $html =~ s,(#.*)E<gt>(.*\n),$1>$2,gi;
 
     open FILE, ">$file"
-	or die "Can't write to $file.pm: $!\n";
+	or die "Can't write to $file: $!\n";
 
     print FILE $html;
 

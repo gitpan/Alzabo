@@ -5,9 +5,12 @@ use vars qw($VERSION);
 
 use Alzabo::Create;
 
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
 use base qw(Alzabo::ColumnDefinition);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -26,6 +29,9 @@ sub new
 sub _init
 {
     my $self = shift;
+
+    validate( @_, { owner => { isa => 'Alzabo::Create::Column' },
+		    type  => { type => SCALAR } } );
     my %p = @_;
 
     $self->{owner} = $p{owner};
@@ -36,6 +42,8 @@ sub _init
 sub set_type
 {
     my $self = shift;
+
+    validate_pos( @_, { type => SCALAR } );
     my $type = shift;
 
     $type =~ s/\A\s+//;
@@ -60,6 +68,10 @@ sub set_type
 sub set_length
 {
     my $self = shift;
+
+    validate( @_, { length => { type => UNDEF | SCALAR },
+		    precision => { type => UNDEF | SCALAR,
+				   optional => 1 } } );
     my %p = @_;
 
     my $old_length = $self->{length};

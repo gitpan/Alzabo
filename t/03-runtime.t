@@ -56,7 +56,7 @@ if ( eval { require IPC::Shareable } && ! $@ )
 }
 
 
-my $TESTS_PER_RUN = 64;
+my $TESTS_PER_RUN = 66;
 my $SYNC_TESTS_PER_RUN = 17;
 my $test_count = ($TESTS_PER_RUN * (@$tests + (@cache - 1))) + ($SYNC_TESTS_PER_RUN * $sync);
 

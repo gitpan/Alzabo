@@ -1,5 +1,5 @@
 <%init>
-my ($s, $user, $password) = @_;
+my ($s, $user, $password, $host, $port) = @_;
 
 
 my @t;
@@ -21,7 +21,7 @@ while (my @five = splice @temp, 0, 5)
 %     foreach my $t (@$five) {
   <td align="center">
 %       if ($t) {
-   <& &Alzabo::Config::mason_url_path() . '/common/href', text => $t->name, path => 'browse_table' . Alzabo::Config::mason_extension(), query => { schema => $s->name, table => $t->name, user => $user, password => $password } &>
+   <& &Alzabo::Config::mason_url_path() . '/common/href', text => $t->name, path => 'browse_table' . Alzabo::Config::mason_extension(), query => { schema => $s->name, table => $t->name, user => $user, password => $password, host => $host, port => $port } &>
 %       } else {
    &nbsp;
 %       }

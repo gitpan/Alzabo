@@ -5,9 +5,12 @@ use vars qw($VERSION);
 
 use Alzabo::Create;
 
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
 use base qw(Alzabo::Index);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -15,6 +18,10 @@ sub new
 {
     my $proto = shift;
     my $class = ref $proto || $proto;
+
+    validate( @_, { table   => { isa => 'Alzabo::Create::Table' },
+		    columns => { type => ARRAYREF },
+		    unique  => { optional => 1 } } );
     my %p = @_;
 
     my $self = bless {}, $class;
@@ -37,6 +44,10 @@ sub new
 sub add_column
 {
     my $self = shift;
+
+    validate( @_, { column => { isa => 'Alzabo::Create::Column' },
+		    prefix => { type => SCALAR,
+				optional => 1 } } );
     my %p = @_;
 
     my $new_name = $p{column}->name;
@@ -58,6 +69,8 @@ sub add_column
 sub delete_column
 {
     my $self = shift;
+
+    validate_pos( @_, { isa => 'Alzabo::Create::Column' } );
     my $c = shift;
 
     Alzabo::Exception::Params->throw( error => "Column " . $c->name . " is not part of index." )
@@ -69,6 +82,9 @@ sub delete_column
 sub set_prefix
 {
     my $self = shift;
+
+    validate( @_, { column => { isa => 'Alzabo::Create::Column' },
+		    prefix => { type => SCALAR } } );
     my %p = @_;
 
     Alzabo::Exception::Params->throw( error => "Column " . $p{column}->name . " is not part of index." )
@@ -98,12 +114,16 @@ sub set_unique
 {
     my $self = shift;
 
+    validate_pos( @_, 1 );
     $self->{unique} = shift;
 }
 
 sub register_column_name_change
 {
     my $self = shift;
+
+    validate( @_, { column => { isa => 'Alzabo::Create::Column' },
+		    old_name => { type => SCALAR } } );
     my %p = @_;
 
     return unless $self->{columns}->EXISTS( $p{old_name} );

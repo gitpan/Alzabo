@@ -5,11 +5,14 @@ use vars qw($VERSION);
 
 use Alzabo::Create;
 
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
 use Tie::IxHash;
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.37 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.38 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -17,14 +20,15 @@ sub new
 {
     my $proto = shift;
     my $class = ref $proto || $proto;
+
+    validate( @_, { schema => { isa => 'Alzabo::Create::Schema' },
+		    name => { type => SCALAR } } );
     my %p = @_;
 
     my $self = bless {}, $class;
 
     $self->{schema} = $p{schema};
 
-    Alzabo::Exception::Params->throw( error => "No name provided for new table" )
-	unless exists $p{name};
     $self->set_name($p{name});
 
     $self->{columns} = Tie::IxHash->new;
@@ -40,6 +44,8 @@ sub new
 sub set_name
 {
     my $self = shift;
+
+    validate_pos( @_, { type => SCALAR } );
     my $name = shift;
 
     my @i;
@@ -82,9 +88,14 @@ sub make_column
 
     my $is_pk = delete $p{primary_key};
 
+    my %p2;
+    foreach ( qw( before after ) )
+    {
+	$p2{$_} = $p{$_} if exists $p{$_};
+    }
     $self->add_column( column => Alzabo::Create::Column->new( table => $self,
 							      %p ),
-		       %p );
+		       %p2 );
 
     my $col = $self->column( $p{name} );
     $self->add_primary_key($col) if $is_pk;
@@ -95,6 +106,12 @@ sub make_column
 sub add_column
 {
     my $self = shift;
+
+    validate( @_, { column => { isa => 'Alzabo::Create::Column' },
+		    before => { type => SCALAR,
+				optional => 1 },
+		    after  => { type => SCALAR,
+				optional => 1 } } );
     my %p = @_;
 
     my $col = $p{column};
@@ -120,6 +137,8 @@ sub add_column
 sub delete_column
 {
     my $self = shift;
+
+    validate_pos( @_, { isa => 'Alzabo::Create::Column' } );
     my $col = shift;
 
     Alzabo::Exception::Params->throw( error => "Column $col doesn't exist in $self->{name}" )
@@ -148,6 +167,12 @@ sub delete_column
 sub move_column
 {
     my $self = shift;
+
+    validate( @_, { table  => { isa => 'Alzabo::Create::Column' },
+		    before => { type => SCALAR,
+				optional => 1 },
+		    after  => { type => SCALAR,
+				optional => 1 } } );
     my %p = @_;
 
     if ( exists $p{before} && exists $p{after} )
@@ -187,6 +212,8 @@ sub move_column
 sub add_primary_key
 {
     my $self = shift;
+
+    validate_pos( @_, { isa => 'Alzabo::Create::Column' } );
     my $col = shift;
 
     my $name = $col->name;
@@ -206,6 +233,8 @@ sub add_primary_key
 sub delete_primary_key
 {
     my $self = shift;
+
+    validate_pos( @_, { isa => 'Alzabo::Create::Column' } );
     my $col = shift;
 
     my $name = $col->name;
@@ -228,6 +257,8 @@ sub make_foreign_key
 sub add_foreign_key
 {
     my $self = shift;
+
+    validate_pos( @_, { isa => 'Alzabo::Create::ForeignKey' } );
     my $fk = shift;
 
     foreach my $c ( $fk->columns_from )
@@ -239,6 +270,8 @@ sub add_foreign_key
 sub delete_foreign_key
 {
     my $self = shift;
+
+    validate_pos( @_, { isa => 'Alzabo::Create::ForeignKey' } );
     my $fk = shift;
 
     foreach my $c ( $fk->columns_from )
@@ -289,6 +322,8 @@ sub make_index
 sub add_index
 {
     my Alzabo::Table $self = shift;
+
+    validate_pos( @_, { isa => 'Alzabo::Create::Index' } );
     my $i = shift;
 
     Alzabo::Exception::Params->throw( error => "Index already exists." )
@@ -302,6 +337,8 @@ sub add_index
 sub delete_index
 {
     my Alzabo::Table $self = shift;
+
+    validate_pos( @_, { isa => 'Alzabo::Create::Index' } );
     my $i = shift;
 
     Alzabo::Exception::Params->throw( error => "Index does not exist." )
@@ -313,6 +350,9 @@ sub delete_index
 sub register_table_name_change
 {
     my $self = shift;
+
+    validate( @_, { table => { isa => 'Alzabo::Create::Table' },
+		    old_name => { type => SCALAR } } );
     my %p = @_;
 
     $self->{fk}{ $p{table}->name } = delete $self->{fk}{ $p{old_name} }
@@ -322,6 +362,9 @@ sub register_table_name_change
 sub register_column_name_change
 {
     my $self = shift;
+
+    validate( @_, { column => { isa => 'Alzabo::Create::Column' },
+		    old_name => { type => SCALAR } } );
     my %p = @_;
 
     my $new_name = $p{column}->name;

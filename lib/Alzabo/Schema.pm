@@ -9,19 +9,22 @@ use Alzabo::Driver;
 use Alzabo::RDBMSRules;
 use Alzabo::SQLMaker;
 
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
 use Storable ();
 use Tie::IxHash ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.30 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.31 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub _load_from_file
 {
     my $class = shift;
-    my %p = @_;
 
-    my $name = $p{name};
+    validate( @_, { name => { type => SCALAR } } );
+    my %p = @_;
 
     # Making these (particularly from files) is expensive.
     return $class->_cached_schema($p{name}) if $class->_cached_schema($p{name});
@@ -29,7 +32,7 @@ sub _load_from_file
     my $schema_dir = Alzabo::Config::schema_dir;
     my $file =  "$schema_dir/$p{name}/$p{name}." . $class->_schema_file_type . '.alz';
 
-    -e $file or Alzabo::Exception::Params->throw( error => "No saved schema named $name ($file)" );
+    -e $file or Alzabo::Exception::Params->throw( error => "No saved schema named $p{name} ($file)" );
 
     my $fh = do { local *FH; };
     open $fh, $file
@@ -38,11 +41,11 @@ sub _load_from_file
     close $fh
 	or Alzabo::Exception::System->throw( error => "Unable to close $file: $!" );
 
-    open $fh, "$schema_dir/$name/$name.rdbms"
-	or Alzabo::Exception::System->throw( error => "Unable to open $schema_dir/$name/$name.driver: $!\n" );
+    open $fh, "$schema_dir/$p{name}/$p{name}.rdbms"
+	or Alzabo::Exception::System->throw( error => "Unable to open $schema_dir/$p{name}/$p{name}.driver: $!\n" );
     my $rdbms = join '', <$fh>;
     close $fh
-	or Alzabo::Exception::System->throw( error => "Unable to close $schema_dir/$name/$name.driver: $!" );
+	or Alzabo::Exception::System->throw( error => "Unable to close $schema_dir/$p{name}/$p{name}.driver: $!" );
 
     $schema->{driver} = Alzabo::Driver->new( rdbms => $rdbms,
 					     schema => $schema );
@@ -59,6 +62,8 @@ sub _load_from_file
 sub _cached_schema
 {
     my $class = shift->isa('Alzabo::Runtime::Schema') ? 'Alzabo::Runtime::Schema' : 'Alzabo::Create::Schema';
+
+    validate_pos( @_, { type => SCALAR } );
     my $name = shift;
 
     my $schema_dir = Alzabo::Config::schema_dir;
@@ -94,6 +99,8 @@ sub name
 sub table
 {
     my $self = shift;
+
+    validate_pos( @_, { type => SCALAR } );
     my $name = shift;
 
     Alzabo::Exception::Params->throw( error => "Table $name doesn't exist in schema" )
@@ -105,6 +112,8 @@ sub table
 sub tables
 {
     my $self = shift;
+
+    validate_pos( @_, { type => SCALAR } x @_ ) if @_;
 
     if (@_)
     {

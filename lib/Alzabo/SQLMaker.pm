@@ -6,7 +6,10 @@ use vars qw($VERSION $AUTOLOAD);
 use Alzabo::Exceptions;
 use Alzabo::Util;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/;
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -83,6 +86,8 @@ sub DESTROY { }
 sub _function
 {
     my $self = shift;
+
+    validate_pos( @_, { type => SCALAR }, ( { type => SCALAR | OBJECT, optional => 1 } ) x (@_ - 1) );
     my ($func, @params) = @_;
 
     $self->_assert_last_op( qw( select function ) );
@@ -112,9 +117,12 @@ sub from
 
     $self->_assert_last_op( qw( select delete function ) );
 
+    validate_pos( @_, ( { isa => 'Alzabo::Table' } ) x @_ );
+
     $self->{sql} .= ' FROM ';
     $self->{sql} .= join ', ', map { $_->name } @_;
 
+    # note to self: \@_ does not work
     $self->{tables} = [ @_ ];
 
     if ($self->{type} eq 'SELECT')
@@ -184,6 +192,12 @@ sub _and_or
 sub _condition
 {
     my $self = shift;
+
+    validate_pos( @_,
+		  { isa => 'Alzabo::Column' },
+		  { type => SCALAR },
+		  { type => UNDEF | SCALAR | OBJECT },
+		  ( { type => SCALAR | OBJECT, optional => 1 } ) x (@_ - 3) );
     my $col = shift;
     my $comp = shift;
     my $rhs = shift;
@@ -305,6 +319,8 @@ sub order_by
     Alzabo::Exception::SQL->throw( error => "Cannot use order by in a '$self->{type}' statement" )
 	unless $self->{type} eq 'select';
 
+    validate_pos( @_, ( { isa => 'Alzabo::Column' } ) x @_ );
+
     foreach my $c (@_)
     {
 	unless ( grep {  $_ eq $c->table } @{ $self->{tables} } )
@@ -371,6 +387,8 @@ sub into
 
     $self->_assert_last_op( qw( insert ) );
 
+    validate_pos( @_, { isa => 'Alzabo::Table' }, ( { isa => 'Alzabo::Column' } ) x (@_ - 1) );
+
     my $table = shift;
     $self->{tables} = [ $table ];
 
@@ -401,6 +419,8 @@ sub values
     my $self = shift;
 
     $self->_assert_last_op( qw( into ) );
+
+    validate_pos( @_, ( { type => UNDEF | SCALAR | OBJECT } ) x @_ );
 
     if ( ref $_[0] && $_[0]->isa('Alzabo::SQLMaker') )
     {
@@ -446,6 +466,8 @@ sub update
 
     my $self = $class->_object;
 
+    validate_pos( @_, { isa => 'Alzabo::Table' } );
+
     my $table = shift;
 
     $self->{sql} = 'UPDATE ' . $table->name;
@@ -466,6 +488,8 @@ sub set
 
     Alzabo::Exception::Params->throw( error => "'set' method expects key/value pairs of column objects and values'" )
        if !@vals || @vals % 2;
+
+    validate_pos( @_, ( { isa => 'Alzabo::Column' }, { type => SCALAR | UNDEF } ) x (@vals / 2) );
 
     $self->{sql} .= ' SET ';
 
@@ -519,6 +543,9 @@ sub _assert_last_op
 sub _bind_val
 {
     my $self = shift;
+
+    validate_pos( @_, { isa => 'Alzabo::Column' }, { type => SCALAR | UNDEF } );
+
     my $column = shift;
     my $val = shift;
 

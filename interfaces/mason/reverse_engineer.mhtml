@@ -3,6 +3,7 @@ $name
 $username => undef
 $password => undef
 $host => undef
+$port => undef
 $rdbms
 </%args>
 
@@ -16,6 +17,7 @@ eval
 						   user => $username,
 						   password => $password,
 						   host => $host,
+						   port => $port,
 						 );
 
     $s->save_to_file;

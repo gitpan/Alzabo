@@ -5,6 +5,8 @@
 <input type="hidden" name="max_rows" value="<% $max_rows %>">
 <input type="hidden" name="user" value="<% $user %>">
 <input type="hidden" name="password" value="<% $password %>">
+<input type="hidden" name="host" value="<% $host %>">
+<input type="hidden" name="port" value="<% $port %>">
 <table align="center" width="90%">
  <tr valign="top">
   <td>
@@ -46,6 +48,8 @@ my $filter_from = $args{filter_from};
 my $filter_where = $args{filter_where};
 my $user = $args{user};
 my $password = $args{password};
+my $host = $args{host};
+my $port = $args{port};
 
 my @cols = $t->columns;
 
@@ -70,11 +74,11 @@ my $table_body = $m->scomp('.table_body');
 <center>
 <h3>
 % if ($start_row > 0) {
-<& &Alzabo::Config::mason_url_path() . '/common/href', path => 'browse_table' . Alzabo::Config::mason_extension(),  text => '&lt;&lt', query => { schema => $s->name, table => $t->name, start_row => ( $start_row - $max_rows > 0 ? $start_row - $max_rows : 0 ), max_rows => $max_rows, filter_from => $filter_from, filter_where => $filter_where, user => $user, password => $password } &>
+<& &Alzabo::Config::mason_url_path() . '/common/href', path => 'browse_table' . Alzabo::Config::mason_extension(),  text => '&lt;&lt', query => { schema => $s->name, table => $t->name, start_row => ( $start_row - $max_rows > 0 ? $start_row - $max_rows : 0 ), max_rows => $max_rows, filter_from => $filter_from, filter_where => $filter_where, user => $user, password => $password, host => $host, port => $port } &>
 % }
 Rows <% $rows_fetched ? $start_row + 1 : 0 %>-<% $start_row + $rows_used %> (out of <% $row_count %>)
 % if ($start_row + $max_rows < $row_count) {
-<& &Alzabo::Config::mason_url_path() . '/common/href', path => 'browse_table' . Alzabo::Config::mason_extension(), text => '&gt;&gt;', query => { schema => $s->name, table => $t->name, start_row => $start_row + $max_rows, max_rows => $max_rows, filter_from => $filter_from, filter_where => $filter_where, user => $user, password => $password } &>
+<& &Alzabo::Config::mason_url_path() . '/common/href', path => 'browse_table' . Alzabo::Config::mason_extension(), text => '&gt;&gt;', query => { schema => $s->name, table => $t->name, start_row => $start_row + $max_rows, max_rows => $max_rows, filter_from => $filter_from, filter_where => $filter_where, user => $user, password => $password, host => $host, port => $port } &>
 % }
 </h3></center>
 </%def>
@@ -97,6 +101,8 @@ Rows <% $rows_fetched ? $start_row + 1 : 0 %>-<% $start_row + $rows_used %> (out
 <input type="hidden" name="filter_where" value="<% $filter_where %>">
 <input type="hidden" name="user" value="<% $user %>">
 <input type="hidden" name="password" value="<% $password %>">
+<input type="hidden" name="host" value="<% $host %>">
+<input type="hidden" name="port" value="<% $port %>">
   <td>
    <input type="submit" value="Delete" name="Delete">
   </td>
@@ -112,6 +118,8 @@ Rows <% $rows_fetched ? $start_row + 1 : 0 %>-<% $start_row + $rows_used %> (out
 <input type="hidden" name="filter_where" value="<% $filter_where %>">
 <input type="hidden" name="user" value="<% $user %>">
 <input type="hidden" name="password" value="<% $password %>">
+<input type="hidden" name="host" value="<% $host %>">
+<input type="hidden" name="port" value="<% $port %>">
 %     my $x = 0;
 %     foreach my $c (@cols) {
 %     my $val = $row->select( $c->name );

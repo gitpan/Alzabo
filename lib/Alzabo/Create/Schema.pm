@@ -11,13 +11,15 @@ use Alzabo::RDBMSRules;
 use Alzabo::Runtime;
 use Alzabo::SQLMaker;
 
-use Storable ();
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
+use Storable ();
 use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.55 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.57 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -25,6 +27,9 @@ sub new
 {
     my $proto = shift;
     my $class = ref $proto || $proto;
+
+    validate( @_, { rdbms => { type => SCALAR },
+		    name  => { type => SCALAR } } );
     my %p = @_;
 
     my $self = bless {}, $class;
@@ -62,10 +67,10 @@ sub reverse_engineer
     my $class = ref $proto || $proto;
     my %p = @_;
 
-    my $self = $class->new(%p);
+    my $self = $class->new( name => $p{name},
+			    rdbms => $p{rdbms} );
 
-    $self->{driver}->connect( user => $p{user},
-			      password => $p{password} );
+    $self->{driver}->connect(%p);
 
     $self->{rules}->reverse_engineer($self);
 
@@ -81,7 +86,9 @@ sub set_name
 {
     my $self = shift;
 
+    validate_pos( @_, { type => SCALAR } );
     my $name = shift;
+
     return if $self->{name} && $name eq $self->{name};
 
     my $old_name = $self->{name};
@@ -104,6 +111,7 @@ sub set_instantiated
 {
     my $self = shift;
 
+    validate_pos( @_, 1 );
     $self->{instantiated} = shift;
 }
 
@@ -112,9 +120,14 @@ sub make_table
     my $self = shift;
     my %p = @_;
 
+    my %p2;
+    foreach ( qw( before after ) )
+    {
+	$p2{$_} = $p{$_} if exists $p{$_};
+    }
     $self->add_table( table => Alzabo::Create::Table->new( schema => $self,
 							   %p ),
-		      %p );
+		      %p2 );
 
     return $self->table( $p{name} );
 }
@@ -122,6 +135,12 @@ sub make_table
 sub add_table
 {
     my $self = shift;
+
+    validate( @_, { table  => { isa => 'Alzabo::Create::Table' },
+		    before => { type => SCALAR,
+				optional => 1 },
+		    after  => { type => SCALAR,
+				optional => 1 } } );
     my %p = @_;
 
     my $table = $p{table};
@@ -145,6 +164,8 @@ sub add_table
 sub delete_table
 {
     my $self = shift;
+
+    validate_pos( @_, { isa => 'Alzabo::Create::Table' } );
     my $table = shift;
 
     Alzabo::Exception::Params->throw( error => "Table " . $table->name ." doesn't exist in schema" )
@@ -164,6 +185,12 @@ sub delete_table
 sub move_table
 {
     my $self = shift;
+
+    validate( @_, { table  => { isa => 'Alzabo::Create::Table' },
+		    before => { type => SCALAR,
+				optional => 1 },
+		    after  => { type => SCALAR,
+				optional => 1 } } );
     my %p = @_;
 
     if ( exists $p{before} && exists $p{after} )
@@ -203,6 +230,9 @@ sub move_table
 sub register_table_name_change
 {
     my $self = shift;
+
+    validate( @_, { table => { isa => 'Alzabo::Create::Table' },
+		    old_name => { type => SCALAR } } );
     my %p = @_;
 
     Alzabo::Exception::Params->throw( error => "Table $p{old_name} doesn't exist in schema" )
@@ -215,6 +245,7 @@ sub register_table_name_change
 sub add_relation
 {
     my $self = shift;
+
     my %p = @_;
 
     my $tracker = Alzabo::ChangeTracker->new;
@@ -447,9 +478,8 @@ sub _create_to_1_relationship
 	my @new_col;
 	foreach my $c ( @$col_to )
 	{
-	    push @new_col, $self->_add_foreign_key_column( table_from => $f_table,
-							   table_to   => $t_table,
-							   column     => $c );
+	    push @new_col, $self->_add_foreign_key_column( table  => $f_table,
+							   column => $c );
 	}
 
 	$col_from = \@new_col;
@@ -499,9 +529,8 @@ sub _create_to_n_relationship
 	my @new_col;
 	foreach my $c ( @$col_from )
 	{
-	    push @new_col, $self->_add_foreign_key_column( table_from => $t_table,
-							   table_to   => $f_table,
-							   column     => $c );
+	    push @new_col, $self->_add_foreign_key_column( table  => $t_table,
+							   column => $c );
 	}
 
 	$col_to = \@new_col;
@@ -523,43 +552,39 @@ sub _create_to_n_relationship
 sub _add_foreign_key_column
 {
     my $self = shift;
+
+    validate( @_, { table => { isa => 'Alzabo::Create::Table' },
+		    column => { isa => 'Alzabo::Create::Column' } } );
     my %p = @_;
 
     my $tracker = Alzabo::ChangeTracker->new;
 
-    # This is the table that to which we are adding the foreign key.
-    my $table = $p{table_from};
-
-    # This is the column from the _other_ table that is the key
-    # column.
-    my $col = $p{column};
-
     # Note: This code _does_ explicitly want to compare the string
-    # representation of the $col reference.
+    # representation of the $p{column}->definition reference.
     my $new_col;
-    if ( eval { $table->column( $col->name ) } &&
-	 ( $col->definition ne $table->column( $col->name )->definition ) )
+    if ( eval { $p{table}->column( $p{column}->name ) } &&
+	 ( $p{column}->definition ne $p{table}->column( $p{column}->name )->definition ) )
     {
 	# This will make the two column share a single definition
 	# object.
-	my $old_def = $table->column( $col->name )->definition;
-	$table->column( $col->name )->change_definition($col->definition);
+	my $old_def = $p{table}->column( $p{column}->name )->definition;
+	$p{table}->column( $p{column}->name )->change_definition($p{column}->definition);
 
-	$tracker->add( sub { $table->column( $col->name )->change_definition($old_def) } );
+	$tracker->add( sub { $p{table}->column( $p{column}->name )->change_definition($old_def) } );
     }
     else
     {
 	# Just add the new column, but use the existing definition
 	# object.
-	$table->make_column( name => $col->name,
-			     definition => $col->definition );
+	$p{table}->make_column( name => $p{column}->name,
+			     definition => $p{column}->definition );
 
-	my $del_col = $table->column( $col->name );
-	$tracker->add( sub { $table->delete_column($del_col) } );
+	my $del_col = $p{table}->column( $p{column}->name );
+	$tracker->add( sub { $p{table}->delete_column($del_col) } );
     }
 
     # Return the new column we just made.
-    return $table->column( $col->name );
+    return $p{table}->column( $p{column}->name );
 }
 
 sub _create_linking_table
@@ -915,6 +940,10 @@ User name to use when connecting to database.
 
 Password to use when connecting to database.
 
+=item * host => $host (optional)
+
+The host with which to connect.
+
 =back
 
 =head3 Returns
@@ -1043,7 +1072,7 @@ order of the columns is significant.  In other words, the first column
 in the C<columns_from> parameter is assumed to correspond to the first
 column in hte C<columns_to> parameter and so on.
 
-The number of columns given in C<column_from> and C<columns_to> must
+The number of columns given in C<columns_from> and C<columns_to> must
 be the same except when both C<min_max_...> parameters have are (0 or
 1)..n.
 

@@ -86,7 +86,7 @@ EOF
     if ( $prereq{'HTML::Mason'} )
     {
 	my $default = $Alzabo::Config::CONFIG{mason_web_dir};
-	$default =~ s,/alzabo\Z,,;
+	$default =~ s,/alzabo\Z,, if $default;
 
 	do
 	{
@@ -101,22 +101,22 @@ installer will create an 'alzabo' subdirectory under the directory
 given.
 EOF
 
-	    $config{mason_web_dir} = prompt( '  Alzabo Mason directory?', $default || '' );
-	} while ( ! -e $config{mason_web_dir} );
+	    $config{mason_web_dir} = prompt( '  Mason directory?', $default || '' );
+	} while ( ! -d $config{mason_web_dir} );
 
 	$default = $Alzabo::Config::CONFIG{mason_url_path};
-	$default =~ s,/alzabo\Z,,;
+	$default =~ s,/alzabo\Z,, if $default;
 
 	do
 	{
 	    print <<"EOF";
 
-This directory ($config{mason_web_dir}) translates to what absolute
-path on your web server?  NOTE: you should not include the server name
-here.
+If a component in this directory ($config{mason_web_dir}) wanted to
+call another component in the same directory using an absolute path,
+what would the path be?
 EOF
 
-	    $config{mason_url_path} = prompt( '  URL Path to Alzabo Mason directory?', $default || '' );
+	    $config{mason_url_path} = prompt( '  URL Path to for component calls?', $default || '' );
 	} while ( ! defined $config{mason_url_path} );
 
 	foreach ( qw( mason_web_dir mason_url_path ) )
@@ -158,6 +158,8 @@ get_test_setup();
 	    'Tie::IxHash' => 0,
 	    'Exception::Class' => 0.8,
 	    'Time::HiRes' => 0,
+	    'Pod::Man' => 1.14,
+	    'Params::Validate' => 0.03,
 	    %prereq );
 
 check_prereq(\%prereq);
@@ -394,7 +396,7 @@ sub test
     my $t = Data::Dumper->Dump( [\@main::TESTS], [''] );
     $t =~ s/\$ = //;
     $t =~ s/'/"/g;
-    $test =~ s/(runtests \@ARGV;)/\$\$ENV{ALZABO_RDBMS_TESTS} = q^$t^; $1/;
+    $test =~ s/(runtests \@ARGV;)/\$\$ENV{ALZABO_RDBMS_TESTS} = q^$t^; \$\$ENV{ALZABO_TESTING} = 1; $1/;
 
     return $test;
 }

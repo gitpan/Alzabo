@@ -5,9 +5,12 @@ use vars qw($VERSION);
 
 use Alzabo::Create;
 
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
 use base qw(Alzabo::Column);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.27 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.28 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -26,10 +29,27 @@ sub new
 sub _init
 {
     my $self = shift;
+
+    validate( @_, { table => { isa => 'Alzabo::Table' },
+		    name  => { type => SCALAR },
+		    null  => { optional => 1 },
+		    nullable => { optional => 1 },
+		    type  => { type => SCALAR,
+			       optional => 1 },
+		    attributes => { type => ARRAYREF,
+				    optional => 1 },
+		    default    => { type => UNDEF | SCALAR,
+				    optional => 1 },
+		    sequenced  => { optional => 1 },
+		    length => { type => UNDEF | SCALAR,
+				optional => 1 },
+		    precision  => { type => UNDEF | SCALAR,
+				    optional => 1 },
+		    definition => { isa => 'Alzabo::Create::ColumnDefinition',
+				    optional => 1 },
+		  } );
     my %p = @_;
 
-    Alzabo::Exception::Params->throw( error => 'No table provided' )
-	unless $p{table};
     $self->set_table( $p{table} );
 
     $self->set_name( $p{name} );
@@ -63,12 +83,15 @@ sub set_table
 {
     my $self = shift;
 
+    validate_pos( @_, { isa => 'Alzabo::Table' } );
     $self->{table} = shift;
 }
 
 sub set_name
 {
     my $self = shift;
+
+    validate_pos( @_, { type => SCALAR } );
     my $name = shift;
 
     my $old_name = $self->{name};
@@ -92,6 +115,8 @@ sub set_name
 sub set_nullable
 {
     my $self = shift;
+
+    validate_pos( @_, { type => UNDEF | SCALAR } );
     my $n = shift;
 
     Alzabo::Exception::Params->throw( error => "Invalid value for nullable attribute: $n" )
@@ -107,6 +132,7 @@ sub set_default
 {
     my $self = shift;
 
+    validate_pos( @_, { type => UNDEF | SCALAR } );
     $self->{default} = shift;
 }
 
@@ -121,6 +147,8 @@ sub set_attributes
 {
     my $self = shift;
 
+    validate_pos( @_, ( { type => SCALAR } ) x @_ );
+
     %{ $self->{attributes} } = ();
 
     foreach (@_)
@@ -132,6 +160,8 @@ sub set_attributes
 sub add_attribute
 {
     my $self = shift;
+
+    validate_pos( @_, { type => SCALAR } );
     my $attr = shift;
 
     $attr =~ s/^\s+//;
@@ -146,6 +176,8 @@ sub add_attribute
 sub delete_attribute
 {
     my $self = shift;
+
+    validate_pos( @_, { type => SCALAR } );
     my $attr = shift;
 
     Alzabo::Exception::Params->throw( error => "Column " . $self->name . " doesn't have attribute $attr" )
@@ -157,6 +189,8 @@ sub delete_attribute
 sub set_type
 {
     my $self = shift;
+
+    validate_pos( @_, { type => SCALAR } );
     my $t = shift;
 
     $self->{definition}->set_type($t);
@@ -169,17 +203,25 @@ sub set_type
 	$self->delete_attribute($_);
 	eval { $self->add_attribute($_) };
     }
-    unless ( eval { $self->set_length( length => $self->length,
-				       precision => $self->precision ) } )
+
+    eval { $self->set_length( length => $self->length,
+			      precision => $self->precision ) };
+    if ($@)
     {
-	$self->set_length( length => undef,
-			   precision => undef );
+	eval { $self->set_length( length => $self->length, precision => undef ) };
+	if ($@)
+	{
+	    $self->set_length( length => undef,
+			       precision => undef );
+	}
     }
 }
 
 sub set_sequenced
 {
     my $self = shift;
+
+    validate_pos( @_, { type => SCALAR } );
     my $s = shift;
 
     Alzabo::Exception::Params->throw( error => "Invalid value for sequenced attribute: $s" )
@@ -194,6 +236,8 @@ sub set_sequenced
 sub set_definition
 {
     my $self = shift;
+
+    validate_pos( @_, { isa => 'Alzabo::Create::ColumnDefinition' } );
     my $d = shift;
 
     $self->{definition} = $d;

@@ -5,7 +5,10 @@ use vars qw($VERSION $CACHE);
 
 use Alzabo::Runtime;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.44 $ =~ /(\d+)\.(\d+)/;
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.45 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -13,6 +16,11 @@ sub new
 {
     my $proto = shift;
     my $class = ref $proto || $proto;
+
+    validate( @_, { table => { isa => 'Alzabo::Runtime::Table' },
+		    id => { type => SCALAR | HASHREF },
+		    no_cache => { optional => 1 },
+		    insert => { optional => 1 } } );
     my %p = @_;
 
     if ( defined $CACHE && $CACHE && ! $p{insert} )
@@ -41,7 +49,7 @@ sub new
     $self->{cache}->delete_from_cache($self)
 	if $p{insert} && $self->{cache};
 
-    $self->_init(%p);
+    $self->_init;
 
     $self->{cache}->store_object($self)
 	if $self->{cache};
@@ -53,7 +61,6 @@ sub new
 sub _init
 {
     my $self = shift;
-    my %p = @_;
 
     while (my ($k, $v) = each %{ $self->{id} })
     {

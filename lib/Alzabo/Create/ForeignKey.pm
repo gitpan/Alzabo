@@ -5,9 +5,12 @@ use vars qw($VERSION);
 
 use Alzabo::Create;
 
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
 use base qw(Alzabo::ForeignKey);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -15,6 +18,11 @@ sub new
 {
     my $proto = shift;
     my $class = ref $proto || $proto;
+
+    validate( @_, { columns_from => { type => ARRAYREF | OBJECT },
+		    columns_to   => { type => ARRAYREF | OBJECT },
+		    min_max_from => { type => ARRAYREF },
+		    min_max_to   => { type => ARRAYREF } } );
     my %p = @_;
 
     my $self = bless {}, $class;
@@ -31,7 +39,9 @@ sub new
 sub set_columns_from
 {
     my $self = shift;
+
     my $c = UNIVERSAL::isa( $_[0], 'ARRAY' ) ? shift : [ shift ];
+    validate_pos( @$c, ( { isa => 'Alzabo::Create::Column' } ) x @$c );
 
     if ( exists $self->{columns_to} )
     {
@@ -45,7 +55,9 @@ sub set_columns_from
 sub set_columns_to
 {
     my $self = shift;
+
     my $c = UNIVERSAL::isa( $_[0], 'ARRAY' ) ? shift : [ shift ];
+    validate_pos( @$c, ( { isa => 'Alzabo::Create::Column' } ) x @$c );
 
     if ( exists $self->{columns_from} )
     {
@@ -59,6 +71,8 @@ sub set_columns_to
 sub set_min_max_from
 {
     my $self = shift;
+
+    validate_pos( @_, { type => ARRAYREF } );
     my $mm = shift;
 
     Alzabo::Exception::Params->throw( error => "Incorrect number of min/max elements" )
@@ -79,6 +93,8 @@ sub set_min_max_from
 sub set_min_max_to
 {
     my $self = shift;
+
+    validate_pos( @_, { type => ARRAYREF } );
     my $mm = shift;
 
     Alzabo::Exception::Params->throw( error => "Incorrect number of min/max elements" )

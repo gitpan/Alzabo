@@ -8,7 +8,7 @@ use vars qw($SELF $VERSION %IPC);
 
 use base qw( Alzabo::ObjectCache::Sync );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -17,7 +17,7 @@ sub import
     shift;
     my %p = @_;
 
-    tie %IPC, 'IPC::Shareable', 'AOCI', { create => 'yes', destroy => 'yes' }
+    tie %IPC, 'IPC::Shareable', ($ENV{ALZABO_TESTING} ? 'AOCT' : 'AOCI'), { create => 'yes', destroy => 'yes' }
 	or die "couldn't tie to IPC segment during BEGIN block";
 
     %IPC = () if $p{clear_on_startup};

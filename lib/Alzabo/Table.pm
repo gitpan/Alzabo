@@ -5,9 +5,12 @@ use vars qw($VERSION);
 
 use Alzabo;
 
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
 use Tie::IxHash;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.33 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -58,9 +61,10 @@ sub primary_key
 sub column_is_primary_key
 {
     my $self = shift;
-    my $col = shift;
 
-    my $name = $col->name;
+    validate_pos( @_, { isa => 'Alzabo::Column' } );
+
+    my $name = shift->name;
     Alzabo::Exception::Params->throw( error => "Column $name doesn't exist in $self->{name}" )
 	unless $self->{columns}->EXISTS($name);
 
@@ -70,6 +74,9 @@ sub column_is_primary_key
 sub foreign_keys
 {
     my $self = shift;
+
+    validate( @_, { column => { isa => 'Alzabo::Column' },
+		    table  => { isa => 'Alzabo::Table' } } );
     my %p = @_;
 
     my $c_name = $p{column}->name;
@@ -90,6 +97,8 @@ sub foreign_keys
 sub foreign_keys_by_table
 {
     my $self = shift;
+
+    validate_pos( @_, { isa => 'Alzabo::Table' } );
     my $name = shift->name;
 
     my $fk = $self->{fk};
@@ -108,6 +117,8 @@ sub foreign_keys_by_table
 sub foreign_keys_by_column
 {
     my $self = shift;
+
+    validate_pos( @_, { isa => 'Alzabo::Column' } );
     my $col = shift;
 
     Alzabo::Exception::Params->throw( error => "Column " . $col->name . " doesn't exist in $self->{name}" )
@@ -152,6 +163,8 @@ sub all_foreign_keys
 sub index
 {
     my $self = shift;
+
+    validate_pos( @_, { type => SCALAR } );
     my $id = shift;
 
     Alzabo::Exception::Params->throw( error => "Index $id doesn't exist in $self->{name}" )

@@ -1,16 +1,16 @@
 package Alzabo::ObjectCache;
 
+use strict;
 use vars qw($SELF $VERSION %ARGS);
 
-use strict;
-
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub import
 {
     my $class = shift;
+
     %ARGS = @_;
 
     $ARGS{store} ||= 'Alzabo::ObjectCache::MemoryStore';
@@ -249,38 +249,6 @@ Incorrect data (from process 1's update) is returned.
 =item * Any other syncing module is in use
 
 The correct data (from process 2's update) is returned.
-
-=back
-
-=head2 Scenario 4 - Multiple processes - delete followed by update
-
-Assume two process, ids 1 and 2.
-
-- Process 1 retrieves a row object.
-
-- Process 2 retrieves a row object for the same database row.
-
-- Process 1 calls that object's C<delete> method.
-
-- Process 2 calls that object's C<update> method.
-
-=head3 Results
-
-=over 4
-
-=item * No caching
-
-An C<Alzabo::Exception::NoSuchRow> exception is thrown.
-
-=item * Alzabo::ObjectCache::NullSync module is in use
-
-The object will attempt to update the database.  This is a potential
-disaster if, in the meantime, another row with the same primary key
-has been inserted.
-
-=item * Any other syncing module is in use
-
-An C<Alzabo::Exception::Cache::Deleted> exception is thrown.
 
 =back
 

@@ -1,11 +1,14 @@
 Short term:
 
 - Robin Berjon suggested a single documentation 'page' that contains a
-  list of all the method and what objects they apply to.
+  list of all the method and what objects they apply to.  This has
+  been begun.
 
 - Alzabo::ObjectCache::DBIStore - this module will also do syncing all
   in one.  This will allow the caching/syncing to occur across
   multiple machines with multiple processes.
+
+- Alzabo::ObjectCache::DBMStore.
 
 - Make multiple row classes (one for caching and for non-caching).
   Maybe also create null row class (always return undef).

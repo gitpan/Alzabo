@@ -62,6 +62,9 @@ lib/Alzabo/ObjectCache/DBMSync.pm
 lib/Alzabo/ObjectCache/IPCSync.pm
 lib/Alzabo/ObjectCache/NullSync.pm
 
+lib/Alzabo/FAQ.pod
+lib/Alzabo/QuickRef.pod
+
 lib/PreInstall/Config.pm
 
 t/00-cleanup.t

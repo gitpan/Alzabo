@@ -69,6 +69,11 @@
  </tr>
 
  <tr>
+  <td><b>Port:</b></td>
+  <td><input type="text" name="port" size="6"></td>
+ </tr>
+
+ <tr>
   <td><b>RDBMS:</b></td>
   <td>
    <select name="rdbms">

@@ -5,9 +5,12 @@ use vars qw($VERSION);
 
 use Alzabo::Runtime;
 
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -15,6 +18,10 @@ sub new
 {
     my $proto = shift;
     my $class = ref $proto || $proto;
+
+    validate( @_, { statement => { isa => 'Alzabo::DriverStatement' },
+		    tables => { type => ARRAYREF },
+		    no_cache => { optional => 1 } } );
     my %p = @_;
 
     my $self;

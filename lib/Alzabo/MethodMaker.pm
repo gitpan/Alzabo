@@ -5,7 +5,10 @@ use vars qw($VERSION $DEBUG);
 
 use Alzabo::Runtime::Schema;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
@@ -18,6 +21,15 @@ my @options = qw( foreign_keys insert linking_tables lookup_tables
 sub import
 {
     my $class = shift;
+
+    validate( @_, { schema     => { type => SCALAR },
+		    class_root => { type => SCALAR,
+				    optional => 1 },
+		    name_maker => { type => CODEREF,
+				    optional => 1 },
+		    pluralize  => { type => CODEREF,
+				    optional => 1 },
+		    ( map { $_ => { optional => 1 } } 'all', @options ) } );
     my %p = @_;
 
     return unless exists $p{schema};
@@ -606,7 +618,7 @@ This tells this module to make all of the methods it possibly can.
 See L<METHOD CREATION OPTIONS|METHOD CREATION OPTIONS> for more
 details.
 
-=head3 name => \&naming_sub
+=head3 name_maker => \&naming_sub
 
 If this option is given, then this callback will be called any time a
 method name needs to be generated.  This allows you to have full

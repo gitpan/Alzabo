@@ -10,13 +10,13 @@ use lib '.', './t';
 
 require 'base.pl';
 
-my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
-
-unless ($tests)
+unless (defined $ENV{ALZABO_RDBMS_TESTS})
 {
     print "1..0\n";
     exit;
 }
+
+my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
 
 print "1..39\n";
 

@@ -13,7 +13,7 @@ use Alzabo::Config;
 
 use vars qw($VERSION);
 
-$VERSION = '0.34';
+$VERSION = '0.35';
 
 1;
 
@@ -131,6 +131,11 @@ important.
 
 L<Alzabo::Exceptions> - Describes the nature of all the exceptions
 used in Alzabo.
+
+L<Alzabo::FAQ>
+
+L<Alzabo::QuickRef> - A quick reference for the various methods of the
+Alzabo objects.
 
 =head2 Alzabo concepts
 

@@ -5,12 +5,12 @@ use vars qw($VERSION);
 
 use Alzabo::Driver;
 
-use DBI;
 use DBD::mysql;
+use DBI;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.27 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.28 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -32,26 +32,24 @@ sub connect
     return if $self->{dbh} && $self->{dbh}->ping && ! $p{force};
 
     $self->disconnect if $self->{dbh};
-    $self->{dbh} = $self->_make_dbh(@_);
+    $self->{dbh} = $self->_make_dbh(%p, name => $self->{schema}->name);
 }
 
 sub create_database
 {
     my $self = shift;
+
     my %p = @_;
 
     my $db = $self->{schema}->name;
-    my $drh = DBI->install_driver('mysql');
 
-    my $host;
-    if ($p{host})
-    {
-	$host = $p{host};
-	$host .= ":$p{port}" if $p{port};
-    }
+    my $dbh = $self->_make_dbh( name => 'mysql',
+				%p );
 
-    $drh->func( 'createdb', $db, $host, $p{user}, $p{password}, 'admin' )
-	or Alzabo::Exception::Driver->throw( error => $DBI::errstr );
+    eval { $dbh->func( 'createdb', $db, 'admin' ) };
+    Alzabo::Exception::Driver->throw( error => $@ ) if $@;
+
+    $dbh->disconnect;
 }
 
 sub drop_database
@@ -60,17 +58,14 @@ sub drop_database
     my %p = @_;
 
     my $db = $self->{schema}->name;
-    my $drh = DBI->install_driver('mysql');
 
-    my $host;
-    if ($p{host})
-    {
-	$host = $p{host};
-	$host .= ":$p{port}" if $p{port};
-    }
+    my $dbh = $self->_make_dbh( name => 'mysql',
+				%p );
 
-    $drh->func( 'dropdb', $db, $host, $p{user}, $p{password}, 'admin' )
-	or Alzabo::Exception::Driver->throw( error => $DBI::errstr );
+    eval { $dbh->func( 'dropdb', $db, 'admin' ) };
+    Alzabo::Exception::Driver->throw( error => $@ ) if $@;
+
+    $dbh->disconnect;
 }
 
 sub _make_dbh
@@ -78,9 +73,14 @@ sub _make_dbh
     my $self = shift;
     my %p = @_;
 
-    my $dsn = 'DBI:mysql:' . $self->{schema}->name;
+    my $dsn = "DBI:mysql:$p{name}";
     $dsn .= ";host=$p{host}" if $p{host};
-    $dsn .= ";post=$p{port}" if $p{port};
+    $dsn .= ";port=$p{port}" if $p{port};
+
+    foreach my $k (keys %p)
+    {
+	$dsn .= ";$k=$p{$k}" if $k =~ /^mysql/i;
+    }
 
     my $dbh;
     eval
@@ -149,13 +149,14 @@ methods in Alzabo::Driver.
 
 =head1 METHODS
 
-=head2 connect
+=head2 connect, create_database, drop_database
 
-This functions exactly as described in Alzabo::Driver.
-
-=head2 create_database
-
-This functions exactly as described in Alzabo::Driver.
+Besides the parameters listed in L<the Alzabo::Driver
+docs|Alzabo::Driver/Parameters for the connect, create_database, and
+drop_database>, these methods will also include any parameter starting
+with C<mysql_> in the DSN used to connect to the database.  This
+allows you to pass parameters such as C<mysql_default_file>.  See the
+L<DBD::mysql docs|DBD::mysql> for more details.
 
 =head2 get_last_id
 

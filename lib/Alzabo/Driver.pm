@@ -7,8 +7,10 @@ use Alzabo::Exceptions;
 use Alzabo::Util;
 
 use DBI;
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.40 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.41 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -35,6 +37,7 @@ sub available
 sub rows
 {
     my $self = shift;
+
     my %p = @_;
 
     my $sth = $self->_prepare_and_execute(%p);
@@ -167,6 +170,10 @@ sub column
 sub _prepare_and_execute
 {
     my $self = shift;
+
+    validate( @_, { sql => { type => SCALAR },
+		    bind => { type => SCALAR | ARRAYREF,
+			      optional => 1 } } );
     my %p = @_;
 
     Alzabo::Exception::Driver->throw( error => "Attempt to access the database without database handle.  Was ->connect called?" )
@@ -329,6 +336,9 @@ use Alzabo::Util;
 
 use DBI;
 
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
 $VERSION = '0.1';
 
 1;
@@ -337,12 +347,16 @@ sub new
 {
     my $proto = shift;
     my $class = ref $proto || $proto;
+
+    validate( @_, { dbh   => { can => 'prepare' },
+		    sql   => { type => SCALAR },
+		    bind  => { type => SCALAR | ARRAYREF,
+			       optional => 1 },
+		    limit => { type => UNDEF | ARRAYREF,
+			       optional => 1 } } );
     my %p = @_;
 
     my $self = bless {}, $class;
-
-    Alzabo::Exception::Params->throw( error => "Alzabo::DriverStatement->new called without 'dbh' parameter" )
-	unless $p{dbh};
 
     $self->{limit} = $p{limit} ? $p{limit}[0] : 0;
     $self->{offset} = $p{limit} && $p{limit}[1] ? $p{limit}[1] : 0;
@@ -732,7 +746,7 @@ is, and include the code you've written so far.
 The following methods are not implemented in C<Alzabo::Driver> itself
 and must be implemented in a subclass.
 
-=head3 Parameters for the next three methods
+=head3 Parameters for the connect, create_database, and drop_database
 
 =over 4
 
@@ -742,7 +756,7 @@ and must be implemented in a subclass.
 
 =item * host => $hostname
 
-=item * post => $port
+=item * port => $port
 
 =back
 

@@ -1,3 +1,54 @@
+0.35
+
+- Add ability to specify port parameter when connecting to DB for
+reverse engineering/data browser.
+
+- Fix support for host param in data browser.
+
+- Added a new Alzabo/FAQ.pod file.  Its pretty skimpy but hopefully it
+will become more useful over time.
+
+- If your Mason component root was under your document then the links
+to return to the top levels of the schema creator and data browser
+were broken.  Note: if your component root is entirely outside your
+document root then things may not work at all.
+
+- Add support for extra MySQL connection params (like
+mysql_default_file).  See the Alzabo::Driver::MySQL docs for more
+details.
+
+- Add support for Postgres connect params 'options' and 'tty'.
+
+- Alzabo::Create::Schema->reverse_engineer was not passing the 'port'
+parameter to the driver when attempting to make a driver.
+
+- Attempting to pass in the port parameter to a connection would have
+generated a bad DSN due to a type in the code.
+
+- Started using Params::Validate so I can be even stricter about
+argument checking.
+
+- Fix bug introduced in 0.33.  Changing a column's type always removed
+any length and precision setting for the column.  Now it is only
+removed if the new column type does not allow a length or precision
+setting.
+
+- Fix some warnings in the Makefile.PL code.  Also require Pod::Man >=
+1.15 to handle =head3 and =head4 directives.
+
+- The Postgres code did not allow the ABSTIME, MACADDR, or RELTIME
+column types.  These have been added.  Thanks to Bob Gustafson for
+helping me find this problem.
+
+- The Alzabo::Create::Schema->reverse_engineer method was not doing
+anything with a host parameter.  Reported by Aaron Johnson.
+
+- Fix bug in Alzabo::ObjectCache docs.  Reported by Robin Berjon.
+
+- Include a first version of the quick method reference suggested by
+Robin Berjon.  This Alzabo::QuickRef.  The HTML version is table-ized
+and spiffed up a bit from the POD version.
+
 0.34
 
 - If you were trying to run the tests on a system without MySQL

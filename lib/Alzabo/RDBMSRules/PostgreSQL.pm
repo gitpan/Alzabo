@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -62,7 +62,8 @@ sub validate_column_type
     my $self = shift;
     my $type = uc shift;
 
-    my %simple_types = map { $_ => 1 } qw( BOOL
+    my %simple_types = map { $_ => 1 } qw( ABSTIME
+					   BOOL
 					   BOOLEAN
 					   BOX
 					   CHAR
@@ -84,17 +85,19 @@ sub validate_column_type
 					   INTERVAL
 					   LINE
 					   LSEG
+					   MACADDR
 					   MONEY
 					   NUMERIC
 					   OID
 					   PATH
 					   POINT
 					   POLYGON
+					   RELTIME
 					   SERIAL
 					   TEXT
 					   TIME
-					   TIMETZ
 					   TIMESTAMP
+					   TIMETZ
 					   VARCHAR );
 
     return if $simple_types{$type};

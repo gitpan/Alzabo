@@ -6,6 +6,8 @@ $start_row
 $max_rows
 $user => undef
 $password => undef
+$host => undef
+$port => undef
 </%args>
 
 <%init>
@@ -22,7 +24,9 @@ my $url = $m->comp( Alzabo::Config::mason_url_path() . '/common/make_url',
 			       start_row => $start_row,
 			       max_rows => $max_rows,
 			       user => $user,
-			       password => $password
+			       password => $password,
+			       host => $host,
+			       port => $port,
 			     } );
 
 $m->comp( Alzabo::Config::mason_url_path() . '/common/redirect',

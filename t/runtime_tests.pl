@@ -365,6 +365,13 @@ sub run_tests
     $expect = $Alzabo::ObjectCache::VERSION ? 'Alzabo::Exception::Cache::Deleted' : 'Alzabo::Exception::NoSuchRow';
     ok( $@ && $@->isa($expect),
 	"Attempt to update a deleted row should have throw a $expect exception but threw: $@" );
+
+    my $row_id = $emps[1]->id;
+    my $row = eval { $emp_t->row_by_id( row_id => $row_id ) };
+    ok( ! $@,
+	"Attempting to fetch a row via the ->row_by_id method failed: $@" );
+    ok( $row->id eq $emps[1]->id,
+	"Row retrieved via the ->row_by_id method should be the same as the row whose id was used" );
 }
 
 my $pid;

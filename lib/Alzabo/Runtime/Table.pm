@@ -5,16 +5,22 @@ use vars qw($VERSION);
 
 use Alzabo::Runtime;
 
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.38 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.40 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub insert
 {
     my $self = shift;
+
     my %p = @_;
+    validate( @_, { values => { type => HASHREF },
+		    ( map { $_ => { optional => 1 } } keys %p ) } );
 
     my $vals = delete $p{values};
 
@@ -90,7 +96,7 @@ sub row_by_pk
     my $self = shift;
     my %p = @_;
 
-    my $pk_val = exists $p{pk} ? $p{pk} : $p{id};
+    my $pk_val = exists $p{pk} ? delete $p{pk} : $p{id};
 
     my @pk = $self->primary_key;
 
@@ -118,8 +124,10 @@ sub row_by_id
 {
     my $self = shift;
     my %p = @_;
+    validate( @_, { row_id => { type => SCALAR },
+		    ( map { $_ => { optional => 1 } } keys %p ) } );
 
-    my (undef, undef, %pk) = split ';:;_;:;', $p{row_id};
+    my (undef, undef, %pk) = split ';:;_;:;', delete $p{row_id};
 
     return $self->row_by_pk( %p, pk => \%pk );
 }
@@ -140,7 +148,7 @@ sub all_rows
 {
     my $self = shift;
 
-    my $sql = $self->_make_sql(@_);
+    my $sql = $self->_make_sql;
 
     return $self->_cursor_by_sql( @_, sql => $sql );
 }
@@ -148,7 +156,6 @@ sub all_rows
 sub _make_sql
 {
     my $self = shift;
-    my %p = @_;
 
     my $sql = ( $self->schema->sqlmaker->
 		select( $self->primary_key )->
@@ -160,7 +167,14 @@ sub _make_sql
 sub _cursor_by_sql
 {
     my $self = shift;
+
     my %p = @_;
+    validate( @_, { sql => { isa => 'Alzabo::SQLMaker' },
+		    order_by => { type => ARRAYREF | HASHREF | OBJECT,
+				  optional => 1 },
+		    limit => { type => SCALAR | ARRAYREF,
+			       optional => 1 },
+		    ( map { $_ => { optional => 1 } } keys %p ) } );
 
     if ( exists $p{order_by} )
     {
@@ -217,7 +231,12 @@ sub row_count
 sub func
 {
     my $self = shift;
+
     my %p = @_;
+    validate( @_, { func => { type => SCALAR },
+		    args => { type => SCALAR | ARRAYREF | OBJECT,
+			      optional => 1 },
+		    ( map { $_ => { optional => 1 } } keys %p ) } );
 
     my $func = $p{func};
     my @args = exists $p{args} ? ( UNIVERSAL::isa( $p{args}, 'ARRAY' ) ? @{ $p{args} } : $p{args} ) : ();
@@ -259,6 +278,8 @@ sub _canonize_prefetch
 {
     my $self = shift;
 
+    validate_pos( @_, ( { isa => 'Alzabo::Column' } ) x @_ );
+
     foreach my $c (@_)
     {
 	Alzabo::Exception::Params->throw( error => "Column " . $c->name . " doesn't exist in $self->{name}" )
@@ -278,6 +299,8 @@ sub prefetch
 sub add_group
 {
     my $self = shift;
+
+    validate_pos( @_, ( { isa => 'Alzabo::Column' } ) x @_ );
 
     my @names = map { $_->name } @_;
     foreach my $col (@_)

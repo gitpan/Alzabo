@@ -12,12 +12,12 @@ my ($db, $tests);
 if ( eval { require DBD::mysql } && ! $@ )
 {
     $db = 'MySQL';
-    $tests = 94;
+    $tests = 95;
 }
 elsif ( eval { require DBD::Pg } && ! $@ )
 {
     $db = 'PostgreSQL';
-    $tests = 92;
+    $tests = 93;
 }
 else
 {
@@ -460,6 +460,12 @@ $tbi->set_type('text');
 
 ok( ! defined $tbi->length,
     "Length should be undef after switching column type from 'varchar' to 'text'" );
+
+$tbi->set_type('varchar');
+$tbi->set_length( length => 20 );
+$tbi->set_type('char');
+ok( $tbi->length == 20,
+    "Length should remain the same after switching column type from 'varchar' to 'char'" );
 
 eval { $s->save_to_file };
 ok( ! $@,

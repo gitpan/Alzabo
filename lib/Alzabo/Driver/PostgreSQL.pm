@@ -8,7 +8,7 @@ use DBD::Pg;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -65,8 +65,10 @@ sub _make_dbh
     my %p = @_;
 
     my $dsn = "DBI:Pg:dbname=$p{name}";
-    $dsn .= ";host=$p{host}" if $p{host};
-    $dsn .= ";post=$p{port}" if $p{port};
+    foreach ( qw( host port options tty ) )
+    {
+	$dsn .= ";$_=$p{$_}" if $p{$_};
+    }
 
     my $dbh;
     eval
@@ -220,13 +222,19 @@ methods in Alzabo::Driver.
 
 =head1 METHODS
 
-=head2 connect
+=head2 connect, create_database, drop_database
 
-This functions exactly as described in Alzabo::Driver.
+Besides the parameters listed in L<the Alzabo::Driver
+docs|Alzabo::Driver/Parameters for the connect, create_database, and
+drop_database>, the following parameters are accepted:
 
-=head2 create_database
+=over 4
 
-This functions exactly as described in Alzabo::Driver.
+=item * options
+
+=item * tty
+
+=back
 
 =head2 get_last_id
 

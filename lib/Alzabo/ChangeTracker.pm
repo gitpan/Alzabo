@@ -1,8 +1,13 @@
 package Alzabo::ChangeTracker;
 
+use strict;
+
 use vars qw( $VERSION $STACK @CHANGES );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/;
+
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
 1;
 
@@ -20,6 +25,8 @@ sub new
 sub add
 {
     my Alzabo::ChangeTracker $self = shift;
+
+    validate_pos( @_, { type => CODEREF } );
 
     push @CHANGES, shift;
 }

@@ -5,8 +5,10 @@ use vars qw($VERSION);
 
 use Alzabo::Exceptions;
 use Alzabo::Util;
+use Params::Validate qw( validate validate_pos );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.30 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.31 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -88,6 +90,9 @@ sub type_is_blob
 sub schema_sql
 {
     my $self = shift;
+
+    validate_pos( @_, { isa => 'Alzabo::Schema' } );
+
     my $schema = shift;
 
     my @sql;
@@ -186,6 +191,10 @@ sub column_sql_diff
 sub index_sql_diff
 {
     my $self = shift;
+
+    validate( @_, { new => { isa => 'Alzabo::Index' },
+		    old => { isa => 'Alzabo::Index' } } );
+
     my %p = @_;
 
     my $new_sql = $self->index_sql($p{new});
@@ -223,16 +232,18 @@ sub rules_id
 sub schema_sql_diff
 {
     my $self = shift;
+
+    validate( @_, { new => { isa => 'Alzabo::Schema' },
+		    old => { isa => 'Alzabo::Schema' } } );
+
     my %p = @_;
-    my $new = $p{new};
-    my $old = $p{old};
 
     $self->_start_sql;
 
     my @sql;
-    foreach my $new_t ($new->tables)
+    foreach my $new_t ($p{new}->tables)
     {
-	if ( my $old_t = eval { $old->table($new_t->name) } )
+	if ( my $old_t = eval { $p{old}->table($new_t->name) } )
 	{
 	    push @sql, $self->table_sql_diff( new => $new_t,
 					      old => $old_t );
@@ -243,9 +254,9 @@ sub schema_sql_diff
 	}
     }
 
-    foreach my $old_t ($old->tables)
+    foreach my $old_t ($p{old}->tables)
     {
-	unless ( eval { $new->table( $old_t->name ) } )
+	unless ( eval { $p{new}->table( $old_t->name ) } )
 	{
 	    push @sql, $self->drop_table_sql($old_t);
 	}
@@ -259,14 +270,16 @@ sub schema_sql_diff
 sub table_sql_diff
 {
     my $self = shift;
+
+    validate( @_, { new => { isa => 'Alzabo::Table' },
+		    old => { isa => 'Alzabo::Table' } } );
+
     my %p = @_;
-    my $new = $p{new};
-    my $old = $p{old};
 
     my @sql;
-    foreach my $new_c ($new->columns)
+    foreach my $new_c ($p{new}->columns)
     {
-	if ( my $old_c = eval { $old->column( $new_c->name ) } )
+	if ( my $old_c = eval { $p{old}->column( $new_c->name ) } )
 	{
 	    push @sql, $self->column_sql_diff( new => $new_c,
 					       old => $old_c );
@@ -277,26 +290,26 @@ sub table_sql_diff
 	}
     }
 
-    foreach my $old_c ($old->columns)
+    foreach my $old_c ($p{old}->columns)
     {
-	unless ( my $new_c = eval { $new->column( $old_c->name ) } )
+	unless ( my $new_c = eval { $p{new}->column( $old_c->name ) } )
 	{
-	    push @sql, $self->drop_column_sql( new_table => $new,
+	    push @sql, $self->drop_column_sql( new_table => $p{new},
 					       old => $old_c );
 	}
     }
 
-    foreach my $old_i ($old->indexes)
+    foreach my $old_i ($p{old}->indexes)
     {
-	unless ( eval { $new->index( $old_i->id ) } )
+	unless ( eval { $p{new}->index( $old_i->id ) } )
 	{
 	    push @sql, $self->drop_index_sql($old_i);
 	}
     }
 
-    foreach my $new_i ($new->indexes)
+    foreach my $new_i ($p{new}->indexes)
     {
-	if ( my $old_i = eval { $old->index( $new_i->id ) } )
+	if ( my $old_i = eval { $p{old}->index( $new_i->id ) } )
 	{
 	    push @sql, $self->index_sql_diff( new => $new_i,
 					      old => $old_i );
@@ -307,9 +320,9 @@ sub table_sql_diff
 	}
     }
 
-    foreach my $new_fk ($new->all_foreign_keys)
+    foreach my $new_fk ($p{new}->all_foreign_keys)
     {
-	my @fk = grep { $new_fk->id eq $_->id } $old->all_foreign_keys;
+	my @fk = grep { $new_fk->id eq $_->id } $p{old}->all_foreign_keys;
 
 	if (@fk == 1)
 	{
@@ -318,7 +331,7 @@ sub table_sql_diff
 	}
 	elsif (@fk > 1)
 	{
-	    Alzabo::Exception::RDBMSRules->throw( error => "More than one foreign key had the same id in " . $old->name );
+	    Alzabo::Exception::RDBMSRules->throw( error => "More than one foreign key had the same id in " . $p{old}->name );
 	}
 	else
 	{
@@ -326,9 +339,9 @@ sub table_sql_diff
 	}
     }
 
-    foreach my $old_fk ($old->all_foreign_keys)
+    foreach my $old_fk ($p{old}->all_foreign_keys)
     {
-	my @fk = grep { $old_fk->id eq $_->id } $new->all_foreign_keys;
+	my @fk = grep { $old_fk->id eq $_->id } $p{new}->all_foreign_keys;
 
 	if (! @fk)
 	{
@@ -336,17 +349,17 @@ sub table_sql_diff
 	}
 	elsif (@fk > 1)
 	{
-	    Alzabo::Exception::RDBMSRules->throw( error => "More than one foreign key had the same id in " . $new->name );
+	    Alzabo::Exception::RDBMSRules->throw( error => "More than one foreign key had the same id in " . $p{new}->name );
 	}
     }
 
     my $pk_changed;
-    foreach my $old_pk ($old->primary_key)
+    foreach my $old_pk ($p{old}->primary_key)
     {
-	unless ( eval { $new->column_is_primary_key($old_pk) } )
+	unless ( eval { $p{new}->column_is_primary_key($old_pk) } )
 	{
-	    push @sql, $self->alter_primary_key_sql( new => $new,
-						     old => $old );
+	    push @sql, $self->alter_primary_key_sql( new => $p{new},
+						     old => $p{old} );
 	    $pk_changed = 1;
 	    last;
 	}
@@ -354,12 +367,12 @@ sub table_sql_diff
 
     unless ($pk_changed)
     {
-	foreach my $new_pk ($new->primary_key)
+	foreach my $new_pk ($p{new}->primary_key)
 	{
-	    unless ( eval { $old->column_is_primary_key($new_pk) } )
+	    unless ( eval { $p{old}->column_is_primary_key($new_pk) } )
 	    {
-		push @sql, $self->alter_primary_key_sql( new => $new,
-							 old => $old );
+		push @sql, $self->alter_primary_key_sql( new => $p{new},
+							 old => $p{old} );
 		last;
 	    }
 	}
