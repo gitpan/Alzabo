@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.80 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.84 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -308,6 +308,8 @@ sub _select_sql
 					  optional => 1 },
 			    order_by => { type => ARRAYREF | HASHREF | OBJECT,
 					  optional => 1 },
+			    having => { type => ARRAYREF,
+                                        optional => 1 },
 			    limit => { type => SCALAR | ARRAYREF,
 				       optional => 1 },
 			  } );
@@ -338,11 +340,17 @@ sub _select_sql
     $self->_join_all_tables( sql => $sql,
 			     join => $p{join} );
 
-    Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
+    Alzabo::Runtime::process_where_clause( $sql, $p{where} )
+            if exists $p{where};
 
-    Alzabo::Runtime::process_group_by_clause( $sql, $p{group_by} ) if exists $p{group_by};
+    Alzabo::Runtime::process_group_by_clause( $sql, $p{group_by} )
+            if exists $p{group_by};
 
-    Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} ) if exists $p{order_by};
+    Alzabo::Runtime::process_having_clause( $sql, $p{having} )
+            if exists $p{having};
+
+    Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} )
+            if exists $p{order_by};
 
     $sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} ) if $p{limit};
 
@@ -362,7 +370,8 @@ sub _join_all_tables
     #
     # [ [ $t_1 => $t_2 ],
     #   [ $t_1 => $t_3, $fk ],
-    #   [ left_outer_join => $t_3 => $t_4 ] ]
+    #   [ left_outer_join => $t_3 => $t_4 ],
+    #   [ left_outer_join => $t_3 => $t_5, undef, [ $where_clause ] ]
     #
     if ( UNIVERSAL::isa( $p{join}->[0], 'ARRAY' ) )
     {
@@ -378,7 +387,7 @@ sub _join_all_tables
 	    # XXX - improve
 	    Alzabo::Exception::Params->throw
                 ( error => 'The table map must contain only two tables per array reference' )
-                    if @$set > 4;
+                    if @$set > 5;
 
 	    my @tables;
 	    if ( ! ref $set->[0] )
@@ -389,7 +398,7 @@ sub _join_all_tables
 
 	        @tables = @$set[1,2];
 
-		push @from, [ $1, @tables, $set->[3] ];
+		push @from, [ $1, @tables, @$set[3, 4] ];
 	    }
 	    else
 	    {
@@ -701,13 +710,32 @@ is interepreted to mean
 
 Table order is relevant for right and left outer joins, obviously.
 
+It is also possible to apply restrictions to an outer join, for
+example:
+
+  join => [ [ left_outer_join => $table_A, $table_B, $foreign_key,
+              [ [ $table_B->column('size') > 2 ],
+                'and',
+                [ $table_B->column('name'), '!=', 'Foo' ],
+              ] ] ]
+
+This corresponds to this SQL;
+
+  SELECT ... FROM table_A
+  LEFT OUTER JOIN table_B ON ...
+              AND (table_B.size > 2 AND table_B.name != 'Foo')
+
+Again, the foreign key object is only mandatory when there is more
+than one foreign key between the two tables being joined.
+
 If the more complex method of specifying tables is used and no
 C<select> parameter is provided, then the order of the rows returned
 from calling C<next> on the cursor is not guaranteed.  In other words,
 the array that the cursor returns will contain a row from each table
 involved in the join, but the which row belongs to which table cannot
 be determined except by examining each row in turn.  The order will be
-the same every time C<next> is called, however.
+the same every time C<next> is called, however.  It may be easier to
+use the C<next_as_hash> cursor method in this case.
 
 =item * select => C<Alzabo::Runtime::Table> object or objects (optional)
 
@@ -808,6 +836,10 @@ Parameters>.
 See the L<documentation on group by clauses for the
 Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
 Parameters>.
+
+=item * having => same as "where"
+
+This parameter is specified in the same way as the "where" parameter.
 
 =item * limit
 

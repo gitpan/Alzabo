@@ -9,7 +9,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Column);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
 
 sub alias_clone
 {
@@ -85,7 +85,7 @@ C<Alzabo::Column>
 
 This returns an object that can be used in calls to the table and
 schema C<select> method in order to change the name given to the
-column if C<next_hash> is called on the
+column if C<next_as_hash> is called on the
 L<C<Alzabo::DriverStatement>|Alzabo::Driver/Alzabo::DriverStatment>
 returned by the aforementioned C<select> method.
 

@@ -149,7 +149,7 @@ if ( eval { require DBI } && $DBI::VERSION == 1.24 )
 	    'Params::Validate' => 0.24,
 	    'Test::Simple' => 0.44,
 	    'Test::Harness' => 1.26,
-	    'Class::Factory::Util' => 1.2,
+	    'Class::Factory::Util' => 1.3,
 	    %prereq );
 
 check_prereq(\%prereq);

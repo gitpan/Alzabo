@@ -112,7 +112,7 @@ sub render_table
     push @out, "\n";
 
     my $comment = $t->comment;
-    if ( length $comment )
+    if ( defined $comment && length $comment )
     {
 	$comment =~ s/\r\n?/\n/g;
 	$comment =~ s/\n$//;
@@ -150,7 +150,7 @@ sub render_column
 	);
 
     my $comment = $c->comment;
-    if ( length $comment )
+    if ( defined $comment && length $comment )
     {
 	push @out, form $column_comment, $comment;
     }

@@ -13,7 +13,7 @@ use Time::HiRes qw(time);
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.95 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.97 $ =~ /(\d+)\.(\d+)/;
 
 sub insert
 {
@@ -343,6 +343,8 @@ sub _select_sql
 					  optional => 1 },
 			    group_by => { type => ARRAYREF | HASHREF | OBJECT,
 					  optional => 1 },
+                            having   => { type => ARRAYREF,
+                                          optional => 1 },
 			    limit => { type => SCALAR | ARRAYREF,
 				       optional => 1 },
 			  } );
@@ -351,11 +353,17 @@ sub _select_sql
 
     my $sql = $self->schema->sqlmaker->select(@funcs)->from($self);
 
-    Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
+    Alzabo::Runtime::process_where_clause( $sql, $p{where} )
+            if exists $p{where};
 
-    Alzabo::Runtime::process_group_by_clause( $sql, $p{group_by} ) if exists $p{group_by};
+    Alzabo::Runtime::process_group_by_clause( $sql, $p{group_by} )
+            if exists $p{group_by};
 
-    Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} ) if exists $p{order_by};
+    Alzabo::Runtime::process_having_clause( $sql, $p{having} )
+            if exists $p{having};
+
+    Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} )
+            if exists $p{order_by};
 
     $sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} ) if $p{limit};
 
@@ -707,6 +715,10 @@ parameter.
 
 This parameter can take either a single column object or an array of
 column objects.
+
+=item * having => same as "where"
+
+This parameter is specified in the same way as the "where" parameter.
 
 =item * limit => $limit or [ $limit, $offset ]
 

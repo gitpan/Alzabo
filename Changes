@@ -1,4 +1,44 @@
-0.70
+0.71
+
+ENHANCEMENTS:
+
+- Alzabo now tracks table and column renames after a schema has been
+instantiated.  This means that when updating the schema in the
+database after such a change, Alzabo can ensure that there is no data
+lost because of the change.  Previously, Alzabo treated name changes
+as a drop followed by an add, which caused data loss.
+
+- Alzabo::DriverStatement->next_hash has been renamed next_as_hash, in
+order to be consistent with the Alzabo::Runtime::Cursor classes.
+
+- Experimental support for restriction clauses as part of an outer
+join, such as
+
+  SELECT ...
+    FROM Foo
+         LEFT OUTER JOIN Bar
+            ON Foo.foo_id = Bar.foo_id
+               AND Bar.something > 2
+
+- Added support for HAVING in queries.
+
+BUG FIXES:
+
+- Exceptions did not include a stack trace.
+
+- Trying to create a Postgres schema with foreign keys defined caused
+an exception.  Reported by Josh Jore.
+
+- Fetching rows from the cursor for a join with multiple outer joins
+could fail if data was being prefetched.
+
+DEPRECATIONS:
+
+- Alzabo::DriverStatement->next_hash method has been renamed
+next_as_hash.
+
+
+0.70  November 21, 2002
 
 ENHANCEMENTS:
 
@@ -51,7 +91,7 @@ ENHANCEMENTS:
 
 BUG FIXES:
 
-** - A particularly nasty bug sometimes manifested itself when
+- ** A particularly nasty bug sometimes manifested itself when
 removing a foreign key.  This bug caused the deletion of all foreign
 keys involving the _corresponding_ column(s) in the foreign table.
 Needless to say, this could make a big mess.

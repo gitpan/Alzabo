@@ -2,14 +2,9 @@ To Do List
 
 Short term:
 
-- Track table/column renames when working with schemas so that Alzabo
-  can preserve data during these sorts of changes.
-
 - Support for table attributes (constraints, MySQL table types)
 
-- Store PK as list of indices to columns, not as hash.
-
-- Overhaul foreign key objects so that one relation has one such
+- Overhaul foreign key objects so that one relationship has one such
   object, shared by two tables.
 
 - Add constraints to output SQL for Postgres and MySQL (InnoDB tables
@@ -17,6 +12,10 @@ Short term:
 
 - Make sense of foreign key definitions in Postgres and for InnoDB
   tables in MySQL.
+
+- Table update & delete.  Need to store an additional "last
+  update/delete op" per table in cache sync to make this work.  Then
+  rows check row time and table time.
 
 - Make local $table->{prefetch} work (tied scalar).  I'm no longer
   sure this is possible.  My most recent attempt caused inexplicable

@@ -10,7 +10,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.74 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.76 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -29,11 +29,7 @@ sub new
     return $self;
 }
 
-sub available
-{
-    return Class::Factory::Util::subclasses(__PACKAGE__);
-}
-
+sub available { __PACKAGE__->subclasses }
 
 sub _check_dbh
 {
@@ -540,7 +536,7 @@ sub next
     return wantarray ? @{ $self->{result} } : $self->{result}[0];
 }
 
-sub next_hash
+sub next_as_hash
 {
     my $self = shift;
 
@@ -567,6 +563,7 @@ sub next_hash
 
     return %hash;
 }
+*next_hash = \&next_as_hash;
 
 sub all_rows
 {
@@ -590,7 +587,7 @@ sub all_rows_hash
 
     my @rows;
 
-    while (my %h = $self->next_hash)
+    while (my %h = $self->next_as_hash)
     {
 	push @rows, \%h;
     }
@@ -800,7 +797,7 @@ A new L<C<Alzabo::DriverStatement>|Alzabo::DriverStatement> handle,
 ready to return data via the
 L<C<Alzabo::DriverStatement-E<gt>next>|Alzabo::DriverStatement/next>
 or
-L<C<Alzabo::DriverStatement-E<gt>next_hash>|Alzabo::DriverStatement/next_hash>
+L<C<Alzabo::DriverStatement-E<gt>next_as_hash>|Alzabo::DriverStatement/next_as_hash>
 methods.
 
 =head3 Throws
@@ -827,7 +824,9 @@ list if no more data is available.
 
 L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
 
-=head2 next_hash
+=head2 next_as_hash
+
+For backwards compatibility, this is also available as C<next_hash>.
 
 =head3 Returns
 

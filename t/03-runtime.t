@@ -170,7 +170,7 @@ foreach ( qw( BerkeleyDB SDBM_File DB_File IPC ) )
     }
 }
 
-my $TESTS_PER_RUN = 317;
+my $TESTS_PER_RUN = 332;
 my $SYNC_TESTS_PER_RUN = 20;
 
 #

@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.34 $ =~ /(\d+)\.(\d+)/;
 
 sub new
 {
@@ -47,6 +47,7 @@ sub next
     my $i = 0;
     foreach my $t ( @{ $self->{tables} } )
     {
+
         my %pk;
         my $def = 0;
         foreach my $c ( $t->primary_key )
@@ -61,6 +62,13 @@ sub next
         unless ($def)
         {
             push @rows, undef;
+
+            my @pre;
+            if ( @pre = $t->prefetch )
+            {
+                $i += @pre;
+            }
+
             next;
         }
 
@@ -220,8 +228,9 @@ The number of rowsets returned by the cursor so far.
 =head3 Returns
 
 The next row or rows in a hash, where the hash key is the table name
-and the hash value is the row object.  Tables included in the join via
-an outer join will only be included if they are available.
+and the hash value is the row object.  If a table has been included in
+the join via an outer join, then it may not always be included in the
+hash.
 
 =head1 AUTHOR
 

@@ -530,96 +530,187 @@ sub run_tests
 						  outer_2_key => undef },
 				      no_cache => 1 );
 
-	# doubled array reference is intentional
-	my $cursor;
-	eval_ok( sub { $cursor = $s->join( select => [ $s->tables( 'outer_1', 'outer_2' ) ],
-					   join =>
-					   [ [ left_outer_join => $s->tables( 'outer_1', 'outer_2' ) ] ] ) },
+        {
+            # doubled array reference is intentional
+            my $cursor;
+            eval_ok( sub { $cursor =
+                               $s->join
+                                   ( select => [ $s->tables( 'outer_1', 'outer_2' ) ],
+                                     join =>
+                                     [ [ left_outer_join =>
+                                         $s->tables( 'outer_1', 'outer_2' ) ] ]
+                                   ) },
 		 "Do a left outer join" );
 
-	my @sets = $cursor->all_rows;
+            my @sets = $cursor->all_rows;
 
-	is( scalar @sets, 2,
-	    "Left outer join should return 2 sets of rows" );
+            is( scalar @sets, 2,
+                "Left outer join should return 2 sets of rows" );
 
-	# re-order so that the set with 2 valid rows is always first
-	unless ( defined $sets[0]->[1] )
-	{
-	    my $set = shift @sets;
-	    push @sets, $set;
-	}
+            # re-order so that the set with 2 valid rows is always first
+            unless ( defined $sets[0]->[1] )
+            {
+                my $set = shift @sets;
+                push @sets, $set;
+            }
 
-	is( $sets[0]->[0]->select('outer_1_name'), 'test1 (has matching join row)',
-	    "The first row in the first set should have the name 'test1 (has matching join row)'" );
+            is( $sets[0]->[0]->select('outer_1_name'), 'test1 (has matching join row)',
+                "The first row in the first set should have the name 'test1 (has matching join row)'" );
 
-	is( $sets[0]->[1]->select('outer_2_name'), 'will match something',
-	    "The second row in the first set should have the name 'will match something'" );
+            is( $sets[0]->[1]->select('outer_2_name'), 'will match something',
+                "The second row in the first set should have the name 'will match something'" );
 
-	is( $sets[1]->[0]->select('outer_1_name'), 'test2 (has no matching join row)',
-	    "The first row in the second set should have the name 'test12 (has no matching join row)'" );
+            is( $sets[1]->[0]->select('outer_1_name'), 'test2 (has no matching join row)',
+                "The first row in the second set should have the name 'test12 (has no matching join row)'" );
 
-	ok( ! defined $sets[1]->[1],
-	    "The second row in the second set should not be defined" );
+            ok( ! defined $sets[1]->[1],
+                "The second row in the second set should not be defined" );
+        }
 
-	eval_ok( sub { $cursor = $s->join( select => [ $s->tables( 'outer_1', 'outer_2' ) ],
-					   join =>
-					   [ [ right_outer_join => $s->tables( 'outer_1', 'outer_2' ) ] ] ) },
-		 "Attempt a right outer join" );
+        {
+            my $cursor;
+            eval_ok( sub { $cursor =
+                               $s->join
+                                   ( select => [ $s->tables( 'outer_1', 'outer_2' ) ],
+                                     join =>
+                                     [ [ left_outer_join =>
+                                         $s->tables( 'outer_1', 'outer_2' ),
+                                         [ $s->table('outer_2')->column( 'outer_2_key' ),
+                                           '!=', 1 ],
+                                       ] ],
+                                     order_by =>
+                                     $s->tables('outer_1')->column('outer_1_name')
+                                   ) },
+		 "Do a left outer join" );
 
-	@sets = $cursor->all_rows;
+            my @sets = $cursor->all_rows;
 
-	is( scalar @sets, 2,
-	    "Right outer join should return 2 sets of rows" );
+            is( scalar @sets, 2,
+                "Left outer join should return 2 sets of rows" );
 
-	# re-order so that the set with 2 valid rows is always first
-	unless ( defined $sets[0]->[0] )
-	{
-	    my $set = shift @sets;
-	    push @sets, $set;
-	}
+            is( $sets[0]->[0]->select('outer_1_name'), 'test1 (has matching join row)',
+                "The first row in the first set should have the name 'test1 (has matching join row)'" );
 
-	is( $sets[0]->[0]->select('outer_1_name'), 'test1 (has matching join row)',
-	    "The first row in the first set should have the name 'test1 (has matching join row)'" );
+            is( $sets[0]->[1], undef,
+                "The second row in the first set should be undef" );
 
-	is( $sets[0]->[1]->select('outer_2_name'), 'will match something',
-	    "The second row in the first set should have the name 'will match something'" );
+            is( $sets[1]->[0]->select('outer_1_name'), 'test2 (has no matching join row)',
+                "The first row in the second set should have the name 'test1 (has matching join row)'" );
 
-	ok( ! defined $sets[1]->[0],
-	    "The first row in the second set should not be defined" );
+            is( $sets[1]->[1], undef,
+                "The second row in the second set should be undef" );
+        }
 
-	is( $sets[1]->[1]->select('outer_2_name'), 'will match nothing',
-	    "The second row in the second set should have the name 'test12 (has no matching join row)'" );
+        {
+            my $fk = $s->table('outer_1')->foreign_keys_by_table( $s->table('outer_2') );
+            my $cursor;
+            eval_ok( sub { $cursor =
+                               $s->join
+                                   ( select => [ $s->tables( 'outer_1', 'outer_2' ) ],
+                                     join =>
+                                     [ [ left_outer_join =>
+                                         $s->tables( 'outer_1', 'outer_2' ),
+                                         $fk,
+                                         [ $s->table('outer_2')->column( 'outer_2_key' ),
+                                           '!=', 1 ],
+                                       ] ],
+                                     order_by =>
+                                     $s->tables('outer_1')->column('outer_1_name')
+                                   ) },
+		 "Do a left outer join" );
 
-	# do the same join, but with specified foreign key
-	my $fk = $s->table('outer_1')->foreign_keys_by_table( $s->table('outer_2') );
-	eval_ok( sub { $cursor = $s->join( select => [ $s->tables( 'outer_1', 'outer_2' ) ],
-					   join =>
-					   [ [ right_outer_join => $s->tables( 'outer_1', 'outer_2' ), $fk ] ] ) },
-		 "Attempt a right outer join, with explicit foreign key" );
+            my @sets = $cursor->all_rows;
 
-	@sets = $cursor->all_rows;
+            is( scalar @sets, 2,
+                "Left outer join should return 2 sets of rows" );
 
-	is( scalar @sets, 2,
-	    "Right outer join should return 2 sets of rows" );
+            is( $sets[0]->[0]->select('outer_1_name'), 'test1 (has matching join row)',
+                "The first row in the first set should have the name 'test1 (has matching join row)'" );
 
-	# re-order so that the set with 2 valid rows is always first
-	unless ( defined $sets[0]->[0] )
-	{
-	    my $set = shift @sets;
-	    push @sets, $set;
-	}
+            is( $sets[0]->[1], undef,
+                "The second row in the first set should be undef" );
 
-	is( $sets[0]->[0]->select('outer_1_name'), 'test1 (has matching join row)',
-	    "The first row in the first set should have the name 'test1 (has matching join row)'" );
+            is( $sets[1]->[0]->select('outer_1_name'), 'test2 (has no matching join row)',
+                "The first row in the second set should have the name 'test1 (has matching join row)'" );
 
-	is( $sets[0]->[1]->select('outer_2_name'), 'will match something',
-	    "The second row in the first set should have the name 'will match something'" );
+            is( $sets[1]->[1], undef,
+                "The second row in the second set should be undef" );
+        }
 
-	ok( ! defined $sets[1]->[0],
-	    "The first row in the second set should not be defined" );
+        {
+            my $cursor;
+            eval_ok( sub { $cursor =
+                               $s->join
+                                   ( select => [ $s->tables( 'outer_1', 'outer_2' ) ],
+                                     join =>
+                                     [ [ right_outer_join =>
+                                         $s->tables( 'outer_1', 'outer_2' ) ] ]
+                                   ) },
+                     "Attempt a right outer join" );
 
-	is( $sets[1]->[1]->select('outer_2_name'), 'will match nothing',
-	    "The second row in the second set should have the name 'test12 (has no matching join row)'" );
+            my @sets = $cursor->all_rows;
+
+            is( scalar @sets, 2,
+                "Right outer join should return 2 sets of rows" );
+
+            # re-order so that the set with 2 valid rows is always first
+            unless ( defined $sets[0]->[0] )
+            {
+                my $set = shift @sets;
+                push @sets, $set;
+            }
+
+            is( $sets[0]->[0]->select('outer_1_name'), 'test1 (has matching join row)',
+                "The first row in the first set should have the name 'test1 (has matching join row)'" );
+
+            is( $sets[0]->[1]->select('outer_2_name'), 'will match something',
+                "The second row in the first set should have the name 'will match something'" );
+
+            ok( ! defined $sets[1]->[0],
+                "The first row in the second set should not be defined" );
+
+            is( $sets[1]->[1]->select('outer_2_name'), 'will match nothing',
+                "The second row in the second set should have the name 'test12 (has no matching join row)'" );
+        }
+
+
+        {
+            my $cursor;
+            # do the same join, but with specified foreign key
+            my $fk = $s->table('outer_1')->foreign_keys_by_table( $s->table('outer_2') );
+            eval_ok( sub { $cursor =
+                               $s->join
+                                   ( select => [ $s->tables( 'outer_1', 'outer_2' ) ],
+                                     join =>
+                                     [ [ right_outer_join =>
+                                         $s->tables( 'outer_1', 'outer_2' ), $fk ] ]
+                                   ) },
+                     "Attempt a right outer join, with explicit foreign key" );
+
+            my @sets = $cursor->all_rows;
+
+            is( scalar @sets, 2,
+                "Right outer join should return 2 sets of rows" );
+
+            # re-order so that the set with 2 valid rows is always first
+            unless ( defined $sets[0]->[0] )
+            {
+                my $set = shift @sets;
+                push @sets, $set;
+            }
+
+            is( $sets[0]->[0]->select('outer_1_name'), 'test1 (has matching join row)',
+                "The first row in the first set should have the name 'test1 (has matching join row)'" );
+
+            is( $sets[0]->[1]->select('outer_2_name'), 'will match something',
+                "The second row in the first set should have the name 'will match something'" );
+
+            ok( ! defined $sets[1]->[0],
+                "The first row in the second set should not be defined" );
+
+            is( $sets[1]->[1]->select('outer_2_name'), 'will match nothing',
+                "The second row in the second set should have the name 'test12 (has no matching join row)'" );
+        }
     }
 
     my $id = $emp{bill}->select('employee_id');
@@ -1256,6 +1347,23 @@ sub run_tests
     }
 
     {
+	my @rows = $s->function( select => [ $proj_t->column('name'),
+					     COUNT( $proj_t->column('name') ) ],
+				 join   => [ $emp_proj_t, $proj_t ],
+				 group_by => $proj_t->column('name'),
+				 order_by => [ COUNT( $proj_t->column('name') ), 'DESC' ],
+                                 having => [ COUNT( $proj_t->column('name') ), '>', 2 ],
+                               );
+
+	is( @rows, 1,
+	    "Only one project should be returned from schema->function ordered by COUNT(*) HAVING COUNT(*) > 2" );
+	is( $rows[0][0], 'Extend',
+	    "First project should be Extend" );
+	is( $rows[0][1], 3,
+	    "First project should have 3 employee" );
+    }
+
+    {
 	my @rows;
 	eval_ok( sub { @rows = $s->function( select => 1,
 					     join   => [ $emp_proj_t, $proj_t ],
@@ -1701,9 +1809,9 @@ sub run_tests
 
         my $st = $emp_t->select( select => $foo );
 
-        my %h = $st->next_hash;
+        my %h = $st->next_as_hash;
         is( exists $h{foo}, 1,
-            "next_hash should return a hash with a 'foo' key" );
+            "next_as_hash should return a hash with a 'foo' key" );
     }
 }
 

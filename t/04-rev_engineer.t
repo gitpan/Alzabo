@@ -46,27 +46,34 @@ foreach my $test (@$tests)
     eval_ok( sub { $s2 = Alzabo::Create::Schema->reverse_engineer(%p) },,
 	     "Reverse engineer the @{[$s1->name]} schema with @{[$s1->driver->driver_id]}" );
 
-    my @diff = $s1->rules->schema_sql_diff( old => $s1,
-					    new => $s2 );
-
-    my $sql;
-    if ( $s1->driver->driver_id eq 'MySQL' )
+    if ( ref $s2 )
     {
-	my @sql;
-	foreach (@diff)
-	{
-	    push @sql, $_ unless /ALTER TABLE .* CHANGE COLUMN .* DEFAULT "0".*/;
-	}
+        my @diff = $s1->rules->schema_sql_diff( old => $s1,
+                                                new => $s2 );
 
-	$sql = join "\n", @sql;
+        my $sql;
+        if ( $s1->driver->driver_id eq 'MySQL' )
+        {
+            my @sql;
+            foreach (@diff)
+            {
+                push @sql, $_ unless /ALTER TABLE .* CHANGE COLUMN .* DEFAULT "0".*/;
+            }
+
+            $sql = join "\n", @sql;
+        }
+        else
+        {
+            $sql = join "\n", @diff;
+        }
+
+        is ( $sql, '',
+             "Reverse engineered schema's SQL should be the same as the original's" );
+
+        $s1->delete;
     }
     else
     {
-	$sql = join "\n", @diff;
+        ok( 0, "Reverse engineering failed, cannot do diff" );
     }
-
-    is ( $sql, '',
-	 "Reverse engineered schema's SQL should be the same as the original's" );
-
-    $s1->delete;
 }

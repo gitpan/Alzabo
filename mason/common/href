@@ -1,1 +1,11 @@
-<a href="<& url, %ARGS &>"><% $ARGS{text} %></a>
+<a href="<& url, %ARGS &>">\
+% if ($escape) {
+<% $ARGS{text} | h %>\
+% } else {
+<% $text %>\
+% }
+</a>
+<%args>
+$text
+$escape => 1
+</%args>

@@ -31,7 +31,7 @@ WriteMakefile( NAME         => 'Alzabo',
 	       VERSION_FROM => File::Spec->catfile( 'lib', 'Alzabo.pm' ),
 	       PREREQ_PM    => \%prereq,
 
-	       realclean    => { FILES => $realclean },
+	       clean        => { FILES => $realclean },
 
 	       AUTHOR       => 'Dave Rolsky <autarch@urth.org>',
 	       ABSTRACT     => 'Perl data modelling tool',

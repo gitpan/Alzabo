@@ -4,6 +4,7 @@ INSTALL
 LICENSE
 MANIFEST			This list of files
 Makefile.PL
+META.yml
 README
 TODO
 eg/alzabo_to_ascii

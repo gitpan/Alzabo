@@ -10,7 +10,7 @@ use base qw(Alzabo::RDBMSRules);
 use Params::Validate qw( validate_pos );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.36 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.38 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -336,18 +336,6 @@ sub schema_sql
     return @sql;
 }
 
-sub _start_sql
-{
-    my $self = shift;
-    $self->{sql_made} = {};
-}
-
-sub _end_sql
-{
-    my $self = shift;
-    $self->{sql_made} = {};
-}
-
 sub table_sql
 {
     my $self = shift;
@@ -386,7 +374,7 @@ sub table_sql
 	}
     }
 
-    $self->{sql_made}{table_sql}{ $table->name } = 1;
+    $self->{state}{table_sql}{ $table->name } = 1;
 
     return @sql;
 }
@@ -416,7 +404,7 @@ sub column_sql
 {
     my $self = shift;
     my $col = shift;
-    my $p = shift;   # hashref for skip_nullable and skip_default
+    my $p = shift;   # hashref for skip_nullable, skip_default, && skip_name
 
     my @default;
     if ( ! $p->{skip_default} && defined $col->default )
@@ -443,7 +431,9 @@ sub column_sql
 	@nullable = $col->nullable ? 'NULL' : 'NOT NULL';
     }
 
-    my $sql .= join '  ', ( '"' . $col->name . '"',
+    my @name = $p->{skip_name} ? () : '"' . $col->name . '"';
+
+    my $sql .= join '  ', ( @name,
 			    $type,
 			    @default,
 			    @nullable,
@@ -500,8 +490,10 @@ sub drop_table_sql
 
     unless ($keep_sequences)
     {
-	foreach my $c ($table->columns)
+	foreach my $c ( $table->columns )
 	{
+            # this is done automatically in 7.3, which probably will
+            # break this.
 	    push @sql, $self->_drop_sequence_sql($c) if $c->sequenced;
 	}
     }
@@ -519,22 +511,22 @@ sub _drop_sequence_sql
     return "DROP SEQUENCE $seq_name;\n";
 }
 
+sub foreign_key_sql
+{
+    return; # temporarily disable
+    my $self = shift;
+    my $fk = shift;
+
+}
+
 sub drop_column_sql
 {
     my $self = shift;
     my %p = @_;
 
-    # This is a hack to prevent this SQL from being made multiple
-    # times (which would be pointless)
-    return () if $self->{sql_made}{table_sql}{ $p{new_table}->name };
-
-    return ( $self->_temp_table_sql( $p{new_table}, $p{old}->table ),
-	     $self->drop_table_sql( $p{old}->table, 1 ),
-	     # the 0 param indicates that we should not create sequences
-	     $self->table_sql( $p{new_table}, 0 ),
-	     $self->_restore_table_data_sql( $p{new_table}, $p{old}->table ),
-	     $self->_drop_temp_table( $p{new_table} ),
-	   );
+    return $self->recreate_table_sql( new => $p{new_table},
+                                      old => $p{old}->table,
+                                    );
 }
 
 sub _temp_table_sql
@@ -558,13 +550,22 @@ sub _restore_table_data_sql
     my $new_table = shift;
     my $old_table = shift;
 
+    my @cols;
+    foreach my $column ( $new_table->columns )
+    {
+        my $old_name =
+            defined $column->former_name ? $column->former_name : $column->name;
+
+        push @cols, [ $column->name, $old_name ]
+            if $old_table->has_column($old_name);
+    }
+
     my $temp_name = "TEMP" . $new_table->name;
 
     my $sql = 'INSERT INTO "' . $new_table->name . '" (';
-    $sql .= join ', ', map { '"' . $_->name . '"' } $new_table->columns;
+    $sql .= join ', ', map { qq|"$_->[0]"| } @cols;
     $sql .= " ) \n  SELECT ";
-    $sql .= ( join ', ', map { '"' . $_->name . '"' }
-	      grep { $new_table->has_column( $_->name ) }  $old_table->columns );
+    $sql .= join ', ', map { qq|"$_->[1]"| } @cols;
     $sql .= qq| FROM "$temp_name"|;
 
     return $sql;
@@ -598,7 +599,7 @@ sub column_sql_add
     my $self = shift;
     my $col = shift;
 
-    return () if $self->{sql_made}{table_sql}{ $col->table->name };
+    return () if $self->{state}{table_sql}{ $col->table->name };
 
     # Skip default and not null while adding column
     my @sql = 'ALTER TABLE "' . $col->table->name . '" ADD COLUMN ' . $self->column_sql($col, { skip_default => 1, skip_nullable => 1 });
@@ -628,10 +629,12 @@ sub column_sql_diff
     my $self = shift;
     my %p = @_;
 
+    my $new_sql = $self->column_sql( $p{new}, { skip_name => 1 } );
+    my $old_sql = $self->column_sql( $p{old}, { skip_name => 1 } );
+
     return $self->drop_column_sql( new_table => $p{new}->table,
 				   old => $p{old} )
-	if $self->column_sql($p{new}) ne $self->column_sql($p{old});
-
+	if $new_sql ne $old_sql;
 
     return;
 }
@@ -658,6 +661,45 @@ sub alter_primary_key_sql
     }
 
     return @sql;
+}
+
+# Actually, Postgres _can_ change table names, but it's inability to
+# change most aspects of a column definition make it very difficult to
+# properly change a table name and then change its column definitions,
+# so its easier just to recreate the table
+sub can_change_table_name
+{
+    0;
+}
+
+sub recreate_table_sql
+{
+    my $self = shift;
+    my %p = @_;
+
+    # This is a hack to prevent this SQL from being made multiple
+    # times (which would be pointless)
+    return () if $self->{state}{table_sql}{ $p{new}->name };
+
+    return ( $self->_temp_table_sql( $p{new}, $p{old} ),
+	     $self->drop_table_sql( $p{old}, 1 ),
+	     # the 0 param indicates that we should not create sequences
+	     $self->table_sql( $p{new}, 0 ),
+	     $self->_restore_table_data_sql( $p{new}, $p{old} ),
+	     $self->_drop_temp_table( $p{new} ),
+	   );
+
+}
+
+sub change_column_name_sql
+{
+    my $self = shift;
+    my $column = shift;
+
+    return
+        ( 'ALTER TABLE ' . $column->table->name . ' RENAME COLUMN ' .
+          $column->former_name . ' TO ' . $column->name
+        );
 }
 
 sub reverse_engineer

@@ -9,7 +9,7 @@ use Class::Factory::Util;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.57 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.62 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -122,10 +122,7 @@ sub load
     return $class;
 }
 
-sub available
-{
-    return Class::Factory::Util::subclasses(__PACKAGE__);
-}
+sub available { __PACKAGE__->subclasses }
 
 sub init
 {
@@ -147,6 +144,7 @@ sub new
 		   sql => '',
 		   bind => [],
 		   as_id => 'aaaaa10000',
+                   alias_in_having => 1,
                    %p,
 		 }, $class;
 }
@@ -287,9 +285,7 @@ sub from
 	    {
 		$sql .= ' ' if $sql;
 
-		$sql .= $self->_outer_join(@$elt);
-
-		@{ $self->{tables} }{ @{$elt}[1,2] } = (1, 1);
+                $sql .= $self->_outer_join(@$elt);
 	    }
             else
             {
@@ -345,13 +341,17 @@ sub _outer_join
     validate_pos( @_,
 		  { type => SCALAR },
 		  ( { can => 'alias_name' } ) x 2,
-		  { type => UNDEF | OBJECT, optional => 1 } );
+		  { type => UNDEF | ARRAYREF | OBJECT, optional => 1 },
+		  { type => UNDEF | ARRAYREF, optional => 1 },
+                );
 
     my $type = uc shift;
 
     my $join_from = shift;
     my $join_on = shift;
-    my $fk = shift;
+    my $fk;
+    $fk = shift if @_ && UNIVERSAL::isa( $_[0], 'Alzabo::ForeignKey' );
+    my $where = shift;
 
     unless ($fk)
     {
@@ -374,19 +374,16 @@ sub _outer_join
               $self->{driver}->quote_identifier( $join_from->name ) :
               $join_from->name );
 
-        $sql .= ' AS ' . $join_from->alias_name
+        $sql .= ' AS ' . $join_from->alias_name;
     }
 
     $sql .= " $type OUTER JOIN ";
 
-    unless ( $self->{tables}{$join_on} )
-    {
-        $sql .= ( $self->{quote_identifiers} ?
-                          $self->{driver}->quote_identifier( $join_on->name ) :
-                          $join_on->name );
+    $sql .= ( $self->{quote_identifiers} ?
+              $self->{driver}->quote_identifier( $join_on->name ) :
+              $join_on->name );
 
-        $sql .= ' AS ' . $join_on->alias_name
-    }
+    $sql .= ' AS ' . $join_on->alias_name;
 
     $sql .= ' ON ';
 
@@ -411,6 +408,31 @@ sub _outer_join
                   } $fk->column_pairs );
     }
 
+    @{ $self->{tables} }{ $join_from, $join_on } = (1, 1);
+
+    if ($where)
+    {
+        $sql .= ' AND ';
+
+        # make a clone
+        my $sql_maker = bless { %$self }, ref $self;
+        $sql_maker->{sql} = '';
+        # sharing same ref intentionally
+        $sql_maker->{bind} = $self->{bind};
+        $sql_maker->{tables} = $self->{tables};
+
+        # lie to Alzabo::Runtime::process_where_clause
+        $sql_maker->{last_op} = 'where';
+
+        Alzabo::Runtime::process_where_clause( $sql_maker, $where );
+
+        $sql .= $sql_maker->sql;
+
+        $sql .= ' ';
+
+        $self->{as_id} = $sql_maker->{as_id};
+    }
+
     return $sql;
 }
 
@@ -423,6 +445,21 @@ sub where
     $self->{sql} .= ' WHERE ';
 
     $self->{last_op} = 'where';
+
+    $self->condition(@_) if @_;
+
+    return $self;
+}
+
+sub having
+{
+    my $self = shift;
+
+    $self->_assert_last_op( qw( group_by ) );
+
+    $self->{sql} .= ' HAVING ';
+
+    $self->{last_op} = 'having';
 
     $self->condition(@_) if @_;
 
@@ -465,7 +502,7 @@ sub subgroup_start
 {
     my $self = shift;
 
-    $self->_assert_last_op( qw( where and or subgroup_start ) );
+    $self->_assert_last_op( qw( where having and or subgroup_start ) );
 
     $self->{sql} .= ' (';
     $self->{subgroup} ||= 0;
@@ -507,6 +544,8 @@ sub condition
     my $comp = uc shift;
     my $rhs = shift;
 
+    my $in_having = $self->{last_op} eq 'having' ? 1 : 0;
+
     $self->{last_op} = 'condition';
 
     if ( $lhs->can('table') )
@@ -528,7 +567,17 @@ sub condition
     }
     elsif ( $lhs->isa('Alzabo::SQLMaker::Function') )
     {
-	$self->{sql} .= $lhs->as_string( $self->{driver}, $self->{quote_identifiers} );
+	my $string = $lhs->as_string( $self->{driver}, $self->{quote_identifiers} );
+
+        if ( exists $self->{functions}{$string} &&
+             ( ! $in_having || $self->{alias_in_having} ) )
+        {
+            $self->{sql} .= $self->{functions}{$string};
+        }
+        else
+        {
+            $self->{sql} .= $string;
+        }
     }
     else
     {

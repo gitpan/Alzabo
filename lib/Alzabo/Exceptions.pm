@@ -3,7 +3,7 @@ package Alzabo::Exceptions;
 use strict;
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.27 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.28 $ =~ /(\d+)\.(\d+)/;
 
 my %e;
 
@@ -111,7 +111,7 @@ sub as_string
 
 sub as_text
 {
-    return $_[0]->full_message;
+    return $_[0]->full_message . "\n\n" . $_[0]->trace->as_string;
 }
 
 sub as_html

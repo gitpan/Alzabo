@@ -12,7 +12,7 @@ use Tie::IxHash;
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.51 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.52 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -35,7 +35,7 @@ sub new
     $self->set_name($p{name});
 
     $self->{columns} = Tie::IxHash->new;
-    $self->{pk} = Tie::IxHash->new;
+    $self->{pk} = [];
     $self->{indexes} = Tie::IxHash->new;
 
     $self->set_comment( $p{comment} );
@@ -212,6 +212,8 @@ sub move_column
     Alzabo::Exception::Params->throw( error => "Column " . $p{column}->name . " doesn't exist in schema" )
 	unless $self->{columns}->EXISTS( $p{column}->name );
 
+    my @pk = $self->primary_key;
+
     $self->{columns}->DELETE( $p{column}->name );
 
     my $index;
@@ -225,6 +227,8 @@ sub move_column
     }
 
     $self->{columns}->Splice( $index, 0, $p{column}->name => $p{column} );
+
+    $self->{pk} = [ $self->{columns}->Indices( map { $_->name } @pk ) ];
 }
 
 sub add_primary_key
@@ -239,13 +243,14 @@ sub add_primary_key
 	unless $self->{columns}->EXISTS($name);
 
     Alzabo::Exception::Params->throw( error => "Column $name is already a primary key" )
-	if $self->{pk}->EXISTS($name);
+        if $col->is_primary_key;
 
     $self->schema->rules->validate_primary_key($col);
 
     $col->set_nullable(0);
 
-    $self->{pk}->STORE( $name, $col );
+    my $idx = $self->{columns}->Indices($name);
+    push @{ $self->{pk} }, $idx;
 }
 
 sub delete_primary_key
@@ -260,9 +265,10 @@ sub delete_primary_key
 	unless $self->{columns}->EXISTS($name);
 
     Alzabo::Exception::Params->throw( error => "Column $name is not a primary key" )
-	unless $self->{pk}->EXISTS($name);
+        unless $col->is_primary_key;
 
-    $self->{pk}->DELETE($name);
+    my $idx = $self->{columns}->Indices($name);
+    $self->{pk} = [ grep { $_ != $idx } @{ $self->{pk} } ];
 }
 
 sub make_foreign_key
@@ -403,15 +409,23 @@ sub register_column_name_change
 	$i->register_column_name_change(%p);
 	$self->add_index($i);
     }
-
-    if ( $self->{pk}->EXISTS( $p{old_name} ) )
-    {
-	my $index = $self->{pk}->Indices( $p{old_name} );
-	$self->{pk}->Replace( $index, $p{column}, $new_name );
-    }
 }
 
 sub set_comment { $_[0]->{comment} = defined $_[1] ? $_[1] : '' }
+
+sub save_current_name
+{
+    my $self = shift;
+
+    $self->{last_instantiated_name} = $self->name;
+
+    foreach my $column ( $self->columns )
+    {
+        $column->save_current_name;
+    }
+}
+
+sub former_name { $_[0]->{last_instantiated_name} }
 
 __END__
 

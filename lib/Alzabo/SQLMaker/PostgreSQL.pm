@@ -8,7 +8,7 @@ use Alzabo::Exceptions;
 use Alzabo::SQLMaker;
 use base qw(Alzabo::SQLMaker);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
 
 my $MADE_FUNCTIONS;
 
@@ -195,6 +195,15 @@ sub init
     1;
 }
 
+sub new
+{
+    my $self = shift->SUPER::new(@_);
+
+    $self->{alias_in_having} = 0;
+
+    return $self;
+}
+
 sub limit
 {
     my $self = shift;
@@ -341,7 +350,8 @@ once.
 
 =head2 :system
 
-These are functions which return information about the MySQL server.
+These are functions which return information about the Postgres
+server.
 
  CURRENT_USER
  SYSTEM_USER

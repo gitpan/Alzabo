@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.65 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.66 $ =~ /(\d+)\.(\d+)/;
 
 sub new
 {
@@ -478,6 +478,7 @@ sub column_sql
 {
     my $self = shift;
     my $col = shift;
+    my $p = shift; # for skip_name
 
     # make sure each one only happens once
     my %attr = map { uc $_ => $_ } ( $col->attributes,
@@ -508,7 +509,8 @@ sub column_sql
 	$type .= $length;
     }
 
-    my $sql .= join '  ', ( $col->name,
+    my @name = $p->{skip_name} ? () : $col->name;
+    my $sql .= join '  ', ( @name,
 			    $type,
 			    @unsigned,
 			    @binary,
@@ -659,7 +661,7 @@ sub column_sql_diff
 	$new->set_sequenced(0);
     }
 
-    my $new_sql = $self->column_sql($new);
+    my $new_sql = $self->column_sql( $new, { skip_name => 1 } );
 
     if ($sequenced)
     {
@@ -667,10 +669,13 @@ sub column_sql_diff
     }
 
     my @sql;
-    if ( $new_sql ne $self->column_sql($old) ||
+    if ( $new_sql ne $self->column_sql( $old, { skip_name => 1 } ) ||
 	 ( $new->sequenced && ! $old->sequenced ) )
     {
-	my $sql = 'ALTER TABLE ' . $new->table->name . ' CHANGE COLUMN ' . $new->name . ' ' . $new_sql;
+	my $sql =
+            ( 'ALTER TABLE ' . $new->table->name . ' CHANGE COLUMN ' .
+              $new->name . ' ' . $new->name . ' ' . $new_sql
+            );
 
 	# can't have more than 1 auto_increment column per table (dumb!)
 	if ( ( $new->sequenced && ! $old->sequenced ) &&
@@ -702,7 +707,7 @@ sub alter_primary_key_sql
     push @sql, 'ALTER TABLE ' . $new->name . ' DROP PRIMARY KEY'
 	if $old->primary_key;
 
-    if ($new->primary_key)
+    if ( $new->primary_key )
     {
 	my $sql = 'ALTER TABLE  ' . $new->name . ' ADD PRIMARY KEY ( ';
 	$sql .= join ', ', map {$_->name} $new->primary_key;
@@ -711,18 +716,38 @@ sub alter_primary_key_sql
 	push @sql, $sql;
     }
 
-    foreach ($new->primary_key)
+    foreach ( $new->primary_key )
     {
 	if ( $_->sequenced &&
 	     ! ( $old->has_column( $_->name ) &&
 		 $old->column( $_->name )->is_primary_key ) )
 	{
 	    my $sql = $self->column_sql($_);
-	    push @sql, 'ALTER TABLE ' . $new->name . ' CHANGE COLUMN ' . $_->name . ' ' . $sql;
+	    push @sql,
+                'ALTER TABLE ' . $new->name . ' CHANGE COLUMN ' . $_->name . ' ' . $sql;
 	}
     }
 
     return @sql;
+}
+
+sub change_table_name_sql
+{
+    my $self = shift;
+    my $table = shift;
+
+    return 'RENAME TABLE ' . $table->former_name . ' TO ' . $table->name;
+}
+
+sub change_column_name_sql
+{
+    my $self = shift;
+    my $column = shift;
+
+    return
+        ( 'ALTER TABLE ' . $column->table->name . ' CHANGE COLUMN ' .
+          $column->former_name . ' ' . $self->column_sql($column)
+        );
 }
 
 my %ignored_defaults = ( DATETIME => '0000-00-00 00:00:00',

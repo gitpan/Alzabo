@@ -17,7 +17,7 @@ use Alzabo::Runtime::Table;
 
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.29 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.31 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -34,17 +34,39 @@ sub process_where_clause
 {
     my ($sql, $where) = @_;
 
-    $where = [ $where ] unless UNIVERSAL::isa( $where->[0], 'ARRAY' ) || $where->[0] eq '(';
+    $where = [ $where ]
+        unless UNIVERSAL::isa( $where->[0], 'ARRAY' ) || $where->[0] eq '(';
 
-    my $has_where = ( $sql->last_op eq 'where' || $sql->last_op eq 'condition' ) ? 1 : 0;
+    my $has_where =
+        ( $sql->last_op eq 'where' || $sql->last_op eq 'condition' ) ? 1 : 0;
 
-    my $needs_op = $sql->last_op eq 'where' ? 0 : 1;
+    _process_conditions( $sql, $has_where, $where, 'where' );
+}
 
-    if ($has_where)
+sub process_having_clause
+{
+    my ($sql, $having) = @_;
+
+    $having = [ $having ]
+        unless UNIVERSAL::isa( $having->[0], 'ARRAY' ) || $having->[0] eq '(';
+
+    my $has_having =
+        ( $sql->last_op eq 'having' || $sql->last_op eq 'condition' ) ? 1 : 0;
+
+    _process_conditions( $sql, $has_having, $having, 'having' );
+}
+
+sub _process_conditions
+{
+    my ($sql, $has_start, $conditions, $needed_op) = @_;
+
+    my $needs_op = $sql->last_op eq 'where' || $sql->last_op eq 'having' ? 0 : 1;
+
+    if ($has_start)
     {
         # wrap this in parens in order to protect from interactions with
         # join clauses
-        $sql->and;
+        $sql->and if $needs_op;
 
         $sql->subgroup_start;
 
@@ -52,7 +74,7 @@ sub process_where_clause
     }
 
     my $x = 0;
-    foreach my $clause (@$where)
+    foreach my $clause (@$conditions)
     {
 	if (ref $clause)
 	{
@@ -66,7 +88,7 @@ sub process_where_clause
 
 	    if ($needs_op)
 	    {
-		my $op = $x || $has_where ? 'and' : 'where';
+		my $op = $x || $has_start ? 'and' : $needed_op;
 		$sql->$op();
 	    }
 
@@ -83,7 +105,7 @@ sub process_where_clause
 	{
 	    if ($needs_op)
 	    {
-		my $op = $x || $has_where ? 'and' : 'where';
+		my $op = $x || $has_start ? 'and' : $needed_op;
 		$sql->$op();
 	    }
 	    $sql->subgroup_start;
@@ -101,7 +123,7 @@ sub process_where_clause
 	$x++;
     }
 
-    $sql->subgroup_end if $has_where;
+    $sql->subgroup_end if $has_start;
 }
 
 sub process_order_by_clause

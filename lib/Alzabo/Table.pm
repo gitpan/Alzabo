@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use Tie::IxHash;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.45 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.46 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -81,11 +81,11 @@ sub primary_key
 {
     my $self = shift;
 
-    return unless $self->{pk}->Values;
+    return unless @{ $self->{pk} };
 
     return ( wantarray ?
-             $self->columns( map { $_->name } $self->{pk}->Values ) :
-             $self->column( $self->{pk}->Values(0)->name )
+             $self->{columns}->Values( @{ $self->{pk} } ) :
+             $self->{columns}->Values( $self->{pk}[0] )
            );
 }
 
@@ -93,7 +93,7 @@ sub primary_key_size
 {
     my $self = shift;
 
-    return scalar $self->{pk}->Keys;
+    return scalar @{ $self->{pk} };
 }
 
 sub column_is_primary_key
@@ -104,10 +104,11 @@ sub column_is_primary_key
 
     my $name = shift->name;
 
-    return 1 if $self->{pk}->EXISTS($name);
-
     Alzabo::Exception::Params->throw( error => "Column $name doesn't exist in $self->{name}" )
 	unless $self->{columns}->EXISTS($name);
+
+    my $idx = $self->{columns}->Indices($name);
+    return 1 if grep { $idx == $_ } @{ $self->{pk} };
 
     return 0;
 }

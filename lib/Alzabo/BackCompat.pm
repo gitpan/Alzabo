@@ -15,7 +15,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
 
 #
 # Each pair represents a range of versions which are compatible with
@@ -27,9 +27,12 @@ $VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
 # version pair.
 #
 my @compat = ( [ 0, 0.64 ],
-	       [ 0.65, $Alzabo::VERSION,
+	       [ 0.65, 0.70,
 		 \&add_comment_fields,
 	       ],
+               [ 0.71, $Alzabo::VERSION,
+                 \&convert_pk_to_array,
+               ],
 	     );
 
 sub update_schema
@@ -120,7 +123,11 @@ EOF
     close $fh
 	or Alzabo::Exception::System->throw( error => "Unable to close $c_file: $!" );
 
-    $_->($raw) foreach @cb;
+    foreach (@cb)
+    {
+        $_->($raw);
+        $_->( $raw->{original} ) if $raw->{original};
+    }
 
     open $fh, ">$c_file"
 	or Alzabo::Exception::System->throw( error => "Unable to write to $c_file: $!" );
@@ -170,6 +177,19 @@ sub add_comment_fields
 	{
 	    $table->{comment} = '';
 	}
+    }
+}
+
+sub convert_pk_to_array
+{
+    my $s = shift;
+
+    foreach my $table ( $s->tables )
+    {
+        my @names = map { $_->name } $table->{pk}->Values;
+        my $pk = [ $table->{columns}->Indices(@names) ];
+
+        $table->{pk} = $pk;
     }
 }
 

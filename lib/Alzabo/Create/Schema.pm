@@ -21,7 +21,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.88 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.89 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -753,6 +753,8 @@ sub create
 	$self->{driver}->do( sql => $statement );
     }
 
+    $self->save_current_name;
+
     $self->set_instantiated(1);
     my $driver = delete $self->{driver};
     $self->{original} = Storable::dclone($self);
@@ -809,6 +811,8 @@ sub sync_backend
     {
 	$self->driver->do( sql => $statement );
     }
+
+    $self->save_current_name;
 
     $self->set_instantiated(1);
     my $driver = delete $self->{driver};
@@ -949,6 +953,8 @@ sub _make_runtime_clone
 	    my $def = $c->definition;
 	    bless $def, 'Alzabo::Runtime::ColumnDefinition';
 	    bless $c, 'Alzabo::Runtime::Column';
+
+            delete $c->{last_instantiation_name};
 	}
 
 	foreach my $fk ($t->all_foreign_keys)
@@ -961,12 +967,28 @@ sub _make_runtime_clone
 	    bless $i, 'Alzabo::Runtime::Index';
 	}
 
+        delete $t->{last_instantiation_name};
+
 	bless $t, 'Alzabo::Runtime::Table';
     }
     bless $clone, 'Alzabo::Runtime::Schema';
 
     return $clone;
 }
+
+sub save_current_name
+{
+    my $self = shift;
+
+    $self->{last_instantiated_name} = $self->name;
+
+    foreach my $table ( $self->tables )
+    {
+        $table->save_current_name;
+    }
+}
+
+sub former_name { $_[0]->{last_instantiated_name} }
 
 # Overrides method in base to load create schema instead of runtime
 # schema

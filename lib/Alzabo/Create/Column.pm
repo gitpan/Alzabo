@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Column);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.38 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.39 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -277,6 +277,15 @@ sub set_definition
 }
 
 sub set_comment { $_[0]->{comment} = defined $_[1] ? $_[1] : '' }
+
+sub save_current_name
+{
+    my $self = shift;
+
+    $self->{last_instantiated_name} = $self->name;
+}
+
+sub former_name { $_[0]->{last_instantiated_name} }
 
 __END__
 

@@ -9,7 +9,7 @@ use Alzabo::Runtime;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.66 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.67 $ =~ /(\d+)\.(\d+)/;
 
 # types of methods that can be made - only ones that haven't been
 # deprecated
@@ -1602,7 +1602,7 @@ for more details.
 
 =head2 Row object methods
 
-=head3 row_column => $bool
+=head3 row_columns => $bool
 
 This tells MethodMaker to create get/set methods for each column a row
 has.  These methods take a single optional argument, which if given

@@ -9,7 +9,7 @@ use Class::Factory::Util;
 use Params::Validate qw( validate validate_pos );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.46 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.50 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -23,10 +23,7 @@ sub new
     return "Alzabo::RDBMSRules::$p{rdbms}"->new(@_);
 }
 
-sub available
-{
-    return Class::Factory::Util::subclasses(__PACKAGE__);
-}
+sub available { __PACKAGE__->subclasses }
 
 # validation
 
@@ -162,26 +159,14 @@ sub schema_sql
 
     my @sql;
 
-    $self->_start_sql;
+    local $self->{state};
 
     foreach my $t ( $schema->tables )
     {
 	push @sql, $self->table_sql($t);
     }
 
-    $self->_end_sql;
-
     return @sql;
-}
-
-sub _start_sql
-{
-    1;
-}
-
-sub _end_sql
-{
-    1;
 }
 
 sub table_sql
@@ -282,6 +267,31 @@ sub alter_primary_key_sql
     shift()->_virtual;
 }
 
+sub can_change_table_name
+{
+    1;
+}
+
+sub can_change_column_name
+{
+    1;
+}
+
+sub change_table_name_sql
+{
+    shift()->_virtual;
+}
+
+sub change_column_name_sql
+{
+    shift()->_virtual;
+}
+
+sub recreate_table_sql
+{
+    shift()->_virtual;
+}
+
 =pod
 
 sub reverse_engineer
@@ -365,31 +375,53 @@ sub schema_sql_diff
 
     my %p = @_;
 
-    $self->_start_sql;
+    local $self->{state};
 
     my @sql;
-    foreach my $new_t ($p{new}->tables)
+    my %changed_name;
+    foreach my $new_t ( $p{new}->tables )
     {
-	if ( my $old_t = eval { $p{old}->table($new_t->name) } )
+        my $old_name = defined $new_t->former_name ? $new_t->former_name : $new_t->name;
+
+	if ( my $old_t = eval { $p{old}->table($old_name) } )
 	{
-	    push @sql, $self->table_sql_diff( new => $new_t,
-					      old => $old_t );
+            if ( $old_name ne $new_t->name )
+            {
+                $changed_name{$old_name} = 1;
+
+                if ( $self->can_change_table_name )
+                {
+                    push @sql, $self->change_table_name_sql($new_t);
+                }
+                else
+                {
+                    push @sql, $self->recreate_table_sql( new => $new_t,
+                                                          old => $old_t,
+                                                        );
+
+                    # no need to do more because table will be
+                    # recreated from scratch
+                    next;
+                }
+            }
+
+            push @sql, $self->table_sql_diff( new => $new_t,
+                                              old => $old_t );
 	}
-	else
-	{
-	    push @sql, $self->table_sql($new_t);
-	}
+        else
+        {
+            push @sql, $self->table_sql($new_t);
+        }
     }
 
-    foreach my $old_t ($p{old}->tables)
+    foreach my $old_t ( $p{old}->tables )
     {
-	unless ( eval { $p{new}->table( $old_t->name ) } )
+	unless ( $changed_name{ $old_t->name } ||
+                 eval { $p{new}->table( $old_t->name ) } )
 	{
 	    push @sql, $self->drop_table_sql($old_t);
 	}
     }
-
-    $self->_end_sql;
 
     return @sql;
 }
@@ -404,7 +436,7 @@ sub table_sql_diff
     my %p = @_;
 
     my @sql;
-    foreach my $old_i ($p{old}->indexes)
+    foreach my $old_i ( $p{old}->indexes )
     {
 	unless ( eval { $p{new}->index( $old_i->id ) } )
 	{
@@ -413,29 +445,56 @@ sub table_sql_diff
 	}
     }
 
-    foreach my $old_c ($p{old}->columns)
+    my %changed_name;
+    foreach my $new_c ( $p{new}->columns )
     {
-	unless ( my $new_c = eval { $p{new}->column( $old_c->name ) } )
+        $changed_name{ $new_c->former_name } = 1
+            if defined $new_c->former_name && $new_c->former_name ne $new_c->name;
+    }
+
+    foreach my $old_c ( $p{old}->columns )
+    {
+	unless ( $changed_name{ $old_c->name } ||
+                 ( my $new_c = eval { $p{new}->column( $old_c->name ) } )
+               )
 	{
 	    push @sql, $self->drop_column_sql( new_table => $p{new},
 					       old => $old_c );
 	}
     }
 
-    foreach my $new_c ($p{new}->columns)
+    foreach my $new_c ( $p{new}->columns )
     {
-	if ( my $old_c = eval { $p{old}->column( $new_c->name ) } )
+        my $old_name = defined $new_c->former_name ? $new_c->former_name : $new_c->name;
+
+	if ( my $old_c = eval { $p{old}->column($old_name) } )
 	{
+            if ( $old_name ne $new_c->name )
+            {
+                if ( $self->can_change_column_name )
+                {
+                    push @sql, $self->change_column_name_sql($new_c);
+                }
+                else
+                {
+                    # no need to do more because table will be
+                    # recreated from scratch
+                    return $self->recreate_table_sql( new => $new_c->table,
+                                                      old => $old_c->table,
+                                                    );
+                }
+            }
+
 	    push @sql, $self->column_sql_diff( new => $new_c,
 					       old => $old_c );
 	}
 	else
 	{
-	    push @sql, $self->column_sql_add($new_c)
+            push @sql, $self->column_sql_add($new_c);
 	}
     }
 
-    foreach my $new_i ($p{new}->indexes)
+    foreach my $new_i ( $p{new}->indexes )
     {
 	if ( my $old_i = eval { $p{old}->index( $new_i->id ) } )
 	{
@@ -448,7 +507,7 @@ sub table_sql_diff
 	}
     }
 
-    foreach my $new_fk ($p{new}->all_foreign_keys)
+    foreach my $new_fk ( $p{new}->all_foreign_keys )
     {
 	my @fk = grep { $new_fk->id eq $_->id } $p{old}->all_foreign_keys;
 
@@ -459,7 +518,8 @@ sub table_sql_diff
 	}
 	elsif (@fk > 1)
 	{
-	    Alzabo::Exception::RDBMSRules->throw( error => "More than one foreign key had the same id in " . $p{old}->name );
+	    Alzabo::Exception::RDBMSRules->throw
+                ( error => "More than one foreign key had the same id in " . $p{old}->name );
 	}
 	else
 	{
@@ -467,7 +527,7 @@ sub table_sql_diff
 	}
     }
 
-    foreach my $old_fk ($p{old}->all_foreign_keys)
+    foreach my $old_fk ( $p{old}->all_foreign_keys )
     {
 	my @fk = grep { $old_fk->id eq $_->id } $p{new}->all_foreign_keys;
 
@@ -484,28 +544,35 @@ sub table_sql_diff
     my $pk_changed;
     foreach my $old_pk ( $p{old}->primary_key )
     {
-	my $new_col = eval { $p{new}->column( $old_pk->name ) };
-	unless ( $new_col && $new_col->is_primary_key )
-	{
-	    push @sql, $self->alter_primary_key_sql( new => $p{new},
-						     old => $p{old} );
+        next if $changed_name{ $old_pk->name };
+
+        my $new_col = eval { $p{new}->column( $old_pk->name ) };
+        unless ( $new_col && $new_col->is_primary_key )
+        {
+            push @sql, $self->alter_primary_key_sql( new => $p{new},
+                                                     old => $p{old} );
+
 	    $pk_changed = 1;
-	    last;
-	}
+            last;
+        }
     }
 
     unless ($pk_changed)
     {
-	foreach my $new_pk ( $p{new}->primary_key )
-	{
-	    my $old_col = eval { $p{old}->column( $new_pk->name ) };
-	    unless ( $old_col && $old_col->is_primary_key )
-	    {
-		push @sql, $self->alter_primary_key_sql( new => $p{new},
-							 old => $p{old} );
-		last;
-	    }
-	}
+        foreach my $new_pk ( $p{new}->primary_key )
+        {
+            my $old_col = eval { $p{old}->column( $new_pk->name ) };
+
+            next if $changed_name{ $new_pk->former_name };
+
+            unless ( $old_col && $old_col->is_primary_key )
+            {
+                push @sql, $self->alter_primary_key_sql( new => $p{new},
+                                                         old => $p{old} );
+
+                last;
+            }
+        }
     }
 
     return @sql;
