@@ -13,7 +13,7 @@ use Alzabo::Config;
 
 use vars qw($VERSION);
 
-$VERSION = '0.40';
+$VERSION = '0.41';
 
 1;
 
@@ -31,11 +31,11 @@ Alzabo - A data modelling tool and RDBMS-OO mapper
 
 =head2 What is Alzabo?
 
-Alzabo is a program and a module, with two core functions.  Its first
-use is as a data modelling tool.  Through either a schema creation
-interface or a perl program, you can create a set of schema, table,
-column, etc. objects to represent your data model.  Alzabo is also
-capable of reverse engineering your data model from an existing
+Alzabo is a program and a suite of modules, with two core functions.
+Its first use is as a data modelling tool.  Through either a schema
+creation interface or a perl program, you can create a set of schema,
+table, column, etc. objects to represent your data model.  Alzabo is
+also capable of reverse engineering your data model from an existing
 system.
 
 Its second function is as an RDBMS to object mapping system.  Once you

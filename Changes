@@ -1,3 +1,10 @@
+0.41
+
+Bugs:
+
+- 0.40 was missing a file in the distro
+(lib/Alzabo/ObjectCache/Sync/DBM.pm).
+
 0.40
 
 Incompatibilities:
