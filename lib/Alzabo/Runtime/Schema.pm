@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.56 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.63 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -107,6 +107,8 @@ sub connect
     $p{host} = $self->host if defined $self->host;
     $p{port} = $self->port if defined $self->port;
     $self->driver->connect( %p, @_ );
+
+#    $self->set_referential_integrity( ! $self->driver->supports_referential_integrity );
 }
 
 sub one_row
@@ -144,7 +146,7 @@ sub join
 	# flattens the nested structure and produces a unique set of
 	# tables
 	@tables = values %{ { map { $_ => $_ }
-			      grep { UNIVERSAL::isa( 'Alzabo::Table', $_ ) }
+			      grep { UNIVERSAL::isa( $_, 'Alzabo::Table' ) }
 			      map { @$_ } @{ $p{join} } } };
     }
     else
@@ -156,14 +158,19 @@ sub join
     my @select_tables = ( $p{select} ?
 			  ( UNIVERSAL::isa( $p{select}, 'ARRAY' ) ?
 			    @{ $p{select} } : $p{select} ) :
-			  ( $p{distinct} ? $p{distinct} : @tables ) );
+			  ( $p{distinct} ? $p{distinct} :
+			    @tables ) );
 
     my @select_cols;
-    # If the table has a multi-column primary key we have to jump
-    # through hoops later.
-    if ( $p{distinct} && $p{distinct}->primary_key == 1 )
+    if ( $p{distinct} )
     {
-	@select_cols = $self->sqlmaker->DISTINCT( $p{distinct}->primary_key );
+	@select_cols = ( 'distinct',
+			 map { $_->primary_key }
+			 ( UNIVERSAL::isa( $p{distinct}, 'ARRAY' ) ?
+			   @{ $p{distinct} } :
+			   $p{distinct} )
+		       );
+
 	foreach (@select_tables)
 	{
 	    next if $_ eq $p{distinct};
@@ -195,16 +202,24 @@ sub join
 
     if (@select_tables == 1)
     {
-	return Alzabo::Runtime::RowCursor->new( statement => $statement,
-						table => $select_tables[0]->real_table,
-						distinct => $p{distinct} );
+	return Alzabo::Runtime::RowCursor->new
+	           ( statement => $statement,
+		     table => $select_tables[0]->real_table );
     }
     else
     {
-	return Alzabo::Runtime::JoinCursor->new( statement => $statement,
-						 tables => [ map { $_->real_table } @select_tables ],
-						 distinct => $p{distinct} );
+	return Alzabo::Runtime::JoinCursor->new
+	           ( statement => $statement,
+		     tables => [ map { $_->real_table } @select_tables ] );
     }
+}
+
+sub row_count
+{
+    my $self = shift;
+
+    return $self->function( select => $self->sqlmaker->COUNT('*'),
+			    @_ );
 }
 
 sub function
@@ -237,7 +252,7 @@ sub _select_sql
 				      optional => 1 },
 			    tables => { type => ARRAYREF | OBJECT,
 					optional => 1 },
-			    select => { type => ARRAYREF | OBJECT,
+			    select => { type => SCALAR | ARRAYREF | OBJECT,
 					optional => 1 },
 			    where => { type => ARRAYREF,
 				       optional => 1 },
@@ -615,34 +630,14 @@ parameter will be used instead, in that order.
 This can be either a single table or an array reference of table
 objects.
 
-=item * distinct => C<Alzabo::Runtime::Table> object (optional)
+=item * distinct => C<Alzabo::Runtime::Table> object or objects
 
 If this parameter is given, it indicates that results from the join
-should never repeat rows for the given table.  This is useful if your
-join contains multiple tables but you are only interested in rows from
-some of them.
+should never contain repeated rows.
 
-If you are expecting rows from multiple tables, then it is important
-that this parameter be set to the table that would have the least
-repeated rows.  Otherwise, you will lose information.  For example, if
-a join would return the following rows:
-
-  A        B
- ---      ---
-  1        1
-  1        1
-  1        2
-  2        2
-  2        3
-  2        3
-  3        4
-  3        4
-  3        5
-
-etc.
-
-If you set A as distinct, it is possible that you could entirely miss
-certain relevant rows from B.
+This can be used in place of the select parameter to indicate which
+tables are being selected, though the select parameter always takes
+first precedence.
 
 =item * where
 
@@ -691,12 +686,17 @@ These two methods differ only in their return values.
 
 =over 4
 
-=item * select => $function or [ SQL functions and/or C<Alzabo::Column> objects ]
+=item * select => $function or [ scalars, SQL functions and/or C<Alzabo::Column> objects ]
 
 If you pass an array reference for this parameter, it may contain
-either SQL functions or column objects.  For example:
+scalars, SQL functions, or column objects.  For example:
 
-  $schema->function( select => [ $table->column('name'), LENGTH( $table->column('name') ) ] );
+  $schema->function( select =>
+                     [ 1,
+                       $table->column('name'),
+                        LENGTH( $table->column('name') ) ],
+                     join => [ $table, $other_table ],
+                   );
 
 =item * join
 
@@ -755,6 +755,11 @@ This method always returns a new
 L<C<Alzabo::DriverStatement>|Alzabo::Driver/Alzabo::DriverStatement>
 object containing the results of the query.
 
+=head2 row_count
+
+This method is simply a shortcut to get the result of COUNT('*') for a
+join.
+
 =for pod_merge name
 
 =for pod_merge tables
@@ -780,8 +785,8 @@ object containing the results of the query.
 =head1 JOINING A TABLE MORE THAN ONCE
 
 It is possible to join to the same table more than once in a query.
-Table objects support a method called
-L<C<alias>|Alzabo::Runtime::Table/alias> that when called, returns an
+Table objects contain a method called
+L<C<alias>|Alzabo::Runtime::Table/alias> that, when called, returns an
 object that can be used in the same query as the original table
 object, but which will be treated as a separate table.  This is to
 allow starting with something like this:

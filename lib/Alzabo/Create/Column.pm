@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Column);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.35 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.37 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -47,6 +47,8 @@ sub _init
 				    optional => 1 },
 		    definition => { isa => 'Alzabo::Create::ColumnDefinition',
 				    optional => 1 },
+		    comment => { type => UNDEF | SCALAR,
+				 default => '' },
 		  } );
     my %p = @_;
 
@@ -77,6 +79,8 @@ sub _init
     $self->set_default( $p{default} );
 
     $self->set_length( length => $p{length}, precision => $p{precision} );
+
+    $self->set_comment( $p{comment} );
 }
 
 sub set_table
@@ -96,6 +100,7 @@ sub set_name
 
     my $old_name = $self->{name};
     $self->{name} = $name;
+
     eval
     {
 	$self->table->schema->rules->validate_column_name($self);
@@ -267,6 +272,8 @@ sub set_definition
     $self->{definition} = $d;
 }
 
+sub set_comment { $_[0]->{comment} = defined $_[1] ? $_[1] : '' }
+
 __END__
 
 =head1 NAME
@@ -327,6 +334,10 @@ One of either ...
 ... or ...
 
 =item * definition => C<Alzabo::Create::ColumnDefinition> object
+
+=item * comment => $comment
+
+An optional comment.
 
 =back
 
@@ -457,5 +468,11 @@ L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 Sets the
 L<C<Alzabo::Create::ColumnDefinition>|Alzabo::Create::ColumnDefinition>
 object which holds this column's type information.
+
+=for pod_merge comment
+
+=head2 set_comment ($comment)
+
+Set the comment for the column object.
 
 =cut

@@ -12,7 +12,7 @@ use Tie::IxHash;
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.44 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.48 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -22,7 +22,10 @@ sub new
     my $class = ref $proto || $proto;
 
     validate( @_, { schema => { isa => 'Alzabo::Create::Schema' },
-		    name => { type => SCALAR } } );
+		    name => { type => SCALAR },
+		    comment => { type => UNDEF | SCALAR,
+				 default => '' },
+		  } );
     my %p = @_;
 
     my $self = bless {}, $class;
@@ -34,6 +37,8 @@ sub new
     $self->{columns} = Tie::IxHash->new;
     $self->{pk} = Tie::IxHash->new;
     $self->{indexes} = Tie::IxHash->new;
+
+    $self->set_comment( $p{comment} );
 
     # Setting this prevents run time type errors.
     $self->{fk} = {};
@@ -57,11 +62,14 @@ sub set_name
 
     my $old_name = $self->{name};
     $self->{name} = $name;
+
     eval
     {
 	$self->schema->rules->validate_table_name($self);
     };
+
     $self->add_index($_) foreach @i;
+
     if ($@)
     {
 	$self->{name} = $old_name;
@@ -331,10 +339,11 @@ sub add_index
     validate_pos( @_, { isa => 'Alzabo::Create::Index' } );
     my $i = shift;
 
-    Alzabo::Exception::Params->throw( error => "Index already exists." )
-	if $self->{indexes}->EXISTS( $i->id );
+    my $id = $i->id;
+    Alzabo::Exception::Params->throw( error => "Index already exists (id $id)." )
+	if $self->{indexes}->EXISTS($id);
 
-    $self->{indexes}->STORE( $i->id, $i );
+    $self->{indexes}->STORE( $id, $i );
 
     return $i;
 }
@@ -397,6 +406,8 @@ sub register_column_name_change
     }
 }
 
+sub set_comment { $_[0]->{comment} = defined $_[1] ? $_[1] : '' }
+
 __END__
 
 =head1 NAME
@@ -431,6 +442,10 @@ C<Alzabo::Table>
 The schema to which this table belongs.
 
 =item * name => $name
+
+=item * comment => $comment
+
+An optional comment.
 
 =back
 
@@ -554,6 +569,8 @@ L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =for pod_merge primary_key
 
+=for pod_merge primary_key_size
+
 =head2 add_primary_key (C<Alzabo::Create::Column> object)
 
 Make the given column part of the table's primary key.  The primary
@@ -634,6 +651,12 @@ Deletes an index from the table.
 =head3 Throws
 
 L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+
+=for pod_merge comment
+
+=head2 set_comment ($comment)
+
+Set the comment for the table object.
 
 =head1 AUTHOR
 

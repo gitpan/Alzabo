@@ -8,10 +8,9 @@ use Alzabo::Exceptions;
 use Alzabo::SQLMaker;
 use base qw(Alzabo::SQLMaker);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
 
 my $MADE_FUNCTIONS;
-my %functions;
 
 sub import
 {
@@ -43,10 +42,10 @@ sub _make_functions
 	    )
     {
 	make_function( function => $_->[0],
-		      min => 0,
-		      max => 0,
-		      groups => $_->[1],
-		    );
+		       min => 0,
+		       max => 0,
+		       groups => $_->[1],
+		     );
     }
 
     foreach ( [ LENGTH => [1], [ 'string' ] ],
@@ -90,11 +89,11 @@ sub _make_functions
 	    )
     {
 	make_function( function => $_->[0],
-		      min => 1,
-		      max => 1,
-		      quote => $_->[1],
-		      groups => $_->[2],
-		    );
+		       min => 1,
+		       max => 1,
+		       quote => $_->[1],
+		       groups => $_->[2],
+		     );
     }
 
     foreach ( [ TO_ASCII => [1,0], [ 'string' ] ],
@@ -108,11 +107,11 @@ sub _make_functions
 	    )
     {
 	make_function( function => $_->[0],
-		      min => 1,
-		      max => 2,
-		      quote => $_->[1],
-		      groups => $_->[2],
-		    );
+		       min => 1,
+		       max => 2,
+		       quote => $_->[1],
+		       groups => $_->[2],
+		     );
     }
 
     foreach ( [ STRPOS => [1,1], [ 'string' ] ],
@@ -134,12 +133,12 @@ sub _make_functions
 	    )
     {
 	make_function( function => $_->[0],
-		      min => 2,
-		      max => 2,
-		      quote => $_->[1],
-		      groups => $_->[2],
-		      $_->[3] ? ( format => $_->[3] ) : (),
-		    );
+		       min => 2,
+		       max => 2,
+		       quote => $_->[1],
+		       groups => $_->[2],
+		       $_->[3] ? ( format => $_->[3] ) : (),
+		     );
     }
 
     foreach ( [ RPAD => [0,0,1], [ 'string' ] ],
@@ -148,47 +147,43 @@ sub _make_functions
 	    )
     {
 	make_function( function => $_->[0],
-		      min => 2,
-		      max => 3,
-		      quote => $_->[1],
-		      groups => $_->[2],
-		    );
+		       min => 2,
+		       max => 3,
+		       quote => $_->[1],
+		       groups => $_->[2],
+		     );
     }
 
     make_function( function => 'COALESCE',
-		  min => 2,
-		  max => undef,
-		  quote => [0,0,0],
-		  groups => [ 'control' ],
-		);
+		   min => 2,
+		   max => undef,
+		   quote => [0,0,0],
+		   groups => [ 'control' ],
+		 );
 
     make_function( function => 'OVERLAPS',
-		  min => 4,
-		  max => 4,
-		  quote => [1,1,1,1],
-		  groups => [ 'datetime' ],
-		);
+		   min => 4,
+		   max => 4,
+		   quote  => [1,1,1,1],
+		   groups => [ 'datetime' ],
+		 );
 
     foreach ( [ COUNT  => [0], [ 'aggregate', 'common' ] ],
 	      [ AVG  => [0], [ 'aggregate', 'common' ] ],
 	      [ MIN  => [0], [ 'aggregate', 'common' ] ],
 	      [ MAX  => [0], [ 'aggregate', 'common' ] ],
 	      [ SUM  => [0], [ 'aggregate', 'common' ] ],
-	      [ STDDEV  => [0], [ 'aggregate', 'common' ] ],
-	      [ VARIANCE  => [0], [ 'aggregate', 'common' ] ],
-
-	      [ DISTINCT  => [0], [ 'aggregate', 'common' ] ],
+	      [ STDDEV  => [0], [ 'aggregate' ] ],
+	      [ VARIANCE => [0], [ 'aggregate' ] ],
 	    )
     {
 	make_function( function => $_->[0],
-		      min => 1,
-		      max => 1,
-		      quote => $_->[1],
-		      groups => $_->[2],
-		    );
+		       min => 1,
+		       max => 1,
+		       quote => $_->[1],
+		       groups => $_->[2],
+		     );
     }
-
-    %functions = map { $_ => 1 } @EXPORT_OK;
 
     $MADE_FUNCTIONS = 1;
 }
@@ -196,15 +191,6 @@ sub _make_functions
 sub init
 {
     1;
-}
-
-sub DESTROY { }
-
-sub _valid_function
-{
-    shift;
-
-    return $functions{ uc shift };
 }
 
 sub limit
@@ -350,7 +336,6 @@ once.
  SUM
  STDDEV
  VARIANCE
- DISTINCT
 
 =head2 :system
 
@@ -393,7 +378,6 @@ These are functions from other groups that are most commonly used.
  MIN
  MAX
  SUM
- DISTINCT
 
 =head1 AUTHOR
 

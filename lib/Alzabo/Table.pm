@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use Tie::IxHash;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.36 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.39 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -66,7 +66,15 @@ sub primary_key
 {
     my $self = shift;
 
-    return $self->columns( $self->{pk}->Keys );
+    return wantarray ? $self->columns( $self->{pk}->Keys ) :
+	   ($self->columns( $self->{pk}->Keys ))[0];
+}
+
+sub primary_key_size
+{
+    my $self = shift;
+
+    return scalar $self->{pk}->Keys;
 }
 
 sub column_is_primary_key
@@ -191,6 +199,8 @@ sub indexes
     return $self->{indexes}->Values;
 }
 
+sub comment { $_[0]->{comment} }
+
 __END__
 
 =head1 NAME
@@ -261,8 +271,15 @@ usually matters in indexes.
 
 =head3 Returns
 
-An ordered list of column objects that make up the primary key for the
-table.
+In array context, return an ordered list of column objects that make
+up the primary key for the table.  In scalar context, it returns the
+first element of that list.
+
+=head2 primary_key_size
+
+=head3 Returns
+
+The number of columsn in the table's primary key.
 
 =head2 column_is_primary_key (C<Alzabo::Column> object)
 
@@ -333,6 +350,12 @@ exists in the table.
 =head3 Returns
 
 All the L<C<Alzabo::Index>|Alzabo::Index> objects for the table.
+
+=head2 comment
+
+=head3 Returns
+
+The comment associated with the table object, if any.
 
 =head1 AUTHOR
 

@@ -12,7 +12,7 @@ use Time::HiRes qw(time);
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.23 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -24,7 +24,6 @@ sub new
     my %p = validate( @_, { statement => { isa => 'Alzabo::DriverStatement' },
 			    table => { isa => 'Alzabo::Runtime::Table' },
 			    no_cache => { optional => 1 },
-			    distinct => { optional => 1 },
 			  } );
 
     my $self = bless { %p,
@@ -51,25 +50,17 @@ sub next
     # 1 but no such row actually exists then we want to skip this.
     #
     # If they really want to know we do save the exception.
-    do
+    until (defined $row)
     {
 	$self->{errors} = [];
 
 	my @row = $self->{statement}->next;
 
-	return unless @row && grep { defined } @row;
+	last unless @row && grep { defined } @row;
 
 	my %hash;
 	my @pk = $self->{table}->primary_key;
 	@hash{ map { $_->name } @pk } = @row[0..$#pk];
-
-	if ( $self->{distinct} )
-	{
-	    my $key = Storable::store(\%hash);
-	    next if $self->{seen}{$key};
-
-	    $self->{seen}{$key} = 1;
-	}
 
 	my %prefetch;
 	if ( (my @pre = $self->{table}->prefetch) && @row > @pk )
@@ -101,7 +92,7 @@ sub next
 		}
 	    }
 	}
-    } until (defined $row);
+    }
 
     return $row;
 }

@@ -7,7 +7,10 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.24 $ =~ /(\d+)\.(\d+)/;
+use Params::Validate qw( validate_pos );
+Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.29 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -61,6 +64,9 @@ sub validate_column_type
 {
     my $self = shift;
     my $type = uc shift;
+    my $table = shift;
+
+    return 'INT4' if $type eq 'SERIAL' && $table->primary_key_size > 1;
 
     my %simple_types = map { $_ => 1 } qw( ABSTIME
                                            BIT
@@ -94,7 +100,9 @@ sub validate_column_type
 					   TEXT
 					   TIME
 					   TIMESTAMP
+					   TIMESTAMPTZ
 					   TIMETZ
+					   VARBIT
 					   VARCHAR );
 
     return 'INTEGER' if $type eq 'INT' || $type eq 'INT4';
@@ -118,12 +126,12 @@ sub validate_column_length
     if ( defined $column->length )
     {
 	Alzabo::Exception::RDBMSRules->throw( error => "Length is not supported except for char, varchar, decimal, float, and numeric columns (" . $column->name . " column)" )
-	    unless $column->type =~ /\A(?:(?:VAR)?CHAR|CHARACTER|DECIMAL|FLOAT|NUMERIC|BIT|BIT VARYING)\z/i;
+	    unless $column->type =~ /\A(?:(?:VAR)?CHAR|CHARACTER|DECIMAL|FLOAT|NUMERIC|(?:VAR)?BIT|BIT VARYING)\z/i;
     }
 
     if ( defined $column->precision )
     {
-	Alzabo::Exception::RDBMSRules->throw( error => "Precision is not supported except for decimal, float, numeric columns" )
+	Alzabo::Exception::RDBMSRules->throw( error => "Precision is not supported except for decimal, float, and numeric columns" )
 	    unless $column->type =~ /\A(?:DECIMAL|FLOAT|NUMERIC)\z/i;
     }
 }
@@ -146,7 +154,15 @@ sub validate_column_attribute
 
 sub validate_primary_key
 {
-    1;
+    my $self = shift;
+    my $col = shift;
+
+    my $serial_col = (grep { $_->type eq 'SERIAL' } $col->table->primary_key)[0];
+    if ( defined $serial_col &&
+	 $serial_col->name ne $col->name )
+    {
+	$serial_col->set_type('INT4');
+    }
 }
 
 sub validate_sequenced_attribute
@@ -251,6 +267,31 @@ sub feature
     return $features{+shift};
 }
 
+sub schema_sql
+{
+    my $self = shift;
+
+    validate_pos( @_, { isa => 'Alzabo::Schema' } );
+
+    my $schema = shift;
+
+    my @sql = $self->SUPER::schema_sql($schema);
+
+    # This has to come at the end because we don't which tables
+    # reference other tables in their constraints and Pg will barf if
+    # we try to create a table with a constraint that references an
+    # as-yet nonexistent table.
+    foreach my $t ( $schema->tables )
+    {
+	foreach my $fk ( $t->all_foreign_keys )
+	{
+	    push @sql, $self->_add_foreign_key_sql($fk);
+	}
+    }
+
+    return @sql;
+}
+
 sub _start_sql
 {
     my $self = shift;
@@ -282,11 +323,12 @@ sub table_sql
 	$sql .= ",\n";
 	$sql .= '  PRIMARY KEY (';
 	$sql .= join ', ', map {$_->name} @pk;
-	$sql .= ')';
+	$sql .= ")\n";
     }
-    $sql .= "\n)";
+    $sql .= ")\n";
 
     my @sql = ($sql);
+
     foreach my $i ( $table->indexes )
     {
 	push @sql, $self->index_sql($i);
@@ -310,6 +352,8 @@ sub _sequence_sql
     my $self = shift;
     my $col = shift;
 
+    return if $col->type eq 'SERIAL';
+
     my $seq_name = $self->_sequence_name($col);
 
     return "CREATE SEQUENCE $seq_name;\n";
@@ -327,9 +371,10 @@ sub column_sql
 {
     my $self = shift;
     my $col = shift;
+    my $p = shift;   # hashref for skip_nullable and skip_default
 
     my @default;
-    if ( defined $col->default )
+    if ( ! $p->{skip_default} && defined $col->default )
     {
 	my $def = ( $col->is_character ?
 		    do { my $d = $col->default; $d =~ s/"/""/g; qq|'$d'| } :
@@ -347,19 +392,57 @@ sub column_sql
 	$type .= $length;
     }
 
+    my @nullable;
+    unless ( $p->{skip_nullable} )
+    {
+	@nullable = $col->nullable ? 'NULL' : 'NOT NULL';
+    }
+
     my $sql .= join '  ', ( $col->name,
 			    $type,
 			    @default,
-			    $col->nullable ? 'NULL' : 'NOT NULL',
+			    @nullable,
 			    $col->attributes );
 
     return $sql;
 }
 
-
-sub foreign_key_sql
+sub _add_foreign_key_sql
 {
-    return;
+    return; # temporarily disable
+    my $self = shift;
+    my $fk = shift;
+
+    return if grep { $_->is_primary_key } $fk->columns_from;
+
+    my $sql = 'ALTER TABLE ';
+    $sql .= $fk->table_from->name;
+    $sql .= ' ADD CONSTRAINT ';
+    $sql .= $fk->id;
+    $sql .= ' FOREIGN KEY ( ';
+    $sql .= join ', ', map { $_->name } $fk->columns_from;
+    $sql .= ' ) REFERENCES ';
+    $sql .= $fk->table_to->name;
+    $sql .= ' ON DELETE ';
+
+    if ( $fk->from_is_dependent )
+    {
+	$sql .= 'CASCADE';
+    }
+    else
+    {
+	my @to = $fk->columns_to;
+	unless ( ( grep { $_->nullable } @to ) == @to )
+	{
+	    $sql .= 'SET DEFAULT';
+	}
+	else
+	{
+	    $sql .= 'SET NULL';
+	}
+    }
+
+    return $sql;
 }
 
 sub drop_table_sql
@@ -467,17 +550,22 @@ sub column_sql_add
     my $self = shift;
     my $col = shift;
 
-    my @sql = 'ALTER TABLE ' . $col->table->name . ' ADD COLUMN ' . $self->column_sql($col);
+    # Skip default and not null while adding column
+    my @sql = 'ALTER TABLE ' . $col->table->name . ' ADD COLUMN ' . $self->column_sql($col, { skip_default => 1, skip_nullable => 1 });
+
+    # Add not null constraint if column is not nullable
+    push @sql, ( 'ALTER TABLE ' . $col->table->name . ' ADD CONSTRAINT ' . $col->table->name . '_' . $col->name . '_not_null CHECK ( ' . $col->name . ' IS NOT NULL )' )
+	unless $col->nullable;
 
     my $default;
     if ( $col->default )
     {
-	my $def = ( $col->is_character ?
-		    do { my $d = $col->default; $d =~ s/"/""/g; qq|'$d'| } :
-		    $col->default );
-	$default = ( "DEFAULT $def" );
+  	my $def = ( $col->is_character ?
+  		    do { my $d = $col->default; $d =~ s/"/""/g; qq|'$d'| } :
+  		    $col->default );
+  	$default = ( "DEFAULT $def" );
 
-	push @sql, ( 'ALTER TABLE ' . $col->table->name . ' ALTER COLUMN ' . $col->name . " SET $default" );
+  	push @sql, ( 'ALTER TABLE ' . $col->table->name . ' ALTER COLUMN ' . $col->name . " SET $default" );
     }
 
     return @sql;

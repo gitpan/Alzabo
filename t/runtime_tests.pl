@@ -32,10 +32,10 @@ use Test::Builder;
 
 # we want to use Test::More but start at a number > 1
 my $test = Test::Builder->new;
-$test->current_test( $ENV{TEST_START_NUM} );
 $test->no_plan;
 $test->no_header(1);
 $test->no_ending(1);
+$test->current_test( $ENV{TEST_START_NUM} );
 
 my $s = Alzabo::Runtime::Schema->load_from_file( name => $p->{schema_name} );
 
@@ -72,8 +72,8 @@ sub run_tests
     $s->set_password($p{password}) if $p{password};
     $s->set_host($p{host}) if $p{host};
     $s->set_host($p{port}) if $p{port};
-    $s->set_referential_integrity(1);
     $s->connect;
+    $s->set_referential_integrity(1);
 
     my $dbh = $s->driver->handle;
     isa_ok( $dbh, ref $s->driver->{dbh},
@@ -408,7 +408,7 @@ sub run_tests
 				       join   => [ [ $emp_t, $emp_proj_t ],
 						   [ $emp_proj_t, $proj_t ] ],
 				       where  => [ $emp_t->column('employee_id'), '=', 1 ] ) },
-	     "Join with table as tables parameter" );
+	     "Join with join as arrayref of arrayrefs" );
 
     @rows = $cursor->next;
 
@@ -420,6 +420,27 @@ sub run_tests
 	"Second row is from employee_project table" );
     is( $rows[2]->table->name, 'project',
 	"Third row is from project table" );
+
+    {
+	my $cursor;
+	eval_ok( sub { $cursor = $s->join( join  => [ [ $emp_t, $emp_proj_t ],
+						      [ $emp_proj_t, $proj_t ] ],
+					   where => [ $emp_t->column('employee_id'), '=', 1 ] ) },
+	     "Same join with no select parameter" );
+
+	my @rows = $cursor->next;
+
+	@rows = sort { $a->table->name cmp $b->table->name } @rows;
+
+	is( scalar @rows, 3,
+	    "3 rows per cursor ->next call" );
+	is( ( grep { $_->table->name eq 'employee' } @rows ), 1,
+	    "First row is from employee table" );
+	is( ( grep { $_->table->name eq 'employee_project' } @rows ), 1,
+	    "Second row is from employee_project table" );
+	is( ( grep { $_->table->name eq 'project' } @rows ), 1,
+	    "Third row is from project table" );
+    }
 
     eval { $s->join( select => [ $emp_t, $emp_proj_t, $proj_t ],
 		     join   => [ [ $emp_t, $emp_proj_t ],
@@ -681,21 +702,41 @@ sub run_tests
 	"The count should be 4" );
 
     eval_ok( sub { $count = $emp_t->function( select => COUNT( $emp_t->column('employee_id') ) ) },
-	     "Get row count via spiffy new ->function method" );
+	     "Get row count via ->function method" );
 
     is( $count, 4,
 	"There should still be just 4 rows" );
 
-    my $statement;
-    eval_ok( sub { $statement = $emp_t->select( select => COUNT( $emp_t->column('employee_id') ) ) },
-	     "Get row count via even spiffier new ->select method" );
+    {
+	my $one;
+	eval_ok( sub { $one = $emp_t->function( select => 1 ) },
+		 "Get '1' via ->function method" );
 
-    isa_ok( $statement, 'Alzabo::DriverStatement',
-	    "Return value from Table->select method" );
+	is( $one, 1,
+	    "Getting '1' via ->function should return 1" );
+    }
 
-    $count = $statement->next;
-    is( $count, 4,
-	"There should still be just 4 rows" );
+    {
+	my $statement;
+	eval_ok( sub { $statement = $emp_t->select( select => COUNT( $emp_t->column('employee_id') ) ) },
+		 "Get row count via even spiffier new ->select method" );
+
+	isa_ok( $statement, 'Alzabo::DriverStatement',
+		"Return value from Table->select method" );
+
+	$count = $statement->next;
+	is( $count, 4,
+	    "There should still be just 4 rows" );
+    }
+
+    {
+	my $st;
+	eval_ok( sub { $st = $emp_t->select( select => 1 ) },
+		 "Get '1' via ->select method" );
+
+	is( $st->next, 1,
+	    "Getting '1' via ->select should return 1" );
+    }
 
     {
 	my @emps;
@@ -973,27 +1014,29 @@ sub run_tests
     is( $smells{horrid}, 1,
 	"Check count of smell = 'horrid'" );
 
-    $statement = $emp_t->select( select => [ $emp_t->column('smell'), COUNT( $emp_t->column('smell') ) ],
-				 group_by => $emp_t->column('smell') );
+    {
+	my $statement = $emp_t->select( select => [ $emp_t->column('smell'), COUNT( $emp_t->column('smell') ) ],
+					group_by => $emp_t->column('smell') );
 
-    @smells = $statement->all_rows;
+	my @smells = $statement->all_rows;
 
-    # map smell to count
-    %smells = map { $_->[0] => $_->[1] } @smells;
-    is( @smells, 6,
-	"Query with group by should return 6 values - via ->select" );
-    is( $smells{a}, 2,
-	"Check count of smell = 'a' - via ->select" );
-    is( $smells{b}, 1,
-	"Check count of smell = 'b' - via ->select" );
-    is( $smells{c}, 1,
-	"Check count of smell = 'c' - via ->select" );
-    is( $smells{awful}, 1,
-	"Check count of smell = 'awful' - via ->select" );
-    is( $smells{good}, 1,
-	"Check count of smell = 'good' - via ->select" );
-    is( $smells{horrid}, 1,
-	"Check count of smell = 'horrid' - via ->select" );
+	# map smell to count
+	%smells = map { $_->[0] => $_->[1] } @smells;
+	is( @smells, 6,
+	    "Query with group by should return 6 values - via ->select" );
+	is( $smells{a}, 2,
+	    "Check count of smell = 'a' - via ->select" );
+	is( $smells{b}, 1,
+	    "Check count of smell = 'b' - via ->select" );
+	is( $smells{c}, 1,
+	    "Check count of smell = 'c' - via ->select" );
+	is( $smells{awful}, 1,
+	    "Check count of smell = 'awful' - via ->select" );
+	is( $smells{good}, 1,
+	    "Check count of smell = 'good' - via ->select" );
+	is( $smells{horrid}, 1,
+	    "Check count of smell = 'horrid' - via ->select" );
+    }
 
     @rows = $emp_t->function( select => $emp_t->column('smell'),
 			      where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ],
@@ -1009,21 +1052,23 @@ sub run_tests
     is( $rows[3], 'c',
 	"Fourth smell should be 'c'" );
 
-    $statement = $emp_t->select( select => $emp_t->column('smell'),
-				 where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ],
-				 order_by => $emp_t->column('smell') );
-    @rows = $statement->all_rows;
+    {
+	my $statement = $emp_t->select( select => $emp_t->column('smell'),
+					where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ],
+					order_by => $emp_t->column('smell') );
+	my @rows = $statement->all_rows;
 
-    is( @rows, 4,
-	"There should only be four rows which have a single character smell - via ->select" );
-    is( $rows[0], 'a',
-	"First smell should be 'a' - via ->select" );
-    is( $rows[1], 'a',
-	"Second smell should be 'a' - via ->select" );
-    is( $rows[2], 'b',
-	"Third smell should be 'b' - via ->select" );
-    is( $rows[3], 'c',
-	"Fourth smell should be 'c' - via ->select" );
+	is( @rows, 4,
+	    "There should only be four rows which have a single character smell - via ->select" );
+	is( $rows[0], 'a',
+	    "First smell should be 'a' - via ->select" );
+	is( $rows[1], 'a',
+	    "Second smell should be 'a' - via ->select" );
+	is( $rows[2], 'b',
+	    "Third smell should be 'b' - via ->select" );
+	is( $rows[3], 'c',
+	    "Fourth smell should be 'c' - via ->select" );
+    }
 
     @rows = $emp_t->function( select => $emp_t->column('smell'),
 			      where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ],
@@ -1037,19 +1082,21 @@ sub run_tests
     is( $rows[1], 'a',
 	"Second smell should be 'a' - with limit" );
 
-    $statement = $emp_t->select( select => $emp_t->column('smell'),
-				 where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ],
-				 order_by => $emp_t->column('smell'),
-				 limit => 2,
-			       );
-    @rows = $statement->all_rows;
+    {
+	my $statement = $emp_t->select( select => $emp_t->column('smell'),
+					where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ],
+					order_by => $emp_t->column('smell'),
+					limit => 2,
+				      );
+	my @rows = $statement->all_rows;
 
-    is( @rows, 2,
-	"There should only be two rows which have a single character smell -  with limit via ->select" );
-    is( $rows[0], 'a',
-	"First smell should be 'a' - with limit via ->select" );
-    is( $rows[1], 'a',
-	"Second smell should be 'a' - with limit via ->select" );
+	is( @rows, 2,
+	    "There should only be two rows which have a single character smell -  with limit via ->select" );
+	is( $rows[0], 'a',
+	    "First smell should be 'a' - with limit via ->select" );
+	is( $rows[1], 'a',
+	    "Second smell should be 'a' - with limit via ->select" );
+    }
 
     foreach ( [ 9000, 1 ], [ 9000, 2 ], [ 9001, 1 ], [ 9002, 1 ] )
     {
@@ -1060,7 +1107,7 @@ sub run_tests
     # find staffed projects
     @rows = $s->function( select => [ $proj_t->column('name'),
 				      COUNT( $proj_t->column('name') ) ],
-			  tables => [ $emp_proj_t, $proj_t ],
+			  join   => [ $emp_proj_t, $proj_t ],
 			  group_by => $proj_t->column('name') );
     is( @rows, 2,
 	"Only two projects should be returned from schema->function" );
@@ -1073,26 +1120,28 @@ sub run_tests
     is( $rows[1][1], 3,
 	"Second project should have 3 employees" );
 
-    $statement = $s->select( select => [ $proj_t->column('name'),
-					 COUNT( $proj_t->column('name') ) ],
-			     tables => [ $emp_proj_t, $proj_t ],
-			     group_by => $proj_t->column('name') );
-    @rows = $statement->all_rows;
+    {
+	my $statement = $s->select( select => [ $proj_t->column('name'),
+						COUNT( $proj_t->column('name') ) ],
+				    join   => [ $emp_proj_t, $proj_t ],
+				    group_by => $proj_t->column('name') );
+	my @rows = $statement->all_rows;
 
-    is( @rows, 2,
-	"Only two projects should be returned from schema->select" );
-    is( $rows[0][0], 'Embrace',
-	"First project should be Embrace - via ->select" );
-    is( $rows[1][0], 'Extend',
-	"Second project should be Extend - via ->select" );
-    is( $rows[0][1], 1,
-	"First project should have 1 employee - via ->select" );
-    is( $rows[1][1], 3,
-	"Second project should have 3 employees - via ->select" );
+	is( @rows, 2,
+	    "Only two projects should be returned from schema->select" );
+	is( $rows[0][0], 'Embrace',
+	    "First project should be Embrace - via ->select" );
+	is( $rows[1][0], 'Extend',
+	    "Second project should be Extend - via ->select" );
+	is( $rows[0][1], 1,
+	    "First project should have 1 employee - via ->select" );
+	is( $rows[1][1], 3,
+	    "Second project should have 3 employees - via ->select" );
+    }
 
     @rows = $s->function( select => [ $proj_t->column('name'),
 				      COUNT( $proj_t->column('name') ) ],
-			  tables => [ $emp_proj_t, $proj_t ],
+			  join   => [ $emp_proj_t, $proj_t ],
 			  group_by => $proj_t->column('name'),
 			  limit => [1, 1],
 			);
@@ -1103,25 +1152,28 @@ sub run_tests
     is( $rows[0][1], 3,
 	"First project should have 3 employees - with limit" );
 
-    $statement = $s->select( select => [ $proj_t->column('name'),
-					 COUNT( $proj_t->column('name') ) ],
-			     tables => [ $emp_proj_t, $proj_t ],
-			     group_by => $proj_t->column('name'),
-			     limit => [1, 1],
-			   );
-    @rows = $statement->all_rows;
+    {
+	my $statement = $s->select( select => [ $proj_t->column('name'),
+						COUNT( $proj_t->column('name') ) ],
+				    join   => [ $emp_proj_t, $proj_t ],
+				    group_by => $proj_t->column('name'),
+				    limit => [1, 1],
+				  );
 
-    is( @rows, 1,
-	"Only one projects should be returned from schema->select - with limit via ->select" );
-    is( $rows[0][0], 'Extend',
-	"First project should be Extend - with limit via ->select" );
-    is( $rows[0][1], 3,
-	"First project should have 3 employees - with limit via ->select" );
+	my @rows = $statement->all_rows;
+
+	is( @rows, 1,
+	    "Only one projects should be returned from schema->select - with limit via ->select" );
+	is( $rows[0][0], 'Extend',
+	    "First project should be Extend - with limit via ->select" );
+	is( $rows[0][1], 3,
+	    "First project should have 3 employees - with limit via ->select" );
+    }
 
     {
 	my @rows = $s->function( select => [ $proj_t->column('name'),
 					     COUNT( $proj_t->column('name') ) ],
-				 tables => [ $emp_proj_t, $proj_t ],
+				 join   => [ $emp_proj_t, $proj_t ],
 				 group_by => $proj_t->column('name'),
 				 order_by => [ COUNT( $proj_t->column('name') ), 'DESC' ] );
 
@@ -1135,6 +1187,29 @@ sub run_tests
 	    "First project should have 3 employee" );
 	is( $rows[1][1], 1,
 	    "Second project should have 1 employees" );
+    }
+
+    {
+	my @rows;
+	eval_ok( sub { @rows = $s->function( select => 1,
+					     join   => [ $emp_proj_t, $proj_t ],
+					   ) },
+		 "Call schema->function with scalar select" );
+
+	is( @rows, 4,
+	    "Should return four rows" );
+    }
+
+    {
+	my $st;
+	eval_ok( sub { $st = $s->select( select => 1,
+					 join   => [ $emp_proj_t, $proj_t ],
+				       ) },
+		 "Call schema->select with scalar select" );
+
+	my @rows = $st->all_rows;
+	is( @rows, 4,
+	    "Should return four rows" );
     }
 
     my $p1 = $proj_t->insert( values => { name => 'P1',
@@ -1158,6 +1233,23 @@ sub run_tests
 
     is( $rows[0]->select('department_id'), $dep_id,
 	"Returned row's department_id should be $dep_id" );
+
+    {
+	eval_ok( sub { $cursor =
+			   $s->join( distinct => $emp_proj_t,
+				     join     => [ $emp_t, $emp_proj_t ],
+				     where    => [ $emp_t->column('employee_id'), 'in', 9001 ],
+				   ) },
+	     "Do a join with distinct parameter set to a table with a multi-col PK" );
+
+	@rows = $cursor->all_rows;
+
+	is( scalar @rows, 1,
+	    "Setting distinct should cause only a single row to be returned" );
+
+	is( $rows[0]->select('employee_id'), 9001,
+	    "Returned row's employee_id should be 9001" );
+    }
 
     # insert rows used to test order by with multiple columns
     my $start_id = 999_990;
@@ -1435,6 +1527,20 @@ sub run_tests
     $e = $@;
     isa_ok( $e, 'Alzabo::Exception::Params',
 	    "Exception from where clause as single arrayref with <>3 elements" );
+
+    {
+	# test that DriverStatement objects going out of scope leave
+	# $@ alone!
+	eval
+	{
+	    my $cursor = $emp_t->all_rows;
+
+	    die "ok\n";
+	};
+
+	is( $@, "ok\n",
+	    "\$\@ should be 'ok'" );
+    }
 }
 
 my $pid;

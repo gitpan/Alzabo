@@ -2,8 +2,6 @@
 
 Alzabo::FAQ - Frequently Asked Questions
 
-=head1 FAQ
-
 =head2 How can I generate the SQL to turn one schema into another?
 
 Assuming you have schema objects representing these already created

@@ -17,7 +17,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 use Storable ();
 use Tie::IxHash ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.41 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.43 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -25,8 +25,8 @@ sub _load_from_file
 {
     my $class = shift;
 
-    validate( @_, { name => { type => SCALAR } } );
-    my %p = @_;
+    my %p = validate( @_, { name => { type => SCALAR },
+			  } );
 
     # Making these (particularly from files) is expensive.
     return $class->_cached_schema($p{name}) if $class->_cached_schema($p{name});
@@ -36,10 +36,32 @@ sub _load_from_file
 
     -e $file or Alzabo::Exception::Params->throw( error => "No saved schema named $p{name} ($file)" );
 
+    my $version_file = File::Spec->catfile( $schema_dir, $p{name}, "$p{name}.version" );
+
+    my $version = 0;
+
     my $fh = do { local *FH; };
+    if ( -e $version_file )
+    {
+	open $fh, "<$version_file"
+	    or Alzabo::Exception::System->throw( error => "Unable to open $version_file: $!\n" );
+	$version = join '', <$fh>;
+	close $fh
+	    or Alzabo::Exception::System->throw( error => "Unable to close $version_file: $!" );
+    }
+
+    if ( $version < $Alzabo::VERSION )
+    {
+	require Alzabo::BackCompat;
+
+	Alzabo::BackCompat::update_schema( name => $p{name},
+					   version => $version );
+    }
+
     open $fh, "<$file"
 	or Alzabo::Exception::System->throw( error => "Unable to open $file: $!" );
-    my $schema = Storable::retrieve_fd($fh);
+    my $schema = Storable::retrieve_fd($fh)
+	or Alzabo::Exception::System->throw( error => "Can't retrieve from filehandle" );
     close $fh
 	or Alzabo::Exception::System->throw( error => "Unable to close $file: $!" );
 
@@ -51,6 +73,8 @@ sub _load_from_file
 	or Alzabo::Exception::System->throw( error => "Unable to close $rdbms_file: $!" );
 
     $rdbms =~ s/\s//g;
+
+    ($rdbms) = $rdbms =~ /(\w+)/;
 
     $schema->{driver} = Alzabo::Driver->new( rdbms => $rdbms,
 					     schema => $schema );

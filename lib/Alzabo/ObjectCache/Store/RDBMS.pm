@@ -7,7 +7,7 @@ use vars qw($VERSION $SCHEMA %CONNECT_PARAMS);
 use Digest::MD5 ();
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/;
 
 sub import
 {
@@ -32,7 +32,7 @@ sub import
 	{
 	    _load_create_code();
 
-	    Alzabo::Exception::Params->throw( error => "Alzabo::ObjectCache::RDBMS requires a rdbms parameter if it is going to create a new schema" )
+	    Alzabo::Exception::Params->throw( error => "Alzabo::ObjectCache::RDBMS requires a store_rdbms parameter if it is going to create a new schema" )
 		unless exists $p{store_rdbms};
 
 	    $SCHEMA = Alzabo::Create::Schema->new( name  => $p{store_schema_name},
@@ -216,12 +216,12 @@ Alzabo::ObjectCache::Store::RDBMS - Cache objects in an RDBMS backend
 
 =head1 SYNOPSIS
 
-  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::RDBMS',
-                           sync  => 'Alzabo::ObjectCache::Sync::Null',
-                           store_rdbms => 'MySQL',
-                           store_schema_name => 'something',
-                           store_user => 'foo' );
-
+  use Alzabo::ObjectCache
+      ( store => 'Alzabo::ObjectCache::Store::RDBMS',
+        sync  => 'Alzabo::ObjectCache::Sync::Null',
+        store_rdbms => 'MySQL',
+        store_schema_name => 'something',
+        store_user => 'foo' );
 
 =head1 DESCRIPTION
 

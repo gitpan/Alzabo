@@ -18,6 +18,16 @@
  <input type="hidden" name="column" value="<% $c->name %>">
 
     <tr valign="top">
+     <td>Change comment:</td>
+    </tr>
+
+    <tr valign="top">
+     <td>
+      <textarea name="comment" rows="4" cols="40"><% $c->comment | h %></textarea>
+     </td>
+    </tr>
+
+    <tr valign="top">
      <td>Change type:</td>
     </tr>
     <tr>

@@ -11,7 +11,7 @@ use Alzabo::Exceptions;
 use DB_File;
 use Fcntl qw( :flock O_RDONLY O_RDWR O_CREAT );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -97,10 +97,11 @@ Alzabo::ObjectCache::Sync::DB_File - Uses a Berkeley DB file to sync object cach
 
 =head1 SYNOPSIS
 
-  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
-                           sync  => 'Alzabo::ObjectCache::Sync::DB_File',
-                           sync_dbm_file => 'somefilename.db',
-                           clear_on_startup => 1 );
+  use Alzabo::ObjectCache
+      ( store => 'Alzabo::ObjectCache::Store::Memory',
+        sync  => 'Alzabo::ObjectCache::Sync::DB_File',
+        sync_dbm_file => 'somefilename.db',
+        clear_on_startup => 1 );
 
 =head1 DESCRIPTION
 

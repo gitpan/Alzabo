@@ -1,6 +1,7 @@
 <%args>
 $schema
 $table_name
+$comment => ''
 $after => undef
 </%args>
 
@@ -12,7 +13,9 @@ eval
 {
     $s = Alzabo::Create::Schema->load_from_file( name => $schema );
 
-    my %p = ( name => $table_name );
+    my %p = ( name => $table_name,
+	      comment => $comment,
+	    );
     $p{after} = $s->table( $after ) if defined $after;
 
     $s->make_table(%p);

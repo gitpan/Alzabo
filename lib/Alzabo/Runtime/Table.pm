@@ -13,7 +13,7 @@ use Time::HiRes qw(time);
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.75 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.79 $ =~ /(\d+)\.(\d+)/;
 
 sub insert
 {
@@ -311,7 +311,7 @@ sub _select_sql
 {
     my $self = shift;
 
-    my %p = validate( @_, { select => { type => ARRAYREF | OBJECT },
+    my %p = validate( @_, { select => { type => SCALAR | ARRAYREF | OBJECT },
 			    where  => { type => ARRAYREF | OBJECT,
 					optional => 1 },
 			    order_by => { type => ARRAYREF | HASHREF | OBJECT,
@@ -464,7 +464,10 @@ Alzabo::Runtime::Table - Table objects
 
   my $row = $table->row_by_pk( pk => 1 );
 
-  my $row_cursor = $table->rows_where( where => [ C<Alzabo::Column> object, '=', 5 } );
+  my $row_cursor =
+      $table->rows_where
+          ( where =>
+            [ Alzabo::Column object, '=', 5 } );
 
 =head1 DESCRIPTION
 
@@ -588,8 +591,10 @@ containing a SQL operator such as C<'E<gt>'> or C<'='>.
 
 The parameter can also be an array of references to such arrays:
 
- [ [ C<Alzabo::Column> object or SQL function, $comparison, $value or C<Alzabo::Column> object ],
-   [ C<Alzabo::Column> object or SQL function, $comparison, $value or C<Alzabo::Column> object ] ]
+ [ [ C<Alzabo::Column> object or SQL function,
+     $comparison, $value or C<Alzabo::Column> object ],
+   [ C<Alzabo::Column> object or SQL function,
+     $comparison, $value or C<Alzabo::Column> object ] ]
 
 For more details on exactly what the possibilities are here, please
 see the L<documentation for Alzabo::SQLMaker|Alzabo::SQLMaker/"where (
@@ -785,12 +790,15 @@ These two methods differ only in their return values.
 
 =over 4
 
-=item * select => $function or [ SQL functions and/or C<Alzabo::Column> objects ]
+=item * select => $function or [ scalars, SQL functions and/or C<Alzabo::Column> objects ]
 
 If you pass an array reference for this parameter, it may contain
-either SQL functions or column objects.  For example:
+scalars, SQL functions, or column objects.  For example:
 
-  $table->function( select => [ $table->column('name'), LENGTH( $table->column('name') ) ] );
+  $table->function( select =>
+                    [ 1,
+                      $table->column('name'),
+                      LENGTH( $table->column('name') ) ] );
 
 =item * where => see L<Common Parameters|Alzabo::Runtime::Table/Common Parameters>
 
@@ -857,6 +865,8 @@ outside of the context of a join>.
 =for pod_merge has_column
 
 =for pod_merge primary_key
+
+=for pod_merge primary_key_size
 
 =for pod_merge column_is_primary_key
 

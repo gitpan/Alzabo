@@ -9,7 +9,7 @@ use base qw(Alzabo::ObjectCache::Sync);
 
 use Digest::MD5 ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
 
 sub import
 {
@@ -34,7 +34,7 @@ sub import
 	{
 	    _load_create_code();
 
-	    Alzabo::Exception::Params->throw( error => "Alzabo::ObjectCache::RDBMS requires a rdbms parameter if it is going to create a new schema" )
+	    Alzabo::Exception::Params->throw( error => "Alzabo::ObjectCache::RDBMS requires a sync_rdbms parameter if it is going to create a new schema" )
 		unless exists $p{sync_rdbms};
 
 	    $SCHEMA = Alzabo::Create::Schema->new( name  => $p{sync_schema_name},
@@ -145,6 +145,9 @@ sub update
 	    $self->{driver}->do( sql => 'UPDATE AlzaboObjectCacheSync SET sync_time = ? WHERE object_id = ?',
 				 bind => [ $time, $id ] );
 	};
+
+	# might as well leave if it works
+	return unless $@;
     }
 
     # If something else inserted before us that is OK because we want
@@ -165,6 +168,7 @@ sub update
 		return;
 	    }
 	}
+
 	$self->{driver}->do( sql => 'INSERT INTO AlzaboObjectCacheSync (object_id, sync_time) VALUES (?, ?)',
 			     bind => [ $id, $time ] );
 
@@ -184,11 +188,12 @@ Alzabo::ObjectCache::Sync::RDBMS - Uses an RDBM backend to sync object caches
 
 =head1 SYNOPSIS
 
-  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
-                           sync  => 'Alzabo::ObjectCache::Sync::RDBMS',
-                           sync_rdbms => 'MySQL',
-                           sync_schema_name => 'something',
-                           sync_user => 'foo' );
+  use Alzabo::ObjectCache
+      ( store => 'Alzabo::ObjectCache::Store::Memory',
+        sync  => 'Alzabo::ObjectCache::Sync::RDBMS',
+        sync_rdbms => 'MySQL',
+        sync_schema_name => 'something',
+        sync_user => 'foo' );
 
 =head1 DESCRIPTION
 

@@ -8,7 +8,7 @@ use BerkeleyDB qw( DB_CREATE DB_INIT_MPOOL DB_INIT_CDB DB_NEXT DB_NOOVERWRITE DB
 use File::Basename ();
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -124,9 +124,10 @@ Alzabo::ObjectCache::Store::BerkeleyDB - Cache objects in a BerkeleyDB file
 
 =head1 SYNOPSIS
 
-  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::BerkeleyDB',
-                           sync  => 'Alzabo::ObjectCache::Sync::Null',
-                           store_dbm_file => '/tmp/alzabo_storage.db' );
+  use Alzabo::ObjectCache
+      ( store => 'Alzabo::ObjectCache::Store::BerkeleyDB',
+        sync  => 'Alzabo::ObjectCache::Sync::Null',
+        store_dbm_file => '/tmp/alzabo_storage.db' );
 
 =head1 DESCRIPTION
 

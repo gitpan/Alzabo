@@ -5,7 +5,7 @@ use vars qw($VERSION);
 
 use Alzabo;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.23 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -113,6 +113,8 @@ sub id
 		       );
 }
 
+sub comment { $_[0]->{comment} }
+
 __END__
 
 =head1 NAME
@@ -197,6 +199,12 @@ table to the other.
 
 A boolean value indicating what kind of relationship the object
 represents.
+
+=head2 comment
+
+=head3 Returns
+
+The comment associated with the foreign key object, if any.
 
 =head1 AUTHOR
 

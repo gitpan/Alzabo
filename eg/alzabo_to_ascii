@@ -4,7 +4,7 @@ use warnings;
 use strict;
 
 use Alzabo::Create;
-use Text::Autoformat qw(form);
+use Text::Autoformat qw(autoformat form);
 
 my $name;
 unless ( $name = $ARGV[0] )
@@ -102,6 +102,16 @@ sub render_table
     }
 
     push @out, "\n";
+
+    my $comment = $t->comment;
+    if ( length $comment )
+    {
+	$comment =~ s/\r\n?/\n/g;
+	$comment =~ s/\n$//;
+
+	push @out, autoformat( $comment, { all => 1 } );
+	push @out, "\n\n";
+    }
 }
 
 sub render_column

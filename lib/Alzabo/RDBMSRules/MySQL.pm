@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.60 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.61 $ =~ /(\d+)\.(\d+)/;
 
 sub new
 {
@@ -403,9 +403,19 @@ sub table_sql
 	$sql .= ",\n";
 	$sql .= '  PRIMARY KEY (';
 	$sql .= join ', ', map {$_->name} @pk;
-	$sql .= ')';
+	$sql .= ")";
+
+	my @fk = map { $self->foreign_key_sql($_) } $table->all_foreign_keys;
+
+	if (@fk)
+	{
+	    $sql .= ",\n  ";
+	    $sql .= join ",\n  ", @fk;
+	}
+
+	$sql .= "\n";
     }
-    $sql .= "\n)";
+    $sql .= ")";
 
     my @sql = ($sql);
     foreach my $i ( $table->indexes )
@@ -489,7 +499,61 @@ sub _make_index_name
 
 sub foreign_key_sql
 {
-    return;
+    return; # temporarily disable
+    my $self = shift;
+    my $fk = shift;
+
+    return if grep { $_->is_primary_key } $fk->columns_from;
+
+    my $sql = 'FOREIGN KEY ( ';
+    $sql .= join ', ', map { $_->name } $fk->columns_from;
+    $sql .= ' ) REFERENCES ';
+    $sql .= $fk->table_to->name;
+    $sql .= '( ';
+    $sql .= join ', ', map { $_->name } $fk->columns_to;
+    $sql .= ' ) ON DELETE ';
+
+    if ( $fk->from_is_dependent )
+    {
+	$sql .= 'CASCADE';
+    }
+    else
+    {
+	my @to = $fk->columns_to;
+	unless ( ( grep { $_->nullable } @to ) == @to )
+	{
+	    $sql .= 'SET DEFAULT';
+	}
+	else
+	{
+	    $sql .= 'SET NULL';
+	}
+    }
+
+    my $found_index;
+    my @from = $fk->columns_from;
+
+ INDEX:
+    foreach my $i ( $fk->table_from->indexes )
+    {
+	my @c = $i->columns;
+
+	next unless @c == @from;
+
+	for ( 0..$#c )
+	{
+	    next INDEX unless $c[$_]->name eq $from[$_]->name;
+	}
+
+	$found_index = 1;
+    }
+
+    unless ($found_index)
+    {
+	$fk->table_from->make_index( columns => [ @from ] );
+    }
+
+    return $sql;
 }
 
 sub drop_column_sql

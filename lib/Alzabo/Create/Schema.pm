@@ -21,7 +21,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.78 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.81 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -72,6 +72,7 @@ sub reverse_engineer
     my $self = $class->new( name => $p{name},
 			    rdbms => $p{rdbms} );
 
+    delete $p{rdbms};
     $self->{driver}->connect(%p);
 
     $self->{rules}->reverse_engineer($self);
@@ -249,7 +250,7 @@ sub register_table_name_change
     $self->{tables}->Replace( $index, $p{table}, $p{table}->name );
 }
 
-sub add_relation
+sub add_relationship
 {
     my $self = shift;
 
@@ -257,7 +258,7 @@ sub add_relation
 
     my $tracker = Alzabo::ChangeTracker->new;
 
-    $self->_check_add_relation_args(%p);
+    $self->_check_add_relationship_args(%p);
 
     # This requires an entirely new table.
     unless ( grep { $_ ne 'n' } @{ $p{cardinality} } )
@@ -322,6 +323,7 @@ sub add_relation
 				    cardinality  => $p{cardinality},
 				    from_is_dependent => $p{from_is_dependent},
 				    to_is_dependent   => $p{to_is_dependent},
+				    comment => $p{comment},
 				  );
     };
     if ($@)
@@ -392,6 +394,7 @@ sub add_relation
 				    cardinality  => [ @{ $p{cardinality} }[1,0] ],
 				    from_is_dependent => $p{to_is_dependent},
 				    to_is_dependent   => $p{from_is_dependent},
+				    comment => $p{comment},
 				  );
     };
     if ($@)
@@ -407,8 +410,10 @@ sub add_relation
 	}
     }
 }
+# old name - deprecated
+*add_relation = \&add_relationship;
 
-sub _check_add_relation_args
+sub _check_add_relationship_args
 {
     my $self = shift;
     my %p = @_;
@@ -688,23 +693,25 @@ sub _create_linking_table
 				 );
 	}
 
-	$self->add_relation( table_from => $t1,
-			     table_to   => $linking,
-			     columns_from => $t1_col,
-			     columns_to   => [ $linking->columns( map { $_->name } @$t1_col ) ],
-			     cardinality  => [ '1', 'n' ],
-			     from_is_dependent => $p{from_is_dependent},
-			     to_is_dependent => 1,
-			   );
+	$self->add_relationship( table_from => $t1,
+				 table_to   => $linking,
+				 columns_from => $t1_col,
+				 columns_to   => [ $linking->columns( map { $_->name } @$t1_col ) ],
+				 cardinality  => [ '1', 'n' ],
+				 from_is_dependent => $p{from_is_dependent},
+				 to_is_dependent => 1,
+				 comment => $p{comment},
+			       );
 
-	$self->add_relation( table_from => $t2,
-			     table_to   => $linking,
-			     columns_from => $t2_col,
-			     columns_to   => [ $linking->columns( map { $_->name } @$t2_col ) ],
-			     cardinality  => [ '1', 'n' ],
-			     from_is_dependent => $p{to_is_dependent},
-			     to_is_dependent => 1,
-			   );
+	$self->add_relationship( table_from => $t2,
+				 table_to   => $linking,
+				 columns_from => $t2_col,
+				 columns_to   => [ $linking->columns( map { $_->name } @$t2_col ) ],
+				 cardinality  => [ '1', 'n' ],
+				 from_is_dependent => $p{to_is_dependent},
+				 to_is_dependent => 1,
+				 comment => $p{comment},
+			       );
     };
 
     if ($@)
@@ -870,9 +877,19 @@ sub save_to_file
 
     open $fh, ">$rdbms_save_name"
 	or Alzabo::Exception::System->throw( error => "Unable to write to $rdbms_save_name: $!\n" );
-    print $fh $self->{driver}->driver_id;
+    print $fh $self->{driver}->driver_id
+	or Alzabo::Exception::System->throw( error => "Can't write to $rdbms_save_name: $!" );
     close $fh
 	or Alzabo::Exception::System->throw( error => "Unable to close $rdbms_save_name: $!" );
+
+    my $version_save_name = $self->_base_filename( $self->{name} ) . '.version';
+
+    open $fh, ">$version_save_name"
+	or Alzabo::Exception::System->throw( error => "Unable to write to $version_save_name: $!\n" );
+    print $fh $Alzabo::VERSION
+	or Alzabo::Exception::System->throw( error => "Can't write to $version_save_name: $!" );
+    close $fh
+	or Alzabo::Exception::System->throw( error => "Unable to close $version_save_name: $!" );
 
     my $rt = $self->_make_runtime_clone;
 
@@ -1160,7 +1177,7 @@ Move the table after this table.
 
 L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
-=head2 add_relation
+=head2 add_relationship
 
 Creates a relationship between two tables.  This involves creating
 L<C<Alzabo::Create::ForeignKey>|Alzabo::Create::ForeignKey> objects in
@@ -1214,6 +1231,8 @@ linked to this new table.
 =item * from_is_dependent => $boolean
 
 =item * to_is_dependent => $boolean
+
+=item * comment => $comment
 
 =back
 

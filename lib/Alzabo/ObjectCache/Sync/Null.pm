@@ -7,7 +7,7 @@ use vars qw($VERSION);
 use Alzabo::ObjectCache::Sync;
 use base qw( Alzabo::ObjectCache::Sync );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -53,8 +53,9 @@ Alzabo::ObjectCache::Sync::Null - No inter-process cache syncing
 
 =head1 SYNOPSIS
 
-  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
-                           sync  => 'Alzabo::ObjectCache::Sync::Null' );
+  use Alzabo::ObjectCache
+      ( store => 'Alzabo::ObjectCache::Store::Memory',
+        sync  => 'Alzabo::ObjectCache::Sync::Null' );
 
 =head1 DESCRIPTION
 
@@ -70,7 +71,8 @@ probably increase the speed of your application.  Using it in a
 multi-process situation is likely to cause data corruption unless your
 application is entirely read-only.
 
-L<CACHING SCENARIOS|Alzabo::ObjectCache/CACHING SCENARIOS>.
+See L<CACHING SCENARIOS|Alzabo::ObjectCache/CACHING SCENARIOS> for
+more details on this.
 
 =head1 AUTHOR
 

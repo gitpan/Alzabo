@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
 
 sub new
 {
@@ -20,7 +20,6 @@ sub new
     my %p = validate( @_, { statement => { isa => 'Alzabo::DriverStatement' },
 			    tables => { type => ARRAYREF },
 			    no_cache => { optional => 1 },
-			    distinct => { default => 0 },
 			  } );
 
     my $self = bless \%p, $class;
@@ -39,7 +38,7 @@ sub next
     my @rows;
 
  OUTER:
-    do
+    until ( scalar @rows == scalar @{ $self->{tables} } )
     {
 	$self->{errors} = [];
 
@@ -58,14 +57,6 @@ sub next
 	    }
 
 	    my %hash = map { $pk[$_]->name => $pk_vals[$_] } 0..$#pk_vals;
-
-	    if ( $self->{distinct} && $self->{distinct} eq $t )
-	    {
-		my $key = Storable::freeze(\%hash);
-		next OUTER if $self->{seen}{$key};
-
-		$self->{seen}{$key} = 1;
-	    }
 
 	    my $row = eval { $t->row_by_pk( @_,
 					    pk => \%hash,
@@ -91,7 +82,7 @@ sub next
 	    }
 	    push @rows, $row;
 	}
-    } until ( scalar @rows == scalar @{ $self->{tables} } );
+    }
 
     return @rows;
 }

@@ -6,9 +6,12 @@ use vars qw($VERSION);
 use DBI;
 use DBD::Pg;
 
-use base qw(Alzabo::Driver);
+use Params::Validate qw( :all );
+Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
+
+use base qw(Alzabo::Driver);
 
 1;
 
@@ -33,6 +36,8 @@ sub connect
     $self->{dbh} = $self->_make_dbh( %p, name => $self->{schema}->name );
 }
 
+sub supports_referential_integrity { 1 }
+
 sub schemas
 {
     my $self = shift;
@@ -47,9 +52,18 @@ sub create_database
     my $dbh = $self->_make_dbh( @_, name => 'template1' );
 
     eval { $dbh->do( "CREATE DATABASE " . $self->{schema}->name ); };
+
     my $e = $@;
-    eval { $dbh->disconnect; };
-    Alzabo::Exception::Driver->throw( error => $e ) if $e;
+    if ($e)
+    {
+	eval { $dbh->disconnect; };
+	Alzabo::Exception::Driver->throw( error => $e ) if $e;
+    }
+    else
+    {
+	eval { $dbh->disconnect; };
+	Alzabo::Exception::Driver->throw( error => $@ ) if $@;
+    }
 }
 
 sub drop_database
@@ -61,15 +75,40 @@ sub drop_database
     my $dbh = $self->_make_dbh( @_, name => 'template1' );
 
     eval { $dbh->do( "DROP DATABASE " . $self->{schema}->name ); };
+
     my $e = $@;
-    eval { $dbh->disconnect; };
-    Alzabo::Exception::Driver->throw( error => $e ) if $e;
+    if ($e)
+    {
+	eval { $dbh->disconnect; };
+	Alzabo::Exception::Driver->throw( error => $e ) if $e;
+    }
+    else
+    {
+	eval { $dbh->disconnect; };
+	Alzabo::Exception::Driver->throw( error => $@ ) if $@;
+    }
 }
 
 sub _make_dbh
 {
     my $self = shift;
+
     my %p = @_;
+
+    %p = validate( @_, { name => { type => SCALAR },
+			 user => { type => SCALAR | UNDEF,
+				   optional => 1 },
+			 password => { type => SCALAR | UNDEF,
+				       optional => 1 },
+			 host => { type => SCALAR | UNDEF,
+				   optional => 1 },
+			 port => { type => SCALAR | UNDEF,
+				   optional => 1 },
+			 options => { type => SCALAR | UNDEF,
+				      optional => 1 },
+			 tty => { type => SCALAR | UNDEF,
+				  optional => 1 },
+		       } );
 
     my $dsn = "dbi:Pg:dbname=$p{name}";
     foreach ( qw( host port options tty ) )
@@ -101,10 +140,24 @@ sub next_sequence_number
     my $self = shift;
     my $col = shift;
 
+    $self->_check_dbh;
+
     Alzabo::Exception::Params->throw( error => "This column (" . $col->name . ") is not sequenced" )
 	unless $col->sequenced;
 
-    my $seq_name = join '___', $col->table->name, $col->name;
+    my $seq_name;
+
+    if ( $col->type eq 'SERIAL' )
+    {
+	$seq_name = join '_', $col->table->name, $col->name;
+	$seq_name = substr($seq_name, 0, 27) if length $seq_name > 27;
+
+	$seq_name .= '_seq';
+    }
+    else
+    {
+	$seq_name = join '___', $col->table->name, $col->name;
+    }
 
     $self->{last_id} = $self->one_row( sql => "SELECT NEXTVAL('$seq_name')" );
 

@@ -5,7 +5,7 @@ use vars qw($VERSION);
 
 use Alzabo::Runtime;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -122,9 +122,13 @@ Let's assume a database in with following tables:
 Now, let's assume you have a schema object C<$schema> and you execute
 the following code:
 
- my $cursor = $schema->join( tables => [ $schema->tables( 'movie', 'movie_alias' ) ],
-                             select => [ $schema->table('movie') ],
-                             where  => [ $schema->table('movie_alias')->column('alias'), 'like', 'Foo%' ] );
+ my $cursor =
+     $schema->join
+         ( tables =>
+           [ $schema->tables( 'movie', 'movie_alias' ) ],
+           select => $schema->table('movie'),
+           where  =>
+           [ $schema->table('movie_alias')->column('alias'), 'like', 'Foo%' ] );
 
 The cursor returned is relying on the movie_id column in the
 movie_alias table.  It's possible that there are values in this column

@@ -1,0 +1,6 @@
+Known Bugs
+
+- Alzabo doesn't handle upper case table/column names in Postgres
+properly.  By default, Postgres converts everything to lower case, but
+it can be forced not to do this by quoting these indentifiers.  Alzabo
+should quote all such identifiers in SQL generated for Postgres.

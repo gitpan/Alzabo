@@ -24,7 +24,9 @@
     <tr>
      <td>
       <input type="hidden" name="schema" value="<% $s->name %>">
-      <input type="textfield" name="table_name" size="20">
+      <input type="textfield" name="table_name" size="20"><br>
+      Comments:<br>
+      <textarea name="comment" rows="4" cols="40"></textarea>
      </td>
     </tr>
 % if ($s->tables) {

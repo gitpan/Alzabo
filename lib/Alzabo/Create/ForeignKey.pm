@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::ForeignKey);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.23 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -24,6 +24,8 @@ sub new
 		    cardinality  => { type => ARRAYREF },
 		    from_is_dependent => { type => SCALAR },
 		    to_is_dependent   => { type => SCALAR },
+		    comment => { type => UNDEF | SCALAR,
+				 default => '' },
 		  } );
     my %p = @_;
 
@@ -35,6 +37,8 @@ sub new
     $self->set_cardinality( @{ $p{cardinality} } );
     $self->set_from_is_dependent( $p{from_is_dependent} );
     $self->set_to_is_dependent( $p{to_is_dependent} );
+
+    $self->set_comment( $p{comment} );
 
     return $self;
 }
@@ -106,6 +110,8 @@ sub set_to_is_dependent
     $self->{to_is_dependent} = shift;
 }
 
+sub set_comment { $_[0]->{comment} = defined $_[1] ? $_[1] : '' }
+
 __END__
 
 =head1 NAME
@@ -145,6 +151,10 @@ match.
 =item * from_is_dependent => $boolean
 
 =item * to_is_dependent => $boolean
+
+=item * comment => $comment
+
+An optional comment.
 
 =back
 
@@ -200,6 +210,12 @@ the 'to' table).
 Indicates whether or not the second table in the relationship is
 dependent on the other (i.e. whether the 'to' table is dependent on
 the 'from' table).
+
+=for pod_merge comment
+
+=head2 set_comment ($comment)
+
+Set the comment for the foreign key object.
 
 =head1 AUTHOR
 

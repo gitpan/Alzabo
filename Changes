@@ -1,4 +1,105 @@
-0.64
+0.65
+
+INCOMPATIBILITIES:
+
+- Alzabo now uses the natively created Postgres sequence for SERIAL
+columns.  If you have existing Alzabo code with SERIAL columns that is
+using the Alzabo-created sequence, then this release will break things
+for you.  One easy fix is to simply drop the existing Postgres-created
+sequence and recreate it with a new starting number one higher than
+the highest row already in existence.  So if your hightest "foo_id"
+value in the "Foo" table is 500, you would do this:
+
+  DROP SEQUENCE foo_foo_id_seq;
+  CREATE SEQUENCE foo_foo_id_seq START 501;
+
+- The Alzabo::Table->primary_key method is now context-sensitive,
+returning a single column object in scalar context.
+
+- The data browser is no longer installed, until such time as I can
+rewrite it to be more useful.
+
+DEPRECATIONS:
+
+- The Alzabo::Create::Schema->add_relation method has been renamed as
+Alzabo::Create::Schema->add_relationship.
+
+ENHANCEMENTS:
+
+- Check out the mason/widgets directory for some handy widgets that
+can help integrate Mason and Alzabo in useful ways.  These aren't
+really well-documented yet but may be useful for playing with.  More
+widgets will be included in future releases (I hope).
+
+- When creating a relationship between tables in the schema creator,
+you can now let Alzabo figure out which columns to use instead of
+choosing them yourself.  For most relationships, Alzabo will simply do
+the right thing, adding a column to one of the tables as needed.
+
+- The problems running the tests with Postgres should now be fixed.
+
+- Fix stupid and inefficient internal handling of "SELECT DISTINCT"
+queries.  Now Alzabo simply lets the database handle this, the way it
+should have in the first place.
+
+- The Alzabo::Runtime::Schema and Alzabo::Runtime::Table ->function
+and ->select methods now allow you to select scalars so you can do
+things like SELECT 1 FROM Foo WHERE ... in order to test for the
+existence of a row.
+
+- Added Alzabo::Table->primary_key_size method, which indicates how
+many columns participate in the table's primary key.
+
+- Added Alzabo::Runtime::Schema->row_count.  Suggested by Daniel
+Gaspani.
+
+- Alzabo now detects older versions of schemas and transparently
+updates them.  This will work for all schemas created with version
+0.55 or later.
+
+See the section titled "Backwards Compability" in Alzabo.pm for more
+details.
+
+- Added comment attribute for tables, columns, and foreign keys.
+
+- Add VARBIT and TIMESTAMPTZ as legal types for Postgres.
+
+- Handle SERIAL columns in Postgres better.  Use the sequence Postgres
+creates for the columns rather than making our own and just insert
+undef into new rows for that column.
+
+BUG FIXES:
+
+- Adding a column that is not-nullable or has a default to a table
+under Postgres was causing an error with Postgres 7.2.1.  It seems
+likely that with earlier versions of Postgres, this was simply failing
+silently.  Patch by Daniel Gaspani.
+
+- Fixed buggy handling of joins that had a table with a multi-column
+primary key as the "distinct" parameter.
+
+- Calling the Alzabo::Runtime::Schema->join method with no 'select'
+parameter and a 'join' parameter that was an array reference of array
+references would fail.
+
+- Avoid an uninit value in Alzabo::MethodMaker.  Reported by Daniel
+Gaspani.
+
+- If you created a cursor inside an eval{} block, the cursor contained
+an object whose DESTROY method would overwrite $@ as it went out of
+scope when the eval block exited.  This could basically make it look
+like an exception had disappeared.  Thanks to Brad Bowman for an
+excellent bug report.
+
+- Loading a schema failed in taint mode.  This was reported ages ago
+by Raul Nohea Goodness and dropped on the floor by me.  My bad.
+
+- The schema creator's exception handling was a little bit buggered
+up when handling Alzabo::Exception::Driver exceptions.
+
+---------------------------------------------------------------------------
+
+0.64 Mar 27, 2002
 
 ENHANCEMENTS:
 
@@ -57,7 +158,9 @@ it's entirely correct).
 
 - Handle NOT IN for where conditions.
 
-0.63
+---------------------------------------------------------------------------
+
+0.63 Feb 18, 2002
 
 ENHANCEMENTS:
 
@@ -104,7 +207,9 @@ fixed.  Reported by Alexei Barantsev.
 - Allow order by clause to contain only a SQL function to allow things
 like "SELECT foo FROM Bar ORDER BY RAND()", which works with MySQL.
 
-0.62
+---------------------------------------------------------------------------
+
+0.62 Jan 15, 2002
 
 ENHANCEMENTS:
 
@@ -145,7 +250,7 @@ FEATURE REMOVAL:
 
 - It is no longer possible to pass sorting specifications ('ASC' or
 'DESC') as part of the group_by parameter.  This was only supported by
-MySQL and it was broken in MySQL until 3.23.47 anyway.  Its weird and
+MySQL and it was broken in MySQL until 3.23.47 anyway.  It's weird and
 non-standard.  Just use order_by instead.
 
 BUG FIXES:
@@ -160,11 +265,11 @@ been fixed by copying $@ into another variable before passing it into
 isa_ok().  Apparently, Test::More 0.41 will fix this as well.
 
 - Make Alzabo::ObjectCache::Store::RDBMS and
-Alzabo::ObjectCache::Sync::RDBMS play nice with Postgres.  Pg aborts
-transactions when there are errors like an attempt to insert a
+Alzabo::ObjectCache::Sync::RDBMS play nice with Postgres.  Postgres
+aborts transactions when there are errors like an attempt to insert a
 duplicate inside a transaction.  These module would just try to insert
-potentially duplicate rows and ignore the error.  Now Pg is handled
-specially.
+potentially duplicate rows and ignore the error.  Now Postgres is
+handled specially.
 
 - If you told the installer that you didn't want to run any tests with
 a live database, there would be errors when it tried to run
@@ -179,7 +284,9 @@ for some people, and in addition, did not end up putting the merged
 documentation into the generated man pages.  This release includes a
 patch from Ilya Martynov that fixes both of these problems.
 
-0.61
+---------------------------------------------------------------------------
+
+0.61 Dec 25, 2001
 
 ENHANCEMENTS:
 
@@ -246,7 +353,9 @@ lengths and defaults, in order to improve reverse engineering.
 
 - Fix Alzabo::Create::Schema->sync_backend method.
 
-0.60
+---------------------------------------------------------------------------
+
+0.60 Dec 6, 2001
 
 ENHANCEMENTS:
 
@@ -328,7 +437,9 @@ bit.  In particular, this form:
 
 has been deprecated in favor of a simpler syntax.
 
-.59
+---------------------------------------------------------------------------
+
+0.59 Nov 17, 2001
 
 ENHANCEMENTS:
 
@@ -395,7 +506,9 @@ INCOMPATIBILITIES:
 - Got rid of the post_select_hash hook and combined it with
 post_select, which now receives a hash reference.
 
-0.58
+---------------------------------------------------------------------------
+
+0.58 Oct 18, 2001
 
 ENHANCEMENTS:
 
@@ -455,7 +568,9 @@ INCOMPATIBILITIES:
 - If you specify give the 'all' parameter to MethodMaker,
 'insert' and 'update' are no longer included.
 
-0.57
+---------------------------------------------------------------------------
+
+0.57 Oct 9, 2001
 
 ENHANCEMENTS:
 
@@ -525,11 +640,15 @@ of an object for their delete_from_cache method.
 - If you specify give the 'all' parameter to MethodMaker,
 'lookup_tables' is no longer included.
 
-0.56
+---------------------------------------------------------------------------
+
+0.56 Oct 10, 2001
 
 Had to become 0.57 cause I was too hasty in uploading to CPAN.  Doh!
 
-0.55
+---------------------------------------------------------------------------
+
+0.55 Sep 24, 2001
 
 UPGRADE INSTRUCTIONS:
 
@@ -635,7 +754,9 @@ INCOMPATIBILITIES:
 methods (deprecated in 0.20) are gone.  Use ->nullable and
 ->set_nullable instead.
 
-0.51
+---------------------------------------------------------------------------
+
+0.51 Aug 29, 2001
 
 BUG FIXES:
 
@@ -648,7 +769,9 @@ ENHANCEMENTS:
 - Add ->handle method to Alzabo::Driver class, which lets you set and
 get the current database handle.  Suggested by Ilya Martynov.
 
-0.50
+---------------------------------------------------------------------------
+
+0.50 Aug 16, 2001
 
 ENHANCEMENTS:
 
@@ -690,7 +813,9 @@ did not match the related column in the other table, even when the
 columns were not dependent on each other.  Now this is only disallowed
 when the foreign key is a primary key in its own table.
 
-0.49
+---------------------------------------------------------------------------
+
+0.49 Jul 18, 2001
 
 BUG FIXES:
 
@@ -702,7 +827,9 @@ the schema creation interface).  Fortunately, I just discovered Perl's
 hard-coded .mhtml extension instead of calling
 Alzabo::Config::mason_extension().  Reported by Barry Hoggard.
 
-0.48
+---------------------------------------------------------------------------
+
+0.48 Jul 17, 2001
 
 BUG FIXES:
 
@@ -711,7 +838,9 @@ Hoggard for helping me out with this.
 
 - Fix a bug in the test number for 03-runtime.t.
 
-0.47
+---------------------------------------------------------------------------
+
+0.47 Jul 17, 2001
 
 ENHANCEMENTS:
 
@@ -729,7 +858,9 @@ BUG FIXES:
 - Added a missing file to the MANIFEST.  0.46 was missing a needed
 file from the tarball.
 
-0.46
+---------------------------------------------------------------------------
+
+0.46 Jul 2, 2001
 
 ENHANCEMENTS:
 
@@ -763,7 +894,9 @@ the table already has more than row then chances are this still won't
 work (because MySQL does not try to generate needed unique values for
 the column when it is added).
 
-0.45
+---------------------------------------------------------------------------
+
+0.45 Jun 6, 2001
 
 INCOMPATIBILITIES:
 
@@ -836,7 +969,9 @@ for databases that don't support these features.
 - Add some style to the schema creator (via stylesheets).  It looks a
 little better now.
 
-0.44
+---------------------------------------------------------------------------
+
+0.44 May 4, 2001
 
 BUG FIXES:
 
@@ -869,7 +1004,9 @@ ENHANCEMENTS:
 of having you type it in.  However, for complex types like MySQL's
 ENUM or Postgres' POLYGON there is a text box to type it in.
 
-0.43
+---------------------------------------------------------------------------
+
+0.43 Apr 25, 2001
 
 ENHANCEMENTS:
 
@@ -890,7 +1027,9 @@ you were prefetching one column.
 
 - Fix another problem that left the schema creator still broken.
 
-0.42
+---------------------------------------------------------------------------
+
+0.42 Apr 25, 2001
 
 BUG FIXES:
 
@@ -898,14 +1037,18 @@ BUG FIXES:
 
 - Remove 255 char limit on prefix length (this needs more research).
 
-0.41
+---------------------------------------------------------------------------
+
+0.41 Apr 24, 2001
 
 BUG FIXES:
 
 - 0.40 was missing a file in the distro
 (lib/Alzabo/ObjectCache/Sync/DBM.pm).
 
-0.40
+---------------------------------------------------------------------------
+
+0.40 Apr 24, 2001
 
 INCOMPATIBILITIES:
 
@@ -990,7 +1133,9 @@ particulary in terms of how it interacts with the caching system.
 - Made Alzabo::Runtime::Row->get_data a private method.  This served
 no purpose for end users anyway.
 
-0.36
+---------------------------------------------------------------------------
+
+0.36 Mar 20, 2001
 
 - Addition of Params::Validate broke several methods:
 -- The Alzabo::Schema->tables method was broken when trying to
@@ -1011,7 +1156,9 @@ Bob Gustafson for suggesting this.
 
 - Fixed problems running multi-process tests with Postgres.
 
-0.35
+---------------------------------------------------------------------------
+
+0.35 Mar 18, 2001
 
 - Add ability to specify port parameter when connecting to DB for
 reverse engineering/data browser.
@@ -1062,7 +1209,9 @@ anything with a host parameter.  Reported by Aaron Johnson.
 Robin Berjon.  This Alzabo::QuickRef.  The HTML version is table-ized
 and spiffed up a bit from the POD version.
 
-0.34
+---------------------------------------------------------------------------
+
+0.34 Feb 26, 2001
 
 - If you were trying to run the tests on a system without MySQL
 installed, or without the DB_File or IPC::Shareable modules, you saw
@@ -1075,7 +1224,9 @@ installed and it will skip any tests that it can't run.
 then another row was inserted with the same primary key.  Note to
 self: premature optimization is the root of all evil.
 
-0.33
+---------------------------------------------------------------------------
+
+0.33 Feb 21, 2001
 
 - The linking table methods generated by Alzabo::MethodMaker were
 broken.  Fixed this.
@@ -1104,13 +1255,17 @@ Alzabo::Create::Schema->reverse_engineer methods were called.  For the
 curious, this has to do with the DBI object passing through
 Storable::dclone.
 
-0.32
+---------------------------------------------------------------------------
+
+0.32 Feb 7, 2001
 
 - Forgot to include data browser files in MANIFEST.  Caused weirdness
 if you said you wanted it when asked during install.  Reported by Remi
 Cohen-Scali.
 
-0.31
+---------------------------------------------------------------------------
+
+0.31 Feb 5, 2001
 
 Bug fixes only
 
@@ -1120,7 +1275,9 @@ and self_relation (parent portion only) were broken.
 - A bug in the SQL making code was causing some queries to appear as
 if they failed when they didn't.
 
-0.30
+---------------------------------------------------------------------------
+
+0.30 Feb 4, 2001
 
 - The convert.pl script in eg/ has been updated to handle the new
 release.  IMPORTANT: I forgot to include a mention of this in the last
@@ -1200,7 +1357,7 @@ INCOMPATIBILITIES
 multi-column foreign keys.
 
 - Because of the aforementioned changes to the caching architecture,
-caching just does not work the way it used.
+caching just does not work the way it used to.
 
 1. By default, there is no caching at all.
 
@@ -1239,8 +1396,9 @@ default, the caching and syncing modules will just grow unchecked.
 You need to clear at the appropriate points (usually your
 application's entry points) in order to keep them under control.
 
+---------------------------------------------------------------------------
 
-0.20
+0.20 Jan 9, 2001
 
 - Preliminary Postgres support.  There is no support yet for
 constraints or foreign keys when reverse engineering or making SQL.
@@ -1325,7 +1483,9 @@ removed.
 - Alzabo::Runtime::Schema->join method's where parameter expects
 something different.
 
-0.10_5
+---------------------------------------------------------------------------
+
+0.10_5 Oct 10, 2000
 
 - You can now specify a database name to be used for testing.  The
 default is 'test_alzabo'.  This a good default for MySQL, at least.
@@ -1339,16 +1499,22 @@ errors are generated.  Thanks to Randal Schwartz for the bug report.
 extension was given.  Thanks _again_ to Randal for working with me on
 this in IRC late at night.
 
-0.10_4
+---------------------------------------------------------------------------
+
+0.10_4 Oct 10, 2000
 
 - Fix Makefile.PL bug
 
 - Auto select a column when adding a relation (if there is a logical
 one to select).
 
+---------------------------------------------------------------------------
+
 0.10_3
 
 - Fix bug with deleting foreign key objects from tables.
+
+---------------------------------------------------------------------------
 
 0.10
 
@@ -1412,6 +1578,8 @@ objects).
 - Both schema creator and data browser now respect user choice of
 component extension.
 
+---------------------------------------------------------------------------
+
 0.09
 
 - MAJOR CHANGE: All the Alzabo::Runtime::Row methods that used to
@@ -1429,6 +1597,8 @@ object to be created in the Alzabo::Runtime::Row class.
 - Fix bug in Alzabo::Table::rows_where method where it wasn't handling
 the construct $table->rows_where( where => { foo => undef } )
 properly.
+
+---------------------------------------------------------------------------
 
 0.08
 
@@ -1474,6 +1644,8 @@ Alzabo::Runtime::Row anyway.
 - Documented 'bind' parameter for Alzabo::Runtime::Table
 rows_by_where_clause method.
 
+---------------------------------------------------------------------------
+
 0.07
 
 - Fixed major bugs in Alzabo::Runtime::Table::insert method.
@@ -1490,6 +1662,8 @@ row can now fetch the rows that are related to it automatically.
 - Made all Alzabo::Table foreign key object returning methods
 list/scalar context sensitive.  This is useful when you know that
 there is only one foreign key that matches what you are looking for.
+
+---------------------------------------------------------------------------
 
 0.06
 
@@ -1524,6 +1698,8 @@ can return more than one object.
 - added ability to move columns and tables to arbitrary new locations
 after they've been created (without the arrows).
 
+---------------------------------------------------------------------------
+
 0.05
 
 - bug fix for Alzabo::Runtime::Row calling wrong method from schema
@@ -1535,6 +1711,8 @@ there's no way to have the right kinds of locks for cascading deletes.
 It might be possible to do this kind of locking via some other
 mechanism (semaphores, DBM files, whatever, but that's a hack for
 another day.
+
+---------------------------------------------------------------------------
 
 0.04
 
@@ -1559,6 +1737,8 @@ related table before finding this out.
 not the first page of results for a table.
 
 - fixed data browser bug in paging with filters.
+
+---------------------------------------------------------------------------
 
 0.03
 

@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::ColumnDefinition);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.24 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.26 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -39,7 +39,8 @@ sub _init
 		  } );
     my %p = @_;
 
-    $p{type} = $p{owner}->table->schema->rules->validate_column_type( $p{type} );
+    $p{type} =
+	$p{owner}->table->schema->rules->validate_column_type( $p{type}, $p{owner}->table );
     foreach ( qw( owner type ) )
     {
 	$self->{$_} = $p{$_} if exists $p{$_};
@@ -67,7 +68,8 @@ sub alter
 
     eval
     {
-	$self->{type} = $self->owner->table->schema->rules->validate_column_type($p{type});
+	$self->{type} =
+	    $self->owner->table->schema->rules->validate_column_type($p{type}, $self->owner->table);
 	$self->owner->table->schema->rules->validate_primary_key($self->owner)
 	    if $self->owner->is_primary_key;
 	$self->owner->table->schema->rules->validate_column_length($self->owner);
@@ -98,7 +100,8 @@ sub set_type
     my $old_type = $self->{type};
     eval
     {
-	$self->{type} = $self->owner->table->schema->rules->validate_column_type($type);
+	$self->{type} =
+	    $self->owner->table->schema->rules->validate_column_type($type, $self->owner->table);
 	$self->owner->table->schema->rules->validate_primary_key($self->owner)
 	    if eval { $self->owner->is_primary_key };
 	# eval ^^ cause if we're creating the column its not in the table yet
@@ -168,8 +171,8 @@ with another column.  The reason this class exists is that if a column
 is a key in two or more tables, then some of the information related
 to that column should change automatically in multiple places whenever
 it changes at all.  Right now this is only type ('VARCHAR', 'NUMBER',
-etc) information.  This object also has an 'owner', which is the
-column which created it.
+etc) and length/precision information.  This object also has an
+'owner', which is the column which created it.
 
 =head1 INHERITS FROM
 

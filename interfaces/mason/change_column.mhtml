@@ -11,6 +11,7 @@ $precision => undef
 $primary_key => 0
 $sequenced => 0
 @attributes => ()
+$comment => ''
 </%args>
 
 <%init>
@@ -88,6 +89,8 @@ eval
     }
 
     $c->set_attributes( grep { length } @attributes );
+
+    $c->set_comment($comment);
 
     $s->save_to_file;
 };

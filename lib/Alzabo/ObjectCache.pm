@@ -6,7 +6,7 @@ use vars qw($SELF $VERSION %ARGS);
 # load this for use by Alzabo::Runtime::Row
 use Alzabo::Runtime::CachedRow;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.35 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.39 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -36,7 +36,8 @@ sub import
     # Alzabo::ObjectCache::Store::LRU took care of importing the
     # originally specified store module so we'll leave it alone
     #
-    foreach ( ( $ARGS{lru_size} ? () : $ARGS{store} ), ( $store eq $ARGS{sync} ? () : $ARGS{sync} ) )
+    foreach ( ( $ARGS{lru_size} ? () : $ARGS{store} ),
+	      ( $store eq $ARGS{sync} ? () : $ARGS{sync} ) )
     {
 	eval "require $_";
 	Alzabo::Exception::Eval->throw( error => $@ ) if $@;
@@ -126,9 +127,10 @@ Alzabo::ObjectCache - A simple in-memory cache for row objects.
 
 =head1 SYNOPSIS
 
-  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
-                           sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB',
-                           sync_dbm_file => 'somefile.db' );
+  use Alzabo::ObjectCache
+      ( store => 'Alzabo::ObjectCache::Store::Memory',
+        sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB',
+        sync_dbm_file => 'somefile.db' );
 
 =head1 DESCRIPTION
 
@@ -191,10 +193,11 @@ lru_size parameter to this module when using it.
 
 For example:
 
-  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
-                           lru_size => 100,
-                           sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB',
-                           sync_dbm_file => 'somefile.db' );
+  use Alzabo::ObjectCache
+          ( store => 'Alzabo::ObjectCache::Store::Memory',
+            lru_size => 100,
+            sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB',
+            sync_dbm_file => 'somefile.db' );
 
 =head1 CACHING SCENARIOS
 
@@ -377,10 +380,10 @@ it is not, it refreshes itself.  Then, it returns the requested data
 time between checking whether or not it is expired that an update
 could occur.  This would not be seen by the row object.
 
-I don't occur this a bug since it is impossible to work around and is
-unlikely to be a problem.  In a single process, this is not an issue.
-In a multi-process application, this is the price that is paid for
-caching.
+I don't consider this a bug since it is impossible to work around and
+is unlikely to be a problem.  In a single process, this is not an
+issue.  In a multi-process application, this is the price that is paid
+for caching.
 
 If this is a problem for your application then you should not use
 caching.
@@ -412,6 +415,24 @@ They all take the same parameters:
 =over 4
 
 =item * sync_dbm_file => $filename
+
+The file which should be used to store syncing data.
+
+=item * clear_on_startup => $boolean
+
+Indicates whether or not the file should be cleared before it is first
+used.
+
+=back
+
+=head2 Alzabo::ObjectCache::Sync::Mmap
+
+This module uses C<Cache::Mmap> for syncing.  It takes the following
+parameters.
+
+=over 4
+
+=item * sync_mmap_file => $filename
 
 The file which should be used to store syncing data.
 

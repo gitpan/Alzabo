@@ -15,7 +15,7 @@ use vars qw($VERSION);
 
 use 5.005;
 
-$VERSION = '0.64';
+$VERSION = '0.65';
 
 1;
 
@@ -477,6 +477,34 @@ L<C<Alzabo::Runtime::Schema>|Alzabo::Runtime::Schema>.
   $schema->create( user => 'user', password => 'password' );
   $schema->save_to_file;
 
+=head2 Backwards Compatibility
+
+Because Alzabo saves the schema objects to disk as raw data structures
+using the C<Storable> module, it is possible for a new version of
+Alzabo to be incompatible with a saved schema.
+
+As of Alzabo version 0.65, Alzabo can now detect older schemas and
+will attempt to update them if possible.
+
+When you attempt to load a schema, whether of the
+C<Alzabo::Create::Schema> or C<Alzabo::Runtime::Schema> classes,
+Alzabo will determine what version of Alzabo created that schema.
+
+If updates are necessary, Alzabo will first back up your existing
+files with the extension F<.bak.v{version}>, where "{version}" is the
+version of Alzabo which created the schema.
+
+Then it will alter the schema as necessary and save it to disk.
+
+This will all happen transparently, as long as the process which
+initiated this process can write to the schema files and the directory
+they are in.
+
+Alzabo will need the C<Alzabo::Create::*> classes to update the
+schema.  If these have not been loaded already, Alzabo will do so and
+issue a warning to say that this has happened, in case you would like
+to restart the process without these classes loaded.
+
 =head2 Multiple RDBMS Support
 
 Alzabo aims to be as cross-platform as possible.  To that end, RDBMS
@@ -584,7 +612,7 @@ This a diagram of how objects contain other objects:
                        |
 		  ColumnDefinition (1)
 
-Note that more than one column _may_ share a single definition object
+Note that more than one column I<may> share a single definition object
 (this is explained in the
 L<C<Alzabo::Create::ColumnDefinition>|Alzabo::Create::ColumnDefinition>
 documentation).  This is only relevant if you are writing a schema

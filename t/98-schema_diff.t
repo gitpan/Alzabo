@@ -23,7 +23,7 @@ die $@ if $@;
 my $test_count = 0;
 foreach (@$tests)
 {
-    $test_count += 5;
+    $test_count += 6;
 }
 
 eval "use Test::More ( tests => $test_count )";
@@ -63,7 +63,9 @@ foreach my $t (@$tests)
 
     $s->make_table( name => 'cruft' );
     $s->table('cruft')->make_column( name => 'cruft_id',
-				     type => 'int' );
+				     type => 'int',
+				     primary_key => 1,
+				   );
 
     eval_ok( sub { $s->create(%p) },
 	     "Create schema (via diff) with one table added" );
@@ -74,4 +76,12 @@ foreach my $t (@$tests)
 
     eval_ok( sub { $s->create(%p) },
 	     "Create schema (via diff) with one index deleted" );
+
+    $s->table('cruft')->make_column( name => 'cruftiness',
+				     type => 'int',
+				     nullable => 1,
+				     default => 10 );
+
+    eval_ok( sub { $s->create(%p) },
+	     "Create schema (via diff) with one column (null and with a default) added" );
 }

@@ -4,6 +4,12 @@ Alzabo::QuickRef - A quick reference to methods in the Alzabo classes
 
 =head1 GENERAL
 
+This reference is intended to provide a quick reference to I<some> of
+the more commonly used methods that Alzabo provides.  In addition,
+this reference can give you an idea of what classes contain certain
+I<types> of methods, so you have an idea of where to look in order to
+figure out how to achieve a certain task.
+
 =for pod_merge Architecture head3
 
 =head2 Alzabo, Alzabo::Create, and Alzabo::Runtime
@@ -33,84 +39,13 @@ getting data from row objects.
 
 =head1 METHODS
 
-=head2 Creating/removing a schema
-
-=head3 Alzabo::Create::Schema
-
-This object represents a schema, and contains one or more table
-objects.  It is only used when creating or altering a schema, as
-opposed to when fetching data.  Data manipulation is done via the
-C<Alzabo::Runtime::*> classes.
-
-=over 4
-
-=item * reverse_engineer
-
-=for html type=class
-
-Connect to a database and reverse engineer a schema.  Returns a new
-schema object.
-
-=for html link=L<More|Alzabo::Create::Schema/reverse_engineer>
-
-=item * load_from_file
-
-=for html type=class
-
-Load an existing schema object from disk.  Returns a new schema
-object.
-
-=for html link=L<More|Alzabo::Create::Schema/load_from_file>
-
-=item * create
-
-=for html type=object
-
-If the schema has not yet been instantiated in an RDBMS, this method
-will instantiate the schema.  If it has been previously instantiated,
-it will bring the schema in the RDBMS into sync with its object
-representation (altering tables/columns, etc.)  Where possible, exist
-data will be preserved.
-
-=for html link=L<More|Alzabo::Create::Schema/create>
-
-=item * make_sql
-
-=for html type=object
-
-Returns an array, each element of which is a SQL statement.  The SQL
-is either the SQL to create the schema from scratch or the SQL needed
-to update the RDBMS to match the current object.  See the
-L<C<create>|Alzabo::QuickRef/create> method for more details.
-
-=for html link=L<More|Alzabo::Create::Schema/make_sql>
-
-=item * drop
-
-=for html type=object
-
-Drop the database from the RDBMS where it was created.  Does not
-remove the schema object itself from disk.
-
-=for html link=L<More|Alzabo::Create::Schema/drop>
-
-=item * delete
-
-=for html type=object
-
-Delete the schema object files from disk.  Does not drop the database
-from the RDBMS.
-
-=for html link=L<More|Alzabo::Create::Schema/delete>
-
-=back
-
 =head2 Retrieving data
 
 =head3 Alzabo::Runtime::Schema
 
-This object allows you to connect to the database.  It contains one
-data retrieval, method L<C<join>|Alzabo::QuickRef/join>.
+This object allows you to connect to the database.  It contains
+several data retrieval methods including
+L<C<join>|Alzabo::QuickRef/join>.
 
 =over 4
 
@@ -121,7 +56,7 @@ data retrieval, method L<C<join>|Alzabo::QuickRef/join>.
 Load an existing schema object from disk.  Returns a new schema
 object.
 
-=for html link=L<More|Alzabo::Create::Schema/load_from_file>
+=for html link=L<More|Alzabo::Create::Schema/load_from_file($name)>
 
 =item * set_user ($user)
 
@@ -350,6 +285,78 @@ L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects, or an empty
 list if there are no more.
 
 =for html link=L<More|Alzabo::Runtime::RowCursor/all_rows>
+
+=back
+
+=head2 Creating/removing a schema
+
+=head3 Alzabo::Create::Schema
+
+This object represents a schema, and contains one or more table
+objects.  It is only used when creating or altering a schema, as
+opposed to when fetching data.  Data manipulation is done via the
+C<Alzabo::Runtime::*> classes.
+
+=over 4
+
+=item * reverse_engineer
+
+=for html type=class
+
+Connect to a database and reverse engineer a schema.  Returns a new
+schema object.
+
+=for html link=L<More|Alzabo::Create::Schema/reverse_engineer>
+
+=item * load_from_file
+
+=for html type=class
+
+Load an existing schema object from disk.  Returns a new schema
+object.
+
+=for html link=L<More|Alzabo::Create::Schema/load_from_file($name)>
+
+=item * create
+
+=for html type=object
+
+If the schema has not yet been instantiated in an RDBMS, this method
+will instantiate the schema.  If it has been previously instantiated,
+it will bring the schema in the RDBMS into sync with its object
+representation (altering tables/columns, etc.)  Where possible, exist
+data will be preserved.
+
+=for html link=L<More|Alzabo::Create::Schema/create>
+
+=item * make_sql
+
+=for html type=object
+
+Returns an array, each element of which is a SQL statement.  The SQL
+is either the SQL to create the schema from scratch or the SQL needed
+to update the RDBMS to match the current object.  See the
+L<C<create>|Alzabo::QuickRef/create> method for more details.
+
+=for html link=L<More|Alzabo::Create::Schema/make_sql>
+
+=item * drop
+
+=for html type=object
+
+Drop the database from the RDBMS where it was created.  Does not
+remove the schema object itself from disk.
+
+=for html link=L<More|Alzabo::Create::Schema/drop>
+
+=item * delete
+
+=for html type=object
+
+Delete the schema object files from disk.  Does not drop the database
+from the RDBMS.
+
+=for html link=L<More|Alzabo::Create::Schema/delete>
 
 =back
 

@@ -10,7 +10,7 @@ use Tie::IxHash;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.25 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.26 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -123,6 +123,8 @@ sub is_blob
 
     return $self->table->schema->rules->type_is_blob( $self->type );
 }
+
+sub comment { $_[0]->{comment} }
 
 __END__
 
@@ -273,6 +275,12 @@ type.
 
 The L<C<Alzabo::ColumnDefinition>|Alzabo::ColumnDefinition> object
 which holds this column's type information.
+
+=head2 comment
+
+=head3 Returns
+
+The comment associated with the column object, if any.
 
 =head1 AUTHOR
 

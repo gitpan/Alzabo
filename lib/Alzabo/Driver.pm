@@ -10,7 +10,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.58 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.61 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -34,9 +34,21 @@ sub available
     return Class::Factory::Util::subclasses(__PACKAGE__);
 }
 
+
+sub _check_dbh
+{
+    my $self = shift;
+
+    my $sub = (caller(1))[3];
+    Alzabo::Driver::Exception->throw( error => "Cannot call $sub before calling connect." )
+	unless $self->{dbh};
+}
+
 sub quote
 {
     my $self = shift;
+
+    $self->_check_dbh;
 
     return $self->{dbh}->quote(@_);
 }
@@ -44,6 +56,8 @@ sub quote
 sub rows
 {
     my $self = shift;
+
+    $self->_check_dbh;
 
     my %p = @_;
 
@@ -75,6 +89,8 @@ sub rows_hashref
     my $self = shift;
     my %p = @_;
 
+    $self->_check_dbh;
+
     my $sth = $self->_prepare_and_execute(%p);
 
     my @data;
@@ -104,6 +120,8 @@ sub one_row
     my $self = shift;
     my %p = @_;
 
+    $self->_check_dbh;
+
     my $sth = $self->_prepare_and_execute(%p);
 
     my @row;
@@ -127,6 +145,8 @@ sub one_row_hash
 {
     my $self = shift;
     my %p = @_;
+
+    $self->_check_dbh;
 
     my $sth = $self->_prepare_and_execute(%p);
 
@@ -152,6 +172,8 @@ sub column
 {
     my $self = shift;
     my %p = @_;
+
+    $self->_check_dbh;
 
     my $sth = $self->_prepare_and_execute(%p);
 
@@ -209,6 +231,8 @@ sub do
     my $self = shift;
     my %p = @_;
 
+    $self->_check_dbh;
+
     my $sth = $self->_prepare_and_execute(%p);
 
     my $rows;
@@ -232,6 +256,8 @@ sub tables
 {
     my $self = shift;
 
+    $self->_check_dbh;
+
     my @t = eval {  $self->{dbh}->tables; };
     Alzabo::Exception::Driver->throw( error => $@ ) if $@;
 
@@ -249,6 +275,8 @@ sub statement
 {
     my $self = shift;
 
+    $self->_check_dbh;
+
     return Alzabo::DriverStatement->new( dbh => $self->{dbh},
 					 @_ );
 }
@@ -256,6 +284,8 @@ sub statement
 sub func
 {
     my $self = shift;
+
+    $self->_check_dbh;
 
     my @r;
     eval
@@ -305,6 +335,11 @@ sub connect
     shift()->_virtual;
 }
 
+sub supports_referential_integrity
+{
+    shift()->_virtual;
+}
+
 sub create_database
 {
     shift()->_virtual;
@@ -324,6 +359,8 @@ sub start_transaction
 {
     my $self = shift;
 
+    $self->_check_dbh;
+
     $self->{tran_count} = 0 unless defined $self->{tran_count};
     $self->{tran_count}++;
 
@@ -333,6 +370,8 @@ sub start_transaction
 sub rollback
 {
     my $self = shift;
+
+    $self->_check_dbh;
 
     $self->{tran_count} = undef;
 
@@ -346,6 +385,8 @@ sub rollback
 sub finish_transaction
 {
     my $self = shift;
+
+    $self->_check_dbh;
 
     my $callee = (caller(1))[3];
 
@@ -405,20 +446,17 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 $VERSION = '0.1';
 
-1;
-
 sub new
 {
     my $proto = shift;
     my $class = ref $proto || $proto;
 
-    validate( @_, { dbh   => { can => 'prepare' },
-		    sql   => { type => SCALAR },
-		    bind  => { type => SCALAR | ARRAYREF,
-			       optional => 1 },
-		    limit => { type => UNDEF | ARRAYREF,
-			       optional => 1 } } );
-    my %p = @_;
+    my %p = validate( @_, { dbh   => { can => 'prepare' },
+			    sql   => { type => SCALAR },
+			    bind  => { type => SCALAR | ARRAYREF,
+				       optional => 1 },
+			    limit => { type => UNDEF | ARRAYREF,
+				       optional => 1 } } );
 
     my $self = bless {}, $class;
 
@@ -426,19 +464,16 @@ sub new
     $self->{offset} = $p{limit} && $p{limit}[1] ? $p{limit}[1] : 0;
     $self->{rows_fetched} = 0;
 
-    $self->{dbh} = $p{dbh};
-
-    $self->{sql} = $p{sql};
     eval
     {
-	$self->{sth} = $self->{dbh}->prepare( $p{sql} );
+	$self->{sth} = $p{dbh}->prepare( $p{sql} );
 
 	$self->{bind} = exists $p{bind} ? ( ref $p{bind} ? $p{bind} : [ $p{bind} ] ) : [];
 	$self->{sth}->execute( @{ $self->{bind} } );
     };
 
     Alzabo::Exception::Driver->throw( error => $@,
-				      sql => $self->{sql},
+				      sql => $p{sql},
 				      bind => $self->{bind} ) if $@;
 
     return $self;
@@ -456,7 +491,7 @@ sub execute
 	$self->{sth}->execute(@_);
     };
     Alzabo::Exception::Driver->throw( error => $@,
-				      sql => $self->{sql},
+				      sql => $self->{sth}{Statement},
 				      bind => $self->{bind} ) if $@;
 }
 
@@ -478,8 +513,9 @@ sub next
 
 	$self->{sth}->finish if $self->{rows_fetched} == $self->{offset} + $self->{limit};
     };
+
     Alzabo::Exception::Driver->throw( error => $@,
-				      sql => $self->{sql},
+				      sql => $self->{sth}{Statement},
 				      bind => $self->{bind} ) if $@;
 
     return unless $active;
@@ -506,7 +542,7 @@ sub next_hash
 	$self->{sth}->finish if $self->{rows_fetched} == $self->{offset} + $self->{limit};
     };
     Alzabo::Exception::Driver->throw( error => $@,
-				      sql => $self->{sql},
+				      sql => $self->{sth}{Statement},
 				      bind => $self->{bind} ) if $@;
 
     return unless $active;
@@ -553,9 +589,12 @@ sub DESTROY
 {
     my $self = shift;
 
+    local $@;
     eval { $self->{sth}->finish if $self->{sth}; };
     Alzabo::Exception::Driver->throw( error => $@ ) if $@;
 }
+
+1;
 
 __END__
 

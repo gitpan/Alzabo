@@ -7,7 +7,6 @@ use lib '.', './t';
 
 require 'base.pl';
 
-1;
 sub mysql_make_schema
 {
     my %p = @_;
@@ -162,7 +161,7 @@ sub mysql_make_schema
 		      to_is_dependent => 0,
 		    );
 
-    delete $p{rdbms};
+    delete @p{'rdbms', 'schema_name'};
     $s->create(%p);
 
     $s->save_to_file;
@@ -176,6 +175,8 @@ sub mysql_make_schema
 # reverse engineering tests fail.
 sub pg_make_schema
 {
+    my $pid;
+
     my %p = @_;
     my $s = Alzabo::Create::Schema->new( name => $p{schema_name},
 					 rdbms => 'PostgreSQL',
@@ -184,7 +185,7 @@ sub pg_make_schema
     $s->make_table( name => 'employee' );
     my $emp_t = $s->table('employee');
     $emp_t->make_column( name => 'employee_id',
-			 type => 'int4',
+			 type => 'serial',
 			 sequenced => 1,
 			 primary_key => 1,
 		       );
@@ -320,12 +321,24 @@ sub pg_make_schema
 		      to_is_dependent => 0,
 		    );
 
-    delete $p{rdbms};
-    $s->create(%p);
+    my $name = $p{schema_name};
+    delete @p{'rdbms', 'schema_name'};
 
-    $s->save_to_file;
+    # scary hack that seems to fix "database is in use" errors
+    if ( $pid = fork )
+    {
+	wait;
+	return Alzabo::Create::Schema->load_from_file( name => $name );
+    }
+    else
+    {
+	Test::Builder->no_ending(1);
 
-    $s->driver->disconnect;
+	$s->create(%p);
+	$s->save_to_file;
 
-    return $s;
+	exit;
+    }
 }
+
+1;

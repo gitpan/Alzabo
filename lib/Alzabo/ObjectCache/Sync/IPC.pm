@@ -9,7 +9,7 @@ use vars qw($VERSION %IPC);
 use Alzabo::ObjectCache::Sync;
 use base qw( Alzabo::ObjectCache::Sync );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -59,10 +59,10 @@ Alzabo::ObjectCache::Sync::IPC - Uses a IPC file to sync object caches
 
 =head1 SYNOPSIS
 
-  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
-                           sync  => 'Alzabo::ObjectCache::Sync::IPC',
-                           clear_on_startup => 1 );
-
+  use Alzabo::ObjectCache
+      ( store => 'Alzabo::ObjectCache::Store::Memory',
+        sync  => 'Alzabo::ObjectCache::Sync::IPC',
+        clear_on_startup => 1 );
 
 =head1 DESCRIPTION
 

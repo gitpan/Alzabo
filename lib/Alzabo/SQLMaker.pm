@@ -9,24 +9,26 @@ use Class::Factory::Util;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.43 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub make_function
 {
-    my %p = @_;
     my $class = caller;
 
-    validate( @_,
-	      { function => { type => SCALAR },
-		min => { type => SCALAR, optional => 1 },
-		max => { type => UNDEF | SCALAR, optional => 1 },
-		groups => { type => ARRAYREF },
-		quote => { type => ARRAYREF, optional => 1 },
-		format => { type => SCALAR, optional => 1 },
-		is_modifier => { type => SCALAR, optional => 1 },
-	      } );
+    my %p =
+	validate( @_,
+		  { function => { type => SCALAR },
+		    min => { type => SCALAR, optional => 1 },
+		    max => { type => UNDEF | SCALAR, optional => 1 },
+		    groups => { type => ARRAYREF },
+		    quote => { type => ARRAYREF, optional => 1 },
+		    format => { type => SCALAR, optional => 1 },
+		    is_modifier => { type => SCALAR, default => 0 },
+		    has_spaces => { type => SCALAR, default => 0 },
+		    allows_alias => { type => SCALAR, default => 1 },
+		  } );
 
     my $valid = '';
     if ( $p{min} || $p{max} )
@@ -69,6 +71,16 @@ sub make_function
     if ( $p{is_modifier} )
     {
 	push @args, '                                      is_modifier => 1';
+    }
+
+    if ( $p{has_spaces} )
+    {
+	push @args, '                                      has_spaces => 1';
+    }
+
+    if ( $p{allows_alias} )
+    {
+	push @args, '                                      allows_alias => 1';
     }
 
     my $args = join ",\n", @args;
@@ -131,7 +143,7 @@ sub new
 		   sql => '',
 		   bind => [],
 		   driver => $driver,
-		   as_id => 'aaaaa',
+		   as_id => 'aaaaa10000',
 		 }, $class;
 }
 
@@ -149,6 +161,12 @@ sub select
 
     $self->{sql} .= 'SELECT ';
 
+    if ( $_[0] eq 'distinct' )
+    {
+	$self->{sql} .= ' DISTINCT ';
+	shift;
+    }
+
     my @sql;
     foreach (@_)
     {
@@ -165,10 +183,17 @@ sub select
 	elsif ( UNIVERSAL::isa( $_, 'Alzabo::SQLMaker::Function' ) )
 	{
 	    my $string = $_->as_string( $self->{driver} );
-	    push @sql, " $string AS " . $self->{as_id};
-	    $self->{functions}{$string} = $self->{as_id};
 
-	    ++$self->{as_id};
+	    if ( $_->allows_alias )
+	    {
+		push @sql, " $string AS " . $self->{as_id};
+		$self->{functions}{$string} = $self->{as_id};
+		++$self->{as_id};
+	    }
+	    else
+	    {
+		push @sql, $string;
+	    }
 	}
 	elsif ( ! ref $_ )
 	{
@@ -186,48 +211,6 @@ sub select
     $self->{last_op} = 'select';
 
     return $self;
-}
-
-sub AUTOLOAD
-{
-    my $self = shift;
-
-    my ($func) = $AUTOLOAD =~ /::([^:]+)$/;
-
-    $self->_assert_last_op( qw( select function condition ) );
-    return $self->_function( $func, @_ );
-
-    Alzabo::Exception->throw( error => "'$func' is not supported by this RDBMS\n" );
-}
-
-sub DESTROY { }
-
-sub _function
-{
-    my $self = shift;
-
-    validate_pos( @_, { type => SCALAR }, ( { type => SCALAR | OBJECT, optional => 1 } ) x (@_ - 1) );
-    my ($func, @params) = @_;
-
-    $self->_assert_last_op( qw( select function ) );
-
-    Alzabo::Exception::SQL->throw( error => $self->sqlmaker_id . " does not support the '$func' function" )
-	unless $self->_valid_function($func);
-
-    $self->{sql} .= ',' if $self->{last_op} eq 'function';
-
-    $self->{sql} .= " $func(";
-    $self->{sql} .= join ', ', map { UNIVERSAL::isa( $_, 'Alzabo::Column' ) ? $_->name : $_ } @params;
-    $self->{sql} .= ')';
-
-    $self->{last_op} = 'function';
-
-    return $self;
-}
-
-sub _valid_function
-{
-    1;
 }
 
 sub from
@@ -874,6 +857,8 @@ sub new
     return bless \%p, $class;
 }
 
+sub allows_alias { shift->{allows_alias} }
+
 sub as_string
 {
     my $self = shift;
@@ -903,6 +888,7 @@ sub as_string
     }
 
     my $sql = $self->{function};
+    $sql =~ s/_/ /g if $self->{has_spaces};
 
     return $sql if $self->{is_modifier};
 
@@ -1047,33 +1033,6 @@ L<C<order_by>|"order_by (Alzabo::Column objects)">
 
 L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
 
-=head2 ** function (C<Alzabo::Table> object(s) and/or $string(s))
-
-There is no publically available method in this class called
-C<** function>.  This method represents all available SQL functions, such
-as C<COUNT> or C<AVG>.  The name of the method is the name of the
-function to be called.  Each subclass knows which functions are legal
-for the RDBMS they represent.  All the arguments are joined together
-by commas (,) internally.  Here is a simple example:
-
- Alzabo::SQLMaker->select->count($column)->from($table)->where($other_column, '>', 2);
-
-=head3 Follows
-
-L<C<select>|"select (Alzabo::Table and/or Alzabo::Column objects)">
-
-L<C<** function>|"** function (Alzabo::Table object(s) and/or $string(s))">
-
-=head3 Followed by
-
-L<C<** function>|"** function (Alzabo::Table object(s) and/or $string(s))">
-
-L<C<from>|"from (Alzabo::Table object, ...)">
-
-=head3 Throws
-
-L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
-
 =head2 where ( (C<Alzabo::Column> object or SQL function), $comparison, (C<Alzabo::Column> object, $value, or C<Alzabo::SQLMaker> object), [ see below ] )
 
 The first parameter must be an C<Alzabo::Column> object or SQL
@@ -1089,9 +1048,9 @@ Some comparison operators allow additional parameters.
 The C<BETWEEN> comparison operator requires a fourth argument.  This
 must be either an C<Alzabo::Column> object or a value.
 
-The C<IN> operator allows any number of additional parameters, which
-may be C<Alzabo::Column> objects, values, or C<Alzabo::SQLMaker>
-objects.
+The C<IN> and <NOT IN> operators allow any number of additional
+parameters, which may be C<Alzabo::Column> objects, values, or
+C<Alzabo::SQLMaker> objects.
 
 =head3 Follows
 

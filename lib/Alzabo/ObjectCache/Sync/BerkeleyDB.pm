@@ -11,7 +11,7 @@ use BerkeleyDB qw( DB_CREATE DB_INIT_MPOOL DB_INIT_CDB DB_NOTFOUND DB_NOOVERWRIT
 
 use File::Basename ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -84,10 +84,11 @@ Alzabo::ObjectCache::Sync::BerkeleyDB - Uses a DBM file to sync object caches
 
 =head1 SYNOPSIS
 
-  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
-                           sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB',
-                           sync_dbm_file => 'somefilename.db',
-                           clear_on_startup => 1 );
+  use Alzabo::ObjectCache
+      ( store => 'Alzabo::ObjectCache::Store::Memory',
+        sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB',
+        sync_dbm_file => 'somefilename.db',
+        clear_on_startup => 1 );
 
 =head1 DESCRIPTION
 

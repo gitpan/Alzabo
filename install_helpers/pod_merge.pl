@@ -5,6 +5,7 @@ use strict;
 use File::Basename;
 use File::Copy;
 use File::Path;
+use File::Spec;
 
 my ($sourcedir, $libdir) = @ARGV;
 
@@ -12,17 +13,20 @@ foreach ($sourcedir, $libdir) { s,/$,,; }
 
 foreach ( qw( Schema Table Column ColumnDefinition Index ForeignKey ) )
 {
-    my $from = "$sourcedir/Alzabo/$_.pm";
+    my $from = File::Spec->catfile( $sourcedir, 'Alzabo', "$_.pm" );
 
     foreach my $class ( qw( Create Runtime ) )
     {
-	my $merge = "$sourcedir/Alzabo/$class/$_.pm";
-	my $to = "$libdir/Alzabo/$class/$_.pm";
+	my $merge = File::Spec->catfile( $sourcedir, 'Alzabo', $class, "$_.pm" );
+	my $to = File::Spec->catfile( $libdir, 'Alzabo', $class, "$_.pm" );
 	merge( $from, $merge, $to, $class );
     }
 }
 
-merge( "$sourcedir/Alzabo.pm", "$sourcedir/Alzabo/QuickRef.pod", "$libdir/Alzabo/QuickRef.pod" );
+merge( File::Spec->catfile( $sourcedir, 'Alzabo.pm' ),
+       File::Spec->catfile( $sourcedir, 'Alzabo', 'QuickRef.pod' ),
+       File::Spec->catfile( $libdir, 'Alzabo', 'QuickRef.pod' ),
+     );
 
 sub merge
 {
@@ -69,7 +73,7 @@ sub merge
     close TO or die "Can't write to '$t_out': $!";
     chmod 0444, $t_out or die "Can't chmod '$t_out' to 444: $!";
 
-    for ( $file, $t_out ) { s,^.*(?=Alzabo),,; s/\.pm$//; s,/,::,g; }
+    for ( $file, $t_out ) { s,^.*(?=Alzabo),,; s/\.pm$//; s,[\\/],::,g; }
 
     print STDERR "merged $file docs into $t_out\n";
 }

@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Index);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -36,7 +36,8 @@ sub new
 
     foreach my $c (@{ $p{columns} })
     {
-	$self->add_column(%$c);
+	my %p = UNIVERSAL::isa( $c, 'Alzabo::Column' ) ? ( column => $c ) : %$c;
+	$self->add_column(%p);
     }
 
     $self->table->schema->rules->validate_index($self);
@@ -192,13 +193,19 @@ C<Alzabo::Index>
 
 The table that this index is indexing.
 
+=item * columns => [ C<Alzabo::Create::Column> object, .. ]
+
 =item * columns => [ { column => C<Alzabo::Create::Column> object,
                        prefix => $prefix },
                       repeat as needed ...
                    ]
 
-This is a list of columns that are being indexes.  The prefix part of
-the hashref is optional.
+This parameter indicates which columns that are being indexed.  It can
+either be an array reference of column objects, or an array reference
+of hash references, each with a key called column and one called
+prefix.
+
+The prefix key is optional.
 
 =item * unique => $boolean
 

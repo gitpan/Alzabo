@@ -9,7 +9,7 @@ use Alzabo::Runtime;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.51 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.55 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
@@ -505,8 +505,8 @@ sub make_linking_table_method
 
     # Return unless all the columns in the linking table are part of
     # the link.
-    return unless ( $fk->table_to->primary_key ==
-		    ( $fk->table_from->primary_key + $fk_2->table_to->primary_key ) );
+    return unless ( $fk->table_to->primary_key_size ==
+		    ( $fk->table_from->primary_key_size + $fk_2->table_to->primary_key_size ) );
 
     my $name = $self->{opts}{name_maker}->( type => 'linking_table',
 					    foreign_key => $fk,
@@ -552,7 +552,7 @@ sub make_lookup_columns_methods
     # Make sure the relationship is to the foreign table's primary key
     my @to = $fk->columns_to;
     return unless ( ( scalar grep { $_->is_primary_key } @to ) == @to &&
-		    ( scalar $fk->table_to->primary_key ) == @to );
+		    ( $fk->table_to->primary_key_size == @to ) );
 
     foreach ( sort { $a->name cmp $b->name  } $fk->table_to->columns )
     {
@@ -699,8 +699,9 @@ sub make_select_hooks
 {
     my $self = shift;
 
-    my $pre = "            \$s->pre_select(\\\@cols);\n" if $self->{row_class}->can('pre_update');
-    my $post = "            \$s->post_select(\\\%r);\n" if $self->{row_class}->can('post_update');
+    my ($pre, $post) = ('', '');
+    $pre = "            \$s->pre_select(\\\@cols);\n" if $self->{row_class}->can('pre_update');
+    $post = "            \$s->post_select(\\\%r);\n" if $self->{row_class}->can('post_update');
 
     foreach ( qw( cached_row_class uncached_row_class potential_row_class ) )
     {
@@ -858,7 +859,7 @@ sub make_lookup_table_method
     my $self = shift;
     my $fk = shift;
 
-    return unless $fk->table_to->primary_key == 1;
+    return unless $fk->table_to->primary_key_size == 1;
 
     my $name = $self->{opts}{name_maker}->( type => 'lookup_table',
 					    foreign_key => $fk );
@@ -1058,14 +1059,14 @@ C<E<lt>class rootE<gt>::Schema>
 
 =head3 Tables
 
-C<E<lt>class rootE<gt>::Table::<table nameE<gt>>
+C<E<lt>class rootE<gt>::Table::E<lt>table nameE<gt>>
 
 =head3 Rows
 
-C<E<lt>class rootE<gt>::Row::<table nameE<gt>>, subclassed by
-C<E<lt>class rootE<gt>::CachedRow::<table nameE<gt>>, C<E<lt>class
-rootE<gt>::UncachedRow::<table nameE<gt>>, and C<E<lt>class
-rootE<gt>::PotentialRow::<table nameE<gt>>
+C<E<lt>class rootE<gt>::Row::E<lt>table nameE<gt>>, subclassed by
+C<E<lt>class rootE<gt>::CachedRow::E<lt>table nameE<gt>>, C<E<lt>class
+rootE<gt>::UncachedRow::E<lt>table nameE<gt>>, and C<E<lt>class
+rootE<gt>::PotentialRow::E<lt>table nameE<gt>>
 
 With a root of 'My::Stuff', and a schema with only two tables, 'Movie'
 and 'Image', this would result in the following class names:
@@ -1104,7 +1105,7 @@ the name of the method.
 
 For example, given a schema containing tables named 'Movie' and
 'Image', this would create methods that could be called as
-C<$schema-E<gt>Movie> and C<$schema-E<gt>Image>.
+C<< $schema->Movie >> and C<< $schema->Image >>.
 
 =head2 Table object methods.
 
@@ -1229,8 +1230,8 @@ All hooks are inside a transaction which is rolled back if any part of
 the process fails.
 
 It should be noted that Alzabo uses both the C<<
-Alzabo::Runtime::Row->select >> and C<< Alzabo::Runtime::Row->delete
->> methods internally.  If their behavior is radically altered through
+Alzabo::Runtime::Row->select >> and C<< Alzabo::Runtime::Row->delete >>
+methods internally.  If their behavior is radically altered through
 the use of hooks, then some of Alzabo's functionality may be broken.
 
 Given this, it may be safer to create new methods to fetch and massage
@@ -1246,7 +1247,7 @@ Each of these hooks receives different parameters, documented below:
 
 This method receives a hash reference of all the parameters that are
 passed to the
-L<C<Alzabo::Runtime::Table-E<gt>insert>|Alzabo::Runtime::Table/insert>
+L<C<< Alzabo::Runtime::Table->insert >>|Alzabo::Runtime::Table/insert>
 method.
 
 These are the actual parameters that will be passed to the C<insert>
@@ -1271,7 +1272,7 @@ created row.
 
 This method receives a hash reference of the parameters that will be
 passed to the
-L<C<Alzabo::Runtime::Row-E<gt>update>|Alzabo::Runtime::Row/update>
+L<C<< Alzabo::Runtime::Row->update >>|Alzabo::Runtime::Row/update>
 method.  Again, alterations to these parameters will be seen by the
 C<update> method.
 
@@ -1289,15 +1290,15 @@ This method receives the same parameters as C<pre_update>
 
 This method receives an array reference containing the names of the
 requested columns.  This is called when either the
-L<C<Alzabo::Runtime::Row-E<gt>select>|Alzabo::Runtime::Row/select> or
-L<C<Alzabo::Runtime::Row-E<gt>select_hash>|Alzabo::Runtime::Row/select_hash>
+L<C<< Alzabo::Runtime::Row->select >>|Alzabo::Runtime::Row/select> or
+L<C<< Alzabo::Runtime::Row->select_hash >>|Alzabo::Runtime::Row/select_hash>
 methods are called.
 
 =item * post_select
 
 This method is called after the
-L<C<Alzabo::Runtime::Row-E<gt>select>|Alzabo::Runtime::Row/select> or
-L<C<Alzabo::Runtime::Row-E<gt>select_hash>|Alzabo::Runtime::Row/select_hash>
+L<C<< Alzabo::Runtime::Row->select >>|Alzabo::Runtime::Row/select> or
+L<C<< Alzabo::Runtime::Row->select_hash >>|Alzabo::Runtime::Row/select_hash>
 methods.  It receives a hash containing the name and values returned
 from the revelant method, which it may modify.  If the values of this
 hash reference are modified, then this will be seen by the original
@@ -1429,7 +1430,8 @@ Here is an example that covers all of the possible options:
      # Column objects are returned similarly, via $schema->User_t->username_c;
      return $p{column}->name . '_c' if $p{type} eq 'table_column';
 
-     # If I have a row object, I can get at the columns via their names, for example $user->username;
+     # If I have a row object, I can get at the columns via their
+     # names, for example $user->username;
      return $p{column}->name if $p{type} eq 'row_column';
 
      # This manipulates the table names a bit to generate names.  For

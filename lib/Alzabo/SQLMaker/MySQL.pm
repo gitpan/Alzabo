@@ -11,10 +11,9 @@ use base qw(Alzabo::SQLMaker);
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
 
 my $MADE_FUNCTIONS;
-my %functions;
 
 sub import
 {
@@ -70,11 +69,11 @@ sub _make_functions
     }
 
     make_function( function => 'CHAR',
-		  min => 1,
-		  max => undef,
-		  quote => [0],
-		  groups => [ 'string' ],
-		);
+		   min => 1,
+		   max => undef,
+		   quote => [0],
+		   groups => [ 'string' ],
+		 );
 
     foreach ( [ ENCRYPT => [1,1], [ 'misc' ] ] )
     {
@@ -265,42 +264,39 @@ sub _make_functions
 	      [ SUM  => [0], [ 'aggregate', 'common' ] ],
 	      [ STD  => [0], [ 'aggregate' ] ],
 	      [ STDDEV  => [0], [ 'aggregate' ] ],
-	      [ DISTINCT  => [0], [ 'aggregate', 'common' ] ],
 
 	      [ BIT_OR  => [0], [ 'misc' ] ],
 	      [ PASSWORD  => [1], [ 'misc' ] ],
 	      [ MD5  => [1], [ 'misc' ] ],
 	      [ BIT_AND  => [0], [ 'misc' ] ],
 	      [ LOAD_FILE  => [1], [ 'misc' ] ],
+
+	      [ AGAINST    => [1], [ 'fulltext' ] ],
 	    )
     {
 	make_function( function => $_->[0],
-		      min => 1,
-		      max => 1,
-		      quote => $_->[1],
-		      groups => $_->[2],
-		    );
+		       min => 1,
+		       max => 1,
+		       quote => $_->[1],
+		       groups => $_->[2],
+		     );
     }
 
-    make_function( function => 'MATCH',
-		  min => 1,
-		  max => undef,
-		  quote => [0],
-		  groups => [ 'fulltext' ] );
-
-    make_function( function => 'AGAINST',
-		  min => 1,
-		  max => 1,
-		  quote => [1],
-		  groups => [ 'fulltext' ] );
+    foreach ( [ MATCH    => [0], [ 'fulltext' ] ],
+	    )
+    {
+	make_function( function => $_->[0],
+		       min => 1,
+		       max => undef,
+		       quote => $_->[1],
+		       groups => $_->[2],
+		     );
+    }
 
     make_function( function => 'IN_BOOLEAN_MODE',
-		  is_modifier => 1,
-		  groups => [ 'fulltext' ],
+		   is_modifier => 1,
+		   groups => [ 'fulltext' ],
 		);
-
-
-    %functions = map { $_ => 1 } @EXPORT_OK;
 
     $MADE_FUNCTIONS = 1;
 }
@@ -308,15 +304,6 @@ sub _make_functions
 sub init
 {
     1;
-}
-
-sub DESTROY { }
-
-sub _valid_function
-{
-    shift;
-
-    return $functions{ uc shift };
 }
 
 sub _subselect
@@ -563,7 +550,6 @@ once.
  SUM
  STD
  STDDEV
- DISTINCT
 
 =head2 :system
 

@@ -2,7 +2,7 @@ package Alzabo::ObjectCache::Store::Memory;
 
 use vars qw($SELF $VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -63,8 +63,9 @@ Alzabo::ObjectCache::Store::Memory - Cache objects in memory
 
 =head1 SYNOPSIS
 
-  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
-                           sync  => 'Alzabo::ObjectCache::Sync::Null' );
+  use Alzabo::ObjectCache
+      ( store => 'Alzabo::ObjectCache::Store::Memory',
+        sync  => 'Alzabo::ObjectCache::Sync::Null' );
 
 =head1 DESCRIPTION
 

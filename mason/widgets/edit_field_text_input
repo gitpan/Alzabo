@@ -1,0 +1,26 @@
+<input type="text" name="<% $col_name %>" value="<% $val | h %>" size="<% $size %>" maxlength="<% $max_length %>" class="<% $class %>">\
+<%args>
+$row => undef
+$column
+$class => $m->base_comp->attr_if_exists('text_input_class_default')
+$size => $m->base_comp->attr_if_exists('text_input_size_default') || 30
+$max_length => $size
+</%args>
+<%init>
+my $val;
+
+my $col_name = ref $column ? $column->name : $column;
+
+if (defined $row)
+{
+    $val = $row->select( $col_name );
+}
+
+$val = '' unless defined $val;
+
+$max_length =
+    $column->length && $column->length < $max_length ? $column->length :
+    ( ! $column->is_character ? 10 : $max_length );
+
+$size = $max_length if $max_length < $size;
+</%init>

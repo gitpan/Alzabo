@@ -12,6 +12,7 @@ $length => undef
 $precision => undef
 $primary_key => 0
 @attributes => ()
+$comment => ''
 $after => undef
 </%args>
 
@@ -35,6 +36,7 @@ eval
 	      length => $length,
 	      precision => $precision,
 	      attributes => [ grep {$_} @attributes ],
+	      comment => $comment,
 	    );
     $p{after} = $t->column($after) if defined $after;
 

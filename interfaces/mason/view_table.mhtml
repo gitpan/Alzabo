@@ -7,6 +7,13 @@
  <input type="text" name="name" value="<% $t->name %>">
  <input type="submit" value="Change name">
 </form>
+<form action="change_table_comment<% Alzabo::Config::mason_extension() %>">
+ <input type="hidden" name="schema" value="<% $s->name %>">
+ <input type="hidden" name="table" value="<% $t->name %>">
+ <textarea name="comment" rows="4" cols="40"><% $t->comment | h %></textarea><br>
+ <input type="submit" value="Change comment">
+</form>
+
   </td>
   <td>
 <form action="delete_table<% Alzabo::Config::mason_extension() %>">
@@ -65,9 +72,16 @@
  <input type="hidden" name="fk_id" value="<% $fk->id %>">
  <input type="submit" value="Delete">
 </form>
-%     }
      </td>
     </tr>
+%       if ( length $fk->comment ) {
+    <tr>
+     <td colspan="4">
+      <% $fk->comment | h %>
+     </td>
+    </tr>
+%       }
+%     }
    </table>
 %   }
   </td>
@@ -114,6 +128,13 @@
     </tr>
     <tr valign="top">
      <td><input type="textfield" name="column_name" size="20"></td>
+    </tr>
+
+    <tr valign="top">
+     <td>Comment:</td>
+    </tr>
+    <tr valign="top">
+     <td><textarea name="comment" rows="4" cols="40"></textarea></td>
     </tr>
 
     <tr valign="top">
@@ -212,7 +233,7 @@
   <td>
 
 % if ($t->columns && grep {$_ ne $t && $_->columns} $s->tables) {
-<form action="add_relation<% Alzabo::Config::mason_extension() %>" method="post">
+<form action="add_relationship<% Alzabo::Config::mason_extension() %>" method="post">
  <input type="hidden" name="schema" value="<% $s->name %>">
  <input type="hidden" name="table_from" value="<% $t->name %>">
    <table width="100%" cellspacing="5">

@@ -8,6 +8,7 @@ $cardinality_from
 $cardinality_to
 $from_is_dependent => 0
 $to_is_dependent => 0
+$comment => ''
 </%args>
 
 <%init>
@@ -30,21 +31,26 @@ eval
 
     my $t_from = $s->table($table_from);
     my $t_to = $s->table($table_to);
-    my @c_from = $t_from->columns(@columns_from);
-    my @c_to = $t_to->columns(@columns_to);
+    my @c_from;
+    @c_from = $t_from->columns(@columns_from) unless grep { ! length } @columns_from;
 
-    my (@mm_from, @mm_to);
-    @mm_from = ( ( $from_is_dependent ? 1 : 0 ), ( $cardinality_from eq '1' ? 1 : 'n' ) );
-    @mm_to = ( ( $to_is_dependent ? 1 : 0 ), ( $cardinality_to eq '1' ? 1 : 'n') );
+    my @c_to;
+    @c_to   = $t_to->columns(@columns_to) unless grep { ! length } @columns_to;
 
-    $s->add_relation( table_from => $t_from,
-		      table_to   => $t_to,
-		      columns_from => \@c_from,
-		      columns_to   => \@c_to,
-		      cardinality  => [ $cardinality_from, $cardinality_to ],
-		      from_is_dependent => $from_is_dependent,
-		      to_is_dependent => $to_is_dependent,
-		    );
+    my %p = ( table_from => $t_from,
+	      table_to   => $t_to,
+	      cardinality  => [ $cardinality_from, $cardinality_to ],
+	      from_is_dependent => $from_is_dependent,
+	      to_is_dependent => $to_is_dependent,
+	      comment => $comment,
+	    );
+
+    if ( @c_to && @c_from )
+    {
+	@p{'columns_from', 'columns_to'} = ( \@c_from, \@c_to );
+    }
+
+    $s->add_relationship(%p);
 
     $s->save_to_file;
 };

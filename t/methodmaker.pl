@@ -343,6 +343,8 @@ sub make_schema
 		    );
 
     $s->save_to_file;
+
+    delete @p{ 'schema_name', 'rdbms' };
     $s->create(%p);
 }
 

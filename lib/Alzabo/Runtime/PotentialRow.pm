@@ -10,9 +10,7 @@ use base qw(Alzabo::Runtime::Row);
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
-
-1;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
 
 sub new
 {
@@ -20,32 +18,30 @@ sub new
     my $class = ref $proto || $proto;
 
     my %p = validate( @_, { table => { isa => 'Alzabo::Runtime::Table' },
-			    values => { type => HASHREF, optional => 1 },
+			    values => { type => HASHREF, default => {} },
 			  } );
 
     my $self = bless { table => $p{table} }, $class;
 
     # Can't just call ->update here cause with MethodMaker there may
     # be update hooks that probably shouldn't be invoked here.
-    if ( exists $p{values} )
+    foreach ( keys %{ $p{values} } )
     {
-	foreach ( keys %{ $p{values} } )
-	{
-	    # This will throw an exception if the column doesn't exist.
-	    my $c = $self->table->column($_);
+	# This will throw an exception if the column doesn't exist.
+	my $c = $self->table->column($_);
 
-	    Alzabo::Exception::Params->throw( error => "Column " . $c->name . " cannot be null." )
-		unless defined $p{values}->{$_} || $c->nullable || defined $c->default;
+	Alzabo::Exception::Params->throw( error => "Column " . $c->name . " cannot be null." )
+	    unless defined $p{values}->{$_} || $c->nullable || defined $c->default;
 
-	    $self->{data}{$_} = $p{values}->{$_};
-	}
+	$self->{data}{$_} = $p{values}->{$_};
     }
 
-    foreach ( $self->table->columns )
+    foreach my $c ( $self->table->columns )
     {
-	if ( defined $_->default )
+	if ( defined $c->default )
 	{
-	    $self->{data}{ $_->name } = $_->default unless defined $self->{data}{ $_->name };
+	    my $name = $c->name;
+	    $self->{data}{$name} = $c->default unless defined $self->{data}{$name};
 	}
     }
 
@@ -55,10 +51,9 @@ sub new
 sub _get_data
 {
     my $self = shift;
-    my @cols = @_;
 
     my %data;
-    @data{@cols} = @{ $self->{data} }{@cols};
+    @data{@_} = @{ $self->{data} }{@_};
 
     return %data;
 }
@@ -113,6 +108,8 @@ sub id
 {
     return '';
 }
+
+1;
 
 __END__
 

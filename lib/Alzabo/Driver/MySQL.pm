@@ -8,11 +8,12 @@ use Alzabo::Driver;
 use DBD::mysql;
 use DBI;
 
+use Params::Validate qw( :all );
+Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.39 $ =~ /(\d+)\.(\d+)/;
+
 use base qw(Alzabo::Driver);
-
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.37 $ =~ /(\d+)\.(\d+)/;
-
-1;
 
 sub new
 {
@@ -35,11 +36,42 @@ sub connect
     $self->{dbh} = $self->_make_dbh(%p, name => $self->{schema}->name);
 }
 
+sub supports_referential_integrity
+{
+    my $self = shift;
+
+    $self->_check_dbh;
+
+    my $version = $self->{dbh}{mysql_serverinfo};
+
+    $version =~ s/\D//;
+
+    my ($maj, $min, $p) = split /\./, $version;
+
+    if ( $maj == 3 )
+    {
+	return 0 if $min < 23;
+
+	# 3.23.50 && 4.0.2 are the first versions where InnoDB
+	# actually honored CASCADE, SET NULL, and SET DEFAULT
+	return 0 if $p < 50;
+    }
+
+    # same deal
+    return 0 if $maj == 4 && $min == 0 && $p < 2;
+
+    foreach my $row ( $self->rows_hashref( sql => 'SHOW TABLE STATUS' ) )
+    {
+	return 0 if $row->{TYPE} !~ /innodb/i;
+    }
+}
+
 sub schemas
 {
     my $self = shift;
 
-    return map { /dbi:\w+:(\w+)/i; defined $1 ? $1 : () } DBI->data_sources( $self->dbi_driver_name );
+    return ( map { /dbi:\w+:(\w+)/i; defined $1 ? $1 : () }
+	     DBI->data_sources( $self->dbi_driver_name ) );
 }
 
 sub create_database
@@ -78,7 +110,20 @@ sub drop_database
 sub _make_dbh
 {
     my $self = shift;
+
     my %p = @_;
+
+    %p = validate( @_, { name => { type => SCALAR },
+			 user => { type => SCALAR | UNDEF,
+				   optional => 1 },
+			 password => { type => SCALAR | UNDEF,
+				       optional => 1 },
+			 host => { type => SCALAR | UNDEF,
+				   optional => 1 },
+			 port => { type => SCALAR | UNDEF,
+				   optional => 1 },
+			 map { $_ => 0 } grep { /^mysql_/ } keys %p,
+		       } );
 
     my $dsn = "DBI:mysql:$p{name}";
     $dsn .= ";host=$p{host}" if $p{host};
@@ -153,6 +198,8 @@ sub dbi_driver_name
 {
     return 'mysql';
 }
+
+1;
 
 __END__
 

@@ -1,0 +1,21 @@
+<textarea name="<% $col_name %>" rows="<% $rows %>" cols="<% $cols %>" class="<% $class %>"><% $val | h %></textarea>\
+<%args>
+$row => undef
+$column
+$class => $m->base_comp->attr_if_exists('textarea_class_default') || ''
+$rows  => $m->base_comp->attr_if_exists('textarea_rows_default') || 4
+$cols  => $m->base_comp->attr_if_exists('textarea_cols_default') || 40
+$wrap  => $m->base_comp->attr_if_exists('textarea_wrap_default') || 'multiple'
+</%args>
+<%init>
+my $val;
+
+my $col_name = ref $column ? $column->name : $column;
+
+if (defined $row)
+{
+    $val = $row->select( $col_name );
+}
+
+$val = '' unless defined $val;
+</%init>
