@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -49,14 +49,15 @@ sub _check_name
     my $self = shift;
     my $name = shift;
 
-    Alzabo::Exception::RDBMSRules->throw( error => "\u$name name name must at least one character long" )
+    Alzabo::Exception::RDBMSRules->throw( error => "Name ($name) must at least one character long" )
 	unless length $name;
-    Alzabo::Exception::RDBMSRules->throw( error => '\u$name name ($name) is too long.  Names must be 31 characters or less.' )
+    Alzabo::Exception::RDBMSRules->throw( error => "Name ($name) is too long.  Names must be 31 characters or less." )
 	if length $name >= 31;
-    Alzabo::Exception::RDBMSRules->throw( error => "\u$name name ($name) must start with an alpha or underscore(_) and must contain only alphanumerics and underscores." )
-	unless $name =~ /^[^\W\d]\w/;
+    Alzabo::Exception::RDBMSRules->throw( error => "Name ($name) must start with an alpha or underscore(_) and must contain only alphanumerics and underscores." )
+	unless $name =~ /\A[a-zA-Z]\w*\z/;
 }
 
+my $complex = join '|', qw(  );
 sub validate_column_type
 {
     my $self = shift;
@@ -83,15 +84,10 @@ sub validate_column_type
 					   INT4
 					   INT8
 					   INTERVAL
-					   LINE
-					   LSEG
 					   MACADDR
 					   MONEY
 					   NUMERIC
 					   OID
-					   PATH
-					   POINT
-					   POLYGON
 					   RELTIME
 					   SERIAL
 					   TEXT
@@ -103,6 +99,8 @@ sub validate_column_type
     return if $simple_types{$type};
 
     return if $type =~ /CHARACTER\s+VARYING/;
+
+    return if $type =~ /\ABOX|CIRCLE|LINE|LSEG|PATH|POINT|POLYGON/;
 
     Alzabo::Exception::RDBMSRules->throw( error => "Invalid column type: $type" );
 }
@@ -199,6 +197,40 @@ sub type_is_char
 sub type_is_blob
 {
     return 0;
+}
+
+sub column_types
+{
+    return qw( INTEGER
+	       INT2
+	       INT8
+	       NUMERIC
+	       FLOAT
+	       FLOAT4
+
+	       CHAR
+	       VARCHAR
+	       TEXT
+
+	       DATE
+	       TIME
+	       TIMESTAMP
+	       INTERVAL
+
+	       BOOLEAN
+
+	       INET
+	       CIDR
+	       MACADDR
+	     );
+}
+
+my %features = map { $_ => 1 } qw ( extended_column_types
+				  );
+sub feature
+{
+    shift;
+    return $features{+shift};
 }
 
 sub _start_sql

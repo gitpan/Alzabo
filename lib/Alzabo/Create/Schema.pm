@@ -19,7 +19,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.59 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.61 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -797,9 +797,13 @@ sub clone
     validate( @_, { name  => { type => SCALAR } } );
     my %p = @_;
 
+    my $driver = delete $self->{driver};
     my $clone = Storable::dclone($self);
+    $self->{driver} = $driver;
 
     $clone->{name} = $p{name};
+    $clone->{driver} = Alzabo::Driver->new( rdbms => $self->{driver}->driver_id,
+					    schema => $clone );
 
     $clone->rules->validate_schema_name($clone);
     $clone->{original}{name} = $p{name} if $p{name};
@@ -814,7 +818,9 @@ sub _make_runtime_clone
     my $self = shift;
 
     my %s;
+    my $driver = delete $self->{driver};
     my $clone = Storable::dclone($self);
+    $self->{driver} = $driver;
 
     foreach my $f ( qw( original instantiated rules driver ) )
     {
@@ -894,7 +900,10 @@ in the RDBMS.
 
 =item * rdbms => $rdbms
 
-The value given to RDBMS should be.
+This is a string identifying the RDBMS.  The allowed values are
+returned from the
+L<Alzabo::RDBMSRules-E<gt>available|Alzabo::RDBMSRules/available>
+method.  These are values such as 'MySQL', 'PostgreSQL', etc.
 
 =back
 
@@ -942,12 +951,10 @@ L<C<$schema-E<gt>set_instantiated(0)>|Alzabo::Create::Schema/set_instantiated
 
 The name of the database with which to connect.
 
-=item * rules => $rules_subclass
+=item * rdbms => $rdbms
 
-=item * driver => $driver_subclass
-
-See the L<C<new>|new> method documentation for an explanation of the
-C<rules> and <driver> parameters.
+See the L<C<new>|new> method documentation for an explanation of this
+parameter.
 
 =item * user => $user (optional)
 

@@ -4,6 +4,7 @@ $schema
 $table
 $column
 $type
+$extended_type => undef
 $sequenced => 0
 $nullable => 0
 $default => undef
@@ -28,7 +29,7 @@ eval
 
     my %p = ( name => $column,
 	      nullable => $nullable,
-	      type => $type,
+	      type => $extended_type || $type,
 	      sequenced => $sequenced,
 	      default => $default,
 	      length => $length,

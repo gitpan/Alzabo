@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.41 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -57,7 +57,7 @@ sub validate_column_name
     my $self = shift;
     my $name = shift->name;
 
-    Alzabo::Exception::RDBMSRules->throw( error => "Schema name must at least one character long" )
+    Alzabo::Exception::RDBMSRules->throw( error => "Column name must at least one character long" )
 	unless length $name;
     Alzabo::Exception::RDBMSRules->throw( error => 'Name is too long.  Names must be 64 characters or less.' )
 	if length $name >= 64;
@@ -250,6 +250,9 @@ sub validate_sequenced_attribute
 
     Alzabo::Exception::RDBMSRules->throw( error => 'Non-numeric columns cannot be sequenced' )
 	unless $self->type_is_numeric( $col->type );
+
+    Alzabo::Exception::RDBMSRules->throw( error => 'Only one sequenced column per table is allowed.' )
+	if grep { $_ ne $col && $_->sequenced } $col->table->columns;
 }
 
 sub validate_index
@@ -306,6 +309,50 @@ sub type_is_blob
     my $type = uc shift;
 
     return 1 if $type =~ /\A(?:TEXT|BLOB)\z/;
+}
+
+sub column_types
+{
+    return qw( TINYINT
+	       SMALLINT
+	       MEDIUMINT
+	       INTEGER
+	       BIGINT
+
+	       FLOAT
+	       DOUBLE
+	       DECIMAL
+	       NUMERIC
+
+	       CHAR
+	       VARCHAR
+
+	       DATE
+	       DATETIME
+	       TIME
+	       TIMESTAMP
+	       YEAR
+
+	       TINYTEXT
+	       TEXT
+	       MEDIUMTEXT
+	       LONGTEXT
+
+	       TINYBLOB
+	       BLOB
+	       MEDIUMBLOB
+	       LONGBLOB
+	     );
+}
+
+my %features = map { $_ => 1 } qw ( extended_column_types
+				    index_prefix
+				    fulltext_prefix
+				  );
+sub feature
+{
+    shift;
+    return $features{+shift};
 }
 
 sub schema_sql

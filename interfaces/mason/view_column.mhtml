@@ -21,7 +21,19 @@
      <td>Change type:</td>
     </tr>
     <tr>
-     <td><input type="textfield" name="type" value="<% $c->type %>" size="20"></td>
+     <td>
+      <select name="type">
+% my $selected;
+% foreach ( ( $is_extended_type ? ('') : () ), $s->rules->column_types ) {
+       <option value="<% $_ %>" <% $c->type eq $_ && 'selected' %>><% $_ %></option>
+% }
+      </select>
+% if ( $s->rules->feature('extended_column_types') ) {
+      <br>
+      Enter your type if it is not on the list:<br>
+      <input type="textfield" name="extended_type" value="<% $is_extended_type && $c->type %>">
+% }
+     </td>
     </tr>
 
     <tr valign="top">
@@ -126,3 +138,6 @@ $s
 $t
 $c
 </%args>
+<%init>
+my $is_extended_type = $s->rules->feature('extended_column_types') && ! grep { $c->type eq $_ } $s->rules->column_types;
+</%init>

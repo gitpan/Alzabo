@@ -34,17 +34,6 @@ under this root.
 EOF
 
     $config{root_dir} = prompt( '  Alzabo root?', find_possible_root() );
-
-    unless (-e $config{root_dir})
-    {
-	mkdir "$config{root_dir}", 0755
-	    or die "can't make dir $config{root_dir}: $!";
-    }
-    unless (-e "$config{root_dir}/schemas")
-    {
-	mkdir "$config{root_dir}/schemas", 0755
-	    or die "can't make dir $config{root_dir}: $!";
-    }
 }
 
 my %prereq;
@@ -52,7 +41,7 @@ my %prereq;
 {
     # extra prereqs for certain features
     my @extra_prereq = ( [ 'the MySQL driver', 'DBD::mysql' => 0, 'mysql' ],
-			 [ 'the PostgreSQL driver', 'DBD::Pg' => 0.97, 'pg' ],
+			 [ 'the PostgreSQL driver', 'DBD::Pg' => 0.95, 'pg' ],
 #			 [ 'the Oracle driver', 'DBD::Oracle', 0, 'oracle' ],
 			 [ 'the IPC cache syncing code', 'IPC::Shareable' => 0.54 ],
 			 [ 'the DB_File 1.x cache syncing code', 'DB_File' => 1.76 ],
@@ -219,24 +208,15 @@ sub find_possible_root
     }
     else
     {
-	@dirs = qw( /usr/local
-		    /usr/local/bin );
+	@dirs = qw( /usr/local );
     }
     unshift @dirs, '/opt' if $^O =~ /solaris/i;
 
     foreach (@dirs)
     {
 	$_ .= '/alzabo';
-	# Ok, this won't work for Mac and what else?  VMS?  BeOS?
-	# Help is appreciated.
-	if ($^O !~ /win/)
-	{
-	    return $_ if (stat($_))[4] == 0;
-	}
-	else
-	{
-	    return $_ if -e $_;
-	}
+
+	return $_ if -e $_;
     }
 
     return '';
@@ -350,6 +330,7 @@ sub install
 
     my $extras = '';
     my @args;
+    push @args, "--root_dir=$main::config{root_dir}";
     push @args, '--install=mason_schema' if $main::extra{mason_schema};
     push @args, '--install=mason_browser' if $main::extra{mason_browser};
     push @args, "--extension=$main::extra{mason_extension}";

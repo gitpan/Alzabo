@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.46 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.47 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -263,7 +263,7 @@ sub _canonize_prefetch
     foreach my $c (@_)
     {
 	Alzabo::Exception::Params->throw( error => "Column " . $c->name . " doesn't exist in $self->{name}" )
-	    unless exists $self->{columns}{ $c->name };
+	    unless $self->{columns}->EXISTS( $c->name );
     }
 
     return [ map {$_->name} grep { ! $_->is_primary_key($_) } @_ ]

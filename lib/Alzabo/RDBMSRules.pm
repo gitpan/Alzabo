@@ -8,7 +8,7 @@ use Alzabo::Util;
 use Params::Validate qw( validate validate_pos );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.31 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -26,6 +26,8 @@ sub available
 {
     return Alzabo::Util::subclasses(__PACKAGE__);
 }
+
+# validation
 
 sub validate_schema_name
 {
@@ -83,6 +85,33 @@ sub type_is_character
 }
 
 sub type_is_blob
+{
+    shift()->_virtual;
+}
+
+# feature probing
+
+sub column_types
+{
+    shift()->_virtual;
+}
+
+sub feature
+{
+    return 0;
+}
+
+sub schema_attributes
+{
+    shift()->_virtual;
+}
+
+sub table_attributes
+{
+    shift()->_virtual;
+}
+
+sub column_attributes
 {
     shift()->_virtual;
 }
@@ -277,6 +306,15 @@ sub table_sql_diff
     my %p = @_;
 
     my @sql;
+    foreach my $old_c ($p{old}->columns)
+    {
+	unless ( my $new_c = eval { $p{new}->column( $old_c->name ) } )
+	{
+	    push @sql, $self->drop_column_sql( new_table => $p{new},
+					       old => $old_c );
+	}
+    }
+
     foreach my $new_c ($p{new}->columns)
     {
 	if ( my $old_c = eval { $p{old}->column( $new_c->name ) } )
@@ -287,15 +325,6 @@ sub table_sql_diff
 	else
 	{
 	    push @sql, $self->column_sql_add($new_c)
-	}
-    }
-
-    foreach my $old_c ($p{old}->columns)
-    {
-	unless ( my $new_c = eval { $p{new}->column( $old_c->name ) } )
-	{
-	    push @sql, $self->drop_column_sql( new_table => $p{new},
-					       old => $old_c );
 	}
     }
 
@@ -503,6 +532,39 @@ An array of SQL statements.
 
 The following methods are not implemented in the C<Alzabo::RDBMSRules>
 class itself and must be implemented in its subclasses.
+
+=head2 column_types
+
+=head3 Returns
+
+A list of valid column type specifiers.
+
+=head2 feature ($feature)
+
+Given a string defining a feature, this method indicates whether or
+not the given RDBMS supports that feature.  By default, this method
+always returns false unless overridden in the subclass.
+
+Features that may be asked for:
+
+=over 4
+
+=item * extended_column_types
+
+Column types that must be input directly from a user, as opposed to
+being chosen from a list.  MySQL's ENUM and SET column types are
+examples of such types.
+
+=item * index_column_prefixes
+
+MySQL supports the notion of column prefixes in indexes, allowing you
+to index only a portion of a large text column.
+
+=item * fulltext_indexes
+
+This should be self-explanatory.
+
+=back
 
 =head2 validate_schema_name (C<Alzabo::Schema> object)
 

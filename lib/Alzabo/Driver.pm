@@ -10,7 +10,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.43 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -172,7 +172,7 @@ sub _prepare_and_execute
     my $self = shift;
 
     validate( @_, { sql => { type => SCALAR },
-		    bind => { type => SCALAR | ARRAYREF,
+		    bind => { type => UNDEF | SCALAR | ARRAYREF,
 			      optional => 1 } } );
     my %p = @_;
 

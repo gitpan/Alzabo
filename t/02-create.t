@@ -10,16 +10,21 @@ require 'base.pl';
 
 my @db;
 my $tests = 0;
+my $shared_tests = 103;
+my $mysql_only_tests = 2;
+my $pg_only_tests = 0;
 if (eval { require DBD::mysql } && ! $@ )
 {
     push @db, 'MySQL';
-    $tests += 103;
+    $tests += $shared_tests;
+    $tests += $mysql_only_tests;
 }
 
 if ( eval { require DBD::Pg } && ! $@ )
 {
     push @db, 'PostgreSQL';
-    $tests += 101;
+    $tests += $shared_tests;
+    $tests += $pg_only_tests;
 }
 
 unless ($tests)
@@ -523,6 +528,14 @@ foreach my $db (@db)
 				before => scalar $other->column('other_pk') ) };
     ok( ! $@,
 	"Attempt to give a 'before' param in call to make_column threw exception: $@" );
+
+    eval { $other->make_column( name => 'bad name',
+				type => 'int',
+			      ); };
+    ok( $@,
+	"No error occurred when trying to make a column with the name 'bad name'" );
+    ok( UNIVERSAL::isa($@, 'Alzabo::Exception::RDBMSRules'),
+	"Incorrect exception was thrown when trying to make a column with the name 'bad name': $@" );
 
     eval { $s->save_to_file };
     ok( ! $@,

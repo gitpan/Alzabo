@@ -3,6 +3,7 @@ $schema
 $table
 $column
 $type
+$extended_type => undef
 $nullable => 0
 $default => undef
 $length => undef
@@ -72,7 +73,15 @@ eval
 	$t->delete_primary_key($c);
     }
 
-    $c->set_type($type) if $type ne $c->type;
+    if ( $extended_type && $c->type ne $extended_type &&
+	 $s->rules->feature('extended_column_types') )
+    {
+	$c->set_type($extended_type);
+    }
+    elsif ($type && $c->type ne $type)
+    {
+	$c->set_type($type);
+    }
 
     @attributes = grep {$_} @attributes;
     foreach my $a (@attributes)

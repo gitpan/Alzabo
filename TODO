@@ -6,7 +6,7 @@ Short term:
   determine whether to try to do things (like use transactions).  This
   is a broad idea and includes things such as returning a list of
   possible column types to the user interface or having a flag for
-  supporting transactions.
+  supporting transactions.  This has been started.
 
 - Robin Berjon suggested a single documentation 'page' that contains a
   list of all the method and what objects they apply to.  This has
@@ -18,13 +18,9 @@ Short term:
 
 - Alzabo::ObjectCache::RDBMSStore.
 
-- Alzabo::ObjectCache::BerkeleyDBSync - this should be much faster
-  than the DB_File module, which spends a lot of time tying and
-  untying a hash.
-
 - Expand regression tests for core API - SQLMaker, RDBMSRules.
 
-- After conversion, make local $table->{prefetch} work (tied scalar).
+- Make local $table->{prefetch} work (tied scalar).
   I'm no longer sure this is possible.  My most recent attempt caused
   inexplicable test failures.
 

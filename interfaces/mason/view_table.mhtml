@@ -23,7 +23,7 @@
 
 %   if ($t->all_foreign_keys) {
    <table width="100%" border="1" align="center" cellspacing="0" cellpadding="0">
-    <tr>
+    <tr valign="top">
      <td colspan="3" align="center"><b>Foreign keys</b></td>
     </tr>
     <tr valign="middle">
@@ -71,7 +71,7 @@
   <td>
 %   if ($t->indexes) {
    <table width="100%" border="1" align="center" cellspacing="0" cellpadding="0">
-    <tr>
+    <tr valign="top">
      <td align="center"><b>Indexes</b></td>
     </tr>
 %     foreach my $i ($t->indexes) {
@@ -101,75 +101,107 @@
 <form action="add_column<% Alzabo::Config::mason_extension() %>">
  <input type="hidden" name="schema" value="<% $s->name %>">
  <input type="hidden" name="table" value="<% $t->name %>">
-<table width="100%" cellspacing="5">
- <tr>
-  <td><h2>Add a column</h2></td>
- </tr>
+   <table width="100%" cellspacing="5">
+    <tr valign="top">
+     <td><h2>Add a column</h2></td>
+    </tr>
 
- <tr>
-  <td>Column name:</td>
- </tr>
- <tr>
-  <td><input type="textfield" name="column" size="20"></td>
- </tr>
+    <tr valign="top">
+     <td>Name:</td>
+    </tr>
+    <tr valign="top">
+     <td><input type="textfield" name="column" size="20"></td>
+    </tr>
 
- <tr>
-  <td>Column type:</td>
- </tr>
- <tr>
-  <td><input type="textfield" name="type" size="20"></td>
- </tr>
+    <tr valign="top">
+     <td>Type:</td>
+    </tr>
+    <tr valign="top">
+     <td>
+      <select name="type">
+% foreach ( $s->rules->column_types ) {
+       <option value="<% $_ %>"><% $_ %></option>
+% }
+      </select>
+% if ( $s->rules->feature('extended_column_types') ) {
+      <br>
+      Enter your type if it is not on the list:<br>
+      <input type="textfield" name="extended_type" size="20">
+% }
+     </td>
+    </tr>
 
- <tr>
-  <td>Column length/precision:</td>
- </tr>
- <tr>
-  <td><input type="textfield" name="length" size="5">,
-      <input type="textfield" name="precision" size="5"></td>
- </tr>
+    <tr valign="top">
+     <td>Length/precision:</td>
+    </tr>
+    <tr valign="top">
+     <td><input type="textfield" name="length" size="5">,
+         <input type="textfield" name="precision" size="5"></td>
+    </tr>
 
- <tr>
-  <td>Column default:</td>
- </tr>
- <tr>
-  <td><input type="textfield" name="default" size="20"></td>
- </tr>
+    <tr valign="top">
+     <td>Default:</td>
+    </tr>
+    <tr valign="top">
+     <td><input type="textfield" name="default" size="20"></td>
+    </tr>
 
- <tr>
-  <td>Column Attributes:</td>
- </tr>
- <tr>
-  <td><input type="textfield" name="attributes" size="20"></td>
- </tr>
- <tr>
-  <td><input type="textfield" name="attributes" size="20"></td>
- </tr>
+    <tr valign="top">
+     <td>Attributes/Constraints/References:</td>
+    </tr>
+    <tr valign="top">
+     <td><input type="textfield" name="attributes" size="20"><br>
+         <input type="textfield" name="attributes" size="20"></td>
+    </tr>
 
- <tr>
-  <td>
-   Allow nulls: <input type="checkbox" name="nullable" value="1"><br>
-   Primary key: <input type="checkbox" name="primary_key" value="1"><br>
-   Sequenced: <input type="checkbox" name="sequenced" value="1">
-  </td>
- </tr>
+    <tr valign="top">
+     <td>
+      <table width="20%">
+       <tr valign="top">
+        <td>
+         Allow nulls:
+	</td>
+	<td>
+	 <input type="checkbox" name="nullable" value="1">
+	</td>
+       </tr>
+       <tr valign="top">
+        <td>
+         Primary key:
+	</td>
+	<td>
+	 <input type="checkbox" name="primary_key" value="1">
+	</td>
+       </tr>
+       <tr valign="top">
+        <td>
+	 Sequenced:
+	</td>
+	<td>
+	 <input type="checkbox" name="sequenced" value="1">
+	</td>
+       </tr>
+      </table>
+     </td>
+    </tr>
 
 % if ($t->columns) {
- <tr>
-  <td>
-   After column: 
-   <select name="after">
+    <tr valign="top">
+     <td>
+      After column: 
+      <select name="after">
 %   foreach my $c (@columns) {
-    <option value="<% $c->name %>"<% $c->name eq $last->name ? ' selected' : '' %>><% $c->name %></option>
+       <option value="<% $c->name %>"<% $c->name eq $last->name ? ' selected' : '' %>><% $c->name %></option>
 %   }
-   </select>
-  </td>
- </tr>
+      </select>
+     </td>
+    </tr>
 % }
 
- <tr>
-  <td><input type="submit" value="Submit"></td>
- </tr>
-</table>
+    <tr valign="top">
+     <td><input type="submit" value="Submit"></td>
+    </tr>
+   </table>
 </form>
 
   </td>
@@ -180,77 +212,77 @@
 <form action="add_relation<% Alzabo::Config::mason_extension() %>" method="post">
  <input type="hidden" name="schema" value="<% $s->name %>">
  <input type="hidden" name="table_from" value="<% $t->name %>">
-<table width="100%" cellspacing="5">
- <tr>
-  <td><h2>Create a relationship to another table</h2></td>
- </tr>
+   <table width="100%" cellspacing="5">
+    <tr valign="top">
+     <td><h2>Create a relationship to another table</h2></td>
+    </tr>
 
- <tr>
-  <td>To table:</td>
- </tr>
- <tr>
-  <td>
-   <select name="table_to">
+    <tr valign="top">
+     <td>To table:</td>
+    </tr>
+    <tr valign="top">
+     <td>
+      <select name="table_to">
 %   foreach my $t ( sort {$a->name cmp $b->name} $s->tables ) {
 %     next unless $t->columns;
-    <option value="<% $t->name %>"><% $t->name %></option>
+       <option value="<% $t->name %>"><% $t->name %></option>
 %   }
-   </select>
-  </td>   
- </tr>
- <tr>
-  <td><input type="submit" value="Submit"></td>
- </tr>
-</table>
+      </select>
+     </td>   
+    </tr>
+    <tr valign="top">
+     <td><input type="submit" value="Submit"></td>
+    </tr>
+   </table>
 </form>
 % }
 % if ($t->columns) {
 <form action="add_index_1<% Alzabo::Config::mason_extension() %>" method="post">
  <input type="hidden" name="schema" value="<% $s->name %>">
  <input type="hidden" name="table" value="<% $t->name %>">
-<table width="100%" cellspacing="5">
- <tr>
-  <td><h2>Add an index</h2></td>
- </tr>
- <tr>
-  <td>
-   <select name="columns" multiple="multiple">
+   <table width="100%" cellspacing="5">
+    <tr valign="top">
+     <td><h2>Add an index</h2></td>
+    </tr>
+    <tr valign="top">
+     <td>
+      <select name="columns" multiple="multiple">
 %   foreach my $c ( $t->columns ) {
-    <option value="<% $c->name %>"><% $c->name %></option>
+       <option value="<% $c->name %>"><% $c->name %></option>
 %   }
-   </select>
-  </td>
- </tr>
- <tr>
-  <td>
-   <input type="submit" value="Submit">
-  </td>
- </tr>
-</table>
+      </select>
+     </td>
+    </tr>
+    <tr valign="top">
+     <td>
+      <input type="submit" value="Submit">
+     </td>
+    </tr>
+   </table>
 </form>
 % }
 % if ( (my @tables = $s->tables) > 2) {
 <form action="move_table<% Alzabo::Config::mason_extension() %>" method="post">
  <input type="hidden" name="schema" value="<% $s->name %>">
  <input type="hidden" name="table" value="<% $t->name %>">
-<table width="100%" cellspacing="5">
- <tr>
-  <td>
-   <h2>Move table</h2>
-   After table:
-   <select name="after">
+   <table width="100%" cellspacing="5">
+    <tr valign="top">
+     <td>
+      <h2>Move table</h2>
+      After table:
+      <select name="after">
 %   foreach my $t (@tables) {
-    <option value="<% $t->name %>"><% $t->name %></option>
+       <option value="<% $t->name %>"><% $t->name %></option>
 %   }
-   </select>
-  </td>
- </tr>
- <tr>
-  <td>
-   <input type="submit" value="Submit">
-  </td>
- </tr>
-</table>
+      </select>
+     </td>
+    </tr>
+    <tr valign="top">
+     <td>
+      <input type="submit" value="Submit">
+     </td>
+    </tr>
+   </table>
 </form>
 % }
   </td>

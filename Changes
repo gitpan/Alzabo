@@ -1,3 +1,36 @@
+0.44
+
+Bug fixes:
+
+- Bug fix in Alzabo::Runtime::Table->set_prefetch.  Reported by Bob
+Gustafson.
+
+- Don't try to make directories when running Makefile.PL.  Save it for
+later after user does 'make install'.
+
+- Fix handling of geometric types in Postgres (they were all being
+rejected as invalid).
+
+- Drop columns from a table before adding new ones.  Sometimes this
+makes a difference.  For example, if you are using MySQL and drop an
+existing AUTO_INCREMENT column and add a new one that is also
+AUTO_INCREMENT.
+
+- Only allow one sequenced column per table when using MySQL.
+
+- Doc fixes.  Thanks to Ron Savage for pointing me towards some of
+these.
+
+- Fix a bug with the schema creator.  If you attempted to make a
+change to a column with an extended type and you did not change the
+type, an error occurred.
+
+Enhancements:
+
+- Schema creator now shows you a list of possible column types instead
+of having you type it in.  However, for complex types like MySQL's
+ENUM or Postgres' POLYGON there is a text box to type it in.
+
 0.43
 
 Enhancements:
