@@ -7,7 +7,10 @@ use Alzabo;
 
 use Tie::IxHash;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.24 $ =~ /(\d+)\.(\d+)/;
+use Params::Validate qw( :all );
+Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.25 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -42,7 +45,9 @@ sub attributes
 sub has_attribute
 {
     my $self = shift;
-    my %p = @_;
+    my %p = validate( @_, { attribute => { type => SCALAR },
+			    case_sensitive => { type => SCALAR,
+						optional => 1 } } );
 
     my $att = $p{case_sensitive} ? $p{attribute} : lc $p{attribute};
 

@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.75 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.77 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -121,16 +121,19 @@ sub select
 {
     my $self = shift;
 
-    my %data = $self->_get_data(@_);
+    my @cols = @_ ? @_ : map { $_->name } $self->table->columns;
+    my %data = $self->_get_data(@cols);
 
-    return wantarray ? @data{@_} : $data{ $_[0] };
+    return wantarray ? @data{@cols} : $data{ $cols[0] };
 }
 
 sub select_hash
 {
     my $self = shift;
 
-    return $self->_get_data(@_);
+    my @cols = @_ ? @_ : map { $_->name } $self->table->columns;
+
+    return $self->_get_data(@cols);
 }
 
 sub update
@@ -302,7 +305,7 @@ sub rows_by_foreign_key
 }
 
 # Class or object method
-sub id
+sub id_as_string
 {
     my $self = shift;
     my %p = @_;
@@ -430,12 +433,19 @@ Returns a list of values matching the specified columns in a list
 context.  In scalar context it returns only a single value (the first
 column specified).
 
+If no columns are specified, it will return the values for all of the
+columns in the table, in the order that are returned by
+L<C<Alzabo::Runtime::Table-E<gt>columns>|Alzabo::Runtime::Table/columns>.
+
 =head2 select_hash (@list_of_column_names)
 
 =head3 Returns
 
 Returns a hash of column names to values matching the specified
 columns.
+
+If no columns are specified, it will return the values for all of the
+columns in the table.
 
 =head2 update (%hash_of_columns_and_values)
 

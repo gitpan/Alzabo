@@ -6,7 +6,7 @@ use vars qw($SELF $VERSION %ARGS);
 # load this for use by Alzabo::Runtime::Row
 use Alzabo::Runtime::CachedRow;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.33 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.35 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -96,7 +96,7 @@ sub register_change
 sub register_delete
 {
     my $self = shift;
-    $self->{store}->delete_from_cache( $_[0]->id );
+    $self->{store}->delete_from_cache( $_[0]->id_as_string );
     $self->{sync}->register_delete(@_);
 }
 
@@ -115,7 +115,7 @@ sub delete_from_cache
 sub sync_time
 {
     my $self = shift;
-    return $self->{sync}->sync_time( shift->id );
+    return $self->{sync}->sync_time( shift->id_as_string );
 }
 
 __END__
@@ -492,7 +492,7 @@ used.
 =head1 STORAGE MODULES
 
 All of the storage modules may be turned into LRU caches by simply
-passing the L<lru_size parameter|LRU STORAGE>.
+passing the L<lru_size parameter|"LRU STORAGE">.
 
 The following storage modules are included with Alzabo:
 
@@ -689,7 +689,7 @@ Completely clears the cache.
 =head2 Syncing Interface
 
 Any class that implements the syncing interface should inherit from
-L<C<Alzabo::ObjectCache::Sync>|"Alzabo::ObjectCache::Sync">.  This
+L<C<Alzabo::ObjectCache::Sync>|Alzabo::ObjectCache::Sync>.  This
 class provides most of the functionality necessary to handle syncing
 operations.
 

@@ -21,7 +21,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.74 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.76 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -736,7 +736,7 @@ sub create
     my @sql = $self->make_sql;
 
     $self->{driver}->create_database(%p)
-	unless $self->{instantiated};
+	unless grep { $self->{name} eq $_ } $self->{driver}->schemas;
 
     $self->{driver}->connect(%p);
 
@@ -771,6 +771,11 @@ sub sync_backend_sql
 {
     my $self = shift;
 
+    unless ( grep { $self->{name} eq $_ } $self->{driver}->schemas )
+    {
+	return $self->rules->schema_sql($self);
+    }
+
     my $existing = $self->reverse_engineer( @_,
 					    name => $self->name,
 					    rdbms => $self->driver->driver_id,
@@ -783,6 +788,12 @@ sub sync_backend_sql
 sub sync_backend
 {
     my $self = shift;
+
+    unless ( grep {  $self->{name} eq $_ } $self->{driver}->schemas )
+    {
+	$self->set_instantiated(0);
+	return $self->create;
+    }
 
     $self->{driver}->connect(@_);
 
@@ -1262,7 +1273,9 @@ the RDBMS, including C<user>, C<password>, C<host>, and C<port>.
 
 This method will look at the schema as it exists in the RDBMS backend,
 and make any changes that are necessary in order to make this backend
-schema match the Alzabo schema object.
+schema match the Alzabo schema object.  If there is no corresponding
+schema in the RDBMS backend, then this method is equivalent to the
+L<C<create>|Alzabo::Create::Schema/create> method.
 
 After this method is called, the schema will be considered to be
 instantiated.
@@ -1294,6 +1307,9 @@ the RDBMS, including C<user>, C<password>, C<host>, and C<port>.
 
 This method returns an array containing the set of SQL statements that
 would be used by the L<C<sync_backend_sql>|sync_backend_sql> method.
+
+If there is no corresponding schema in the RDBMS backend, then this
+method returns the SQL necessary to create the schema from scratch.
 
 =head2 delete
 

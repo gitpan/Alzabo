@@ -3,7 +3,7 @@ package Alzabo::Exceptions;
 use strict;
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
 
 my %e;
 
@@ -215,7 +215,7 @@ integrity constraints.
 An error thrown when there is an attempt to generate invalid SQL via
 the Alzabo::SQLMaker module.
 
-=item * Alzabo::Exception::System
+=item * Alzabo::Exception::Storable
 
 A error when trying to freeze, thaw, or clone an object using
 Storable.

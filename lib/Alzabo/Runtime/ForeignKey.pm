@@ -7,7 +7,7 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::ForeignKey);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.24 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.26 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -107,12 +107,12 @@ sub register_delete
 
 	# This is a class variable so that multiple foreign key
 	# objects don't try to delete the same rows
-	next if $DELETED{ $related_row->id };
+	next if $DELETED{ $related_row->id_as_string };
 
 	if ($self->to_is_dependent)
 	{
 	    local %DELETED = %DELETED;
-	    $DELETED{ $related_row->id } = 1;
+	    $DELETED{ $related_row->id_as_string } = 1;
 	    # dependent relationship so delete other row (may begin a
 	    # chain reaction!)
 	    $related_row->delete;
@@ -180,7 +180,7 @@ represents.
 
 =head3 Throws
 
-L<C<Alzabo::Exception::ReferentialIntegrity>Alzabo::Exceptions>
+L<C<Alzabo::Exception::ReferentialIntegrity>|Alzabo::Exceptions>
 
 =head2 register_update ($new_value)
 
@@ -189,7 +189,7 @@ that it is valid based on relationship that this object represents.
 
 =head3 Throws
 
-L<C<Alzabo::Exception::ReferentialIntegrity>Alzabo::Exceptions>
+L<C<Alzabo::Exception::ReferentialIntegrity>|Alzabo::Exceptions>
 
 =head2 register_delete (C<Alzabo::Runtime::Row> object)
 
@@ -199,7 +199,7 @@ deletions.  You have been warned.
 
 =head3 Throws
 
-L<C<Alzabo::Exception::ReferentialIntegrity>Alzabo::Exceptions>
+L<C<Alzabo::Exception::ReferentialIntegrity>|Alzabo::Exceptions>
 
 =head1 AUTHOR
 

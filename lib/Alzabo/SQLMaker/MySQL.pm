@@ -11,25 +11,25 @@ use base qw(Alzabo::SQLMaker);
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
 
-my $MADE_LITERALS;
+my $MADE_FUNCTIONS;
 my %functions;
 
 sub import
 {
-    _make_literals() unless $MADE_LITERALS;
+    _make_functions() unless $MADE_FUNCTIONS;
 
-    # used to export literal functions
+    # used to export function functions
     require Exporter;
     *_import = \&Exporter::import;
 
     goto &_import;
 }
 
-sub _make_literals
+sub _make_functions
 {
-    *make_literal = \&Alzabo::SQLMaker::make_literal;
+    local *make_function = \&Alzabo::SQLMaker::make_function;
 
     foreach ( [ PI => [ 'math' ] ],
 
@@ -49,7 +49,7 @@ sub _make_literals
 	      [ CONNECTION_ID => [ 'system' ] ],
 	    )
     {
-	make_literal( literal => $_->[0],
+	make_function( function => $_->[0],
 		      min => 0,
 		      max => 0,
 		      groups => $_->[1]
@@ -61,7 +61,7 @@ sub _make_literals
 	      [ LAST_INSERT_ID => [ 'system' ] ],
 	    )
     {
-	make_literal( literal => $_->[0],
+	make_function( function => $_->[0],
 		      min => 0,
 		      max => 1,
 		      quote => [0],
@@ -69,7 +69,7 @@ sub _make_literals
 		    );
     }
 
-    make_literal( literal => 'CHAR',
+    make_function( function => 'CHAR',
 		  min => 1,
 		  max => undef,
 		  quote => [0],
@@ -78,7 +78,7 @@ sub _make_literals
 
     foreach ( [ ENCRYPT => [1,1], [ 'misc' ] ] )
     {
-	make_literal( literal => $_->[0],
+	make_function( function => $_->[0],
 		      min => 0,
 		      max => 1,
 		      quote => $_->[1],
@@ -121,7 +121,7 @@ sub _make_literals
 	      [ NULLIF => [0,0], [ 'control' ] ],
 	    )
     {
-	make_literal( literal => $_->[0],
+	make_function( function => $_->[0],
 		      min => 2,
 		      max => 2,
 		      quote => $_->[1],
@@ -137,7 +137,7 @@ sub _make_literals
 	      [ MAKE_SET => [0,1,1], [ 'string' ] ],
 	    )
     {
-	make_literal( literal => $_->[0],
+	make_function( function => $_->[0],
 		      min => 2,
 		      max => undef,
 		      quote => $_->[1],
@@ -157,7 +157,7 @@ sub _make_literals
 	      [ IF => [0,1,1], [ 'control' ] ],
 	    )
     {
-	make_literal( literal => $_->[0],
+	make_function( function => $_->[0],
 		      min => 3,
 		      max => 3,
 		      quote => $_->[1],
@@ -169,7 +169,7 @@ sub _make_literals
 	      [ YEARWEEK => [1,0], [ 'datetime' ] ],
 	    )
     {
-	make_literal( literal => $_->[0],
+	make_function( function => $_->[0],
 		      min => 1,
 		      max => 2,
 		      quote => $_->[1],
@@ -177,21 +177,21 @@ sub _make_literals
 		    );
     }
 
-    make_literal( literal => 'CONCAT_WS',
+    make_function( function => 'CONCAT_WS',
 		  min => 3,
 		  max => undef,
 		  quote => [1,1,1,1],
 		  groups => [ 'string' ],
 		);
 
-    make_literal( literal => 'EXPORT_SET',
+    make_function( function => 'EXPORT_SET',
 		  min => 3,
 		  max => 5,
 		  quote => [0,1,1,1,0],
 		  groups => [ 'string' ],
 		);
 
-    make_literal( literal => 'INSERT',
+    make_function( function => 'INSERT',
 		  min => 3,
 		  max => 5,
 		  quote => [1,0,0,1],
@@ -274,7 +274,7 @@ sub _make_literals
 	      [ LOAD_FILE  => [1], [ 'misc' ] ],
 	    )
     {
-	make_literal( literal => $_->[0],
+	make_function( function => $_->[0],
 		      min => 1,
 		      max => 1,
 		      quote => $_->[1],
@@ -282,19 +282,19 @@ sub _make_literals
 		    );
     }
 
-    make_literal( literal => 'MATCH',
+    make_function( function => 'MATCH',
 		  min => 1,
 		  max => undef,
 		  quote => [0],
 		  groups => [ 'fulltext' ] );
 
-    make_literal( literal => 'AGAINST',
+    make_function( function => 'AGAINST',
 		  min => 1,
 		  max => 1,
 		  quote => [1],
 		  groups => [ 'fulltext' ] );
 
-    make_literal( literal => 'IN_BOOLEAN_MODE',
+    make_function( function => 'IN_BOOLEAN_MODE',
 		  is_modifier => 1,
 		  groups => [ 'fulltext' ],
 		);
@@ -302,7 +302,7 @@ sub _make_literals
 
     %functions = map { $_ => 1 } @EXPORT_OK;
 
-    $MADE_LITERALS = 1;
+    $MADE_FUNCTIONS = 1;
 }
 
 sub init
@@ -334,7 +334,7 @@ sub select
     #
     for ( my $i = 0; $i <= $#_; $i++ )
     {
-	if ( UNIVERSAL::isa( $_[$i], 'Alzabo::SQLMaker::Literal' ) &&
+	if ( UNIVERSAL::isa( $_[$i], 'Alzabo::SQLMaker::Function' ) &&
 	     $_[$i]->as_string( $self->{driver} ) =~ /^\s*MATCH/i )
 	{
 	    $_[$i] = $_[$i]->as_string( $self->{driver} );
@@ -344,7 +344,7 @@ sub select
 	    splice @_, $i + 1, 1;
 
 	    if ( defined $_[ $i + 1 ] &&
-		 UNIVERSAL::isa( $_[ $i + 1 ], 'Alzabo::SQLMaker::Literal' ) &&
+		 UNIVERSAL::isa( $_[ $i + 1 ], 'Alzabo::SQLMaker::Function' ) &&
 		 $_[ $i + 1 ]->as_string( $self->{driver} ) =~ /^\s*IN BOOLEAN MODE/i )
 	    {
 		$_[$i] .= ' ' . $_[$i + 1]->as_string( $self->{driver} );
@@ -364,7 +364,7 @@ sub condition
     # Special check for [ MATCH( $foo_col, $bar_col ), AGAINST('foo bar') ]
     # IN_BOOLEAN_MODE is optional
     #
-    if ( UNIVERSAL::isa( $_[0], 'Alzabo::SQLMaker::Literal' ) &&
+    if ( UNIVERSAL::isa( $_[0], 'Alzabo::SQLMaker::Function' ) &&
 	 $_[0]->as_string( $self->{driver} ) =~ /^\s*MATCH/i )
     {
 	$self->{last_op} = 'condition';

@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.49 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.50 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -272,7 +272,7 @@ sub select
 sub _select_sql
 {
     my $self = shift;
-    my %p = validate( @_, { select => { type => ARRAYREF | OBJECT,
+    my %p = validate( @_, { select => { type => SCALAR | ARRAYREF | OBJECT,
 					optional => 1 },
 			    tables => { type => ARRAYREF | OBJECT },
 			    where => { type => ARRAYREF,
@@ -715,7 +715,7 @@ either SQL functions or column objects.  For example:
 
   $schema->function( select => [ $table->column('name'), LENGTH( $table->column('name') ) ] );
 
-=item * tables => <see below>
+=item * tables
 
 See the L<documentation on the tables parameter for the join
 method|Alzabo::Runtime::Schema/join E<lt>see belowE<gt>>.

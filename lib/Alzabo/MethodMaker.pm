@@ -9,7 +9,7 @@ use Alzabo::Runtime;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.47 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.49 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
@@ -233,6 +233,11 @@ sub eval_row_class
 {
     my $self = shift;
 
+    # Need to load these so that ->can checks can see them
+    require Alzabo::Runtime::Row;
+    require Alzabo::Runtime::CachedRow;
+    require Alzabo::Runtime::PotentialRow;
+
     eval <<"EOF";
 package $self->{row_class};
 
@@ -316,7 +321,7 @@ sub make_row_column_methods
 	my $name = $self->{opts}{name_maker}->( type => 'row_column',
 						column => $c );
 	next unless $name;
-	next if $self->{row_class}->can($name);
+	next if $self->{uncached_row_class}->can($name) || $self->{cached_row_class}->can($name);
 
 	my $method = join '::', $self->{row_class}, $name;
 
@@ -393,7 +398,7 @@ sub make_foreign_key_methods
 						    foreign_key => $fk,
 						    plural => 1 );
 	    next unless $name;
-	    next if $self->{row_class}->can($name);
+	    next if $self->{uncached_row_class}->can($name) || $self->{cached_row_class}->can($name);
 
 	    my $method = join '::', $self->{row_class}, $name;
 
@@ -412,7 +417,7 @@ sub make_foreign_key_methods
 						    foreign_key => $fk,
 						    plural => 0 );
 	    next unless $name;
-	    next if $self->{row_class}->can($name);
+	    next if $self->{uncached_row_class}->can($name) || $self->{cached_row_class}->can($name);
 
 	    my $method = join '::', $self->{row_class}, $name;
 
@@ -515,7 +520,7 @@ sub make_linking_table_method
 					    foreign_key_2 => $fk_2,
 					  );
     return unless $name;
-    return if $self->{row_class}->can($name);
+    return if $self->{uncached_row_class}->can($name) || $self->{cached_row_class}->can($name);
 
     my $method = join '::', $self->{row_class}, $name;
 
@@ -562,7 +567,7 @@ sub make_lookup_columns_methods
 						foreign_key => $fk,
 						column => $_ );
 	next unless $name;
-	next if $self->{row_class}->can($name);
+	next if $self->{uncached_row_class}->can($name) || $self->{cached_row_class}->can($name);
 
 	my $method = join '::', $self->{row_class}, $name;
 	my $col_name = $_->name;
@@ -641,6 +646,7 @@ sub make_update_hooks
     $code .= "            \$s->pre_update(\\\%p);\n" if $self->{row_class}->can('pre_update');
     $code .= "            \$s->Alzabo::Runtime::CachedRow::update(\%p);\n";
     $code .= "            \$s->post_update(\\\%p);\n" if $self->{row_class}->can('post_update');
+
     $code .= "        } );\n";
 
     eval <<"EOF";
@@ -700,9 +706,8 @@ sub make_select_hooks
 {
     my $self = shift;
 
-    my $pre = "            \$s->pre_select(\\\@cols);\n" if $self->{row_class}->can('pre_select');
-
-    my $post = "            \$s->post_select(\\\%r);\n" if $self->{row_class}->can('post_select');
+    my $pre = "            \$s->pre_select(\\\@cols);\n" if $self->{row_class}->can('pre_update');
+    my $post = "            \$s->post_select(\\\%r);\n" if $self->{row_class}->can('post_update');
 
     foreach ( qw( cached_row_class uncached_row_class potential_row_class ) )
     {
@@ -865,7 +870,7 @@ sub make_lookup_table_method
     my $name = $self->{opts}{name_maker}->( type => 'lookup_table',
 					    foreign_key => $fk );
     return unless $name;
-    return if $self->{row_class}->can($name);
+    return if $self->{uncached_row_class}->can($name) || $self->{cached_row_class}->can($name);
 
     my $method = join '::', $self->{row_class}, $name;
 
@@ -999,13 +1004,13 @@ This parameter is B<required>.
 
 If given, this will be used as the root of the class names generated
 by this module.  This root should not end in '::'.  If none is given,
-then the calling module's name is used as the root.  See L<Class
-Names> for more information.
+then the calling module's name is used as the root.  See L<New Class
+Names|"New Class Names"> for more information.
 
 =head3 all => $bool
 
 This tells this module to make all of the methods it possibly can.
-See L<METHOD CREATION OPTIONS|METHOD CREATION OPTIONS> for more
+See L<METHOD CREATION OPTIONS|"METHOD CREATION OPTIONS"> for more
 details.
 
 If individual method creation options are set as false, then that
@@ -1036,7 +1041,7 @@ such a method, which returns the name of the table.  See the relevant
 documentation of the schema, table, and row objects for a list of
 methods they contain.
 
-The L<Naming Sub Parameters|NAMING SUB PARAMETERS> section contains
+The L<Naming Sub Parameters|"NAMING SUB PARAMETERS"> section contains
 the details of what parameters are passed to this callback.
 
 =head1 EFFECTS

@@ -10,7 +10,6 @@ $length => undef
 $precision => undef
 $primary_key => 0
 $sequenced => 0
-@old_attributes => ()
 @attributes => ()
 </%args>
 
@@ -88,24 +87,7 @@ eval
 	$t->delete_primary_key($c);
     }
 
-    @attributes = grep {length $_} @attributes;
-    foreach my $a (@attributes)
-    {
-	unless ( grep {$a eq $_} @old_attributes )
-	{
-	    # might have disappeared with column type change
-	    $c->add_attribute($a) unless $c->has_attribute($a);
-	}
-    }
-
-    foreach my $a (@old_attributes)
-    {
-	unless ( grep {$a eq $_} @attributes )
-	{
-	    # might have disappeared with column type change
-	    $c->delete_attribute($a) if $c->has_attribute($a);
-	}
-    }
+    $c->set_attributes( grep { length } @attributes );
 
     $s->save_to_file;
 };

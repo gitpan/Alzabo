@@ -2,7 +2,7 @@ package Alzabo::ObjectCache::Store::Memory;
 
 use vars qw($SELF $VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -41,7 +41,7 @@ sub store_object
     my $self = shift;
     my $obj = shift;
 
-    my $id = $obj->id;
+    my $id = $obj->id_as_string;
 
     return if exists $self->{cache}{$id};
 

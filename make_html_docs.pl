@@ -365,17 +365,14 @@ sub fixup_html
 
     $html =~ s,<hr>\s*<p>\s*<hr>,<hr>,gi;
 
-    if ( $file =~ m,Runtime/Table\.html, )
+    if ( $html =~ s,<em>(?:Alzabo/)?Using SQL functions</em>,<a href="$htmlroot/Alzabo.html#using%20sql%20functions">Using SQL functions</a>,gi )
     {
 	print "  Fixing up links in $file\n";
-
-	$html =~ s,<em>(?:Alzabo/)?Using SQL functions</em>,<a href="$htmlroot/Alzabo.html#using%20sql%20functions">Using SQL functions</a>,gi;
     }
-    elsif ( $file =~ m,Runtime/PotentialRow\.html, )
+
+    if ( $html =~ s,<em>referential integrity constraints</em>,<a href="$htmlroot/Alzabo.html#referential%20integrity">referential integrity constraints</a>,gi )
     {
 	print "  Fixing up links in $file\n";
-
-	$html =~ s,<em>referential integrity constraints</em>,<a href="$htmlroot/Alzabo.html#referential%20integrity">referential integrity constraints</a>,gi;
     }
 
     open FILE, ">$file"

@@ -18,7 +18,7 @@ use Alzabo::Runtime::Table;
 
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.24 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.26 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -103,7 +103,7 @@ sub _process_by_clause
     my ($sql, $by, $type) = @_;
 
     my @items;
-    if ( UNIVERSAL::isa( $by, 'Alzabo::Column' ) )
+    if ( UNIVERSAL::isa( $by, 'Alzabo::Column' ) || UNIVERSAL::isa( $by, 'Alzabo::SQLMaker::Function' ) )
     {
 	@items = $by;
     }

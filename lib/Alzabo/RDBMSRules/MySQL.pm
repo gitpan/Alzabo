@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.56 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.59 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -544,7 +544,7 @@ sub column_sql_diff
     my $old = $p{old};
 
     my $sequenced = 0;
-    if ( ($sequenced = $new->sequenced) && ! $old->sequenced )
+    if ( ( $sequenced = $new->sequenced ) && ! $old->sequenced )
     {
 	$new->set_sequenced(0);
     }
@@ -557,9 +557,19 @@ sub column_sql_diff
     }
 
     my @sql;
-    if ( $new_sql ne $self->column_sql($old) )
+    if ( $new_sql ne $self->column_sql($old) ||
+	 ( $new->sequenced && ! $old->sequenced ) )
     {
-	push @sql, 'ALTER TABLE ' . $new->table->name . ' CHANGE COLUMN ' . $new->name . ' ' . $new_sql;
+	my $sql = 'ALTER TABLE ' . $new->table->name . ' CHANGE COLUMN ' . $new->name . ' ' . $new_sql;
+
+	# can't have more than 1 auto_increment column per table (dumb!)
+	if ( ( $new->sequenced && ! $old->sequenced ) &&
+	     ! grep { $_ ne $new && $_->sequenced } $new->table->columns )
+	{
+	    $sql .= ' AUTO_INCREMENT' if $new->sequenced && ! $old->sequenced;
+	}
+
+	push @sql, $sql;
     }
 
     return @sql;
@@ -605,14 +615,7 @@ sub alter_primary_key_sql
 
 my %ignored_defaults = ( DATETIME => '0000-00-00 00:00:00',
 			 DATE => '0000-00-00',
-			 DECIMAL => '0.00',
-			 FLOAT => '0.00',
 			 YEAR => '0000',
-			 TINYINT => 0,
-			 SMALLINT => 0,
-			 INTEGER => 0,
-			 MEDIUMINT => 0,
-			 BIGINT => 0,
 			 CHAR => '',
 			 VARCHAR => '',
 			 TINTYTEXT => '',

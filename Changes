@@ -1,3 +1,50 @@
+0.63
+
+ENHANCEMENTS:
+
+- Calling Alzabo::Runtime::Row->select or
+Alzabo::Runtime::Row->select_hash with no arguments returns the values
+for all of the columns in the table.  Suggested by Jeremy R. Semeiks.
+
+- The Alzabo::Runtime::Row->id method has been renamed to id_as_string
+for the benefit of those crazy people who like to use "id" as a column
+name and want Alzabo::MethodMaker to be able to create such a method.
+Suggested by Alexei Barantsev.
+
+- Changed the Alzabo::Create::Schema->sync_backend method so that if
+there was no corresponding schema in the RDBMS, then it will
+instantiate a new schema instead of just blowing up.  Similarly, the
+sync_backend_sql method will just return the SQL necessary to create
+the schema from scratch.
+
+BUG FIXES:
+
+- Removing column attributes via the schema creator was broken.
+Adding them could have caused errors but generally worked.
+
+- If you changed a column from non-sequenced to sequenced, the SQL
+"diff" was not reflecting this.
+
+- Revert a previous change to MySQL reverse engineering.  Now default
+for numeric columns that are not 0 or 0.00 are used instead of being
+ignored.  The fact that MySQL has 'default defaults' _really_ screws
+things up.  Bad MySQL!
+
+- A query that ended with a subgroup could not be followed with an
+order by or group by clause.  Bug report and test case submitted by
+Ilya Martynov.
+
+- Nested subgroups in where clauses (like where => [ '(', '(', ....)
+were not being allowed.  Bug report and test case submitted by Ilya
+Martynov.
+
+- Alzabo::MethodMaker would overwrite methods in the
+Alzabo::Runtime::Row/CachedRow/PotentialRow classes.  This has been
+fixed.  Reported by Alexei Barantsev.
+
+- Allow order by clause to contain only a SQL function to allow things
+like "SELECT foo FROM Bar ORDER BY RAND()", which works with MySQL.
+
 0.62
 
 ENHANCEMENTS:
@@ -182,7 +229,7 @@ BUG FIXES:
 MySQL.  These indexes were treated the same as other indexes.
 
 - Make sure Alzabo::SQLMaker always handles stringification of
-literals properly.
+functions properly.
 
 - Improve recognition of default column lengths under MySQL (and
 ignore them).  Also improve recognition of default defaults (like
@@ -1348,7 +1395,7 @@ account for new foreign key method names.
 
 - Bug fix related to MySQL auto_increment column and
 Alzabo::Runtime::Table insert method.  Basically, you couldn't insert
-an to a table and use its auto_increment feature.
+into a table and use its auto_increment feature.
 
 - Alzabo::Table::set_prefetch now makes sure that primary key columns
 are not included.  It simply ignores them but they will not be

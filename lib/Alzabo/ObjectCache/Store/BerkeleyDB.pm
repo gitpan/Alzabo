@@ -8,7 +8,7 @@ use BerkeleyDB qw( DB_CREATE DB_INIT_MPOOL DB_INIT_CDB DB_NEXT DB_NOOVERWRITE DB
 use File::Basename ();
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -98,7 +98,7 @@ sub store_object
     my $self = shift;
     my $obj = shift;
 
-    my $id = $obj->id;
+    my $id = $obj->id_as_string;
 
     my $ser = Storable::nfreeze($obj);
 

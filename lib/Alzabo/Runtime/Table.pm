@@ -13,7 +13,7 @@ use Time::HiRes qw(time);
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.73 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.74 $ =~ /(\d+)\.(\d+)/;
 
 sub insert
 {
@@ -351,9 +351,9 @@ sub func
     my $func = uc $p{func};
     my @args = exists $p{args} ? ( UNIVERSAL::isa( $p{args}, 'ARRAY' ) ? @{ $p{args} } : $p{args} ) : ();
 
-    my $literal = $self->schema->sqlmaker->$func(@args);
+    my $function = $self->schema->sqlmaker->$func(@args);
 
-    my $sql = $self->schema->sqlmaker->select($literal)->from($self);
+    my $sql = $self->schema->sqlmaker->select($function)->from($self);
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
 

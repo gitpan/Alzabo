@@ -8,25 +8,25 @@ use Alzabo::Exceptions;
 use Alzabo::SQLMaker;
 use base qw(Alzabo::SQLMaker);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/;
 
-my $MADE_LITERALS;
+my $MADE_FUNCTIONS;
 my %functions;
 
 sub import
 {
-    _make_literals() unless $MADE_LITERALS;
+    _make_functions() unless $MADE_FUNCTIONS;
 
-    # used to export literal functions
+    # used to export function functions
     require Exporter;
     *_import = \&Exporter::import;
 
     goto &_import;
 }
 
-sub _make_literals
+sub _make_functions
 {
-    *make_literal = \&Alzabo::SQLMaker::make_literal;
+    local *make_function = \&Alzabo::SQLMaker::make_function;
 
     foreach ( [ NOW => [ 'datetime', 'common' ] ],
 	      [ CURRENT_DATE => [ 'datetime' ] ],
@@ -42,7 +42,7 @@ sub _make_literals
 	      [ USER => [ 'system' ] ],
 	    )
     {
-	make_literal( literal => $_->[0],
+	make_function( function => $_->[0],
 		      min => 0,
 		      max => 0,
 		      groups => $_->[1],
@@ -89,7 +89,7 @@ sub _make_literals
 	      [ ABBREV => [1], [ 'network' ] ],
 	    )
     {
-	make_literal( literal => $_->[0],
+	make_function( function => $_->[0],
 		      min => 1,
 		      max => 1,
 		      quote => $_->[1],
@@ -107,7 +107,7 @@ sub _make_literals
 	      [ TIMESTAMP => [1,1], [ 'datetime' ] ],
 	    )
     {
-	make_literal( literal => $_->[0],
+	make_function( function => $_->[0],
 		      min => 1,
 		      max => 2,
 		      quote => $_->[1],
@@ -133,7 +133,7 @@ sub _make_literals
 	      [ NULLIF => [0,0], [ 'control' ] ],
 	    )
     {
-	make_literal( literal => $_->[0],
+	make_function( function => $_->[0],
 		      min => 2,
 		      max => 2,
 		      quote => $_->[1],
@@ -147,7 +147,7 @@ sub _make_literals
 	      [ SUBSTR => [0,0,0], [ 'string' ] ],
 	    )
     {
-	make_literal( literal => $_->[0],
+	make_function( function => $_->[0],
 		      min => 2,
 		      max => 3,
 		      quote => $_->[1],
@@ -155,14 +155,14 @@ sub _make_literals
 		    );
     }
 
-    make_literal( literal => 'COALESCE',
+    make_function( function => 'COALESCE',
 		  min => 2,
 		  max => undef,
 		  quote => [0,0,0],
 		  groups => [ 'control' ],
 		);
 
-    make_literal( literal => 'OVERLAPS',
+    make_function( function => 'OVERLAPS',
 		  min => 4,
 		  max => 4,
 		  quote => [1,1,1,1],
@@ -180,7 +180,7 @@ sub _make_literals
 	      [ DISTINCT  => [0], [ 'aggregate', 'common' ] ],
 	    )
     {
-	make_literal( literal => $_->[0],
+	make_function( function => $_->[0],
 		      min => 1,
 		      max => 1,
 		      quote => $_->[1],
@@ -190,7 +190,7 @@ sub _make_literals
 
     %functions = map { $_ => 1 } @EXPORT_OK;
 
-    $MADE_LITERALS = 1;
+    $MADE_FUNCTIONS = 1;
 }
 
 sub init

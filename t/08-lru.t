@@ -52,7 +52,7 @@ my $cache = Alzabo::ObjectCache->new;
 
 my @keys = sort keys %{ $cache->{store}{cache} };
 
-my @last_rows = sort map { $_->id } @rows[-1, -2];
+my @last_rows = sort map { $_->id_as_string } @rows[-1, -2];
 
 is( scalar @keys, 2,
     "There should only be 2 keys in the cache" );

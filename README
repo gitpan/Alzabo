@@ -15,9 +15,9 @@ different tables into a larger container object which could understand
 the logical relationship between these tables.  The
 Alzabo::MethodMaker module can be very helpful in this regard.
 
-For more information please see the Alzabo (start with perldoc Alzabo)
-or the Alzabo homepage at http://alzabo.sourceforge.net/.  The full
-documentation in HTML form is available at
+For more information please see the Alzabo docs (start with perldoc
+Alzabo) or the Alzabo homepage at http://alzabo.sourceforge.net/.  The
+full documentation in HTML form is available at
 http://alzabo.sourceforge.net/docs/
 
 Install information is in the INSTALL file.
@@ -32,6 +32,19 @@ http://lists.sourceforge.net/lists/listinfo/alzabo-general.
 
 Please don't email me directly.  Use the list instead so others can
 see your questions.
+
+REPORTING BUGS
+
+If you are getting some sort of error message, please set the
+environment variable ALZABO_DEBUG to 1 and then send the now very
+verbose error message to the mailing list.
+
+If you are experiencing test failures, please run the tests like this:
+
+        make test TEST_VERBOSE=1
+
+and send the output along with the bug report.  Otherwise I'll just
+ask you to do this before I can do anything.
 
 UPGRADING
 
@@ -64,21 +77,22 @@ forewarned is forearmed (or something like that).
 
 - make_html_docs.pl and Pod::Html
 
-There are links in the pod for Alzabo/Runtime/Table.pm back to
-Alzabo.pm that Pod::Html fails to resolve.  This causes warnings when
-running make_html_docs.pl.  However, the generated HTML file is
-processed to correct these problems.
+There are links in some of the POD that Pod::Html fails to resolve.
+This causes warnings when running make_html_docs.pl.  However, the
+generated HTML files are processed to correct these problems so you
+can just ignore them.
 
 CREDITS
 
-Thanks very much to Randal Schwartz for spending time with me on IRC
-helping me find problems with the install process.
+Ilya Martynov has provided lots of suggestions, as well as quite a
+number of working patches.
 
 Bob Gustafson has provided extensive assistance in testing and
 debugging.
 
-Ilya Martynov has provided lots of suggestions, as well as actual
-code.
+Thanks very much to Randal Schwartz for spending time with me on IRC
+helping me find problems with the install process way back in the
+early releases.
 
 Some features in Alzabo have been borrowed or influenced by Class:DBI
 (Michael Schwern and Tony Bowden) and Tangram (Jean-Louis Leroy).

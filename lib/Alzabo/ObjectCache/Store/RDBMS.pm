@@ -7,7 +7,7 @@ use vars qw($VERSION $SCHEMA %CONNECT_PARAMS);
 use Digest::MD5 ();
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
 
 sub import
 {
@@ -155,7 +155,7 @@ sub store_object
     my $self = shift;
     my $obj = shift;
 
-    my $id = Digest::MD5::md5_base64($obj->id);
+    my $id = Digest::MD5::md5_base64($obj->id_as_string);
 
     my $ser = Storable::nfreeze($obj);
 

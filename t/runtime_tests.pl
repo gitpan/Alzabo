@@ -90,6 +90,25 @@ sub run_tests
     is( $dep{borg}->select('name'), 'borging',
 	"The borg department name should be 'borging'" );
 
+    {
+	my @all = $dep{borg}->select;
+	is( @all, 3,
+	    "select with no columns should return all the values" );
+	is( $all[1], 'borging',
+	    "The second value should be the department name" );
+
+	my %all = $dep{borg}->select_hash;
+	is( keys %all, 3,
+	    "select_hash with no columns should return two keys" );
+	ok( exists $all{department_id},
+	    "The returned hash should have a department_id key" );
+	ok( exists $all{name},
+	    "The returned hash should have a department_id key" );
+	is( $all{name}, 'borging',
+	    "The value of the name key be the department name" );
+    }
+
+
     $dep{lying} = $dep_t->insert( values => { name => 'lying to the public' } );
 
     my $borg_id = $dep{borg}->select('department_id');
@@ -749,11 +768,11 @@ sub run_tests
 	isa_ok( $e, $expect,
 		"Exception thrown from attempt to update a deleted row" );
 
-	my $row_id = $emps[1]->id;
+	my $row_id = $emps[1]->id_as_string;
 	my $row;
 	eval_ok( sub { $row = $emp_t->row_by_id( row_id => $row_id ) },
 		 "Fetch a row via the ->row_by_id method" );
-	is( $row->id, $emps[1]->id,
+	is( $row->id_as_string, $emps[1]->id_as_string,
 	    "Row retrieved via the ->row_by_id method should be the same as the row whose id was used" );
     }
 
@@ -843,6 +862,20 @@ sub run_tests
 	    "Third row returned should be employee id 9002" );
     }
 
+    {
+	my @emps;
+	eval_ok( sub { @emps = $emp_t->rows_where( where => [ '(', '(',
+							      [ $eid_c, '=', 9000 ],
+							      ')', ')'
+							    ] )->all_rows },
+		 "Nested subgroups should be allowed" );
+
+	is( @emps, 1,
+	    "Query with nested subgroups should return 1 row" );
+	is( $emps[0]->select('employee_id'), 9000,
+	    "The row returned should be employee id 9000" );
+    }
+
     $emp_t->insert( values => { name => 'Smelly',
 				smell => 'a',
 				dep_id => $dep_id,
@@ -874,6 +907,21 @@ sub run_tests
 
 	is( scalar @emps, 2,
 	    "Limit should cause only two employee rows to be returned (again)" );
+    }
+
+    {
+	my @emps;
+	eval_ok( sub { @emps = $emp_t->rows_where( where => [ '(',
+							      [ $emp_t->column('employee_id'), '=', 9000 ],
+							      ')',
+							    ],
+						   order_by => $emp_t->column('employee_id') )->all_rows },
+		 "Query with subgroup followed by order by" );
+
+	is( @emps, 1,
+	    "Query with subgroup followed by order by should return 1 row" );
+	is( $emps[0]->select('employee_id'), 9000,
+	    "The row returned should be employee id 9000" );
     }
 
     my @smells = $emp_t->function( select => [ $emp_t->column('smell'), COUNT( $emp_t->column('smell') ) ],
@@ -1235,6 +1283,11 @@ sub run_tests
 	    "First row should be id 3" );
 	is( $rows[-1]->select('employee_id'), 999993,
 	    "Last row should be id 999993" );
+
+	eval_ok( sub { @rows = $emp_t->all_rows( order_by => RAND() )->all_rows },
+		 "order by RAND()" );
+	is ( @rows, 16,
+	     "This should return 16 rows" );
     }
     elsif ( $p{rdbms} eq 'pg' )
     {

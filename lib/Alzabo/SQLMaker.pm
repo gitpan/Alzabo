@@ -9,17 +9,17 @@ use Class::Factory::Util;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.33 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.39 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
-sub make_literal
+sub make_function
 {
     my %p = @_;
     my $class = caller;
 
     validate( @_,
-	      { literal => { type => SCALAR },
+	      { function => { type => SCALAR },
 		min => { type => SCALAR, optional => 1 },
 		max => { type => UNDEF | SCALAR, optional => 1 },
 		groups => { type => ARRAYREF },
@@ -46,7 +46,7 @@ sub make_literal
     }
     $valid .= ' );' if $valid;
 
-    my @args = "literal => '$p{literal}'";
+    my @args = "function => '$p{function}'";
 
     if ( ! defined $p{max} || $p{max} > 0 )
     {
@@ -74,11 +74,11 @@ sub make_literal
     my $args = join ",\n", @args;
 
     my $code = <<"EOF";
-sub ${class}::$p{literal}
+sub ${class}::$p{function}
 {
     shift if defined \$_[0] && UNIVERSAL::isa( \$_[0], 'Alzabo::SQLMaker' );
     $valid
-    return Alzabo::SQLMaker::Literal->new( $args );
+    return Alzabo::SQLMaker::Function->new( $args );
 }
 EOF
 
@@ -86,13 +86,13 @@ EOF
 
     {
 	no strict 'refs';
-	push @{ "$class\::EXPORT_OK" }, $p{literal};
+	push @{ "$class\::EXPORT_OK" }, $p{function};
 	my $exp = \%{ "$class\::EXPORT_TAGS" };
 	foreach ( @{ $p{groups} } )
 	{
-	    push @{ $exp->{$_}  }, $p{literal};
+	    push @{ $exp->{$_}  }, $p{function};
 	}
-	push @{ $exp->{all} }, $p{literal};
+	push @{ $exp->{all} }, $p{function};
     }
 }
 
@@ -162,7 +162,7 @@ sub select
 	    push @{ $self->{columns} }, $_->columns;
 	    push @sql, join ', ', map { join '.', $_->table->alias_name, $_->name } $_->columns;
 	}
-	elsif ( UNIVERSAL::isa( $_, 'Alzabo::SQLMaker::Literal' ) )
+	elsif ( UNIVERSAL::isa( $_, 'Alzabo::SQLMaker::Function' ) )
 	{
 	    my $string = $_->as_string( $self->{driver} );
 	    push @sql, " $string AS " . $self->{as_id};
@@ -176,7 +176,7 @@ sub select
 	}
 	else
 	{
-	    Alzabo::Exception::SQL->throw( error => 'Arguments to select must be either column objects, table objects, literal objects, or plain scalars' );
+	    Alzabo::Exception::SQL->throw( error => 'Arguments to select must be either column objects, table objects, function objects, or plain scalars' );
 	}
     }
 
@@ -360,7 +360,7 @@ sub subgroup_start
 {
     my $self = shift;
 
-    $self->_assert_last_op( qw( where and or ) );
+    $self->_assert_last_op( qw( where and or subgroup_start ) );
 
     $self->{sql} .= ' (';
     $self->{subgroup} ||= 0;
@@ -375,7 +375,7 @@ sub subgroup_end
 {
     my $self = shift;
 
-    $self->_assert_last_op( qw( condition ) );
+    $self->_assert_last_op( qw( condition subgroup_end ) );
 
     Alzabo::Exception::SQL->throw( error => "Can't end a subgroup unless one has been started already" )
 	unless $self->{subgroup};
@@ -383,7 +383,7 @@ sub subgroup_end
     $self->{sql} .= ' )';
     $self->{subgroup}--;
 
-    $self->{last_op} = 'subgroup_end';
+    $self->{last_op} = $self->{subgroup} ? 'subgroup_end' : 'condition';
 
     return $self;
 }
@@ -416,7 +416,7 @@ sub condition
 	}
 	$self->{sql} .= join '.', $lhs->table->alias_name, $lhs->name;
     }
-    elsif ( $lhs->isa('Alzabo::SQLMaker::Literal') )
+    elsif ( $lhs->isa('Alzabo::SQLMaker::Function') )
     {
 	$self->{sql} .= $lhs->as_string( $self->{driver} );
     }
@@ -537,7 +537,7 @@ sub order_by
 			  callbacks =>
 			  { 'column_or_function_or_sort' =>
 			    sub { UNIVERSAL::can( $_[0], 'table' ) ||
-				  UNIVERSAL::isa( $_[0], 'Alzabo::SQLMaker::Literal' ) ||
+				  UNIVERSAL::isa( $_[0], 'Alzabo::SQLMaker::Function' ) ||
 				  $_[0] =~ /^(?:ASC|DESC)$/i } } }
 		      ) x @_ );
 
@@ -563,7 +563,7 @@ sub order_by
 
 	    $last = 'column';
 	}
-	elsif ( UNIVERSAL::isa( $i, 'Alzabo::SQLMaker::Literal' ) )
+	elsif ( UNIVERSAL::isa( $i, 'Alzabo::SQLMaker::Function' ) )
 	{
 	    my $string = $i->as_string( $self->{driver} );
 	    if ( exists $self->{functions}{$string} )
@@ -797,7 +797,7 @@ sub _bind_val
 
     my $val = shift;
 
-    return $val->as_string( $self->{driver} ) if defined $val && UNIVERSAL::isa( $val, 'Alzabo::SQLMaker::Literal' );
+    return $val->as_string( $self->{driver} ) if defined $val && UNIVERSAL::isa( $val, 'Alzabo::SQLMaker::Function' );
 
     push @{ $self->{bind} }, $val;
 
@@ -845,7 +845,7 @@ sub _virtual
 					     "$sub is a virtual method and must be subclassed in " . ref $self );
 }
 
-package Alzabo::SQLMaker::Literal;
+package Alzabo::SQLMaker::Function;
 
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
@@ -874,14 +874,14 @@ sub as_string
 	    push @args, join '.', $self->{args}[$_]->table->alias_name, $self->{args}[$_]->name;
 	    next;
 	}
-	elsif ( UNIVERSAL::isa( $self->{args}[$_], 'Alzabo::SQLMaker::Literal' ) )
+	elsif ( UNIVERSAL::isa( $self->{args}[$_], 'Alzabo::SQLMaker::Function' ) )
 	{
 	    push @args, $self->{args}[$_]->as_string($driver);
 	    next;
 	}
 
 	# if there are more args than specified in the quote param
-	# then this literal must allow an unlimited number of
+	# then this function must allow an unlimited number of
 	# arguments, in which case the last value in the quote param
 	# is the value that should be used for all of the extra
 	# arguments.
@@ -889,7 +889,7 @@ sub as_string
 	push @args, $self->{quote}[$i] ? $driver->quote( $self->{args}[$_] ) : $self->{args}[$_];
     }
 
-    my $sql = $self->{literal};
+    my $sql = $self->{function};
 
     return $sql if $self->{is_modifier};
 
@@ -936,8 +936,7 @@ driver for the RDBMS of your choice.
 
 A list of names representing the available C<Alzabo::SQLMaker>
 subclasses.  Any one of these names would be appropriate as a
-parameter for the L<C<Alzabo::SQLMaker-E<gt>new>|Alzabo::SQLMaker/new>
-method.
+parameter for the L<C<Alzabo::SQLMaker-E<gt>new>|"new"> method.
 
 =head2 load
 
@@ -967,9 +966,9 @@ This class can be used to generate SQL by calling methods that are the
 same as those used in SQL (C<select>, C<update>, etc.) in sequence,
 with the appropriate parameters.
 
-There are four entry point methods, L<C<select>|select (Alzabo::Table
-and/or Alzabo::Column objects)>, L<C<insert>|insert>,
-L<C<update>|update (Alzabo::Table)>, and L<C<delete>|delete>.
+There are four entry point methods, L<C<select>|"select (Alzabo::Table
+and/or Alzabo::Column objects)">, L<C<insert>|"insert">,
+L<C<update>|"update (Alzabo::Table)">, and L<C<delete>|"delete">.
 Attempting call any other method without first calling one of these is
 an error.
 
@@ -984,27 +983,27 @@ passed in, and/or the columns of the table(s) passed in as arguments.
 
 =head3 Followed by
 
-L<C<from>|Alzabo::SQLMaker/from (Alzabo::Table object, ...)>
+L<C<from>|"from (Alzabo::Table object, ...)">
 
-L<C<** function>|Alzabo::SQLMaker/** function (Alzabo::Table object(s) and/or $string(s))>
+L<C<** function>|"** function (Alzabo::Table object(s) and/or $string(s))">
 
 =head2 insert
 
 =head3 Followed by
 
-L<C<into>|Alzabo::SQLMaker/into (Alzabo::Table object, optional Alzabo::Column objects)>
+L<C<into>|"into (Alzabo::Table object, optional Alzabo::Column objects)">
 
 =head2 update (C<Alzabo::Table>)
 
 =head3 Followed by
 
-L<C<set>|Alzabo::SQLMaker/set (Alzabo::Column object =E<gt> $value, ...)>
+L<C<set>|"set (Alzabo::Column object =E<gt> $value, ...)">
 
 =head2 delete
 
 =head3 Followed by
 
-L<C<from>|Alzabo::SQLMaker/from (Alzabo::Table object, ...)>
+L<C<from>|"from (Alzabo::Table object, ...)">
 
 =head2 Other Methods
 
@@ -1019,17 +1018,17 @@ The table(s) from which we are selecting data.
 
 =head3 Follows
 
-L<C<select>|Alzabo::SQLMaker/select (Alzabo::Table and/or Alzabo::Column objects)>
+L<C<select>|"select (Alzabo::Table and/or Alzabo::Column objects)">
 
-L<C<** function>|Alzabo::SQLMaker/** function (Alzabo::Table object(s) and/or $string(s))>
+L<C<** function>|"** function (Alzabo::Table object(s) and/or $string(s))">
 
-L<C<delete>|Alzabo::SQLMaker/delete>
+L<C<delete>|"delete">
 
 =head3 Followed by
 
-L<C<where>|Alzabo::SQLMaker/where ( (Alzabo::Column object), $comparison, (Alzabo::Column object, $value, or Alzabo::SQLMaker object), [ see below ] )>
+L<C<where>|"where ( (Alzabo::Column object), $comparison, (Alzabo::Column object, $value, or Alzabo::SQLMaker object), [ see below ] )">
 
-L<C<order_by>|Alzabo::SQLMaker/order_by (Alzabo::Column objects)>
+L<C<order_by>|"order_by (Alzabo::Column objects)">
 
 =head3 Throws
 
@@ -1048,15 +1047,15 @@ by commas (,) internally.  Here is a simple example:
 
 =head3 Follows
 
-L<C<select>|Alzabo::SQLMaker/select (Alzabo::Table and/or Alzabo::Column objects)>
+L<C<select>|"select (Alzabo::Table and/or Alzabo::Column objects)">
 
-L<C<** function>|Alzabo::SQLMaker/** function (Alzabo::Table object(s) and/or $string(s))>
+L<C<** function>|"** function (Alzabo::Table object(s) and/or $string(s))">
 
 =head3 Followed by
 
-L<C<** function>|Alzabo::SQLMaker/** function (Alzabo::Table object(s) and/or $string(s))>
+L<C<** function>|"** function (Alzabo::Table object(s) and/or $string(s))">
 
-L<C<from>|Alzabo::SQLMaker/from (Alzabo::Table object, ...)>
+L<C<from>|"from (Alzabo::Table object, ...)">
 
 =head3 Throws
 
@@ -1083,15 +1082,15 @@ objects.
 
 =head3 Follows
 
-L<C<from>|Alzabo::SQLMaker/from (Alzabo::Table object, ...)>
+L<C<from>|"from (Alzabo::Table object, ...)">
 
 =head3 Followed by
 
-L<C<and>|Alzabo::SQLMaker/and (same as where)>
+L<C<and>|"and (same as where)">
 
-L<C<or>|Alzabo::SQLMaker/or (same as where)>
+L<C<or>|"or (same as where)">
 
-L<C<order_by>|Alzabo::SQLMaker/order_by (Alzabo::Column objects)>
+L<C<order_by>|"order_by (Alzabo::Column objects)">
 
 =head3 Throws
 
@@ -1101,25 +1100,26 @@ L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
 
 =head2 or (same as C<where>)
 
-These methods take the same parameters as the
-L<C<where>|Alzabo::SQLMaker/where ( (Alzabo::Column object), $comparison, (Alzabo::Column object, $value, or Alzabo::SQLMaker object), [ see below ] )> method.  There is currently no way
-to group together comparison operators.
+These methods take the same parameters as the L<C<where>|"where (
+(Alzabo::Column object), $comparison, (Alzabo::Column object, $value,
+or Alzabo::SQLMaker object), [ see below ] )"> method.  There is
+currently no way to group together comparison operators.
 
 =head3 Follows
 
-L<C<where>|Alzabo::SQLMaker/where ( (Alzabo::Column object), $comparison, (Alzabo::Column object, $value, or Alzabo::SQLMaker object), [ see below ] )>
+L<C<where>|"where ( (Alzabo::Column object), $comparison, (Alzabo::Column object, $value, or Alzabo::SQLMaker object), [ see below ] )">
 
-L<C<and>|Alzabo::SQLMaker/and (same as where)>
+L<C<and>|"and (same as where)">
 
-L<C<or>|Alzabo::SQLMaker/or (same as where)>
+L<C<or>|"or (same as where)">
 
 =head3 Followed by
 
-L<C<and>|Alzabo::SQLMaker/and (same as where)>
+L<C<and>|"and (same as where)">
 
-L<C<or>|Alzabo::SQLMaker/or (same as where)>
+L<C<or>|"or (same as where)">
 
-L<C<order_by>|Alzabo::SQLMaker/order_by (Alzabo::Column objects)>
+L<C<order_by>|"order_by (Alzabo::Column objects)">
 
 =head3 Throws
 
@@ -1131,17 +1131,17 @@ Adds an C<ORDER BY> clause to your SQL.
 
 =head3 Follows
 
-L<C<from>|Alzabo::SQLMaker/from (Alzabo::Table object, ...)>
+L<C<from>|"from (Alzabo::Table object, ...)">
 
-L<C<where>|Alzabo::SQLMaker/where ( (Alzabo::Column object), $comparison, (Alzabo::Column object, $value, or Alzabo::SQLMaker object), [ see below ] )>
+L<C<where>|"where ( (Alzabo::Column object), $comparison, (Alzabo::Column object, $value, or Alzabo::SQLMaker object), [ see below ] )">
 
-L<C<and>|Alzabo::SQLMaker/and (same as where)>
+L<C<and>|"and (same as where)">
 
-L<C<or>|Alzabo::SQLMaker/or (same as where)>
+L<C<or>|"or (same as where)">
 
 =head3 Followed by
 
-L<C<limit>|Alzabo::SQLMaker/limit ($max, optional $offset)>
+L<C<limit>|"limit ($max, optional $offset)">
 
 =head3 Throws
 
@@ -1154,15 +1154,15 @@ parameter is optional.
 
 =head3 Follows
 
-L<C<from>|Alzabo::SQLMaker/from (Alzabo::Table object, ...)>
+L<C<from>|"from (Alzabo::Table object, ...)">
 
-L<C<where>|Alzabo::SQLMaker/where ( (Alzabo::Column object), $comparison, (Alzabo::Column object, $value, or Alzabo::SQLMaker object), [ see below ] )>
+L<C<where>|"where ( (Alzabo::Column object), $comparison, (Alzabo::Column object, $value, or Alzabo::SQLMaker object), [ see below ] )">
 
-L<C<and>|Alzabo::SQLMaker/and (same as where)>
+L<C<and>|"and (same as where)">
 
-L<C<or>|Alzabo::SQLMaker/or (same as where)>
+L<C<or>|"or (same as where)">
 
-L<C<order_by>|Alzabo::SQLMaker/order_by (Alzabo::Column objects)>
+L<C<order_by>|"order_by (Alzabo::Column objects)">
 
 =head3 Followed by
 
@@ -1177,15 +1177,16 @@ L<C<Alzabo::Exception::SQL>|Alzabo::Exceptions>
 Used to specify what table an insert is into.  If column objects are
 given then it is expected that values will only be given for that
 object.  Otherwise, it assumed that all columns will be specified in
-the L<C<values>|Alzabo::SQLMaker/values (Alzabo::Column object =E<gt> $value, ...)> method.
+the L<C<values>|"values (Alzabo::Column object =E<gt> $value, ...)">
+method.
 
 =head3 Follows
 
-L<C<insert>|Alzabo::SQLMaker/insert>
+L<C<insert>|"insert">
 
 =head3 Followed by
 
-L<C<values>|Alzabo::SQLMaker/values (Alzabo::Column object =E<gt> $value, ...)>
+L<C<values>|"values (Alzabo::Column object =E<gt> $value, ...)">
 
 =head3 Throws
 
@@ -1199,7 +1200,7 @@ inserted into that column.
 
 =head3 Follows
 
-L<C<into>|Alzabo::SQLMaker/into (Alzabo::Table object, optional Alzabo::Column objects)>
+L<C<into>|"into (Alzabo::Table object, optional Alzabo::Column objects)">
 
 =head3 Followed by
 
@@ -1217,11 +1218,11 @@ method.
 
 =head3 Follows
 
-L<C<update>|Alzabo::SQLMaker/update (Alzabo::Table)>
+L<C<update>|"update (Alzabo::Table)">
 
 =head3 Followed by
 
-L<C<where>|Alzabo::SQLMaker/where ( (Alzabo::Column object), $comparison, (Alzabo::Column object, $value, or Alzabo::SQLMaker object), [ see below ] )>
+L<C<where>|"where ( (Alzabo::Column object), $comparison, (Alzabo::Column object, $value, or Alzabo::SQLMaker object), [ see below ] )">
 
 =head3 Throws
 
@@ -1249,11 +1250,10 @@ statement.
 
 =head2 get_limit
 
-This method may return undef even if the
-L<C<limit>|Alzabo::SQLMaker/limit ($max, optional $offset)> method was
-called.  Some RDBMS's have special SQL syntax for C<LIMIT> clauses.
-For those that don't support this, the
-L<C<Alzabo::Driver>/Alzabo::Driver> module takes a C<limit> parameter.
+This method may return undef even if the L<C<limit>|"limit ($max,
+optional $offset)"> method was called.  Some RDBMS's have special SQL
+syntax for C<LIMIT> clauses.  For those that don't support this, the
+L<C<Alzabo::Driver>|Alzabo::Driver> module takes a C<limit> parameter.
 The return value of this method can be passed in as that parameter in
 all cases.
 
@@ -1269,14 +1269,13 @@ C<undef>.
 =head1 SUBCLASSING Alzabo::SQLMaker
 
 To create a subclass of C<Alzabo::SQLMaker> for your particular RDBMS
-requires only that the L<virtual methods/Alzabo::SQLMaker/Virtual
-Methods> listed below be implemented.
+requires only that the L<virtual methods|"Virtual Methods"> listed
+below be implemented.
 
 In addition, you may choose to override any of the other methods
-listed in L<over-rideable methods|Over-Rideable Methods>.  For
-example, the MySQL subclass override the
-L<C<_subselect>|Alzabo::SQLMaker/_subselect> method because MySQL
-cannot support sub-selects.
+listed in L<over-rideable methods|"Over-Rideable Methods">.  For
+example, the MySQL subclass override the L<C<_subselect>|"_subselect">
+method because MySQL cannot support sub-selects.
 
 =head2 Virtual Methods
 

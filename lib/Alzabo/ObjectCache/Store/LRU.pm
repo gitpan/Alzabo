@@ -4,7 +4,7 @@ use strict;
 
 use vars qw($SELF $VERSION @ISA);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -68,7 +68,7 @@ sub store_object
     my $self = shift;
     my $obj = shift;
 
-    $self->_promote( $obj->id );
+    $self->_promote( $obj->id_as_string );
 
     $self->_cull;
 

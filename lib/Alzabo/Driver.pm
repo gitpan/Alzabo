@@ -10,7 +10,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.55 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.56 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -236,6 +236,13 @@ sub tables
     Alzabo::Exception::Driver->throw( error => $@ ) if $@;
 
     return @t;
+}
+
+sub schemas
+{
+    my $self = shift;
+
+    return map { /dbi:\w+:(\w+)/i; defined $1 ? $1 : () } DBI->data_sources( $self->dbi_driver_name );
 }
 
 sub statement

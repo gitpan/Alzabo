@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -52,7 +52,7 @@ sub _check_name
     Alzabo::Exception::RDBMSRules->throw( error => "Name ($name) must at least one character long" )
 	unless length $name;
     Alzabo::Exception::RDBMSRules->throw( error => "Name ($name) is too long.  Names must be 31 characters or less." )
-	if length $name >= 31;
+	if length $name > 31;
     Alzabo::Exception::RDBMSRules->throw( error => "Name ($name) must start with an alpha or underscore(_) and must contain only alphanumerics and underscores." )
 	unless $name =~ /\A[a-zA-Z]\w*\z/;
 }

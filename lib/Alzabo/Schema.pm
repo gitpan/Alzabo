@@ -17,7 +17,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 use Storable ();
 use Tie::IxHash ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.39 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.40 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -231,7 +231,7 @@ Alzabo::Schema - Schema objects
 
   use Alzabo::Schema;
 
-  my $schema = Alzabo::Schema->load_from_file('foo');
+  my $schema = Alzabo::Schema->load_from_file( name => 'foo' );
 
   foreach my $t ($schema->tables)
   {

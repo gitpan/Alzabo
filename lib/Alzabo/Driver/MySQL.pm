@@ -10,7 +10,7 @@ use DBI;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.35 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.36 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -140,6 +140,11 @@ sub get_last_id
 sub driver_id
 {
     return 'MySQL';
+}
+
+sub dbi_driver_name
+{
+    return 'mysql';
 }
 
 __END__

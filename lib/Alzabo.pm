@@ -15,7 +15,7 @@ use vars qw($VERSION);
 
 use 5.005;
 
-$VERSION = '0.62';
+$VERSION = '0.63';
 
 1;
 
@@ -71,9 +71,9 @@ creation interface or via L<reverse engineering|Alzabo::Create::Schema/reverse_e
 
 Here is the suggested reading order:
 
-L<Alzabo - Alzabo concepts|Alzabo concepts>
+L<Alzabo - Alzabo concepts|"Alzabo concepts">
 
-L<Alzabo - Rows and cursors|"rows and cursors">
+L<Alzabo - Rows and cursors|"Rows and cursors">
 
 L<Alzabo - How to use Alzabo|"How to use Alzabo">
 
@@ -140,9 +140,10 @@ L<The FAQ|Alzabo::FAQ>.
 L<The quick reference|Alzabo::QuickRef> - A quick reference for the
 various methods of the Alzabo objects.
 
-Other areas of interest may include the L<Validating data>, L<Using
-SQL functions>, L<Referential integrity>, and L<Changing the schema>
-sections in this document.
+Other areas of interest may include the L<Validating data|"Validating
+data">, L<Using SQL functions|"Using SQL functions">, L<Referential
+integrity|"Referential integrity">, and L<Changing the
+schema|"Changing the schema"> sections in this document.
 
 =head2 Alzabo concepts
 
@@ -420,9 +421,9 @@ These functions are normal Perl functions.  They take as argument
 normal scalars (strings and numbers), C<Alzabo::Column> objects, or
 the return value of another SQL function.  They may be used to select
 data via the C<select> and C<function> methods in both the
-L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table/"function/select">
+L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table/"function and select">
 and
-L<C<Alzabo::Runtime::Schema>|Alzabo::Runtime::Schema/"function/select">
+L<C<Alzabo::Runtime::Schema>|Alzabo::Runtime::Schema/"function and select">
 classes.  They may also be used as part updates, inserts, and where
 clauses, any place that is appropriate.
 

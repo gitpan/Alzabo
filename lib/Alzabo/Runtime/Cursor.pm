@@ -5,7 +5,7 @@ use vars qw($VERSION);
 
 use Alzabo::Runtime;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -92,7 +92,7 @@ exception objects are stored in the cursor.  This method can be used
 to retrieve these objects.  This allows you to ignore these errors if
 you so desire without having to do explicit exception handling.  For
 more information on what you can do with this method see L<the
-HANDLING ERRORS section|HANDLING ERRORS>.
+HANDLING ERRORS section|"HANDLING ERRORS">.
 
 =head3 Returns
 

@@ -8,7 +8,7 @@ use DBD::Pg;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -113,6 +113,11 @@ sub get_last_id
 sub driver_id
 {
     return 'PostgreSQL';
+}
+
+sub dbi_driver_name
+{
+    return 'Pg';
 }
 
 __END__

@@ -94,7 +94,7 @@ Rows <% $rows_fetched ? $start_row + 1 : 0 %>-<% $start_row + $rows_used %> (out
 <form action="delete_row<% Alzabo::Config::mason_extension() %>">
 <input type="hidden" name="schema" value="<% $s->name %>">
 <input type="hidden" name="table" value="<% $t->name %>">
-<input type="hidden" name="id" value="<% $row->id %>">
+<input type="hidden" name="id" value="<% $row->id_as_string %>">
 <input type="hidden" name="start_row" value="<% $start_row %>">
 <input type="hidden" name="max_rows" value="<% $max_rows %>">
 <input type="hidden" name="filter_from" value="<% $filter_from %>">
@@ -110,7 +110,7 @@ Rows <% $rows_fetched ? $start_row + 1 : 0 %>-<% $start_row + $rows_used %> (out
 <form action="change_row<% Alzabo::Config::mason_extension() %>">
 <input type="hidden" name="schema" value="<% $s->name %>">
 <input type="hidden" name="table" value="<% $t->name %>">
-<input type="hidden" name="id" value="<% $row->id %>">
+<input type="hidden" name="id" value="<% $row->id_as_string %>">
 <input type="hidden" name="start_row" value="<% $start_row %>">
 <input type="hidden" name="max_rows" value="<% $max_rows %>">
 <input type="hidden" name="column_count" value="<% $non_pk_cols %>">

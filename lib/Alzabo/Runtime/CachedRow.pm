@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Runtime::Row);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -22,7 +22,7 @@ sub retrieve
 
     if ( $CACHE && ! $p{insert} )
     {
-	if ( my $row = $CACHE->fetch_object( $class->id(%p) ) )
+	if ( my $row = $CACHE->fetch_object( $class->id_as_string(%p) ) )
 	{
 	    $row->check_cache;
 	    return $row;
@@ -149,7 +149,7 @@ sub update
     while (my ($k, $v) = each %data)
     {
 	# These can't be stored until they're fetched from the database again
-	if ( defined $v && UNIVERSAL::isa( $v, 'Alzabo::SQLMaker::Literal' ) )
+	if ( defined $v && UNIVERSAL::isa( $v, 'Alzabo::SQLMaker::Function' ) )
 	{
 	    delete $self->{data}{$k};
 	    next;

@@ -161,7 +161,7 @@ foreach ( qw( BerkeleyDB SDBM_File DB_File IPC ) )
     }
 }
 
-my $TESTS_PER_RUN = 262;
+my $TESTS_PER_RUN = 274;
 my $SYNC_TESTS_PER_RUN = 20;
 
 #
@@ -175,7 +175,7 @@ my $SYNC_TESTS_PER_RUN = 20;
 my $test_count = ( ( $TESTS_PER_RUN * (@t + @cache - 1) ) +
 		   ( $SYNC_TESTS_PER_RUN * $sync ) );
 
-my %SINGLE_RDBMS_TESTS = ( mysql => 21,
+my %SINGLE_RDBMS_TESTS = ( mysql => 23,
 			   pg => 11,
 			 );
 

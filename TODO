@@ -21,6 +21,9 @@ Short term:
   sure this is possible.  My most recent attempt caused inexplicable
   test failures.
 
+- Track table/column renames when working with schemas so that Alzabo
+  can preserve data during these sorts of changes.
+
 Medium term:
 
 - Output Dia XML.

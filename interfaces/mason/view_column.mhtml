@@ -59,7 +59,6 @@
 % foreach my $a (sort $c->attributes) {
     <tr>
      <td>
-      <input type="hidden" name="old_attributes" value="<% $a %>">
       <input type="textfield" name="attributes" value="<% $a %>" size="20">
      </td>
     </tr>

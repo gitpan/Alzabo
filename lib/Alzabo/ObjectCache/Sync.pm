@@ -7,7 +7,7 @@ use strict;
 use Alzabo::Exceptions;
 use Time::HiRes qw( time );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -38,7 +38,7 @@ sub register_store
     my $obj = shift;
     my $time = shift;
 
-    my $id = $obj->id;
+    my $id = $obj->id_as_string;
     my $cache_id = $obj->cache_id;
 
     $time = sprintf('%11.23f', defined $time ? $time : time);
@@ -54,7 +54,7 @@ sub is_expired
     my $self = shift;
     my $obj = shift;
 
-    my $id = $obj->id;
+    my $id = $obj->id_as_string;
     my $cache_id = $obj->cache_id;
 
     my $sync_time = $self->sync_time($id);
@@ -72,7 +72,7 @@ sub register_refresh
 {
     my $self = shift;
     my $obj = shift;
-    my $id = $obj->id;
+    my $id = $obj->id_as_string;
     my $cache_id = $obj->cache_id;
 
     return unless exists $self->{obj_times}{$cache_id};
@@ -87,7 +87,7 @@ sub register_change
     my $obj = shift;
     my $time = shift;
 
-    my $id = $obj->id;
+    my $id = $obj->id_as_string;
     my $cache_id = $obj->cache_id;
 
     $time = sprintf('%11.23f', defined $time ? $time : time);
@@ -100,7 +100,7 @@ sub register_delete
 {
     my $self = shift;
     my $obj = shift;
-    my $id = $obj->id;
+    my $id = $obj->id_as_string;
     my $cache_id = $obj->cache_id;
 
     $self->update( $id => -1, 1 );
@@ -111,7 +111,7 @@ sub is_deleted
 {
     my $self = shift;
     my $obj = shift;
-    my $id = $obj->id;
+    my $id = $obj->id_as_string;
 
     return 1 if $self->sync_time($id) == -1;
     return 0;
