@@ -11,6 +11,8 @@ use Alzabo::RDBMSRules;
 use Alzabo::Runtime;
 use Alzabo::SQLMaker;
 
+use File::Spec;
+
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
@@ -19,7 +21,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.64 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.67 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -745,56 +747,66 @@ sub delete
     my %p = @_;
 
     my $name = $p{name} || $self->name;
-    my $schema_dir = Alzabo::Config::schema_dir;
+
+    my $schema_dir = File::Spec->catdir( Alzabo::Config::schema_dir(), $name );
 
     my $dh = do { local *DH; };
-    opendir $dh, "$schema_dir/$name"
-	or Alzabo::Exception::System->throw( error => "Unable to open $schema_dir/$name directory: $!" );
-    foreach my $f (grep {-f "$schema_dir/$name/$_"} readdir $dh)
+    opendir $dh, $schema_dir
+	or Alzabo::Exception::System->throw( error => "Unable to open $schema_dir directory: $!" );
+    foreach my $f (readdir $dh)
     {
-	unlink "$schema_dir/$name/$f"
-	    or Alzabo::Exception::System->throw( error => "Unable to delete $schema_dir/$name/$f: $!" );
+	my $file = File::Spec->catfile( $schema_dir, $f );
+	next unless -f $file;
+
+	unlink $file
+	    or Alzabo::Exception::System->throw( error => "Unable to delete $file: $!" );
     }
-    closedir $dh or Alzabo::Exception::System->throw( error => "Unable to close $schema_dir/$name: $!" );
-    rmdir "$schema_dir/$name"
-	or Alzabo::Exception::System->throw( error => "Unable to delete $schema_dir/$name: $!" );
+    closedir $dh or Alzabo::Exception::System->throw( error => "Unable to close $schema_dir: $!" );
+    rmdir $schema_dir
+	or Alzabo::Exception::System->throw( error => "Unable to delete $schema_dir: $!" );
 }
 
 sub save_to_file
 {
     my $self = shift;
 
-    my $schema_dir = Alzabo::Config::schema_dir;
-    unless (-e "$schema_dir/$self->{name}")
+    my $schema_dir = File::Spec->catdir( Alzabo::Config::schema_dir(), $self->{name} );
+    unless (-e $schema_dir)
     {
-	mkdir "$schema_dir/$self->{name}", 0775
-	    or Alzabo::Exception::System->throw( error => "Unable to make directory $schema_dir/$self->{name}: $!" );
+	mkdir $schema_dir, 0775
+	    or Alzabo::Exception::System->throw( error => "Unable to make directory $schema_dir: $!" );
     }
 
+    my $create_save_name = $self->_base_filename( $self->{name} ) . '.create.alz';
+
     my $fh = do { local *FH; };
-    open $fh, ">$schema_dir/$self->{name}/$self->{name}.create.alz"
-	or Alzabo::Exception::System->throw( error => "Unable to write to $schema_dir/$self->{name}.create.alz: $!\n" );
+    open $fh, ">$create_save_name"
+	or Alzabo::Exception::System->throw( error => "Unable to write to $create_save_name: $!\n" );
     my $driver = delete $self->{driver};
     Storable::nstore_fd( $self, $fh )
 	or Alzabo::Exception::System->throw( error => "Can't store to filehandle" );
     $self->{driver} = $driver;
     close $fh
-	or Alzabo::Exception::System->throw( error => "Unable to close $schema_dir/$self->{name}/$self->{name}.create.alz: $!" );
+	or Alzabo::Exception::System->throw( error => "Unable to close $create_save_name: $!" );
 
-    open $fh, ">$schema_dir/$self->{name}/$self->{name}.rdbms"
-	or Alzabo::Exception::System->throw( error => "Unable to write to $schema_dir/$self->{name}.rdbms: $!\n" );
+    my $rdbms_save_name = $self->_base_filename( $self->{name} ) . '.rdbms';
+
+    open $fh, ">$rdbms_save_name"
+	or Alzabo::Exception::System->throw( error => "Unable to write to $rdbms_save_name: $!\n" );
     print $fh $self->{driver}->driver_id;
     close $fh
-	or Alzabo::Exception::System->throw( error => "Unable to close $schema_dir/$self->{name}/$self->{name}.rdbms: $!" );
+	or Alzabo::Exception::System->throw( error => "Unable to close $rdbms_save_name: $!" );
 
     my $rt = $self->_make_runtime_clone;
 
-    open $fh, ">$schema_dir/$self->{name}/$self->{name}.runtime.alz"
-	or Alzabo::Exception::System->throw( error => "Unable to write to $schema_dir/$self->{name}.runtime.alz: $!\n" );
+    my $runtime_save_name = $self->_base_filename( $self->{name} ) . '.runtime.alz';
+
+    open $fh, ">$runtime_save_name"
+	or Alzabo::Exception::System->throw( error => "Unable to write to $runtime_save_name: $!\n" );
     Storable::nstore_fd( $rt, $fh )
 	or Alzabo::Exception::System->throw( error => "Can't store to filehandle" );
     close $fh
-	or Alzabo::Exception::System->throw( error => "Unable to close $schema_dir/$self->{name}/$self->{name}.create.alz: $!" );
+	or Alzabo::Exception::System->throw( error => "Unable to close $runtime_save_name: $!" );
 
     $self->_save_to_cache;
 }
@@ -1176,14 +1188,6 @@ schema has been created in an RDBMS backend, otherwise it is false.
 
 Set the schema's instantiated attribute as true or false.
 
-=for pod_merge driver
-
-=head2 rules
-
-=head3 Returns
-
-The schema's L<C<Alzabo::RDBMSRules>|Alzabo::RDBMSRules> object.
-
 =head2 make_sql
 
 =head3 Returns
@@ -1248,6 +1252,20 @@ A new Alzabo::Create::Schema object.
 =head2 save_to_file
 
 Saves the schema to a file on disk.
+
+=for pod_merge start_transaction
+
+=for pod_merge rollback
+
+=for pod_merge finish_transaction
+
+=for pod_merge run_in_transasction ( sub { code... } )
+
+=for pod_merge driver
+
+=for pod_merge rules
+
+=for pod_merge sqlmaker
 
 =head1 AUTHOR
 

@@ -12,7 +12,7 @@ use Time::HiRes qw(time);
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -21,19 +21,19 @@ sub new
     my $proto = shift;
     my $class = ref $proto || $proto;
 
-    validate( @_, { statement => { isa => 'Alzabo::DriverStatement' },
-		    table => { isa => 'Alzabo::Runtime::Table' },
-		    no_cache => { optional => 1 } } );
-    my %p = @_;
+    my %p = validate( @_, { statement => { isa => 'Alzabo::DriverStatement' },
+			    table => { isa => 'Alzabo::Runtime::Table' },
+			    no_cache => { optional => 1 },
+			    distinct => { optional => 1 },
+			  } );
 
-    my $self;
+    my $self = bless \%p, $class;
 
-    $self->{statement} = $p{statement};
-    $self->{table} = $p{table};
+    $self->{seen} = {};
+
     $self->{errors} = [];
-    $self->{row_params} = { no_cache => $p{no_cache} };
 
-    return bless $self, $class;
+    return $self;
 }
 
 sub next
@@ -62,6 +62,14 @@ sub next
 	my %hash;
 	my @pk = $self->{table}->primary_key;
 	@hash{ map { $_->name } @pk } = @row[0..$#pk];
+
+	if ( $self->{distinct} )
+	{
+	    my $key = Storable::store(\%hash);
+	    next if $self->{seen}{$key};
+
+	    $self->{seen}{$key} = 1;
+	}
 
 	my %prefetch;
 	if ( (my @pre = $self->{table}->prefetch) && @row > @pk )

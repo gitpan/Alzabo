@@ -1,19 +1,24 @@
 use strict;
 
+BEGIN
+{
+    unless (defined $ENV{ALZABO_RDBMS_TESTS})
+    {
+	print "1..0\n";
+	exit;
+    }
+}
+
 use Alzabo::Create;
 use Alzabo::Config;
 
 use Data::Dumper;
 
+use File::Spec;
+
 use lib '.', './t';
 
 require 'base.pl';
-
-unless (defined $ENV{ALZABO_RDBMS_TESTS})
-{
-    print "1..0\n";
-    exit;
-}
 
 require 'make_schemas.pl';
 
@@ -23,10 +28,17 @@ $DB_File::VERSION = $IPC::Shareable::VERSION = $BerkeleyDB::VERSION = 0;
 $Data::Dumper::Indent = 0;
 
 my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
+die $@ if $@;
 
 my @cache = ( [
 	       { store => 'Alzabo::ObjectCache::Store::Memory',
 		 sync  => 'Alzabo::ObjectCache::Sync::Null' },
+	       0,
+	      ],
+	      [
+	       { store => 'Alzabo::ObjectCache::Store::Memory',
+		 sync  => 'Alzabo::ObjectCache::Sync::Null',
+		 lru_size => 2 },
 	       0,
 	      ],
 	      [
@@ -49,7 +61,7 @@ if ($has{DB_File})
 {
     unshift @cache, [ { store => 'Alzabo::ObjectCache::Store::Memory',
 			sync  => 'Alzabo::ObjectCache::Sync::DB_File',
-			sync_dbm_file => 't/db_filesynctest.dbm',
+			sync_dbm_file => File::Spec->catfile( 't', 'objectcache', 'db_filesynctest.dbm' ),
 			clear_on_startup => 1,
 		      },
 		      1
@@ -68,7 +80,7 @@ if ($has{BekeleyDB})
 {
     unshift @cache, [ { store => 'Alzabo::ObjectCache::Store::Memory',
 			sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB',
-			sync_dbm_file => 't/bdb_sync_1.dbm',
+			sync_dbm_file => File::Spec->catfile( 't', 'objectcache', 'bdb_sync_1.dbm' ),
 			clear_on_startup => 1,
 		      },
 		      1
@@ -77,19 +89,27 @@ if ($has{BekeleyDB})
 
     unshift @cache, [ { store => 'Alzabo::ObjectCache::Store::BerkeleyDB',
 			sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB',
-			store_dbm_file => 't/bdb_store.dbm',
-			sync_dbm_file => 't/bdb_sync_2.dbm',
+			store_dbm_file => File::Spec->catfile( 't', 'objectcache', 'bdb_store.dbm' ),
+			sync_dbm_file => File::Spec->catfile( 't', 'objectcache', 'bdb_sync_2.dbm' ),
 			clear_on_startup => 1,
 		      },
 		      1
 		    ];
     $sync++;
+
+    unshift @cache, [ { store => 'Alzabo::ObjectCache::Store::BerkeleyDB',
+			sync  => 'Alzabo::ObjectCache::Sync::Null',
+			store_dbm_file => File::Spec->catfile( 't', 'objectcache', 'bdb_store_lru.dbm' ),
+			lru_size => 2 },
+		      0,
+		    ],
+
 }
 if ($has{SDBM_FILE})
 {
     unshift @cache, [ { store => 'Alzabo::ObjectCache::Store::Memory',
 			sync  => 'Alzabo::ObjectCache::Sync::SDBM_File',
-			sync_dbm_file => 't/sdbmsynctest.dbm',
+			sync_dbm_file => File::Spec->catfile( 't', 'objectcache', 'sdbmsynctest.dbm' ),
 			clear_on_startup => 1,
 		      },
 		      1
@@ -102,7 +122,7 @@ foreach ( qw( BerkeleyDB SDBM_File DB_File IPC ) )
     {
 	unshift @cache, [ { store => 'Alzabo::ObjectCache::Store::Null',
 			    sync => "Alzabo::ObjectCache::Sync::$_",
-			    sync_dbm_file => 't/sync_test_null_store.db',
+			    sync_dbm_file => File::Spec->catfile( 't', 'objectcache', 'sync_test_null_store.dbm' ),
 			    clear_on_startup => 1,
 			  },
 			  1
@@ -112,18 +132,22 @@ foreach ( qw( BerkeleyDB SDBM_File DB_File IPC ) )
     }
 }
 
-
-my $TESTS_PER_RUN = 95;
+my $TESTS_PER_RUN = 143;
 my $SYNC_TESTS_PER_RUN = 18;
 
-# foreach test in @$tests, it'll be run once.  For each set of modules
-# in @cache it'll be run once but there is an overlap because the
-# first test is the one used for the cache tests.
+#
+# For each test in @$tests, the non-sync tests will be run once.  For
+# each set of modules in @cache the non-sync tests will be run once
+# but there is an overlap because the first test is the one used
+# repeatedly for the cache tests.
+#
+# For each count of $sync the sync tests will be run once.
+#
 my $test_count = ( ( $TESTS_PER_RUN * (@$tests + @cache - 1) ) +
 		   ( $SYNC_TESTS_PER_RUN * $sync ) );
 
-my %SINGLE_RDBMS_TESTS = ( mysql => 10,
-			   pg => 10,
+my %SINGLE_RDBMS_TESTS = ( mysql => 11,
+			   pg => 11,
 			 );
 
 # re-order the tests to prevent test failures with multi-process tests
@@ -137,6 +161,9 @@ foreach my $db ( qw( mysql pg oracle sybase ) )
 my $test = shift @t;
 my $last_test_num;
 
+#
+# Now add in RDBMS specific test counts
+#
 foreach my $rdbms (keys %SINGLE_RDBMS_TESTS)
 {
     next unless grep { $_->{rdbms} eq $rdbms } $test, @$tests;
@@ -163,7 +190,9 @@ foreach my $c (@cache)
 
     my $store_mod = $c->[0]->{store} || 'Nothing';
     my $sync_mod  = $c->[0]->{sync} || 'Nothing';
-    print "Running $test->{rdbms} runtime tests with\n\tstore => $store_mod,\n\tsync  => $sync_mod\n";
+    print "\nRunning $test->{rdbms} runtime tests with\n\tstore => $store_mod,\n\tsync  => $sync_mod\n";
+    print "\tlru_size: $c->[0]->{lru_size}\n" if $c->[0]->{lru_size};
+    print "\n";
 
     my $t = Data::Dumper->Dump( [$test], [''] );
     $t =~ s/\$ = //;
@@ -218,7 +247,9 @@ if (@t)
 	    &{ "$test->{rdbms}_make_schema" }(%$test);
 	}
 
-	print "Running $test->{rdbms} runtime tests with\n\tstore => Alzabo::ObjectCache::Store::Memory,\n\tsync  => Alzabo::ObjectCache::Sync::Null\n";
+	print "\nRunning $test->{rdbms} runtime tests with\n\tstore => Alzabo::ObjectCache::Store::Memory,\n\tsync  => Alzabo::ObjectCache::Sync::Null\n";
+	print "\tlru_size => $test->{lru_size}\n" if $test->{lru_size};
+	print "\n";
 
 	my $t = Data::Dumper->Dump( [$test], [''] );
 	$t =~ s/\$ = //;

@@ -2,6 +2,15 @@
 
 use strict;
 
+BEGIN
+{
+    unless (defined $ENV{ALZABO_RDBMS_TESTS})
+    {
+	print "1..0\n";
+	exit;
+    }
+}
+
 use Alzabo::Create;
 use Alzabo::Runtime;
 
@@ -14,15 +23,11 @@ use lib '.', './t';
 
 require 'base.pl';
 
-unless (defined $ENV{ALZABO_RDBMS_TESTS})
-{
-    print "1..0\n";
-    exit;
-}
-
 my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
+die $@ if $@;
 
-print "1..41\n";
+eval "use Test::More ( tests => 52 )";
+die $@ if $@;
 
 my $t = $tests->[0];
 make_schema(%$t);
@@ -39,19 +44,19 @@ foreach my $t ($s->tables)
 {
     my $t_meth = $t->name . '_t';
     ok( $s->can($t_meth),
-	"Schema object cannot do method $t_meth" );
+	"Schema object should have $t_meth method" );
 
-    ok( $s->$t_meth() eq $t,
-	"Results of \$s->$t_meth() is not equal to table object" );
+    is( $s->$t_meth(), $t,
+	"Results of \$s->$t_meth() should be same as existing table object" );
 
     foreach my $c ($t->columns)
     {
 	my $c_meth = $c->name . '_c';
 	ok( $t->can($c_meth),
-	    "Table object cannot do method $t_meth" );
+	    "Table object should have  $t_meth method" );
 
-	ok( $t->$c_meth() eq $c,
-	    "Results of \$t->$c_meth() is not equal to column object" );
+	is( $t->$c_meth(), $c,
+	    "Results of \$t->$c_meth() should be same as existing column object" );
     }
 }
 
@@ -79,38 +84,52 @@ foreach my $t ($s->tables)
 						   parent_location_id => 4 } );
 
     ok( ! defined $loc1->parent,
-	"First location should not have a parent but it does" );
+	"First location should not have a parent" );
 
     my @c = $loc1->children( order_by => { columns => $s->Location_t->location_id_c } ) ->all_rows;
-    ok( @c == 2,
+    is( scalar @c, 2,
 	"First location should have 2 children" );
 
-    ok( $c[0]->location_id == 2 && $c[1]->location_id == 3,
-	"Child location ids should be 2 and 3 but that are not" );
+    is( $c[0]->location_id, 2,
+	"First child location id should be 2" );
 
-    ok( $loc5->parent->location_id == 4,
-	"Location 5's parent should be 4 but it is not" );
+    is( $c[1]->location_id, 3,
+	"Second child location id should be 3" );
+
+    is( $loc5->parent->location_id, 4,
+	"Location 5's parent should be 4" );
+
+    $loc1->location('Set method');
+    is( $loc1->location, 'Set method',
+	"Update location column via ->location method" );
 }
 
 {
     eval { $s->Location_t->insert( values => { location_id => 100,
 					       location => 'die' } ) };
-    ok( $@ && $@->error eq 'TEST',
-	"validate_insert should have thrown an exception with the error message 'TEST' but it did not" );
+    my_isa_ok( $@, 'Alzabo::Exception',
+	    "validate_insert should have thrown an Alzabo::Exception exception" );
+    is( $@->error, 'TEST',
+	"validate_insert error message should be TEST" );
 
     my $loc100 = $s->Location_t->insert( values => { location_id => 100,
 						     location => 'a'} );
     eval { $loc100->update( location => 'die' ); };
-    ok( $@ && $@->error eq 'TEST',
-	"validate_update should have thrown an exception with the error message 'TEST' but it did not" );
+    my_isa_ok( $@, 'Alzabo::Exception',
+	    "validate_update should have thrown an Alzabo::Exception exception" );
+    is( $@->error, 'TEST',
+	"validate_update error message should be TEST" );
 
     $s->ToiletType_t->insert( values => { toilet_type_id => 1,
-					  material => 'porcelain' } );
+					  material => 'porcelain',
+					  quality => 5 } );
     my $t = $s->Toilet_t->insert( values => { toilet_id => 1,
 					      toilet_type_id => 1 } );
 
-    ok( $t->material eq 'porcelain',
-	"New toilet's material method should be 'porcelain' but it is not" );
+    is( $t->material, 'porcelain',
+	"New toilet's material method should return 'porcelain'" );
+    is( $t->quality, 5,
+	"New toilet's quality method should return 5" );
 
     $s->ToiletLocation_t->insert( values => { toilet_id => 1,
 					      location_id => 100 } );
@@ -120,35 +139,43 @@ foreach my $t ($s->tables)
 
     my @l = $t->Locations( order_by => $s->Location_t->location_id_c )->all_rows;
 
-    ok( @l == 2,
-	"The toilet should have two locations but it has " . scalar @l );
+    is( scalar @l, 2,
+	"The toilet should have two locations" );
 
-    ok( $l[0]->location_id == 1 && $l[1]->location_id == 100,
-	"Toilet's location ids should be 1 and 100 but they are not" );
+    is( $l[0]->location_id, 1,
+	"The first location id should be 1" );
+
+    is( $l[1]->location_id, 100,
+	"The second location id should be 2" );
 
     my @t = $l[0]->Toilets->all_rows;
-    ok ( @t == 1,
-	 "The location should have one toilet but it has " . scalar @t );
+    is( scalar @t, 1,
+	"The location should have one toilet" );
 
-    ok( $t[0]->toilet_id == 1,
-	"Location's toiler id should be 1 but it is " . $t[0]->toilet_id );
+    is( $t[0]->toilet_id, 1,
+	"Location's toilet id should be 1" );
 
     my @tl = $t->ToiletLocations->all_rows;
 
-    ok( @tl == 2,
-	"The toilet should have two ToiletLocation rows but it has " . scalar @tl );
+    is( scalar @tl, 2,
+	"The toilet should have two ToiletLocation rows" );
 
-    ok( $tl[0]->location_id == 1 && $tl[0]->toilet_id == 1 &&
-	$tl[1]->location_id == 100 && $tl[1]->toilet_id == 1,
-	"The toilet location rows should be 1/1 & 100/1 but they are not" );
+    is( $tl[0]->location_id, 1,
+	"First row's location id should be 1" );
+    is( $tl[0]->toilet_id, 1,
+	"First row's toilet id should 1" );
+    is( $tl[1]->location_id, 100,
+ 	"Second row's location id should be 100" );
+    is( $tl[1]->toilet_id, 1,
+	"Second row's toilet id should 1" );
 
     my $row = $s->Toilet_t->row_by_pk( pk => 1 );
-    ok( $row->isa('Alzabo::MM::Test::CachedRow::Toilet'),
-	"The Toilet object should be of the Alzabo::MM::Test::CachedRow::Toilet class but it is a @{[ref $row]}." );
+    my_isa_ok( $row, 'Alzabo::MM::Test::CachedRow::Toilet',
+	    "The Toilet object should be of the Alzabo::MM::Test::CachedRow::Toilet class" );
 
     $row = $s->Toilet_t->row_by_pk( pk => 1, no_cache => 1 );
-    ok( $row->isa('Alzabo::MM::Test::UncachedRow::Toilet'),
-	"The Toilet object should be of the Alzabo::MM::Test::UncachedRow::Toilet class but it is a @{[ref $row]}." );
+    my_isa_ok( $row, 'Alzabo::MM::Test::UncachedRow::Toilet',
+	    "The Toilet object should be of the Alzabo::MM::Test::UncachedRow::Toilet" );
 }
 
 sub make_schema
@@ -204,7 +231,9 @@ sub make_schema
     $tt->make_column( name => 'material',
 		      type => 'varchar',
 		      length => 50 );
-
+    $tt->make_column( name => 'quality',
+		      type => 'int',
+		      nullable => 1 );
     # lookup table
     $s->add_relation( table_from => $toi,
 		      table_to => $tt,
@@ -250,8 +279,7 @@ sub namer
 	return my_PL($method);
     }
 
-    return (grep { ! $_->is_primary_key } $p{foreign_key}->table_to->columns)[0]->name
-	if $p{type} eq 'lookup_table';
+    return $p{column}->name if $p{type} eq 'lookup_columns';
 
     return $p{parent} ? 'parent' : 'children'
 	if $p{type} eq 'self_relation';

@@ -179,6 +179,7 @@ sub dump_index
 
     push @eval, "\$t->make_index(";
     push @eval, "\tunique => " . ($i->unique ? 1 : 0) . ",";
+    push @eval, "\tfulltext => " . ($i->fulltext ? 1 : 0) . "," if $V >= 0.45;
     push @eval, "\tcolumns => [";
 
     foreach ( $i->columns )
@@ -211,12 +212,28 @@ sub dump_foreign_key
     my @from_id = ( $V < 0.25 ? qw( column_from column_to ) : qw( columns_from columns_to ) );
     my $id1 = join "\0", map { $_->name } map { $fk->$_() } @from_id, qw( table_from table_to );
     $id1 .= "\0";
-    $id1 .= join "\0", $fk->min_max_from, $fk->min_max_to;
+
+    if ($V < 0.52)
+    {
+	$id1 .= join "\0", $fk->min_max_from, $fk->min_max_to;
+    }
+    else
+    {
+	$id1 .= join "\0", $fk->cardinality;
+    }
 
     my @to_id = ( $V < 0.25 ?qw( column_to column_from ) : qw( columns_to columns_from ) );
     my $id2 = join "\0", map { $_->name } map { $fk->$_() } @to_id, qw( table_to table_from );
     $id2 .= "\0";
-    $id2 .= join "\0", $fk->min_max_to, $fk->min_max_from;
+
+    if ($V < 0.52)
+    {
+	$id2 .= join "\0", $fk->min_max_to, $fk->min_max_from;
+    }
+    else
+    {
+	$id2 .= join "\0", reverse $fk->cardinality;
+    }
 
     return if $fk{$id1} || $fk{$id2};
 

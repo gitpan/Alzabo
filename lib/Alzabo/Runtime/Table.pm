@@ -12,7 +12,7 @@ use Time::HiRes qw(time);
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.56 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.57 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -211,11 +211,14 @@ sub function
 {
     my $self = shift;
 
-    my %p = @_;
-    validate( @_, { select => { type => ARRAYREF | OBJECT },
-		    group_by => { type => ARRAYREF | HASHREF | OBJECT,
-				  optional => 1 },
-		    ( map { $_ => { optional => 1 } } keys %p ) } );
+    my %p = validate( @_, { select => { type => ARRAYREF | OBJECT },
+			    where  => { type => ARRAYREF | OBJECT,
+					optional => 1 },
+			    order_by => { type => ARRAYREF | HASHREF | OBJECT,
+					  optional => 1 },
+			    group_by => { type => ARRAYREF | HASHREF | OBJECT,
+					  optional => 1 },
+			  } );
 
     my @funcs = UNIVERSAL::isa( $p{select}, 'ARRAY' ) ? @{ $p{select} } : $p{select};
 
@@ -520,7 +523,7 @@ which would generate SQL something like:
 Make sure that your parentheses balance out or an exception will be
 thrown.
 
-You can also use the SQL functions (L<Alzabo/Using SQL Functions>)
+You can also use the SQL functions (L<Alzabo/Using SQL functions>)
 exported from the SQLMaker subclass you are using.  For example:
 
  [ LENGTH($foo_col), '<', 10 ]
@@ -596,7 +599,7 @@ you can give it a hash reference such as:
 This method is used to call arbitrary SQL functions such as 'AVG' or
 'MAX'.  The function (or functions) should be the return values from
 the functions exported by the SQLMaker subclass that you are using.
-Please see L<Alzabo/Using SQL Functions> for more details.
+Please see L<Alzabo/Using SQL functions> for more details.
 
 =head3 Returns
 

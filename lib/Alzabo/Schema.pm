@@ -9,13 +9,15 @@ use Alzabo::Driver;
 use Alzabo::RDBMSRules;
 use Alzabo::SQLMaker;
 
+use File::Spec;
+
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
 use Storable ();
 use Tie::IxHash ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.33 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.34 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -30,22 +32,23 @@ sub _load_from_file
     return $class->_cached_schema($p{name}) if $class->_cached_schema($p{name});
 
     my $schema_dir = Alzabo::Config::schema_dir;
-    my $file =  "$schema_dir/$p{name}/$p{name}." . $class->_schema_file_type . '.alz';
+    my $file =  $class->_schema_filename( $p{name} );
 
     -e $file or Alzabo::Exception::Params->throw( error => "No saved schema named $p{name} ($file)" );
 
     my $fh = do { local *FH; };
-    open $fh, $file
+    open $fh, "<$file"
 	or Alzabo::Exception::System->throw( error => "Unable to open $file: $!" );
     my $schema = Storable::retrieve_fd($fh);
     close $fh
 	or Alzabo::Exception::System->throw( error => "Unable to close $file: $!" );
 
-    open $fh, "$schema_dir/$p{name}/$p{name}.rdbms"
-	or Alzabo::Exception::System->throw( error => "Unable to open $schema_dir/$p{name}/$p{name}.driver: $!\n" );
+    my $rdbms_file = File::Spec->catfile( $schema_dir, $p{name}, "$p{name}.rdbms" );
+    open $fh, "<$rdbms_file"
+	or Alzabo::Exception::System->throw( error => "Unable to open $rdbms_file: $!\n" );
     my $rdbms = join '', <$fh>;
     close $fh
-	or Alzabo::Exception::System->throw( error => "Unable to close $schema_dir/$p{name}/$p{name}.driver: $!" );
+	or Alzabo::Exception::System->throw( error => "Unable to close $rdbms_file: $!" );
 
     $schema->{driver} = Alzabo::Driver->new( rdbms => $rdbms,
 					     schema => $schema );
@@ -67,7 +70,7 @@ sub _cached_schema
     my $name = shift;
 
     my $schema_dir = Alzabo::Config::schema_dir;
-    my $file =  "$schema_dir/$name/$name." . $class->_schema_file_type . '.alz';
+    my $file = $class->_schema_filename($name);
 
     if (exists $CACHE{$name}{$class}{object})
     {
@@ -77,6 +80,21 @@ sub _cached_schema
 	return $CACHE{$name}{$class}{object}
 	    if $mtime <= $CACHE{$name}{$class}{mtime};
     }
+}
+
+sub _schema_filename
+{
+    my $class = shift;
+
+    return $class->_base_filename(shift) . '.' . $class->_schema_file_type . '.alz';
+}
+
+sub _base_filename
+{
+    shift;
+    my $name = shift;
+
+    return File::Spec->catfile( Alzabo::Config::schema_dir(), $name, $name );
 }
 
 sub _save_to_cache
@@ -121,6 +139,39 @@ sub tables
     }
 
     return $self->{tables}->Values;
+}
+
+sub start_transaction
+{
+    shift->driver->start_transaction
+}
+
+sub rollback
+{
+    shift->driver->rollback
+}
+
+sub finish_transaction
+{
+    shift->driver->finish_transaction
+}
+
+sub run_in_transaction
+{
+    my $self = shift;
+    my $code = shift;
+
+    $self->start_transaction;
+
+    eval { $code->() };
+
+    if ($@)
+    {
+	$self->rollback;
+	die $@;
+    }
+
+    $self->finish_transaction;
 }
 
 sub driver
@@ -198,11 +249,44 @@ the schema.
 
 L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
+=head2 start_transaction
+
+Starts a transaction.  Calls to this function may be nested and it
+will be handled properly.
+
+=head2 rollback
+
+Rollback a transaction.
+
+=head2 finish_transaction
+
+Finishes a transaction with a commit.  If you make multiple calls to
+C<start_transaction>, make sure to call this method the same number of
+times.
+
+=head2 run_in_transasction ( sub { code... } )
+
+This method takes a subroutine reference and wraps it in a transaction.
+
 =head2 driver
 
 =head3 Returns
 
 The L<C<Alzabo::Driver>|Alzabo::Driver> subclass object for the
+schema.
+
+=head2 rules
+
+=head3 Returns
+
+The L<C<Alzabo::RDBMSRules>|Alzabo::RDBMSRules> subclass object for
+the schema.
+
+=head2 sqlmaker
+
+=head3 Returns
+
+The L<C<Alzabo::SQLMaker>|Alzabo::SQLMaker> subclass object for the
 schema.
 
 =head1 AUTHOR

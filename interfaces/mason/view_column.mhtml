@@ -48,7 +48,7 @@
      <td>Change default:</td>
     </tr>
     <tr>
-     <td><input type="textfield" name="default" value="<% defined $c->default ? $c->default : '' %>" size="20"></td>
+     <td><input type="textfield" name="default" value="<% defined $c->default ? $c->default : '' | h %>" size="20"></td>
     </tr>
 
     <tr>
@@ -79,7 +79,7 @@
          Allow nulls:
 	</td>
 	<td>
-	 <input type="checkbox" name="nullable" value="1">
+	 <input type="checkbox" name="nullable" value="1" <% $c->nullable ? 'checked' : '' %>>
 	</td>
        </tr>
        <tr valign="top">
@@ -87,7 +87,7 @@
          Primary key:
 	</td>
 	<td>
-	 <input type="checkbox" name="primary_key" value="1">
+	 <input type="checkbox" name="primary_key" value="1" <% $c->is_primary_key ? 'checked' : '' %>>
 	</td>
        </tr>
        <tr valign="top">
@@ -95,7 +95,7 @@
 	 Sequenced:
 	</td>
 	<td>
-	 <input type="checkbox" name="sequenced" value="1">
+	 <input type="checkbox" name="sequenced" value="1" <% $c->sequenced ? 'checked' : '' %>>
 	</td>
        </tr>
       </table>

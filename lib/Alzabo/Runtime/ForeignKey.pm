@@ -7,42 +7,24 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::ForeignKey);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub register_insert
 {
-    my $self = shift;
-    my %vals = @_;
-
-    # if we're inserting into a table we don't check if its primary
-    # key exists elsewhere, no matter what the cardinality of the
-    # relation.  Otherwise, we end up in cycles where it is impossible
-    # to insert things into the table.
-    foreach my $pair ( $self->column_pairs )
-    {
-	next if $pair->[0]->is_primary_key;
-
-	# This code (and similar code in register_update) may be
-	# unreachable because this may always be caught
-	# Alzabo::Runtime::Row::update where it won't let you use null
-	# for a non-nullable column.  And in
-	# Alzabo::Create::Schema::add_relation we make sure that
-	# dependent columns are not nullable.
-	if ( !defined $vals{ $pair->[0]->name } && $self->from_is_dependent )
-	{
-	    Alzabo::Exception::ReferentialIntegrity->throw( error => 'Referential integrity requires that this column (' . $self->table_from->name . '.' . $pair->[0]->name . ') not be null.' )
-	}
-
-	$self->_check_existence( $pair->[1] => $vals{ $pair->[0]->name } )
-	    if defined $vals{ $pair->[0]->name } && $pair->[1]->is_primary_key;
-    }
+    shift->_insert_or_update( 'insert', @_ );
 }
 
 sub register_update
 {
+    shift->_insert_or_update( 'update', @_ );
+}
+
+sub _insert_or_update
+{
     my $self = shift;
+    my $type = shift;
     my %vals = @_;
 
     my $driver = $self->table_from->schema->driver;
@@ -54,24 +36,39 @@ sub register_update
 
     foreach my $pair ( $self->column_pairs )
     {
-	if ( !defined $vals{ $pair->[0]->name } && $self->from_is_dependent )
+	# if we're inserting into a table we don't check if its primary
+	# key exists elsewhere, no matter what the cardinality of the
+	# relation.  Otherwise, we end up in cycles where it is impossible
+	# to insert things into the table.
+	next if $type eq 'insert' && $pair->[0]->is_primary_key;
+
+	# This code may be unreachable because this may always be
+	# caught in Alzabo::Runtime::Table::insert or
+	# Alzabo::Runtime::Row::update where it won't let you use null
+	# for a non-nullable column.  And in
+	# Alzabo::Create::Schema::add_relation we make sure that
+	# dependent columns are not nullable.
+	if ( ! defined $vals{ $pair->[0]->name } && $self->from_is_dependent )
 	{
 	    Alzabo::Exception::ReferentialIntegrity->throw( error => 'Referential integrity requires that this column (' . $self->table_from->name . '.' . $pair->[0]->name . ') not be null.' )
 	}
 
-	$self->_check_existence( $pair->[1] => $vals{ $pair->[0]->name } )
-	    if defined $vals{ $pair->[0]->name };
+	if ( $type eq 'update' || $pair->[1]->is_primary_key )
+	{
+	    $self->_check_existence( $pair->[1] => $vals{ $pair->[0]->name } )
+		if defined $vals{ $pair->[0]->name };
+	}
 
-	unless ( $self->is_many_to_one || $has_nulls )
+	if ( $self->is_one_to_one && ! $has_nulls )
 	{
 	    push @where, [ $pair->[0], '=', $vals{ $pair->[0]->name } ];
 	    push @vals, $pair->[0]->name . ' = ' . $vals{ $pair->[0]->name };
 	}
     }
 
-    unless ( $self->is_many_to_one || $has_nulls )
+    if ( $self->is_one_to_one && ! $has_nulls )
     {
-	if ( $self->table_from->row_count( where => \@where ) )
+	if ( @where && $self->table_from->row_count( where => \@where ) )
 	{
 	    my $err = '(' . (join ', ', @vals) . ') already exists in the ' . $self->table_from->name . ' table';
 	    Alzabo::Exception::ReferentialIntegrity->throw( error => $err );
@@ -83,8 +80,6 @@ sub _check_existence
 {
     my $self = shift;
     my ($col, $val) = @_;
-
-    my $driver = $self->table_to->schema->driver;
 
     unless ( $self->table_to->row_count( where => [ $col, '=', $val ] ) )
     {

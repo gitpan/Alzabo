@@ -1,6 +1,7 @@
 use strict;
 
 use Alzabo::Config;
+use Alzabo::Create;
 
 use lib '.', './t';
 

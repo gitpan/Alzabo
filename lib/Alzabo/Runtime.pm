@@ -17,7 +17,7 @@ use Alzabo::Runtime::Table;
 
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -60,7 +60,7 @@ sub process_where_clause
 	{
 	    if ($needs_op)
 	    {
-		my $op = $x ? 'and' : 'where';
+		my $op = $x || $has_conditions ? 'and' : 'where';
 		$sql->$op();
 	    }
 	    $sql->subgroup_start;

@@ -14,6 +14,23 @@ time by doing:
 
   use Alzabo::Runtime qw( schema1 schema2 schema3 );
 
+=head2 Alzabo::MethodMaker
+
+This module can be used to generate many useful convenience methods.
+This is done by auto-generating methods in new packages and
+re-blessing some of the schema objects into these packages.  To have
+it generate all the possible methods for a schema you would do:
+
+  use Alzabo::MethodMaker ( schema => 'some_schema',
+                            # Root for new packages
+                            class_root => 'My::Data',
+                            # Make all possible methods
+                            all => 1 );
+
+This will make convenience methods for such things as getting table
+and column objects, following various types of foreign keys, and
+getting data from row objects.
+
 =head1 METHODS
 
 =head2 Creating/removing a schema
@@ -34,7 +51,7 @@ C<Alzabo::Runtime::*> classes.
 Connect to a database and reverse engineer a schema.  Returns a new
 schema object.
 
-=for html link=L<More|Alzabo::Create::Schema/reverse_engineer>.
+=for html link=L<More|Alzabo::Create::Schema/reverse_engineer>
 
 =item * load_from_file
 
@@ -43,7 +60,7 @@ schema object.
 Load an existing schema object from disk.  Returns a new schema
 object.
 
-=for html link=L<More|Alzabo::Create::Schema/load_from_file>.
+=for html link=L<More|Alzabo::Create::Schema/load_from_file>
 
 =item * create
 
@@ -104,7 +121,7 @@ data retrieval, method L<C<join>|Alzabo::QuickRef/join>.
 Load an existing schema object from disk.  Returns a new schema
 object.
 
-=for html link=L<More|Alzabo::Create::Schema/load_from_file>.
+=for html link=L<More|Alzabo::Create::Schema/load_from_file>
 
 =item * set_user ($user)
 
@@ -226,14 +243,14 @@ Retrieves all the rows in the table.
 
 =for html link=L<More|Alzabo::Runtime::Table/all_rows>
 
-=item * func
+=item * function
 
 =for html type=object
 
 Allows you to execute arbitrary column aggregate SQL functions such as
 C<AVG> or C<MAX>.
 
-=for html link=L<More|Alzabo::Runtime::Table/func>
+=for html link=L<More|Alzabo::Runtime::Table/function>
 
 =back
 

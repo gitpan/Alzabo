@@ -1,27 +1,34 @@
 % if (@t) {
+%   if ($GraphViz::VERSION) {
+ <tr>
+  <td colspan="5" align="center"><a href="view_graph.mhtml?schema=<% $s->name %>">Schema graph</a></td>
+ </tr>
+%   }
+%   if ( $m->base_comp->attr('full_header') ) {
  <tr>
   <td colspan="5" align="center"><span class="green16bold">Tables</span></td>
  </tr>
-%   for (my $x = 0; $x <= int ($#t / 5); $x++) {
+%     for (my $x = 0; $x <= int ($#t / 5); $x++) {
  <tr>
-%     for (my $y = $x * 5; $y < ($x * 5) + 5; $y++) {
+%       for (my $y = $x * 5; $y < ($x * 5) + 5; $y++) {
   <td align="center">
    <span class="black12">
-%       if ( my $t = $t[$y] ) {
-%         if ( $y > 0 ) {
+%         if ( my $t = $t[$y] ) {
+%           if ( $y > 0 ) {
    <& '../common/href', text => '<', path => 'move_table' . Alzabo::Config::mason_extension(), query => { schema => $s->name, before => $t[ $y - 1 ]->name, table => $t->name } &>
-%         }
+%           }
    <& '../common/href', text => $t->name, path => 'view_table' . Alzabo::Config::mason_extension(), query => { schema => $s->name, table => $t->name } &>
-%         if ( $t[ $y + 1 ]) {
+%           if ( $t[ $y + 1 ]) {
    <& '../common/href', text => '>', path => 'move_table' . Alzabo::Config::mason_extension(), query => { schema => $s->name, after => $t[ $y + 1 ]->name, table => $t->name } &>
-%         }
-%       } else {
+%           }
+%         } else {
    &nbsp;
-%       }
+%         }
    </span>
   </td>
-%     }
+%       }
  </tr>
+%     }
 %   }
 % }
 

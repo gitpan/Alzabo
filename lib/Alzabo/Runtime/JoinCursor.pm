@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -19,19 +19,19 @@ sub new
     my $proto = shift;
     my $class = ref $proto || $proto;
 
-    validate( @_, { statement => { isa => 'Alzabo::DriverStatement' },
-		    tables => { type => ARRAYREF },
-		    no_cache => { optional => 1 } } );
-    my %p = @_;
+    my %p = validate( @_, { statement => { isa => 'Alzabo::DriverStatement' },
+			    tables => { type => ARRAYREF },
+			    no_cache => { optional => 1 },
+			    distinct => { default => 0 },
+			  } );
 
-    my $self;
+    my $self = bless \%p, $class;
 
-    $self->{statement} = $p{statement};
-    $self->{tables} = $p{tables};
+    $self->{seen} = {};
+
     $self->{errors} = [];
-    $self->{no_cache} = $p{no_cache};
 
-    return bless $self, $class;
+    return $self;
 }
 
 sub next
@@ -39,6 +39,8 @@ sub next
     my $self = shift;
 
     my @rows;
+
+ OUTER:
     do
     {
 	$self->{errors} = [];
@@ -51,6 +53,14 @@ sub next
 	    my @pk = $t->primary_key;
 	    my @pk_vals = splice @data, 0, scalar @pk;
 	    my %hash = map { $pk[$_]->name => $pk_vals[$_] } 0..$#pk_vals;
+
+	    if ( $self->{distinct} && $self->{distinct} eq $t )
+	    {
+		my $key = Storable::freeze(\%hash);
+		next OUTER if $self->{seen}{$key};
+
+		$self->{seen}{$key} = 1;
+	    }
 
 	    my $row = eval { $t->row_by_pk( @_,
 					    pk => \%hash,

@@ -6,7 +6,7 @@ use vars qw($SELF $VERSION %ARGS);
 # load this for use by Alzabo::Runtime::Row
 use Alzabo::Runtime::CachedRow;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.24 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -19,13 +19,28 @@ sub import
     $ARGS{store} ||= 'Alzabo::ObjectCache::Store::Memory';
     $ARGS{sync}  ||= 'Alzabo::ObjectCache::Sync::Null';
 
-    # Don't want to repeat myself.
-    # Don't want to repeat myself.
-    foreach ( $ARGS{store}, ( $ARGS{store} eq $ARGS{sync} ? () : $ARGS{sync} ) )
+    # save it cause it might get mangled below
+    my $store = $ARGS{store};
+    if ( $ARGS{lru_size} )
     {
-	eval "require $_" or die $@;
-	eval { $_->import(%ARGS) };
+	require Alzabo::ObjectCache::Store::LRU;
+	Alzabo::ObjectCache::Store::LRU->import(%ARGS);
+	$ARGS{store} = 'Alzabo::ObjectCache::Store::LRU';
+    }
+
+    #
+    # Don't want to repeat modules if store and sync were the same
+    # module (before LRU tweaks).
+    #
+    # Also, if lru_size was set then the
+    # Alzabo::ObjectCache::Store::LRU took care of importing the
+    # originally specified store module so we'll leave it alone
+    #
+    foreach ( ( $ARGS{lru_size} ? () : $ARGS{store} ), ( $store eq $ARGS{sync} ? () : $ARGS{sync} ) )
+    {
+	eval "require $_";
 	die $@ if $@;
+	$_->import(%ARGS);
     }
 }
 
@@ -81,7 +96,7 @@ sub register_change
 sub register_delete
 {
     my $self = shift;
-    $self->{store}->delete_from_cache(@_);
+    $self->{store}->delete_from_cache($_[0]->id);
     $self->{sync}->register_delete(@_);
 }
 
@@ -93,7 +108,7 @@ sub is_deleted
 sub delete_from_cache
 {
     my $self = shift;
-    $self->{sync}->delete_from_cache(@_);
+    $self->{sync}->delete_from_cache($_[0]->id);
     $self->{store}->delete_from_cache(@_);
 }
 
@@ -126,6 +141,11 @@ process 2 needs to be told (in this case via an exception) that this
 object is no longer available.  Similarly if process 1 updates the
 database then if there is a cached object in process 2, it needs to
 know that it should fetch its data again.
+
+=head1 LRU STORAGE
+
+Any storage module can be turned into an LRU cache by passing an
+lru_size parameter to this module when using it.
 
 =head1 CACHING SCENARIOS
 
@@ -312,7 +332,7 @@ This should be the name of a class that implements the
 Alzabo::ObjectCache object storing interface.
 
 Default is
-L<C<Alzabo::ObjectCache::MemoryStore>|Alzabo::ObjectCache::MemoryStore>.
+L<C<Alzabo::ObjectCache::MemoryStore>|Alzabo::ObjectCache::Store::Memory>.
 
 =item * sync => 'Alzabo::ObjectCache::SyncingClass'
 
@@ -320,7 +340,13 @@ This should be the name of a class that implements the
 Alzabo::ObjectCache object syncing interface.
 
 Default is
-L<C<Alzabo::ObjectCache::NullSync>|Alzabo::ObjectCache::NullSync>.
+L<C<Alzabo::ObjectCache::NullSync>|Alzabo::ObjectCache::Sync::Null>.
+
+=item * lru_size => $size
+
+This is the maximum number of objects you want the storing class to
+store at once.  If it is 0 or undefined, the default, the storage
+class will store an unlimited number of objects.
 
 =back
 

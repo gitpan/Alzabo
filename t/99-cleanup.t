@@ -1,6 +1,7 @@
 use Alzabo::Create;
 use Cwd;
 use File::Path;
+use File::Spec;
 
 use lib '.', './t';
 
@@ -12,9 +13,8 @@ warn "Cleaning up files and databases created during testing\n";
 
 my $dir = cwd;
 
-$Test::Harness::verbose = $Test::Harness::verbose;
-rmtree( "$dir/schemas", $Test::Harness::verbose );
-unlink 't/dbmsynctest.dbm';
+rmtree( File::Spec->catdir( $dir, 't', 'schemas' ), $Test::Harness::verbose );
+rmtree( File::Spec->catdir( $dir, 't', 'objectcache' ), $Test::Harness::verbose );
 
 print "1..1\n";
 print "ok 1\n";

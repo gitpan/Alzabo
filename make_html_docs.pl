@@ -359,7 +359,7 @@ sub pod2html
 	my $file = join '', <FILE>;
 	close FILE;
 
-	$file =~ s,<em>Alzabo/Using SQL Functions</em>,<a href="$htmlroot/Alzabo.html#using%20sql%20functions">Using SQL Functions</a>,gi;
+	$file =~ s,<em>Alzabo/Using SQL functions</em>,<a href="$htmlroot/Alzabo.html#using%20sql%20functions">Using SQL functions</a>,gi;
 
 	open FILE, ">$out"
 	    or die "Can't write to $out: $!\n";

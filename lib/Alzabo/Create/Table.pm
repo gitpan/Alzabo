@@ -12,7 +12,7 @@ use Tie::IxHash;
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.40 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.41 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -114,7 +114,7 @@ sub add_column
 
     my $col = $p{column};
 
-    Alzabo::Exception::Params->throw( error => "Column " . $col->name . " already exists" )
+    Alzabo::Exception::Params->throw( error => "Column " . $col->name . " already exists in " . $self->name )
 	if $self->{columns}->EXISTS( $col->name );
 
     $col->set_table($self) unless $col->table eq $self;

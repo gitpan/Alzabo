@@ -1,43 +1,32 @@
 Short term:
 
-- Support 'feature probing' via the rules for user interface and to
-  determine whether to try to do things (like use transactions).  This
-  is a broad idea and includes things such as returning a list of
-  possible column types to the user interface or having a flag for
-  supporting transactions.  This has been started.
-
-- Robin Berjon suggested a single documentation 'page' that contains a
-  list of all the method and what objects they apply to.  This has
-  been started.
-
 - Alzabo::ObjectCache::RDBMS - this module will also do syncing
   all in one.  This will allow the caching/syncing to occur across
   multiple machines with multiple processes.
 
 - Expand regression tests for core API - SQLMaker, RDBMSRules.
 
-- Make local $table->{prefetch} work (tied scalar).
-  I'm no longer sure this is possible.  My most recent attempt caused
-  inexplicable test failures.
-
 - Make it possible to do multiple outer joins in a single query.
 
 - Give the options to save objects to disk in something a bit more
-  robust than a serialized object form.  Barrie Slaymaker is working
-  on a generic XML language for database schema modelling, to be
-  called DBML.
-
-- Make caching system more atomic.  There may subtle race conditions
-  in there that should be fixed (timestamps are generated more than
-  once, which could be a problem, for one).
-
-- Make a caching module that uses an LRU system to limit the cache
-  size.
+  robust than a serialized object form.  Barrie Slaymaker is (was?)
+  working on a generic XML language for database schema modelling, to
+  be called DBML.
 
 - Support transactions in the caching system.  this eventually means
   real transactions at the middleware layer.  argh!
 
+- Make local $table->{prefetch} work (tied scalar).  I'm no longer
+  sure this is possible.  My most recent attempt caused inexplicable
+  test failures.
+
 Medium term:
+
+- Add constraints to output SQL for Postgres.
+
+- Make a tool to convert schemas from one RDBMS to another.  This will
+  probably require user prompting because some things are unresolvable
+  without a loss of information.
 
 - Add an Alzabo::Database class between the schema and table.  This
   will allow multiple databases in a schema (on multiple platforms
@@ -69,3 +58,15 @@ Medium term:
 Long term:
 
 - GUI (preferably both UNIX & Win32 so Tk?)
+
+Ongoing:
+
+- Support 'feature probing' via the rules for user interface and to
+  determine whether to try to do things (like use transactions).  This
+  is a broad idea and includes things such as returning a list of
+  possible column types to the user interface or having a flag for
+  supporting transactions.
+
+- Robin Berjon suggested a single documentation 'page' that contains a
+  list of all the method and what objects they apply to.  This exists
+  as Alzabo::QuickRef.

@@ -7,7 +7,7 @@ use Alzabo::Exceptions;
 
 use base qw(Alzabo::SQLMaker);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
 
 my $MADE_LITERALS;
 my %functions;
@@ -211,7 +211,7 @@ sub limit
     my $self = shift;
     my ($max, $offset) = @_;
 
-    $self->_assert_last_op( qw( from function where and or asc desc ) );
+    $self->_assert_last_op( qw( from function where and or condition order_by asc desc ) );
 
     $self->{sql} .= " LIMIT $max";
     $self->{sql} .= " OFFSET $offset" if $offset;

@@ -1,3 +1,73 @@
+0.56
+
+ENHANCEMENTS:
+
+- When MethodMaker creates 'row_column' methods, these are now get/set
+methods.
+
+- Added lookup_columns to MethodMaker option (like lookup_tables but
+more flexible).  This replaces the now deprecated lookup_tables
+option.  See DEPRECATIONS and INCOMPATIBILITIES for more details.
+
+- Added the ability to make any storage cache module an LRU.  Simply
+pass an lru_size parameter to Alzabo::ObjectCache when using it and
+the storage module will be an LRU cache.
+
+- Documented Alzabo's referential integrity rules in Alzabo.pm
+(perldoc Alzabo).
+
+- Added section on optimizing memory usage to Alzabo::FAQ.
+
+- Alzabo::Runtime::Schema->join now takes a parameter called
+'distinct'.  This is useful in situations where you are joining
+between several tables but don't want rows back from all of them.  In
+that case, it is possible that you could end up getting more
+duplicates than you need.  This parameter can help you eliminate
+those.
+
+- Add the following Alzabo::Schema methods: start_transaction,
+rollback, finish_transaction, run_in_transaction.
+
+- If you have GraphViz installed the schema creator can now use it to
+show you a graph of your schema.
+
+BUG FIXES:
+
+- Fix handling of binary attribute for MySQL columns.  Generated SQL
+for creating/altering these columns may have been invalid previously.
+
+- The rules were not catching an attempt to create a CHAR/VARCHAR
+column with no length (MySQL).
+
+- Fixed bug that caused limit to not work when there was a where
+clause or order_by clause.  Reported by Ilya Martynov.
+
+- Documented row_column option for MethodMaker.
+
+- order_by was ignored when given to the Alzabo::Runtime::Schema->join
+method.  Reported by Martin Ertl.
+
+- When viewing an existing column in the schema creator, the three
+checkboxes at the bottom were always unchecked.
+
+- The test suite has been revamped to use Test::More.  In the process
+some new tests were added and some (gulp) false positives were caught.
+
+- The default column value wasn't being escaped in the schema creator.
+
+DEPRECATIONS
+
+- The Alzabo::MethodMaker option 'lookup_tables' has been deprecated.
+Use the new 'lookup_columns' option instead.
+
+INCOMPATIBILITIES:
+
+- Alzabo::ObjectCache::Store modules now expect an object id instead
+of an object for their delete_from_cache method.
+
+- If you specify give the 'all' parameter to MethodMaker,
+'lookup_tables' is no longer included.
+
 0.55
 
 UPGRADE INSTRUCTIONS:

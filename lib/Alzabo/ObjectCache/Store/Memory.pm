@@ -2,7 +2,7 @@ package Alzabo::ObjectCache::Store::Memory;
 
 use vars qw($SELF $VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -22,8 +22,9 @@ sub new
 
 sub clear
 {
-    return unless $SELF;
-    %{ $SELF->{cache} } = ();
+    my $self = shift;
+
+    %{ $self->{cache} } = ();
 }
 
 sub fetch_object
@@ -51,7 +52,7 @@ sub delete_from_cache
 {
     my $self = shift;
 
-    delete $self->{cache}{ shift->id };
+    delete $self->{cache}{ shift() };
 }
 
 __END__
@@ -74,12 +75,8 @@ given object should never have to be created twice.
 
 This module has no upper limit on how many objects it will store.  If
 you are operating in a persistent environment such as mod_perl, these
-will have a tendency to eat up memory over time.
-
-In order to prevent processes from growing without stop, it is
-recommended that you call the L<C<clear>|clear> method at the entry
-point(s) for your persistent application.  This will flush the cache
-completely.
+will have a tendency to eat up memory over time.  Use the lru_size
+parameter to Alzabo::ObjectCache to make this module act as an LRU.
 
 =head1 METHODS
 
@@ -109,7 +106,7 @@ object in the cache.  To do that you must first call the
 L<C<delete_from_cache>|Alzabo::ObjectCache::Store::Memory/delete_from_cache
 ($object)> method.
 
-=head2 delete_from_cache ($object)
+=head2 delete_from_cache ($id)
 
 This method allows you to remove an object from the cache.  This does
 not register the object as deleted.  It is provided solely so that you

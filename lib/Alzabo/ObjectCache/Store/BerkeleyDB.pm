@@ -5,7 +5,7 @@ use vars qw($SELF $VERSION);
 use Alzabo::Exceptions;
 use BerkeleyDB qw( DB_CREATE DB_INIT_MPOOL DB_INIT_CDB DB_NEXT DB_NOOVERWRITE DB_KEYEXIST DB_NOTFOUND );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -90,9 +90,8 @@ sub store_object
 sub delete_from_cache
 {
     my $self = shift;
-    my $id = shift->id;
 
-    $self->{dbm}->db_del($id);
+    $self->{dbm}->db_del(shift);
 }
 
 __END__
@@ -158,9 +157,9 @@ undef.
 Stores an object in the cache.  This will not overwrite an existing
 object in the cache.  To do that you must first call the
 L<C<delete_from_cache>|Alzabo::ObjectCache::Store::BerkeleyDB/delete_from_cache
-($object)> method.
+($id)> method.
 
-=head2 delete_from_cache ($object)
+=head2 delete_from_cache ($id)
 
 This method allows you to remove an object from the cache.  This does
 not register the object as deleted.  It is provided solely so that you

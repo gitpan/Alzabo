@@ -10,7 +10,7 @@ use DBI;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.31 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -88,7 +88,11 @@ sub _make_dbh
 	$dbh = DBI->connect( $dsn,
 			     $p{user},
 			     $p{password},
-			     { RaiseError => 1 } );
+			     { RaiseError => 1,
+			       AutoCommit => 1,
+			       PrintError => 0,
+			     }
+			   );
     };
 
     Alzabo::Exception::Driver->throw( error => $@ ) if $@;

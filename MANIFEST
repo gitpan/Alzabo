@@ -59,6 +59,7 @@ lib/Alzabo/Util.pm
 
 lib/Alzabo/ObjectCache.pm
 lib/Alzabo/ObjectCache/Store/BerkeleyDB.pm
+lib/Alzabo/ObjectCache/Store/LRU.pm
 lib/Alzabo/ObjectCache/Store/Memory.pm
 lib/Alzabo/ObjectCache/Store/Null.pm
 lib/Alzabo/ObjectCache/Sync.pm
@@ -83,6 +84,7 @@ t/04-db_drop.t
 t/05a-rules-mysql.t
 t/06-db_drop.t
 t/07-methodmaker.t
+t/08-lru.t
 t/99-cleanup.t
 t/base.pl
 t/make_schemas.pl
@@ -109,6 +111,7 @@ interfaces/mason/delete_index.mhtml
 interfaces/mason/delete_schema.mhtml
 interfaces/mason/delete_schema_confirm.mhtml
 interfaces/mason/delete_table.mhtml
+interfaces/mason/draw_graph.mhtml
 interfaces/mason/execute_sql.mhtml
 interfaces/mason/index.mhtml
 interfaces/mason/move_column.mhtml
@@ -120,6 +123,7 @@ interfaces/mason/syshandler
 interfaces/mason/table_menubar
 interfaces/mason/change_schema_instantiation.mhtml
 interfaces/mason/view_column.mhtml
+interfaces/mason/view_graph.mhtml
 interfaces/mason/view_schema.mhtml
 interfaces/mason/view_schema_sql.mhtml
 interfaces/mason/view_table.mhtml

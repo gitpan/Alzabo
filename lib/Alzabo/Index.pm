@@ -7,7 +7,7 @@ use Alzabo;
 
 use Tie::IxHash;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -54,8 +54,13 @@ sub id
     my $self = shift;
 
     return join '___', ( $self->{table}->name,
-			 map { $_->name, $self->prefix($_) || () }
-			 $self->columns );
+# making this change would break schemas when the user tries to
+# delete/drop the index.  save for later, maybe?
+
+#			 $self->unique ? 'U' : (),
+			 ( map { $_->name, $self->prefix($_) || () }
+			   $self->columns ),
+		       );
 }
 
 sub table

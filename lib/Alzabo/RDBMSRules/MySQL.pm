@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.49 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.50 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -194,10 +194,10 @@ sub validate_column_length
 
     if ( $column->type =~ /\A(?:(?:NATIONAL\s+)?VAR)?CHAR/i )
     {
-	Alzabo::Exception::RDBMSRules->throw( error => "Max display value is too long.  Maximum allowed value is 255." )
-	    if defined $column->length && $column->length > 255;
 	Alzabo::Exception::RDBMSRules->throw( error => "CHAR and VARCHAR columns must have a length provided." )
-	    unless defined $column->length;
+	    unless defined $column->length && $column->length > 0;
+	Alzabo::Exception::RDBMSRules->throw( error => "Max display value is too long.  Maximum allowed value is 255." )
+	    if $column->length > 255;
 	Alzabo::Exception::RDBMSRules->throw( error => $column->type . " columns cannot have a precision." )
 	    if defined $column->precision;
 	return;
@@ -426,8 +426,10 @@ sub column_sql
 				     ($col->nullable ? 'NULL' : 'NOT NULL'),
 				     ($col->sequenced ? 'AUTO_INCREMENT' : () ) );
 
-    # unsigned attribute has to come right after type declaration
+    # unsigned attribute has to come right after type declaration,
+    # same with binary.  No column could have both.
     my @unsigned = $attr{UNSIGNED} ? delete $attr{UNSIGNED} : ();
+    my @binary   = $attr{BINARY} ? delete $attr{BINARY} : ();
 
     my @default;
     if ( defined $col->default )
@@ -450,6 +452,7 @@ sub column_sql
     my $sql .= join '  ', ( $col->name,
 			    $type,
 			    @unsigned,
+			    @binary,
 			    @default,
 			    sort values %attr );
 

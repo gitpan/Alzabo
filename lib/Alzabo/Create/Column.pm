@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::Column);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.33 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -76,7 +76,7 @@ sub _init
 
     $self->set_default( $p{default} );
 
-    $self->set_length( length => $p{length}, precision => $p{precision} ) if exists $p{length};
+    $self->set_length( length => $p{length}, precision => $p{precision} );
 }
 
 sub set_table

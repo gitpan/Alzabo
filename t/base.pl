@@ -1,16 +1,52 @@
 use Alzabo::Config;
 use Cwd;
-
-Alzabo::Config::root_dir( Cwd::cwd );
+use File::Spec;
 
 $| = 1;
 $^W = 1;
 
-use vars qw( $COUNT );
+my $cwd = Cwd::cwd();
 
-sub ok
+foreach ( File::Spec->catdir( $cwd, 't', 'schemas' ),
+	  File::Spec->catdir( $cwd, 't', 'objectcache' ) )
 {
-    my $ok = !!shift;
-    print $ok ? 'ok ': 'not ok ';
-    print ++$COUNT, ! $ok ? " - @_\n" : "\n";
+    unless (-d $_)
+    {
+	mkdir $_, 0755
+	    or die "Can't make dir $_ for testing: $!\n";
+    }
 }
+
+Alzabo::Config::root_dir( File::Spec->catdir( $cwd, 't' ) );
+
+BEGIN
+{
+    require Test::More;
+    push @Test::More::EXPORT, 'eval_ok';
+
+    $^W = 0;
+}
+
+# lame hack til my patch gets incorporated into Test::More
+sub my_isa_ok ($$;$)
+{
+    Test::More::isa_ok($_[0], $_[1]);
+}
+
+sub Test::More::eval_ok (&$)
+{
+    my ($code, $name) = @_;
+
+    eval { $code->() };
+    if ($@)
+    {
+	Test::More::ok( 0, $name );
+	$@ =~ s/\n/\n\#/g;
+	Test::Builder->new->diag("     got error: $@\n" );
+    }
+    else
+    {
+	Test::More::ok( 1, $name );
+    }
+}
+

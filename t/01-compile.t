@@ -7,6 +7,7 @@ use Alzabo::Config;
 use Alzabo::ChangeTracker;
 
 require Alzabo::ObjectCache;
+require Alzabo::ObjectCache::Store::LRU;
 require Alzabo::ObjectCache::Store::Memory;
 require Alzabo::ObjectCache::Sync::Null;
 

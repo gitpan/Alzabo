@@ -10,7 +10,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.48 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.50 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -286,7 +286,7 @@ sub handle
 
     if (@_)
     {
-	validate_pos( @_, { isa => 'DBI' } );
+	validate_pos( @_, { isa => 'DBI::db' } );
 	$self->{dbh} = shift;
     }
 
@@ -476,7 +476,7 @@ sub next_row
 
     return unless $active;
 
-    return @row;
+    return wantarray ? @row : $row[0];
 }
 
 sub next_row_hash
@@ -868,10 +868,6 @@ Alzabo code that calls this method.
 
 Notify Alzabo that you wish to start a transaction.
 
-=head3 Parameters
-
-Not yet determined.
-
 =head2 rollback
 
 Rolls back the current transaction.
@@ -880,10 +876,6 @@ Rolls back the current transaction.
 
 Notify Alzabo that you wish to finish a transaction.  This is
 basically the equivalent of calling commit.
-
-=head3 Parameters
-
-Not yet determined.
 
 =head2 get_last_id
 

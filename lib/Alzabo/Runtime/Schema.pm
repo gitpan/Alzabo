@@ -5,9 +5,12 @@ use vars qw($VERSION);
 
 use Alzabo::Runtime;
 
+use Params::Validate qw( :all );
+Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.35 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -94,7 +97,19 @@ sub connect
 sub join
 {
     my $self = shift;
-    my %p = @_;
+    my %p = validate( @_,
+		      { tables => { type => ARRAYREF | OBJECT },
+			select => { type => ARRAYREF | OBJECT,
+				    optional => 1 },
+			where => { type => ARRAYREF,
+				   optional => 1 },
+			order_by => { type => ARRAYREF | HASHREF | OBJECT,
+				      optional => 1 },
+			limit => { type => SCALAR | ARRAYREF,
+				   optional => 1 },
+			distinct => { isa => 'Alzabo::Table',
+				      optional => 1 },
+		      } );
 
     $p{tables} = [ $p{tables} ] unless UNIVERSAL::isa($p{tables}, 'ARRAY');
 
@@ -112,11 +127,30 @@ sub join
 	@tables = @{ $p{tables} };
     }
 
-    my $select = $p{select} || \@tables;
-    $select = [ $select ] unless UNIVERSAL::isa($select, 'ARRAY');
+    my @select_tables = $p{select} ? ( UNIVERSAL::isa( $p{select}, 'ARRAY' ) ? @{ $p{select} } : $p{select} ) : @tables;
+
+    my @select_cols;
+    # If the table has a multi-column primary key we have to jump
+    # through hoops later.
+    if ( $p{distinct} && $p{distinct}->primary_key == 1 )
+    {
+	@select_cols = $self->sqlmaker->DISTINCT( $p{distinct}->primary_key );
+	foreach (@select_tables)
+	{
+	    next if $_ eq $p{distinct};
+	    push @select_cols, $_->primary_key;
+	}
+
+	@select_tables = ( $p{distinct}, grep { $_ ne $p{distinct} } @select_tables );
+	delete $p{distinct};
+    }
+    else
+    {
+	@select_cols = map { $_->primary_key } @select_tables;
+    }
 
     my $sql = ( $self->sqlmaker->
-		select( map {$_->primary_key} @$select )->
+		select(@select_cols)->
 		from(@tables) );
 
     $self->_join_all_tables( sql => $sql,
@@ -124,24 +158,24 @@ sub join
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where}, 1 ) if exists $p{where};
 
-    $sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} ) if $p{limit};
+    Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} ) if exists $p{order_by};
 
-    if ( exists $p{order_by} )
-    {
-    }
+    $sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} ) if $p{limit};
 
     my $statement = $self->driver->statement( sql => $sql->sql,
 					      bind => $sql->bind );
 
-    if (@$select == 1)
+    if (@select_tables == 1)
     {
 	return Alzabo::Runtime::RowCursor->new( statement => $statement,
-						table => $select->[0] );
+						table => $select_tables[0],
+						distinct => $p{distinct} );
     }
     else
     {
 	return Alzabo::Runtime::JoinCursor->new( statement => $statement,
-						 tables => $select );
+						 tables => \@select_tables,
+						 distinct => $p{distinct} );
     }
 }
 
@@ -461,6 +495,35 @@ will be used instead.
 This can be either a single table or an array reference of table
 objects.
 
+=item * distinct => C<Alzabo::Runtime::Table> object (optional)
+
+If this parameter is given, it indicates that results from the join
+should never repeat rows for the given table.  This is useful if your
+join contains multiple tables but you are only interested in rows from
+some of them.
+
+If you are expecting rows from multiple tables, then it is important
+that this parameter be set to the table that would have the least
+repeated rows.  Otherwise, you will lose information.  For example, if
+a join would return the following rows:
+
+  A        B
+ ---      ---
+  1        1
+  1        1
+  1        2
+  2        2
+  2        3
+  2        3
+  3        4
+  3        4
+  3        5
+
+etc.
+
+If you set A as distinct, it is possible that you could entirely miss
+certain relevant rows from B.
+
 =item * where
 
 See the L<documentation on where clauses for the
@@ -499,20 +562,20 @@ relation between them, excluding the last table given.  If any given
 table pair has more than one relation, then this method will fail.
 The relations, along with the values given in the optional where
 clause will then be used to generate the necessary SQL.  See
-L<C<Alzabo::Runtime::JoinCursor>|Alzabo::Runtime::JoinCursor> for more
-information.
+L<C<Alzabo::Runtime::OuterJoinCursor>|Alzabo::Runtime::OuterJoinCursor>
+for more information.
 
 =head3 Parameters
 
 =over 4
 
-=item * tables =>
+=item * tables
 
 See the L<documentation on the table parameter for the join
 method|Alzabo::Runtime::Schema/join E<lt>see belowE<gt>>.
 
-If pass a simple array reference of tables for this parameter, then
-the outer join is done between the first and last table given.
+If you pass a simple array reference of tables for this parameter,
+then the outer join is done between the first and last table given.
 
 If you pass a reference to an array of array references, then the
 outer join will be between the first pair of tables.
@@ -550,7 +613,19 @@ L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =for pod_merge table
 
+=for pod_merge start_transaction
+
+=for pod_merge rollback
+
+=for pod_merge finish_transaction
+
+=for pod_merge run_in_transasction ( sub { code... } )
+
 =for pod_merge driver
+
+=for pod_merge rules
+
+=for pod_merge sqlmaker
 
 =head1 USER AND PASSWORD INFORMATION
 

@@ -88,15 +88,23 @@ eval
 	$t->delete_primary_key($c);
     }
 
-    @attributes = grep {$_} @attributes;
+    @attributes = grep {length $_} @attributes;
     foreach my $a (@attributes)
     {
-	$c->add_attribute($a) unless grep {$a eq $_} @old_attributes;
+	unless ( grep {$a eq $_} @old_attributes )
+	{
+	    # might have disappeared with column type change
+	    $c->add_attribute($a) unless $c->has_attribute($a);
+	}
     }
 
     foreach my $a (@old_attributes)
     {
-	$c->delete_attribute($a) unless grep {$a eq $_} @attributes;
+	unless ( grep {$a eq $_} @attributes )
+	{
+	    # might have disappeared with column type change
+	    $c->delete_attribute($a) if $c->has_attribute($a);
+	}
     }
 
     $s->save_to_file;

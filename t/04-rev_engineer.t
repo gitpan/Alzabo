@@ -21,7 +21,9 @@ my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
 
 my $TESTS_PER_RUN = 2;
 my $test_count = $TESTS_PER_RUN * @$tests;
-print "1..$test_count\n";
+
+eval "use Test::More ( tests => $test_count )";
+die $@ if $@;
 
 foreach my $test (@$tests)
 {
@@ -39,16 +41,16 @@ foreach my $test (@$tests)
 	      host => $test->{host},
 	    );
 
-    my $s2 = eval { Alzabo::Create::Schema->reverse_engineer(%p); };
-    ok( ! $@,
-	"Error reverse engineering schema: $@" );
+    my $s2;
+    eval_ok( sub { $s2 = Alzabo::Create::Schema->reverse_engineer(%p) },,
+	     "Reverse engineer the @{[$s1->name]} schema with @{[$s1->driver->driver_id]}" );
 
     my @diff = $s1->rules->schema_sql_diff( old => $s1,
 					    new => $s2 );
 
     my $sql = join "\n", @diff;
     ok ( ! $sql,
-	 "Reverse engineered schema's SQL differed from original's SQL:\n$sql\n" );
+	 "Reverse engineered schema's SQL should be the same as the original's" );
 
     $s1->delete;
 }

@@ -65,4 +65,52 @@ No, it does not.  The large object system in Postgres is a godawful
 piece of crap.  Fortunately, you can now upgrade to Postgres 7.1 and
 your rows can be as big as you want.
 
+=head2 How can I optimize memory usage under mod_perl?
+
+This has two facets.  First, to optimize memory usage with Alzabo's
+schema creator, simply preload all modules that it uses in the parent
+server.
+
+These are:
+
+=over 4
+
+=item * Alzabo::Create
+
+=item * Apache::Constants
+
+=item * Graphviz
+
+This module is optional so don't worry if you don't have it.
+
+=item * HTTP::BrowserDetect
+
+=item * URI
+
+=item * URI::Escape
+
+=back
+
+If you want to optimize memory usage for Alzabo when using it as an
+RDBMS-OO mapper, you should simply preload the Alzabo::Runtime module
+(which loads all the other modules it needs).
+
+In addition, if you are using Alzabo::MethodMaker, make sure it runs
+in the parent.  This module can create a lot of methods on the fly.
+Each new method eats up some memory.
+
+Finally, you can preload one or more schema objects.  The easiest way
+to do this is to simply pass its name to Alzabo::Runtime when you use
+it, like this:
+
+  use Alzabo::Runtime qw( schema1 schema2 );
+
+Also, if you are using caching, the
+C<Alzabo::ObjectCache::Store::Memory> module has no limit on how much
+memory it will use.  You may want to simply set the maximum requests
+for each Apache child to a lower number.  Or you could call the
+C<< Alzabo::ObjectCache->clear >> method from time to time.  Or you
+could also simply use a different storage module, like
+C<Alzabo::ObjectCache::Store::BerkeleyDB>.
+
 =cut

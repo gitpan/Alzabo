@@ -8,14 +8,14 @@ use Alzabo::Runtime::Schema;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.24 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.28 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
 1;
 
 # types of methods that can be made
-my @options = qw( foreign_keys insert linking_tables lookup_tables
+my @options = qw( foreign_keys insert linking_tables lookup_columns
 		  row_columns self_relations tables table_columns update );
 
 sub import
@@ -33,7 +33,7 @@ sub import
     my %p = @_;
 
     return unless exists $p{schema};
-    return unless grep { exists $p{$_} && $p{$_} } 'all', @options;
+    return unless grep { exists $p{$_} && $p{$_} } 'all', 'lookup_tables', @options;
 
     my $maker = $class->new(%p);
 
@@ -152,6 +152,7 @@ sub make_table_method
 
     my $name = $self->{opts}{name_maker}->( type => 'table',
 					    table => $t );
+    return unless $name;
     return if $t->schema->can($name);
 
     my $method = join '::', $self->{schema_class}, $name;
@@ -239,6 +240,7 @@ sub make_table_column_methods
     {
 	my $name = $self->{opts}{name_maker}->( type => 'table_column',
 						column => $c );
+	next unless $name;
 	next if $t->can($name);
 
 	my $method = join '::', $self->{table_class}, $name;
@@ -260,16 +262,22 @@ sub make_row_column_methods
     {
 	my $name = $self->{opts}{name_maker}->( type => 'row_column',
 						column => $c );
+	next unless $name;
 	next if $self->{row_class}->can($name);
 
 	my $method = join '::', $self->{row_class}, $name;
 
 	my $col_name = $c->name;
 
-	warn "Making column access $method: returns scalar value of column\n" if $DEBUG;
+	warn "Making column access $method: returns scalar value/takes new value\n" if $DEBUG;
 	{
 	    no strict 'refs';
-	    *{$method} = sub { return shift->select($col_name); };
+	    *{$method} = sub { my $self = shift;
+			       if (@_)
+			       {
+				   $self->update( $col_name => shift );
+			       }
+			       return $self->select($col_name); };
 	}
     }
 }
@@ -315,12 +323,21 @@ sub make_foreign_key_methods
 	    }
 	}
 
+	unless ( $fk->is_one_to_many )
+	{
+	    if ( $self->{opts}{lookup_columns} )
+	    {
+		$self->make_lookup_columns_methods($fk);
+	    }
+	}
+
 	# Pluralize the name of the table the relationship is to.
 	if ($fk->is_one_to_many)
 	{
 	    my $name = $self->{opts}{name_maker}->( type => 'foreign_key',
 						    foreign_key => $fk,
 						    plural => 1 );
+	    next unless $name;
 	    next if $self->{row_class}->can($name);
 
 	    my $method = join '::', $self->{row_class}, $name;
@@ -339,6 +356,7 @@ sub make_foreign_key_methods
 	    my $name = $self->{opts}{name_maker}->( type => 'foreign_key',
 						    foreign_key => $fk,
 						    plural => 0 );
+	    next unless $name;
 	    next if $self->{row_class}->can($name);
 
 	    my $method = join '::', $self->{row_class}, $name;
@@ -374,25 +392,27 @@ sub make_self_relation
     my $name = $self->{opts}{name_maker}->( type => 'self_relation',
 					    foreign_key => $fk,
 					    parent => 1 );
-    return if $self->{table_class}->can($name);
-
-    my $parent = join '::', $self->{row_class}, $name;
 
     my $table = $fk->table_from;
-
-    warn "Making self-relation method $parent: returns single row\n" if $DEBUG;
+    unless ( ! $name || $self->{table_class}->can($name) )
     {
-	no strict 'refs';
-	*{$parent} =
-	    sub { my $self = shift;
-		  my @where = map { [ $_->[0], '=', $self->select( $_->[1] ) ] } @pairs;
-		  return $table->rows_where( where => \@where,
-					     @_ )->next_row; };
+	my $parent = join '::', $self->{row_class}, $name;
+
+	warn "Making self-relation method $parent: returns single row\n" if $DEBUG;
+	{
+	    no strict 'refs';
+	    *{$parent} =
+		sub { my $self = shift;
+		      my @where = map { [ $_->[0], '=', $self->select( $_->[1] ) ] } @pairs;
+		      return $table->rows_where( where => \@where,
+						 @_ )->next_row; };
+	}
     }
 
     $name = $self->{opts}{name_maker}->( type => 'self_relation',
 					 foreign_key => $fk,
 					 parent => 0 );
+    return unless $name;
     return if $self->{table_class}->can($name);
 
     my $children = join '::', $self->{row_class}, $name;
@@ -440,7 +460,7 @@ sub make_linking_table_method
 					    foreign_key => $fk,
 					    foreign_key_2 => $fk_2,
 					  );
-
+    return unless $name;
     return if $self->{row_class}->can($name);
 
     my $method = join '::', $self->{row_class}, $name;
@@ -481,6 +501,7 @@ sub make_lookup_table_method
 
     my $name = $self->{opts}{name_maker}->( type => 'lookup_table',
 					    foreign_key => $fk );
+    return unless $name;
     return if $self->{row_class}->can($name);
 
     my $method = join '::', $self->{row_class}, $name;
@@ -495,6 +516,36 @@ sub make_lookup_table_method
     }
 
     return 1;
+}
+
+sub make_lookup_columns_methods
+{
+    my $self = shift;
+    my $fk = shift;
+
+    # Make sure the relationship is to the foreign table's primary key
+    my @to = $fk->columns_to;
+    return unless ( ( scalar grep { $_->is_primary_key } @to ) == @to &&
+		    ( scalar $fk->table_to->primary_key ) == @to );
+
+    foreach ( $fk->table_to->columns )
+    {
+	my $name = $self->{opts}{name_maker}->( type => 'lookup_columns',
+						foreign_key => $fk,
+						column => $_ );
+	next unless $name;
+	next if $self->{row_class}->can($name);
+
+	my $method = join '::', $self->{row_class}, $name;
+	my $col_name = $_->name;
+	warn "Making lookup columns $method: returns scalar value of column\n" if $DEBUG;
+	{
+	    no strict 'refs';
+	    *{$method} =
+		sub { my $self = shift;
+		      return $self->rows_by_foreign_key( foreign_key => $fk, @_ )->select($col_name) };
+	}
+    }
 }
 
 sub make_insert_method
@@ -616,6 +667,8 @@ sub name
     return (grep { ! $_->is_primary_key } $p{foreign_key}->table_to->columns)[0]->name
 	if $p{type} eq 'lookup_table';
 
+    return $p{column}->name if $p{type} eq 'lookup_columns';
+
     return $p{parent} ? 'parent' : 'children'
 	if $p{type} eq 'self_relation';
 
@@ -667,6 +720,20 @@ method name needs to be generated.  This allows you to have full
 control over the resulting names.  Otherwise names are generated as
 described in the documentation.
 
+The callback is expected to return a name for the method to be used.
+This name should not be fully qualified or contain any class
+designation as this will be handled by MethodMaker.
+
+It is important that none of the names returned conflict with existing
+methods for the object the method is being added to.
+
+For example, when adding methods that return column objects to a
+table, if you have a column called 'name' and try to use that as the
+method name, it won't work.  C<Alzabo::Table> objects already have
+such a method, which returns the name of the table.  See the relevant
+documentation of the schema, table, and row objects for a list of
+methods they contain.
+
 The callback will receive a hash containing the following parameters:
 
 =over 4
@@ -675,7 +742,7 @@ The callback will receive a hash containing the following parameters:
 
 This will always be the same as one of the parameters you give to the
 import method.  It will be one of the following: C<foreign_key>,
-C<insert>, C<linking_table>, C<lookup_table>, C<row_column>,
+C<insert>, C<linking_table>, C<lookup_columns>, C<row_column>,
 C<self_relation>, C<table>, C<table_column>, or C<update>.
 
 =back
@@ -705,7 +772,7 @@ whose B<value> the method will return.
 
 =back
 
-When the type is C<foreign_key>, C<linking_table>, C<lookup_table>, or
+When the type is C<foreign_key>, C<linking_table>, or
 C<self_relation>:
 
 =over 4
@@ -737,6 +804,17 @@ When making a linking table method, two foreign keys are used.  The
 C<foreign_key> is from the table being linked from to the linking
 table.  This parameter is the foreign key from the linking table to
 the table being linked to.
+
+=back
+
+When the type is C<lookup_columns>:
+
+=over 4
+
+=item * column => Alzabo::Column object
+
+When making lookup column methods, this column is the column in the
+foreign table for which a method is being made.
 
 =back
 
@@ -825,9 +903,12 @@ to be overridden in the generated subclasses.
 
 =head1 METHOD CREATION OPTIONS
 
+When using Alzabo::MethodMaker, you may specify any of the following
+parameters.  Specifying 'all' causes all of them to be used.
+
 =head2 Schema object methods
 
-=head3 tables ($bool)
+=head3 tables => $bool
 
 Creates methods for the schema that return the table object matching
 the name of the method.
@@ -838,13 +919,13 @@ C<$schema-E<gt>movie> and C<$schema-E<gt>image>.
 
 =head2 Table object methods.
 
-=head3 table_columns ($bool)
+=head3 table_columns => $bool
 
 Creates methods for the tables that return the column object matching
 the name of the method.  This is quite similar to the C<tables> option
 for schemas.
 
-=head3 insert
+=head3 insert => $bool
 
 Create an C<insert> method overriding the one in
 L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table>.  See L<Loading
@@ -854,7 +935,13 @@ will not be overridden.
 
 =head2 Row object methods
 
-=head3 update
+=head3 row_column => $bool
+
+This tells MethodMaker to create get/set methods for each column a row
+has.  These methods take a single optional argument, which if given
+will cause that column to be updated for the row.
+
+=head3 update => $bool
 
 Create an C<update> method overriding the one in
 L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>.  See L<Loading
@@ -862,7 +949,7 @@ Classes> for more details.  Unless you have already defined a
 C<validate_update> method for the generated row class this method will
 not be overridden.
 
-=head3 foreign_keys ($bool)
+=head3 foreign_keys => $bool
 
 Creates methods in row objects named for the table to which the
 relationship exists.  These methods return either a single
@@ -872,15 +959,16 @@ depending on the cardinality of the relationship.
 
 Take these tables as an example.
 
-  movie                     credit
+  Movie                     Credit
   ---------                 --------
   movie_id                  movie_id
   title                     person_id
                             role_name
+
 NOTE: This option must be true if you want any of the following
 options to be used.
 
-=head3 linking_tables ($bool)
+=head3 linking_tables => $bool
 
 A linking table, as defined here, is a table with a two column primary
 key that, with each column being a foreign key to another table's
@@ -889,31 +977,28 @@ relationships.  If both C<foreign_keys> and C<linking_tables> are
 true, then methods will be created that skip the intermediate linking
 tables
 
-=head3 lookup_tables ($bool)
+=head3 lookup_columns => $bool
 
-A lookup table is defined as a two column table with a one column
-primary key.  It is assumed that the interesting part of this table is
-the table is the column that is B<not> the primary key.  Therefore,
-this module can create methods for these relationships that returns
-the B<data> in this column.  As an example, take the following tables:
+Lookup columns are columns in foreign tables to which a table has a
+many-to-one or one-to-one relationship to the foreign table's primary
+key.  For example, given the tables below:
 
-  restaurant                cuisine
-  ---------                 --------
-  restaurant_id             cuisine_id
-  name                      description
-  phone
+  Restaurant                    Cuisine
+  ---------                     --------
+  restaurant_id                 cuisine_id
+  name              (n..1)      description
+  phone                         spiciness
   cuisine_id
 
-When given a restaurant table row, we already know its cuisine_id
-value.  However, what we really want in most contexts is the value of
-C<cuisine.description>.
+If we have a Restaurant row, we might want to have methods available
+such as ->cuisine_description or ->cuisine_spiciness.
 
-=head3 self_relations ($bool)
+=head3 self_relations => $bool
 
 A self relation is when a table has a parent/child relationship with
 itself.  Here is an example:
 
- location
+ Location
  --------
  location_id
  name
@@ -978,16 +1063,22 @@ Here is an example that covers all of the possible options:
 	 return my_PL($method);
      }
 
-     # A lookup table is a 2 column table with a single column primary
-     # key.  The method we generate is the name of the column that is
-     # _not_ a primary key.  With a table named Location with columns
-     # location_id and location, we could have a relationship from our
-     # Restaurant table to the Location table.  This would give all
-     # Restaurant table rows a ->location method which returned the
-     # _value_ from the Location table that matched the location_id in
-     # the Restaurant row.
-     return (grep { ! $_->is_primary_key } $p{foreign_key}->table_to->columns)[0]->name
-         if $p{type} eq 'lookup_table';
+     # Lookup columns are columns if foreign tables for which there
+     # exists a one-to-one or many-to-one relationship.  In cases such
+     # as these, it is often the case that the foreign table is rarely
+     # used on its own, but rather it primarily used as a lookup table
+     # for values that should appear to be part of other tables.
+     #
+     # For example, an Address table might have a many-to-one
+     # relationship with a State table.  The State table would contain
+     # the columns 'name' and 'abbreviation'.  If we have
+     # an Address table row, it is convenient to simply be able to say
+     # $address->state_name and $address->state_abbreviation.
+
+     if ( $p{type} eq 'lookup_columns' )
+     {
+         return join '_', map { lc $_->name } $p{foreign_key}->table_to->name, $p{column}->name;
+     }
 
      # This should be fairly self-explanatory.
      return $p{parent} ? 'parent' : 'children'

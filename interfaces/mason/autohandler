@@ -47,9 +47,6 @@ $foreign_key_columns_to => undef
 </%args>
 
 <%init>
-use Alzabo::Create;
-use HTTP::BrowserDetect;
-
 my $s;
 my %args;
 my ($comp, @args);
@@ -121,3 +118,6 @@ if (defined $s)
 <%flags>
 inherit => 'syshandler'
 </%flags>
+<%attr>
+full_header => 1
+</%attr>

@@ -15,7 +15,7 @@ use vars qw($VERSION);
 
 use 5.005;
 
-$VERSION = '0.55';
+$VERSION = '0.56';
 
 1;
 
@@ -99,10 +99,8 @@ L<Alzabo::Runtime::Table> - This contains most of the methods used to
 fetch rows from the database, as well as the
 L<C<insert>|Alzabo::Runtime::Table/insert> method.
 
-L<Alzabo::Runtime::Row> - The row objects are how data is updated,
-deleted, and retrieved from the database.  Its also important to read
-the section on its L<C<import>|Alzabo::Runtime::Row/import METHOD>, as
-this is used to determine how caching is done (for now).
+L<Alzabo::Runtime::Row> - The row objects contain the methods used to
+update, delete, and retrieve data from the database.
 
 L<Alzabo::Runtime::Cursor> - The most important part of the
 documentation here is the L<HANDLING
@@ -112,7 +110,10 @@ L<Alzabo::Runtime::RowCursor> - A cursor object that returns only a
 single row.
 
 L<Alzabo::Runtime::JoinCursor> - A cursor object that returns multiple
-rows.
+rows at once.
+
+L<Alzabo::Runtime::OuterJoinCursor> - Returns multiple rows/undefs at
+once.
 
 L<Alzabo::MethodMaker> - One of the most useful parts of Alzabo.  This
 module can be used to auto-generate methods based on the structure of
@@ -120,7 +121,7 @@ your schema.
 
 L<Alzabo::ObjectCache> - This describes how to select the caching
 modules you want to use.  It contains a number of scenarios and
-descibes how they are affected by caching.  If you plan on using
+describes how they are affected by caching.  If you plan on using
 Alzabo in a multi-process environment (such as mod_perl) this is very
 important.
 
@@ -131,6 +132,9 @@ L<Alzabo::FAQ>
 
 L<Alzabo::QuickRef> - A quick reference for the various methods of the
 Alzabo objects.
+
+Other areas of interest may include the L<Validating data>, L<Using
+SQL functions>, L<Referential integrity>, and L<Changing the schema>.
 
 =head2 Alzabo concepts
 
@@ -146,26 +150,25 @@ engineering|Alzabo::Create::Schema/reverse_engineer>.
 Instantiation has several effects.  The most important part of this is
 to realize that once a schema is instantiated, the way it generates
 SQL for itself changes.  Before it is instantiated, if you ask it to
-generate SQL via
-L<C<Alzabo::Create::Schema-E<gt>make_sql>|Alzabo::Create::Schema/make_sql>,
-it will generate the set SQL statements that are needed to create the
-schema in the RDBMS.
+generate SQL via L<the C<make_sql> the
+method|Alzabo::Create::Schema/make_sql>, it will generate the set of
+SQL statements that are needed to create the schema in the RDBMS.
 
 After is instantiated, the schema will instead generate the SQL
 necessary to convert the version in the RDBMS backend to match the
-object's current state.  This can be though of as a SQL 'diff'.
+object's current state.  This can be thought of as a SQL 'diff'.
 
 While this feature is quite useful, it can be confusing too.  The most
 surprising aspect of this is that if you create a schema via L<reverse
 engineering|Alzabo::Create::Schema/reverse_engineer> and then call
-L<C<Alzabo::Create::Schema-E<gt>make_sql>|Alzabo::Create::Schema/make_sql>,
-you will not get any SQL.  This is because the schema knows that it is
+L<the C<make_sql> method|Alzabo::Create::Schema/make_sql>, you will
+not get any SQL.  This is because the schema knows that it is
 instantiated and it also knows that it is the same as the version in
 the RDBMS, so no SQL is necessary.
 
-The way to deal with this is to call the
-L<C<Alzabo::Create::Schema-E<gt>set_instantiated>|Alzabo::Create::Schema/set_instantiated ($bool)>
-method with a false value.  Use this method with care.
+The way to deal with this is to call L<the C<set_instantiated>
+method|Alzabo::Create::Schema/set_instantiated ($bool)> with a
+false value.  Use this method with care.
 
 =head3 Rows and cursors
 
@@ -290,19 +293,22 @@ movie.  Here's what it looks like:
   my $person = $person_t->row_by_pk( pk => 42 );
 
   # all the rows in the credit table that have the person_id of 42.
-  my $cursor = $person->rows_by_foreign_key( foreign_key => $person_t->foreign_keys_by_table($credit_t) );
+  my $cursor = $person->rows_by_foreign_key( foreign_key =>
+                                             $person_t->foreign_keys_by_table($credit_t) );
 
   print $person->select('name'), " was in the following films:\n\n";
-  while (my $credit = $cursor->next_row)
+  while (my $credit = $cursor->next)
   {
       # rows_by_foreign_key returns a RowCursor object.  We immediately
-      # call its next_row method, knowing it will only have one row (if
+      # call its next method, knowing it will only have one row (if
       # it doesn't then our referential integrity is in trouble!)
       my $movie =
-          $credit->rows_by_foreign_key( foreign_key => $credit_t->foreign_keys_by_table($movie_t) )->next_row;
+          $credit->rows_by_foreign_key( foreign_key =>
+                                        $credit_t->foreign_keys_by_table($movie_t) )->next;
 
       my $job =
-          $credit->rows_by_foreign_key( foreign_key => $credit_t->foreign_keys_by_table($job_t) )->next_row;
+          $credit->rows_by_foreign_key( foreign_key =>
+                                        $credit_t->foreign_keys_by_table($job_t) )->next;
 
       print $movie->select('title'), " released in ", $movie->select('release_year'), "\n";
       print '  ', $job->('job'), "\n";
@@ -315,7 +321,7 @@ The method names are admittedly verbose but the end result code is
 significantly simpler to read than the equivalent using raw SQL and
 DBI calls.
 
-Let's redo the example to use
+Let's redo the example using
 L<C<Alzabo::MethodMaker>|Alzabo::MethodMaker>;
 
   # I'm assuming that the pluralize_english subroutine pluralizes
@@ -333,7 +339,7 @@ L<C<Alzabo::MethodMaker>|Alzabo::MethodMaker>;
   my $cursor = $person->Credits;
 
   print $person->name, " was in the following films:\n\n";
-  while (my $credit = $cursor->next_row)
+  while (my $credit = $cursor->next)
   {
       my $movie = $credit->Movie;
 
@@ -386,7 +392,7 @@ L<C<Alzabo::MethodMaker>|Alzabo::MethodMaker>:
       }
   }
 
-=head3 Using SQL Functions
+=head3 Using SQL functions
 
 Each subclass of Alzabo::SQLMaker is capable of exporting functions
 that allow you to use all the SQL functions that your RDBMS provides.
@@ -409,12 +415,57 @@ Examples:
 
  $row->update( pi => PI() );
 
- my $cursor = $table->rows_where( where => [ $table->column('expire_date'), '<=', NOW() ] );
+ my $cursor = $table->rows_where( where =>
+                                  [ $table->column('expire_date'), '<=', NOW() ] );
 
- my $cursor = $table->rows_where( where => [ LENGTH( $table->column('password'), '<=', 5 ] );
+ my $cursor = $table->rows_where( where =>
+                                  [ LENGTH( $table->column('password'), '<=', 5 ] );
 
 The documentation for the Alzabo::SQLMaker subclass for your RDBMS
 will contain a detailed list of all exportable functions.
+
+=head3 Referential integrity
+
+By default, Alzabo will maintain referential integrity in your
+database based on the relationships you have defined.  This can be
+turned off via L<< the
+C<Alzabo::Runtime::Schema-E<gt>set_referential_integrity>
+method|Alzabo::Runtime::Schema/set_referential_integrity >>.
+
+Alzabo enforces these referential integrity rules:
+
+=over 4
+
+=item * Inserts
+
+An attempt to insert a value into a table's foreign key column(s) will
+fail if the value does not exist in the foreign table.
+
+If a table is dependent on another table, any columns from the
+dependent table involved in the relationship will be treated as not
+nullable.
+
+If the relationship is one-to-one, all columns involved in the foreign
+key will be treated as if they had a unique constraint on them (as a
+group if there is more than one) unless any of the columns being
+inserted are NULL.
+
+No attempt is made to enforce constraints on a table's primary key, as
+that could conceivably make it impossible to insert a row into the
+table.
+
+=item * Updates
+
+Updates follow the same rules as inserts.  Since Alzabo does not allow
+you to update a row's primary key, the last rule above does not apply.
+
+=item * Deletes
+
+When a row is deleted, foreign tables which are dependent on the one
+being deleted will have the relevant rows deleted.  Otherwise, the
+foreign table's related column(s) will simply be set to NULL.
+
+=back
 
 =head3 Changing the schema
 
@@ -453,7 +504,9 @@ L<C<Alzabo::Runtime::Schema>|Alzabo::Runtime::Schema>.
 =head2 Multiple RDBMS Support
 
 Alzabo aims to be as cross-platform as possible.  To that end, RDBMS
-specific operations are contained in several module hierarchies.
+specific operations are contained in several module hierarchies.  The
+goal here is to isolate RDBMS-specific behavior and try to provide
+generic wrappers around it, inasmuch as is possible.
 
 The first, the C<Alzabo::Driver::*> hierarchy, is used to handle
 communication with the database.  It uses C<DBI> and the appropriate

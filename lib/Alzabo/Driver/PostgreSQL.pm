@@ -8,7 +8,7 @@ use DBD::Pg;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -78,6 +78,7 @@ sub _make_dbh
 			     $p{password},
 			     { RaiseError => 1,
 			       AutoCommit => 1,
+			       PrintError => 0,
 			     }
 			   );
     };

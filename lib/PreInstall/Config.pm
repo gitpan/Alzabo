@@ -1,10 +1,15 @@
 package Alzabo::Config;
 
+use File::Spec;
+
 use vars qw($VERSION %CONFIG);
 
 use strict;
 
 %CONFIG = ''CONFIG'';
+
+my $curdir = File::Spec->curdir;
+my $updir = File::Spec->updir;
 
 sub root_dir
 {
@@ -14,7 +19,7 @@ sub root_dir
 
 sub schema_dir
 {
-    return $CONFIG{root_dir} . '/schemas';
+    return File::Spec->catdir( $CONFIG{root_dir}, 'schemas' );
 }
 
 sub available_schemas
@@ -27,8 +32,8 @@ sub available_schemas
     my @s;
     foreach my $e (readdir DIR)
     {
-        next if $e eq '.' || $e eq '..';
-        push @s, $e if -d "$dirname/$e" && -r _;
+        next if $e eq $curdir || $e eq $updir;
+        push @s, $e if -d File::Spec->catdir( $dirname, $e ) && -r _;
     }
 
     closedir DIR

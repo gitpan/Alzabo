@@ -5,7 +5,7 @@ use vars qw($VERSION);
 
 use Alzabo::Runtime;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -50,6 +50,7 @@ sub reset
     $self->{statement}->execute( $self->{statement}->bind );
 
     $self->{errors} = [];
+    $self->{seen} = {};
 }
 
 sub errors

@@ -5,6 +5,7 @@ $^W = 1;
 use Cwd;
 use Data::Dumper;
 use ExtUtils::MakeMaker qw( prompt WriteMakefile );
+use File::Spec;
 
 use vars qw(%extra %config %test @TESTS);
 
@@ -52,6 +53,8 @@ my %prereq;
 			 [ 'the HTML::Mason based data browser', , [ [ 'HTML::Mason' => 0.896 ],
 								     [ 'HTTP::BrowserDetect' => 0 ], ],
 			   undef, 'mason_browser' ],
+			 [ 'to view graphs of your schema in the schema creator',
+			   [ [ GraphViz => 1.4 ] ] ],
 		       );
 
     print <<'EOF';
@@ -68,7 +71,7 @@ EOF
 	$requires .= join ', ', map { my $x = $_->[0]; $x .= $_->[1] ? " ($_->[1])": ''; $x } @{ $p->[1] };
 	print "\u$p->[0] requires: $requires.\n";
 	my $has = ( grep { has_module(@$_) } @{ $p->[1] } ) == @{ $p->[1] };
-	my $yesno = prompt( "  Use $p->[0]?", $has ? 'yes' : 'no' );
+	my $yesno = prompt( "  Do you want $p->[0]?", $has ? 'yes' : 'no' );
 	if ( $yesno && $yesno !~ /\A[Nn]/)
 	{
 	    foreach ( @{ $p->[1] } )
@@ -142,18 +145,26 @@ if ( eval { require DBD::mysql } && $DBD::mysql::VERSION == 2.09 )
 	    'Exception::Class' => 0.8,
 	    'Time::HiRes' => 0,
 	    'Pod::Man' => 1.14,
-	    'Params::Validate' => 0.03,
+	    'Params::Validate' => 0.07,
+	    'Test::More' => 0.31,
 	    %prereq );
 
 check_prereq(\%prereq);
 
 MAKEFILE:
 
+my $realclean = join ' ', ( File::Spec->catfile( 'lib', 'Alzabo', 'Config.pm' ),
+			    File::Spec->catdir( 't', 'objectcache' ),
+			    File::Spec->catdir( 't', 'schemas' ),
+			    File::Spec->catfile( 't', 'SDBM_File.lock' ),
+			    '__db.*',
+			    'log.*' );
+
 WriteMakefile( NAME         => 'Alzabo',
-	       VERSION_FROM => 'lib/Alzabo.pm',
+	       VERSION_FROM => File::Spec->catfile( 'lib', 'Alzabo.pm' ),
 	       PREREQ_PM    => \%prereq,
 
-	       realclean    => { FILES => './lib/Alzabo/Config.pm schemas t/*.dbm.* t/*.dbm t/*.db.* SDBM_File.lock __db.* log.*' },
+	       realclean    => { FILES => $realclean },
 
 	       AUTHOR       => 'Dave Rolsky <autarch@urth.org>',
 	       ABSTRACT     => 'Perl data modelling tool',
@@ -238,11 +249,12 @@ sub write_config_module
 {
     my %config = @_;
 
-    open MOD, './lib/PreInstall/Config.pm'
-	or die "can't open ./lib/PreInstall/Config.pm: $!\n";
+    my $preinstall = File::Spec->catfile( 'lib', 'PreInstall', 'Config.pm' );
+    open MOD, "<$preinstall"
+	or die "can't open $preinstall: $!\n";
     my $mod = join '', <MOD>;
     close MOD
-	or die "can't close ./lib/PreInstall/Config.pm: $!\n";
+	or die "can't close $preinstall: $!\n";
 
     my $c = "(\n";
     foreach my $k (sort keys %config)
@@ -253,12 +265,13 @@ sub write_config_module
 
     $mod =~ s/''CONFIG''/$c/;
 
-    open MOD, '>./lib/Alzabo/Config.pm'
-	or die "can't write to ./lib/Alzabo/Config.pm: $!\n";
+    my $config = File::Spec->catfile( 'lib', 'Alzabo', 'Config.pm' );
+    open MOD, ">$config"
+	or die "can't write to $config: $!\n";
     print MOD $mod
-	or die "can't write to ./lib/Alzabo/Config.pm: $!\n";
+	or die "can't write to $config: $!\n";
     close MOD
-	or die "can't close ./lib/Alzabo/Config.pm: $!\n";
+	or die "can't close $config: $!\n";
 }
 
 

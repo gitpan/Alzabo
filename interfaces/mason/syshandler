@@ -1,7 +1,9 @@
 <& $m->fetch_next, %ARGS &>
-<%init>
+<%once>
 use Alzabo::Create;
-</%init>
+use HTTP::BrowserDetect;
+eval 'use GraphViz 1.4'; # optional
+</%once>
 <%flags>
 inherit => undef
 </%flags>
