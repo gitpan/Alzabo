@@ -15,11 +15,11 @@ not run its Makefile.PL or Build.PL.
 Hash: SHA1
 
 SHA1 dddb8b291c4ac0b5bcee16b03dd010aa4770ad17 Build.PL
-SHA1 933688bbad069cc490d9a16b547e9797f4372dfa Changes
+SHA1 ee672cd245d7ad8ba04fbfd4869087d530b00624 Changes
 SHA1 cc8ea2b12208ba4dca1f165863a82b3c190476b9 INSTALL
 SHA1 f235ba4160673bcb7c9d58c2f09dbc7fc0efadea LICENSE
-SHA1 c31cdeed53d4855276012609015507c188392404 MANIFEST
-SHA1 c5f51a175dc815903c7553a03d7628198c9fa00a META.yml
+SHA1 c73d837635decab7bc251c490fab16f34addd3bc MANIFEST
+SHA1 70a290f9bbee31c67425456468a96bf82171d304 META.yml
 SHA1 56ceda7e28ea08752c9d886c628ca835e65be4d8 Makefile.PL
 SHA1 c193306cf990c84647bc4cd8595ae84d835576fa README
 SHA1 fb00631d07ee11977fc9f1a62d8e46649ccb615a TODO
@@ -30,7 +30,7 @@ SHA1 9e5e154a1d09f026f1d028757a97a1337dc66ba6 eg/reverse_cardinality.pl
 SHA1 6a937c99c32748a7db2cf5ac499daf53d4e9f1aa inc/Alzabo/Build.pm
 SHA1 1f2fe6560a47f185da762fb5a2a2fc509ddccc0a inc/Alzabo/Config.pm.tmpl
 SHA1 dcf8cb89226c180574d908f948e4cf4d759f25d8 install_helpers/pod_merge.pl
-SHA1 f3f93fcfe7956decbe33d90510d3e488ce1e4fac lib/Alzabo.pm
+SHA1 efdc35620060c6bb323f0cbbdd3ff59a7cb59ba2 lib/Alzabo.pm
 SHA1 80c60e8a274a47ba41ba5fa218b4a9efe00de144 lib/Alzabo/BackCompat.pm
 SHA1 dab452ce5022760a30d6f8f93b21fb3bef61ddaf lib/Alzabo/ChangeTracker.pm
 SHA1 4de03d9dbe42f34f3babe15bc543467132c3ef9d lib/Alzabo/Column.pm
@@ -40,7 +40,7 @@ SHA1 e1dc4d41ab204edcd8b5434aa50d67da0692faa5 lib/Alzabo/Create/Column.pm
 SHA1 b6ae0e3633dbbbaf12b1345bab01f73fd6f06d9f lib/Alzabo/Create/ColumnDefinition.pm
 SHA1 e1deef33f1bee7c380c351c4c3323affea8bda4d lib/Alzabo/Create/ForeignKey.pm
 SHA1 56278322769fb106c73edffc75035881efcbebb2 lib/Alzabo/Create/Index.pm
-SHA1 810e10b8dd4716ea7213730aa068f0ff70bef703 lib/Alzabo/Create/Schema.pm
+SHA1 759b39f70f1d49aeba3b42350c9f25c095210fc0 lib/Alzabo/Create/Schema.pm
 SHA1 336beef20e32c842829383cef908ee0ebe2b92ae lib/Alzabo/Create/Table.pm
 SHA1 8d8ac3c260d935fe6379f6ef37e01f2e20a6aed6 lib/Alzabo/Debug.pm
 SHA1 25e9d9957e284dc2832dc6140278f81f97f0870e lib/Alzabo/Design.pod
@@ -52,12 +52,12 @@ SHA1 dd78999b96072f0a8eea953c0ba53f2c9bb67de5 lib/Alzabo/FAQ.pod
 SHA1 3d167acc3b62a320c740906d6096d4065f24a6fd lib/Alzabo/ForeignKey.pm
 SHA1 f98818e898e7d3cfb46ae5c552e6cd24f33881f0 lib/Alzabo/Index.pm
 SHA1 eab7b54f3e9c8e187cb6df88a576c5fd703e845c lib/Alzabo/Intro.pod
-SHA1 89594c451d265e89813c99407c70d9d0f13d9ee5 lib/Alzabo/MethodMaker.pm
+SHA1 9622de3c9de2a90f28f516cea810144e6c855e6e lib/Alzabo/MethodMaker.pm
 SHA1 d3ce1698c85a053fcc1b16bc71f00283138ca721 lib/Alzabo/MySQL.pod
-SHA1 6f6445473e6db46794525936dac00712dda1e68c lib/Alzabo/PostgreSQL.pod
+SHA1 cfc1fba93154c2084893081dc420740a60619f3d lib/Alzabo/PostgreSQL.pod
 SHA1 a8552e16d23b616537dc85dde29d30fb894694a4 lib/Alzabo/QuickRef.pod
 SHA1 b18e8280706bafdc63fd0a7ee0c3e395cc94c006 lib/Alzabo/RDBMSRules.pm
-SHA1 4702e03e1f12b0e5fc11bb9582eda9a251b21a7a lib/Alzabo/RDBMSRules/MySQL.pm
+SHA1 77dca9e190ea51c1dc955973dd998278dd1c67af lib/Alzabo/RDBMSRules/MySQL.pm
 SHA1 601fba8da74401f4e04ee825868d208a5bc59dc3 lib/Alzabo/RDBMSRules/PostgreSQL.pm
 SHA1 9a52c1137406844cb5ae31849f5e0fabdb04eb36 lib/Alzabo/Runtime.pm
 SHA1 60736b58aeead140e2cd1c57311e982d817a6e15 lib/Alzabo/Runtime/Column.pm
@@ -67,7 +67,7 @@ SHA1 1ceef0a2b8b2e67187303baf55485434605ec68e lib/Alzabo/Runtime/ForeignKey.pm
 SHA1 98cdbbcf494436195b6b1066a255e3fd49eae082 lib/Alzabo/Runtime/Index.pm
 SHA1 d6020951072aa9d3c31c2331b135b7c97624401e lib/Alzabo/Runtime/InsertHandle.pm
 SHA1 698244c8ca4a27fc284f23ba2023142a00886cf1 lib/Alzabo/Runtime/JoinCursor.pm
-SHA1 174f9958447fde5c97a8ddab45f465b76da28328 lib/Alzabo/Runtime/Row.pm
+SHA1 685df6ae55501e1218c2db2615152a600841b8a6 lib/Alzabo/Runtime/Row.pm
 SHA1 5d533602334bb04a30f9802b1171c7a4fd2ab315 lib/Alzabo/Runtime/RowCursor.pm
 SHA1 3fa4206befef7da4bc1a1d6b0bfc8a87045fc232 lib/Alzabo/Runtime/RowState/Deleted.pm
 SHA1 8b296dd2ba2efb96e7b4e09e868c107a48567e31 lib/Alzabo/Runtime/RowState/InCache.pm
@@ -107,9 +107,9 @@ SHA1 5926b115ebdc4830bcb8f8485c8f4186e2a90cec t/99-cleanup.t
 SHA1 77232b92127c5f3069f8b6d349aa5ef49ca1b9d4 t/99-pod.t
 SHA1 ffc070d9b952ea28959f74d8e9060509b2333b60 t/lib/Alzabo/Test/Utils.pm
 -----BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.4 (GNU/Linux)
+Version: GnuPG v1.2.5 (GNU/Linux)
 
-iD8DBQFAx5ab+4tbS/niBUoRAsyzAJwIZ8efKcglblBfhWTyPLeiUR3G4ACfR1FY
-zgIbfx+ucxYmxQkU5I9QUA4=
-=oYZN
+iD8DBQFBOen5+4tbS/niBUoRAnwfAJwIaGYtnBN0ardEsdVXyHANChCKVQCfbIcg
+kfhDxHzizrgklm3uUhS0IRw=
+=Gb/M
 -----END PGP SIGNATURE-----

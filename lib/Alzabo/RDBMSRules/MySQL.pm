@@ -860,7 +860,8 @@ sub reverse_engineer
                          $type eq 'MEDIUMINT' && ( $2 == 9 || $2 == 8 ) ||
                          $type eq 'INTEGER' && ( $2 == 11 || $2 == 10 )  ||
                          $type eq 'BIGINT' && ( $2 == 21 || $2 == 20 ) ||
-                         $type eq 'YEAR' && $2 == 4
+                         $type eq 'YEAR' && $2 == 4 ||
+                         $type eq 'TIMESTAMP' && $2 == 14
                        )
                 {
                     $p{length} = $2;
@@ -942,7 +943,7 @@ sub _can_ignore_default
 {
     my $self = shift;
     my $type = shift;
-    my $default = undef;
+    my $default = shift;
 
     return 1 unless defined $default;
 

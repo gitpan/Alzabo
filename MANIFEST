@@ -90,5 +90,4 @@ t/99-cleanup.t
 t/99-pod.t
 t/lib/Alzabo/Test/Utils.pm
 TODO
-
 SIGNATURE    Added here by Module::Build

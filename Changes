@@ -1,4 +1,35 @@
-0.83
+0.84  September 4, 2004
+
+ENHANCEMENTS:
+
+- Alzabo::MethodMaker will now warn you when you it creates a method
+that overrides a parent class's method.  This can cause problems when
+you override the table class's name() method with one that returns a
+column object.
+
+
+BUG FIXES
+
+- Make Alzabo::Create::Schema->delete work under taint mode.  Reported
+by Dana Hudes.
+
+- Improve Alazbo::PostgreSQL docs, specifically mentioning that if you
+create a Postgres schema with mixed or upper case table names, you
+need to do $schema->set_quote_identifiers(1) for any DML SQL to work.
+
+- The Alzabo::Runtime::Row->is_potential method didn't exist.
+
+- The caching had a very nasty interaction with reverse engineering
+that could cause data loss (of foreign keys) when the "sync with
+backend" functionality was called from the Mason GUI.  There may have
+been other bugs as well.  This was fixed by not caching reverse
+engineered schemas, which is somewhat of a hack.
+
+Anyone using the Mason GUI with MySQL is encouraged to upgrade because
+of this bug.
+
+
+0.83  June 9, 2004
 
 MISCELLANEOUS:
 
@@ -68,7 +99,7 @@ undef, which would cause an exception to be thrown.
 
 ---------------------------------------------------------------------------
 
-0.82  January 6, 2003
+0.82  January 6, 2004
 
 ENHANCEMENTS:
 

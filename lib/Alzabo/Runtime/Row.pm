@@ -25,7 +25,7 @@ BEGIN
 {
     no strict 'refs';
     foreach my $meth ( qw( select select_hash update refresh delete
-                           id_as_string is_live is_deleted ) )
+                           id_as_string is_live is_potential is_deleted ) )
     {
         *{ __PACKAGE__ . "::$meth" } =
             sub { my $s = shift;

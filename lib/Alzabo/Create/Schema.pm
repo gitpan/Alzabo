@@ -33,8 +33,10 @@ sub new
     my $proto = shift;
     my $class = ref $proto || $proto;
 
-    validate( @_, { rdbms => { type => SCALAR },
-                    name  => { type => SCALAR } } );
+    validate( @_, { rdbms    => { type => SCALAR },
+                    name     => { type => SCALAR },
+                    no_cache => { type => SCALAR, default => 0 },
+                  } );
     my %p = @_;
 
     my $self = bless {}, $class;
@@ -56,7 +58,7 @@ sub new
 
     $self->{tables} = Tie::IxHash->new;
 
-    $self->_save_to_cache;
+    $self->_save_to_cache unless $p{no_cache};
 
     return $self;
 }
@@ -72,8 +74,10 @@ sub reverse_engineer
     my $class = ref $proto || $proto;
     my %p = @_;
 
-    my $self = $class->new( name => $p{name},
-                            rdbms => $p{rdbms} );
+    my $self = $class->new( name     => $p{name},
+                            rdbms    => $p{rdbms},
+                            no_cache => 1,
+                          );
 
     delete $p{rdbms};
     $self->{driver}->connect(%p);
@@ -837,10 +841,13 @@ sub delete
     opendir $dh, $schema_dir
         or system_exception "Unable to open $schema_dir directory: $!";
 
-    foreach my $f (readdir $dh)
+    foreach my $f ( grep { /\.alz|\.rdbms|\.version/ } readdir $dh )
     {
         my $file = File::Spec->catfile( $schema_dir, $f );
         next unless -f $file;
+
+        # untaint
+        ($file) = $file =~ /^(.+)$/;
 
         unlink $file
             or system_exception "Unable to delete $file: $!";
@@ -1369,7 +1376,7 @@ account for these.
 In the end, this means that Alzabo may never think that a schema in
 the RDBMS exactly matches the state of the Alzabo schema object.  Even
 immediately after running this method, running it again may still
-2cause it to execute SQL commands.  Fortunately, the SQL it generates
+cause it to execute SQL commands.  Fortunately, the SQL it generates
 will not cause anything to break.
 
 This method takes any parameters that can be used when connecting to

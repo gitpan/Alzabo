@@ -13,6 +13,15 @@ Postgres support is based on the 7.3.x version of Postgres.  Alzabo
 should work with the 7.1 and 7.2 series, and may even work with the
 7.0 series.
 
+=head2 Mixed-case Table or Column Names
+
+By default, Postgres treats table and column names case-insensitively.
+Because of this, Alzabo always quotes these names when generating DDL
+SQL.  If you are using tables or columns that contain upper-case
+characters, you should always call C<<
+$schema->set_quote_identifiers(1) >> as soon as you load your schema
+object.  Otherwise, any method which generates DML SQL will fail.
+
 =head2 Reverse Engineering
 
 =over 4

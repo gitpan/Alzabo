@@ -344,6 +344,12 @@ sub _make_method
     my ($code_name, $debug_name) = ("$p{class}::$name",
                                     "$p{class}\->$name");
 
+    if ( $p{class}->can($name) )
+    {
+        warn "MethodMaker: Creating $p{type} method $debug_name will override"
+             . " the method of the same name in the parent class\n";
+    }
+
     no strict 'refs';  # We use symbolic references here
     if ( defined &$code_name )
     {
@@ -352,7 +358,7 @@ sub _make_method
         # cause confusion - whichever subroutine happens first will
         # arbitrarily win.
 
-        print STDERR "MethodMaker: skipping $p{type} method $debug_name, subroutine already exists\n";
+        warn "MethodMaker: skipping $p{type} method $debug_name, subroutine already exists\n";
         return;
     }
 
@@ -1479,7 +1485,7 @@ For example, with the following tables:
   User           UserGroup        Group
   -------        ---------        --------
   user_id        user_id          group_id
-  name           group_id         name
+  user_name      group_id         group_name
 
 The "UserGroup" table exists solely to facilitate the n..n
 relationship between "User" and "Group".  User row objects will have a
@@ -1496,7 +1502,7 @@ key.  For example, given the tables below:
   Restaurant                    Cuisine
   ---------                     --------
   restaurant_id                 cuisine_id
-  name              (n..1)      description
+  restaurant_name   (n..1)      description
   phone                         spiciness
   cuisine_id
 
@@ -1512,7 +1518,7 @@ itself.  Here is an example:
  Location
  --------
  location_id
- name
+ location_name
  parent_location_id
 
 NOTE: If the relationship has a cardinality of 1..1 then no methods
@@ -1835,7 +1841,7 @@ table or row class individually.
 A simple script like the following can be used to send all of the
 generated documentation to C<STDOUT>.
 
-  use Alzabo::MethodMaker ( name => 'foo', all => 1 );
+  use Alzabo::MethodMaker ( schema => 'foo', all => 1 );
 
   my $s = Alzabo::Runtime::Schema->load_from_file( name => 'foo' );
 
