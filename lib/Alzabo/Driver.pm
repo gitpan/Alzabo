@@ -10,7 +10,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.44 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.45 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -302,17 +302,50 @@ sub next_sequence_number
 
 sub start_transaction
 {
-    shift()->_virtual;
+    my $self = shift;
+
+    $self->{tran_count} = 0 unless defined $self->{tran_count};
+    $self->{tran_count}++;
+
+    $self->{dbh}->{AutoCommit} = 0;
 }
 
 sub rollback
 {
-    shift()->_virtual;
+    my $self = shift;
+
+    $self->{dbh}->rollback unless $self->{dbh}->{AutoCommit};
+
+    $self->{dbh}->{AutoCommit} = 1;
+
+    $self->{tran_count} = undef;
 }
 
 sub finish_transaction
 {
-    shift()->_virtual;
+    my $self = shift;
+
+    # More commits than begin_tran.  Not correct.
+    if ( defined $self->{tran_count} )
+    {
+	$self->{tran_count}--;
+    }
+    else
+    {
+	my $callee = (caller(1))[3];
+	warn "$callee called commit without corresponding begin_tran call\n";
+    }
+
+    # Don't actually commit until we reach 'uber-commit'
+    return if $self->{tran_count};
+
+    unless ( $self->{dbh}->{AutoCommit} )
+    {
+        $self->{dbh}->commit;
+    }
+    $self->{dbh}->{AutoCommit} = 1;
+
+    $self->{tran_count} = undef;
 }
 
 sub get_last_id

@@ -13,7 +13,7 @@ use Alzabo::Config;
 
 use vars qw($VERSION);
 
-$VERSION = '0.46';
+$VERSION = '0.47';
 
 1;
 
@@ -65,7 +65,7 @@ provided it has the appropriate method interface.
 Alzabo has a lot of documentation.  If you are primarily interested in
 using Alzabo as an RDBMS-OO wrapper, much of the documentation can be
 skipped.  This assumes that you will create your schema via the schema
-creation interface or via L<reverse engineering|Alazbo::Create::Schema/reverse_engineer>.
+creation interface or via L<reverse engineering|Alzabo::Create::Schema/reverse_engineer>.
 
 Here is the suggested reading order:
 
@@ -392,7 +392,7 @@ These functions are normal Perl functions.  They take as argument
 normal scalars (strings and numbers), C<Alzabo::Column> objects, or
 the return value of another SQL function.  They may be used to select
 data via the
-L<C<Alzabo::Runtime::Row-E<gt>function>|Alzabo::Runtime::Row/function>
+L<C<Alzabo::Runtime::Table-E<gt>function>|Alzabo::Runtime::Table/function>
 method.  They may also be used as part updates, inserts, and where
 clauses, any place that is appropriate.
 
@@ -539,7 +539,7 @@ L<C<Alzabo::Create::ColumnDefinition>|Alzabo::Create::ColumnDefinition>
 documentation).  This is only relevant if you are writing a schema
 creation interface.
 
-Other classes/objects used in Alzabo include:
+=head3 Other classes
 
 =over 4
 

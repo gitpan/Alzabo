@@ -22,6 +22,8 @@ foreach ( qw( Schema Table Column ColumnDefinition Index ForeignKey ) )
     }
 }
 
+merge( "$sourcedir/Alzabo.pm", "$sourcedir/Alzabo/QuickRef.pod", "$libdir/Alzabo/QuickRef.pod" );
+
 sub merge
 {
     my ($f, $t_in, $t_out, $class) = @_;
@@ -39,6 +41,10 @@ sub merge
     $to =~ s/\r//g;
     $to =~ s/\n
              =for\ pod_merge   # find this string at the beginning of a line
+             (?:
+              \s*
+              (\w+)            # optionally say what POD marker to merge until
+             )
 	     \s+
              (\w+)             # what we're going to merge (and replace)
              \n*
@@ -46,7 +52,7 @@ sub merge
               \n=              # next =foo marker, skipping all spaces
              )
              /
-              find_chunk($f, $from, $1, $class)
+              find_chunk($f, $from, $1, $class, $2)
              /gxie;
 
     mkpath( dirname($t_out) ) unless -d dirname($t_out);
@@ -67,7 +73,7 @@ sub merge
 
 sub find_chunk
 {
-    my ($file, $from, $title, $class) = @_;
+    my ($file, $from, $title, $class, $until) = @_;
 
     my $chunk;
     if ($title eq 'merged')
@@ -79,13 +85,16 @@ sub find_chunk
         if ( my ($l) = $from =~ /\n=head([1234]) +$title.*?\n/ )
 	{
 	    my $levels = join '', (1..$l);
-	    my $re = qr/(\n=head$l +$title.*?)\n=(?:head[$levels]|cut)/s;
-
+	    my $until_re = $until ? qr/$until/ : qr/(?:head[$levels]|cut)/;
+	    my $re = qr/(\n=head$l +$title.*?)\n=$until/s;
 	    ($chunk) = $from =~ /$re/;
 	}
     }
 
-    $chunk =~ s/Alzabo::(Column|ColumnDefinition|ForeignKey|Index|Schema|Table)/Alzabo::$class\::$1/g;
+    if (defined $class)
+    {
+	$chunk =~ s/Alzabo::(Column|ColumnDefinition|ForeignKey|Index|Schema|Table)/Alzabo::$class\::$1/g;
+    }
 
     die "Can't find =headX $title in $file\n" unless $chunk;
     return $chunk;

@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.46 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.47 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -475,7 +475,7 @@ sub index_sql
     my $self = shift;
     my $index = shift;
 
-    my $index_name = $index->id;
+    my $index_name = $self->_make_index_name( $index->id );
 
     my $sql = 'CREATE';
     $sql .= ' UNIQUE' if $index->unique;
@@ -489,6 +489,12 @@ sub index_sql
     $sql .= ' )';
 
     return $sql;
+}
+
+sub _make_index_name
+{
+    shift;
+    return substr(shift, 0, 64);
 }
 
 sub foreign_key_sql
@@ -514,7 +520,7 @@ sub drop_index_sql
     my $self = shift;
     my $index = shift;
 
-    return 'DROP INDEX ' . $index->id . ' ON ' . $index->table->name;
+    return 'DROP INDEX ' . $self->_make_index_name( $index->id ) . ' ON ' . $index->table->name;
 }
 
 sub column_sql_add

@@ -8,6 +8,7 @@ use strict;
 
 sub root_dir
 {
+    $CONFIG{root_dir} = $_[0] if defined $_[0];
     return $CONFIG{root_dir};
 }
 
@@ -38,11 +39,13 @@ sub available_schemas
 
 sub mason_web_dir
 {
+    $CONFIG{mason_web_dir} = $_[0] if defined $_[0];
     return $CONFIG{mason_web_dir};
 }
 
 sub mason_extension
 {
+    $CONFIG{mason_extension} = $_[0] if defined $_[0];
     return $CONFIG{mason_extension};
 }
 
@@ -65,9 +68,14 @@ information.
 
 =head1 FUNCTIONS
 
-=head2 root_dir
+=head2 root_dir ($root)
 
-=head3
+If a value is passed to this method then the root is temporarily
+changed.  This change lasts as long as your application remains in
+memory.  However, since changes are not written to disk it will have
+to be changed again.
+
+=head3 Returns
 
 The root directory for your Alzabo installation.
 
@@ -92,11 +100,21 @@ Alzabo::Exception::System
 
 =head2 mason_web_dir
 
+If a value is passed to this method then the Mason component directory
+is temporarily changed.  This change lasts as long as your application
+remains in memory.  However, since changes are not written to disk it
+will have to be changed again.
+
 =head3 Returns
 
 The path to the root directory for the Alzabo Mason components.
 
 =head2 mason_extension
+
+If a value is passed to this method then the Mason extenstion is
+temporarily changed.  This change lasts as long as your application
+remains in memory.  However, since changes are not written to disk it
+will have to be changed again.
 
 =head3 Returns
 

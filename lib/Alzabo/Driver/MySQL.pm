@@ -10,7 +10,7 @@ use DBI;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.30 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.31 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -109,22 +109,6 @@ sub get_last_id
      my $self = shift;
 
      return $self->{dbh}->{mysql_insertid};
-}
-
-sub start_transaction
-{
-    return;
-}
-
-# someday this might do something, wouldn't that be cool?
-sub rollback
-{
-    return;
-}
-
-sub finish_transaction
-{
-    return;
 }
 
 sub driver_id

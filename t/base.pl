@@ -1,7 +1,7 @@
 use Alzabo::Config;
 use Cwd;
 
-$Alzabo::Config::CONFIG{root_dir} = Cwd::cwd;
+Alzabo::Config::root_dir( Cwd::cwd );
 
 $| = 1;
 

@@ -1,3 +1,21 @@
+0.47
+
+ENHANCEMENTS:
+
+- Make several of the config values settable via the Alzabo::Config
+module.  Suggested by Jared Rhine.
+
+- Transactions should now work under MySQL.  Whether it does anything
+or not depends on the table type you are using.  This needs testing
+though.
+
+BUG FIXES:
+
+- Make sure that index names are not too long.
+
+- Added a missing file to the MANIFEST.  0.46 was missing a needed
+file from the tarball.
+
 0.46
 
 ENHANCEMENTS:

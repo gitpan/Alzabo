@@ -58,6 +58,7 @@ lib/Alzabo/Util.pm
 
 lib/Alzabo/ObjectCache.pm
 lib/Alzabo/ObjectCache/Store/Memory.pm
+lib/Alzabo/ObjectCache/Store/Null.pm
 lib/Alzabo/ObjectCache/Sync.pm
 lib/Alzabo/ObjectCache/Sync/BerkeleyDB.pm
 lib/Alzabo/ObjectCache/Sync/DB_File.pm

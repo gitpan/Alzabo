@@ -86,20 +86,21 @@ sub command
     }
     elsif ($cmd eq 'for')
     {
-	my ($col, $info) = $text =~ /\s*html\s+(\w+)=([^\n]+)/;
-
-	if ($col eq 'link')
+	if ( my ($col, $info) = $text =~ /\s*html\s+(\w+)=([^\n]+)/ )
 	{
-	    $self->{_html} .= "</td>";
+	    if ($col eq 'link')
+	    {
+		$self->{_html} .= "</td>";
+	    }
+
+	    $info =~ s,C<(.*?)>,<code>$1</code>,g;
+	    $info =~ s!L<((?:<code>)?.*?(?:</code>)?)\|([^>]*)>!$self->_make_link($1,$2)!eg;
+	    $info =~ s/E<(.*?)>/&$1;/g;
+
+	    $self->{_html} .= "<td>$info</td>";
+	    $self->{_html} .= "</tr>\n" if $col eq 'link';
+	    $self->{last_col} = $col;
 	}
-
-	$info =~ s,C<(.*?)>,<code>$1</code>,g;
-	$info =~ s!L<((?:<code>)?.*?(?:</code>)?)\|([^>]*)>!$self->_make_link($1,$2)!eg;
-	$info =~ s/E<(.*?)>/&$1;/g;
-
-	$self->{_html} .= "<td>$info</td>";
-	$self->{_html} .= "</tr>\n" if $col eq 'link';
-	$self->{last_col} = $col;
     }
 
     $self->{last_was_text} = 0;
@@ -199,7 +200,8 @@ my @order = ( qw( Alzabo
 		    Alzabo::ObjectCache::Sync::Null
 		  ) ],
 
-	      qw( Alzabo::Exceptions
+	      qw( Alzabo::Config
+                  Alzabo::Exceptions
                   Alzabo::FAQ
 		  Alzabo::Create::Schema
 		  Alzabo::Create::Table
@@ -339,7 +341,7 @@ sub pod2html
 
     print "Creating $out\n";
 
-    system("$^X /usr/bin/pod2html --infile=$in --outfile=$out --htmlroot=$htmlroot --podpath=$from")
+    system("$^X /usr/bin/pod2html --infile=$in --outfile=$out --htmlroot=$htmlroot")
 	and die "error: $!\n";
 
     add_header($out);

@@ -5,7 +5,6 @@ $^W = 1;
 use Cwd;
 use Data::Dumper;
 use ExtUtils::MakeMaker qw( prompt WriteMakefile );
-use Text::Wrap;
 
 use vars qw(%extra %config %test @TESTS);
 
@@ -40,7 +39,7 @@ my %prereq;
 
 {
     # extra prereqs for certain features
-    my @extra_prereq = ( [ 'the MySQL driver', [ [ 'DBD::mysql' => 0 ] ], 'mysql' ],
+    my @extra_prereq = ( [ 'the MySQL driver', [ [ 'DBD::mysql' => 2.0416 ] ], 'mysql' ],
 			 [ 'the PostgreSQL driver', [ [ 'DBD::Pg' => 0.95 ] ], 'pg' ],
 #			 [ 'the Oracle driver', [ [ 'DBD::Oracle' => 0 ] ], 'oracle' ],
 			 [ 'the IPC caching code', [ [ 'IPC::Shareable' => 0.54 ] ] ],
@@ -132,9 +131,9 @@ if ( keys %Alazabo::Config::CONFIG )
 write_config_module(%config);
 get_test_setup();
 
-if ( has_module( 'DBD::mysql', 2.09 ) )
+if ( eval { require DBD::mysql } && $DBD::mysql::VERSION == 2.09 )
 {
-    warn "You appear to have DBD::mysql installed.  This version has a bug which causes major problems with Alzabo.  Please upgrade or downgrade.\n";
+    warn "You appear to have DBD::mysql version 2.09 installed.  This version has a bug which causes major problems with Alzabo.  Please upgrade or downgrade.\n";
 }
 
 %prereq = ( 'DBI' => 0,
