@@ -1,0 +1,31 @@
+<%args>
+$schema
+$table
+$after => undef
+</%args>
+
+<%init>
+use Alzabo::Config;
+
+my $s;
+eval
+{
+    $s = Alzabo::Create::Schema->load_from_file( name => $schema );
+
+    my %p = ( name => $table );
+    $p{after} = $s->table( $after ) if defined $after;
+
+    $s->make_table(%p); 
+
+    $s->save_to_file;
+};
+
+$m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+
+$m->comp( &Alzabo::Config::mason_url_path . '/common/redirect', url => 'view_table' . Alzabo::Config::mason_extension() . '?schema=' . $s->name . '&table=' . $table );
+
+</%init>
+
+<%flags>
+inherit => undef
+</%flags>

@@ -1,0 +1,80 @@
+<table width="100%" cellspacing="5">
+ <tr valign="top">
+  <td>
+<form action="change_schema_name<% Alzabo::Config::mason_extension() %>">
+ <input type="hidden" name="schema" value="<% $s->name %>">
+ <input type="text" name="name" value="<% $s->name %>">
+ <input type="submit" value="Change name">
+</form>
+  </td>
+  <td>
+<form action="delete_schema<% Alzabo::Config::mason_extension() %>">
+ <input type="hidden" name="schema" value="<% $s->name %>">
+ <input type="submit" value="Delete schema">
+</form>
+  </td>
+ </tr>
+ <tr>
+  <td><h2>Add a table</h2></td>
+  <td>
+   <form action="view_schema_sql<% Alzabo::Config::mason_extension() %>">
+   <input type="hidden" name="schema" value="<% $s->name %>">
+   <input type="submit" value="View schema SQL">
+   </form>
+  </td>
+ </tr>
+ <tr>
+  <td>Table name:</td>
+  <td rowspan="3">
+% if ($s->instantiated) {
+   <form action="uninstantiate_schema<% Alzabo::Config::mason_extension() %>">
+   <input type="hidden" name="schema" value="<% $s->name %>">
+   <input type="submit" value="Mark schema as not instantiated">
+   </form>
+
+   <b>Note:</b> This action only changes the schema object's internal
+   state.  It will not actually remove the schema from the backend
+   RDBMS.  Its only value currently is if the object files were copied
+   from another system where it was already instantiated and you want
+   to change that.
+
+% } else {
+   &nbsp;
+% }
+  </td>
+ </tr>
+<form action="add_table<% Alzabo::Config::mason_extension() %>" method="post">
+ <tr>
+  <td colspan="2">
+   <input type="hidden" name="schema" value="<% $s->name %>">
+   <input type="textfield" name="table" size="20">
+  </td>
+ </tr>
+
+% if ($s->tables) {
+ <tr>
+  <td colspan="2">
+   After table:
+   <select name="after">
+%   foreach my $t ($s->tables) {
+    <option value="<% $t->name %>"<% $t->name eq ($s->tables)[-1]->name ? ' selected' : '' %>><% $t->name %></option>
+%   }
+   </select>
+  </td>
+ </tr>
+% }
+
+ <tr>
+  <td colspan="2"><input type="submit" value="Submit"></td>
+ </tr>
+</form>
+</table>
+
+<%args>
+$s
+</%args>
+
+<%init>
+my @tables = $s->tables;
+my $last = $tables[-1];
+</%init>

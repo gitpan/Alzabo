@@ -1,0 +1,13 @@
+<%args>
+$url
+</%args>
+
+<%init>
+use Apache::Constants qw( REDIRECT );
+use URI;
+
+my $uri = URI->new($url);
+
+$r->send_cgi_header("Location: " . $uri->canonical . "\n\n");
+$m->abort(REDIRECT );
+</%init>

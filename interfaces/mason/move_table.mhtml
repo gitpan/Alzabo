@@ -1,0 +1,35 @@
+<%args>
+$schema
+$table
+$before => undef
+$after => undef
+</%args>
+
+<%init>
+use Alzabo::Config;
+
+my $s;
+eval
+{
+    $s = Alzabo::Create::Schema->load_from_file( name => $schema );
+
+    my %p = defined $before ? ( before => $s->table($before) ) : ( after => $s->table($after) );
+    $s->move_table( table => $s->table($table),
+		    %p );
+    $s->save_to_file;
+};
+
+$m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+
+my $url = $m->comp( &Alzabo::Config::mason_url_path . '/common/make_url',
+		    path => 'view_table' . Alzabo::Config::mason_extension(),
+		    query => { schema => $s->name,
+			       table  => $table }
+		  );
+$m->comp( &Alzabo::Config::mason_url_path . '/common/redirect', url => $url );
+
+</%init>
+
+<%flags>
+inherit => undef
+</%flags>

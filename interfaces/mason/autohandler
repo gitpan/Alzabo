@@ -1,0 +1,118 @@
+<html>
+<head>
+<title>Alzabo: The Perl Data Modeling Tool</title>
+</head>
+
+<body>
+
+<table width="100%" cellspacing="0">
+
+ <tr>
+  <td colspan="5" align="center"><& .title, $s, $t, $c, $fk &></td>
+ </tr>
+
+% if ($s) {
+<& schema_menubar, $s &>
+%   if ($t) {
+<& table_menubar, $t &>
+%   }
+% }
+</table>
+
+% $m->call_next(%args);
+
+</body>
+</html>
+
+<%args>
+$schema => undef
+$table => undef
+$column => undef
+$foreign_key_table_to => undef
+$foreign_key_column_from => undef
+$foreign_key_column_to => undef
+</%args>
+
+<%init>
+use Alzabo::Config;
+
+my $s;
+my %args;
+my ($comp, @args);
+if ($schema)
+{
+    eval{ $s = Alzabo::Create::Schema->load_from_file( name => $schema ); };
+    $m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+    $args{s} = $s;
+}
+
+my $t;
+if ($table)
+{
+    eval{ $t = $s->table($table); };
+    $m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+    $args{t} = $t;
+}
+
+my $c;
+if ($column)
+{
+    eval{ $c = $t->column($column); };
+    $m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+    $args{c} = $c;
+}
+
+my $fk;
+if ( $foreign_key_table_to && $foreign_key_column_from &&
+     $foreign_key_column_to )
+{
+    eval
+    {
+	my $tt = $s->table($foreign_key_table_to);
+	my $cf = $t->column($foreign_key_column_from);
+	my $ct = $tt->column($foreign_key_column_to);
+	$fk = $t->foreign_key( table_to => $tt,
+			       column_from => $cf,
+			       column_to => $ct  );
+    };
+    $m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+    $args{fk} = $fk;
+}
+
+</%init>
+
+<%def .title>
+<%init>
+my ( $s, $t, $c, $fk ) = @_;
+
+my @t;
+if (defined $s)
+{
+    push @t, $t ? $m->scomp( &Alzabo::Config::mason_url_path . '/common/href',
+			     text => $s->name,
+			     path => 'view_schema' . Alzabo::Config::mason_extension(),
+			     query => { schema => $s->name } ) : $s->name;
+
+    if (defined $t)
+    {
+	push @t, $c ? $m->scomp( &Alzabo::Config::mason_url_path . '/common/href',
+				 text => $t->name,
+				 path => 'view_table' . Alzabo::Config::mason_extension(),
+				 query => { schema => $s->name,
+					table => $t->name } ) : $t->name;
+    }
+
+    push @t, $c->name if defined $c;
+}
+</%init>
+<div align="center">
+<a href="<% &Alzabo::Config::mason_url_path %>/schema"><!--<img src="/alzabo/images/alzabo-logo.jpg" alt="return to index" border="0" width="75" height="50" hspacing="0" vspacing="0">-->Top level</a>
+<hr width="25%" />
+% if (@t) {
+  <h2><% join ' : ', @t %></h2>
+% }
+</div>
+</%def>
+<%flags>
+inherit => undef
+</%flags>

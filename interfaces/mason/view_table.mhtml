@@ -1,0 +1,264 @@
+<table width="100%" cellspacing="5">
+ <tr valign="top">
+  <td>
+<form action="change_table_name<% Alzabo::Config::mason_extension() %>">
+ <input type="hidden" name="schema" value="<% $s->name %>">
+ <input type="hidden" name="table" value="<% $t->name %>">
+ <input type="text" name="name" value="<% $t->name %>">
+ <input type="submit" value="Change name">
+</form>
+  </td>
+  <td>
+<form action="delete_table<% Alzabo::Config::mason_extension() %>">
+ <input type="hidden" name="schema" value="<% $s->name %>">
+ <input type="hidden" name="table" value="<% $t->name %>">
+ <input type="submit" value="Delete table">
+</form>
+  </td>
+ </tr>
+
+% if ( $t->all_foreign_keys || $t->indexes ) {
+ <tr>
+  <td>
+
+%   if ($t->all_foreign_keys) {
+   <table width="100%" border="1" align="center" cellspacing="0" cellpadding="0">
+    <tr>
+     <td colspan="3" align="center"><h4>Foreign keys</h4></td>
+    </tr>
+    <tr valign="middle">
+     <td align="center"><b>From</b></td>
+     <td align="center"><b>To</b></td>
+     <td>&nbsp;</td>
+    </tr>
+%     foreach my $fk ($t->all_foreign_keys) {
+    <tr valign="top">
+     <td align="center">
+<& &Alzabo::Config::mason_url_path . '/common/href', text => $fk->column_from->name, path => 'view_column' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $t->name, column => $fk->column_from->name } &>
+ (<% join '..', $fk->min_max_from %>)
+     </td>
+     <td align="center">
+<& &Alzabo::Config::mason_url_path . '/common/href', text => $fk->table_to->name, path => 'view_table' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $fk->table_to->name } &>
+ .
+ <& &Alzabo::Config::mason_url_path . '/common/href', text => $fk->column_to->name, path => 'view_column' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $fk->table_to->name, column => $fk->column_to->name } &>
+ (<% join '..', $fk->min_max_to %>)
+     </td>
+     <td align="center">
+<form action="delete_foreign_key<% Alzabo::Config::mason_extension() %>">
+ <input type="hidden" name="schema" value="<% $s->name %>">
+ <input type="hidden" name="table_from" value="<% $t->name %>">
+ <input type="hidden" name="table_to" value="<% $fk->table_to->name %>">
+ <input type="hidden" name="column_from" value="<% $fk->column_from->name %>">
+ <input type="hidden" name="column_to" value="<% $fk->column_to->name %>">
+ <input type="submit" value="Delete">
+</form>
+%     }
+     </td>
+    </tr>
+   </table>
+%   }
+  </td>
+  <td>
+%   if ($t->indexes) {
+   <table width="100%" border="1" align="center" cellspacing="0" cellpadding="0">
+    <tr>
+     <td colspan="2" align="center"><h4>Indexes</h4></td>
+    </tr>
+%     foreach my $i ($t->indexes) {
+    <tr valign="top">
+     <td align="center">
+<& .index, $i &>
+     </td>
+     <td align="center">
+<form action="delete_index<% Alzabo::Config::mason_extension() %>">
+ <input type="hidden" name="schema" value="<% $s->name %>">
+ <input type="hidden" name="table" value="<% $t->name %>">
+ <input type="hidden" name="index" value="<% $i->id %>">
+ <input type="submit" value="Delete">
+</form>
+     </td>
+    </tr>
+%     }
+   </table>
+%   }
+  </td>
+ </tr>
+% }
+
+ <tr valign="top">
+  <td>
+
+<form action="add_column<% Alzabo::Config::mason_extension() %>">
+ <input type="hidden" name="schema" value="<% $s->name %>">
+ <input type="hidden" name="table" value="<% $t->name %>">
+<table width="100%" cellspacing="5">
+ <tr>
+  <td colspan="2"><h2>Add a column</h2></td>
+ </tr>
+
+ <tr>
+  <td>Column name:</td>
+ </tr>
+ <tr>
+  <td><input type="textfield" name="column" size="20"></td>
+ </tr>
+
+ <tr>
+  <td>Column type:</td>
+ </tr>
+ <tr>
+  <td><input type="textfield" name="type" size="20"></td>
+ </tr>
+
+ <tr>
+  <td>Column Attributes:</td>
+ </tr>
+ <tr>
+  <td><input type="textfield" name="attributes" size="20"></td>
+ </tr>
+ <tr>
+  <td><input type="textfield" name="attributes" size="20"></td>
+ </tr>
+ <tr>
+  <td><input type="textfield" name="attributes" size="20"></td>
+ </tr>
+
+ <tr>
+  <td>
+   Allow nulls: <input type="checkbox" name="null" value="1"><br>
+   Primary key: <input type="checkbox" name="primary_key" value="1"><br>
+   Sequenced: <input type="checkbox" name="sequenced" value="1">
+  </td>
+ </tr>
+
+% if ($t->columns) {
+ <tr>
+  <td colspan="2">
+   After column: 
+   <select name="after">
+%   foreach my $c (@columns) {
+    <option value="<% $c->name %>"<% $c->name eq $last->name ? ' selected' : '' %>><% $c->name %></option>
+%   }
+   </select>
+  </td>
+ </tr>
+% }
+
+ <tr>
+  <td colspan="2"><input type="submit" value="Submit"></td>
+ </tr>
+</table>
+</form>
+
+  </td>
+
+  <td>
+
+% if ($t->columns && grep {$_ ne $t && $_->columns} $s->tables) {
+<form action="add_relation<% Alzabo::Config::mason_extension() %>" method="post">
+ <input type="hidden" name="schema" value="<% $s->name %>">
+ <input type="hidden" name="table_from" value="<% $t->name %>">
+<table width="100%" cellspacing="5">
+ <tr>
+  <td><h2>Create a relationship to another table</h2></td>
+ </tr>
+
+ <tr>
+  <td>To table:</td>
+ </tr>
+ <tr>
+  <td>
+   <select name="table_to">
+%   foreach my $t ( sort {$a->name cmp $b->name} $s->tables ) {
+%     next unless $t->columns;
+    <option value="<% $t->name %>"><% $t->name %></option>
+%   }
+   </select>
+  </td>   
+ </tr>
+ <tr>
+  <td><input type="submit" value="Submit"></td>
+ </tr>
+</table>
+</form>
+% }
+% if ($t->columns) {
+<form action="add_index_1<% Alzabo::Config::mason_extension() %>" method="post">
+ <input type="hidden" name="schema" value="<% $s->name %>">
+ <input type="hidden" name="table" value="<% $t->name %>">
+<table width="100%" cellspacing="5">
+ <tr>
+  <td><h2>Add an index</h2></td>
+ </tr>
+ <tr>
+  <td>
+   <select name="columns" multiple="multiple">
+%   foreach my $c ( $t->columns ) {
+    <option value="<% $c->name %>"><% $c->name %></option>
+%   }
+   </select>
+  </td>
+ </tr>
+ <tr>
+  <td>
+   <input type="submit" value="Submit">
+  </td>
+ </tr>
+</table>
+</form>
+% }
+% if ( (my @tables = $s->tables) > 2) {
+<form action="move_table<% Alzabo::Config::mason_extension() %>" method="post">
+ <input type="hidden" name="schema" value="<% $s->name %>">
+ <input type="hidden" name="table" value="<% $t->name %>">
+<table width="100%" cellspacing="5">
+ <tr>
+  <td>
+   <h2>Move table</h2>
+   After table:
+   <select name="after">
+%   foreach my $t (@tables) {
+    <option value="<% $t->name %>"><% $t->name %></option>
+%   }
+   </select>
+  </td>
+ </tr>
+ <tr>
+  <td>
+   <input type="submit" value="Submit">
+  </td>
+ </tr>
+</table>
+</form>
+% }
+  </td>
+ </tr>
+</table>
+
+<%args>
+$s
+$t
+</%args>
+
+<%init>
+my @columns = $t->columns;
+my $last = $columns[-1];
+</%init>
+
+<%def .index>
+<% join ', ', @c %>
+% if ($i->unique) {
+(unique)
+% }
+<%init>
+my $i = shift;
+
+my @c;
+foreach my $c ( $i->columns )
+{
+    my $url = $m->scomp( &Alzabo::Config::mason_url_path . '/common/href', text => $c->name, path => 'view_column' . Alzabo::Config::mason_extension(), query => { schema => $i->table->schema->name, table => $i->table->name, column => $c->name } );
+    $url .= '(' . $i->prefix($c) . ')' if $i->prefix($c);
+    push @c, $url;
+}
+</%init>
+</%def>

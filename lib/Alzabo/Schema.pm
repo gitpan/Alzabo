@@ -1,0 +1,169 @@
+package Alzabo::Schema;
+
+use strict;
+use vars qw($VERSION %CACHE);
+
+use Alzabo;
+use Alzabo::Config;
+use Alzabo::Driver;
+use Alzabo::RDBMSRules;
+
+use Storable ();
+use Tie::IxHash ();
+
+use fields qw( name driver tables );
+
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
+
+1;
+
+sub _load_from_file
+{
+    my $class = shift;
+    my %p = @_;
+
+    my $name = $p{name};
+
+    # Making these (particularly from files) is expensive.
+    return $class->_cached_schema($p{name}) if $class->_cached_schema($p{name});
+
+    my $schema_dir = Alzabo::Config::schema_dir;
+    my $file =  "$schema_dir/$p{name}/$p{name}." . $class->_schema_file_type . '.alz';
+
+    -e $file or AlzaboException->throw( error => "No saved schema named $name" );
+
+    my $fh = do { local *FH; };
+    open $fh, $file
+	or FileSystemException->throw( error => "Unable to open $file: $!" );
+    my $schema = Storable::retrieve_fd($fh);
+    close $fh
+	or FileSystemException->throw( error => "Unable to close $file: $!" );
+
+    open $fh, "$schema_dir/$name/$name.driver"
+	or FileSystemException->throw( error => "Unable to open $schema_dir/$name/$name.driver: $!\n" );
+    my $driver = join '', <$fh>;
+    close $fh
+	or FileSystemException->throw( error => "Unable to close $schema_dir/$name/$name.driver: $!" );
+
+    $driver =~ s/use (.*);/$1/;
+    $schema->{driver} = Alzabo::Driver->new( driver => $driver,
+					     schema => $schema );
+
+    $schema->_save_to_cache;
+
+    return $schema;
+}
+
+sub _cached_schema
+{
+    my $class = shift;
+    my $name = shift;
+
+    my $schema_dir = Alzabo::Config::schema_dir;
+    my $file =  "$schema_dir/$name/$name." . $class->_schema_file_type . '.alz';
+
+    if (exists $CACHE{$name}{$class}{object})
+    {
+	my $mtime = (stat($file))[9]
+	    or FileSystemException->throw( error => "can't stat $file" );
+	return $CACHE{$name}{$class}{object}
+	    if $mtime <= $CACHE{$name}{$class}{mtime};
+    }
+}
+
+sub _save_to_cache
+{
+    my $self = shift;
+    my $class = ref $self;
+    my $name = $self->name;
+
+    $CACHE{$name}{$class} = { object => $self,
+			      mtime => time };
+}
+
+sub name
+{
+    my Alzabo::Schema $self = shift;
+
+    return $self->{name};
+}
+
+sub table
+{
+    my Alzabo::Schema $self = shift;
+    my $name = shift;
+
+    AlzaboException->throw( error => "Table $name doesn't exist in schema" )
+	unless $self->{tables}->EXISTS($name);
+
+    return $self->{tables}->FETCH($name);
+}
+
+sub tables
+{
+    my Alzabo::Schema $self = shift;
+
+    return $self->{tables}->Values;
+}
+
+sub driver
+{
+    my Alzabo::Schema $self = shift;
+
+    return $self->{driver};
+}
+
+__END__
+
+=head1 NAME
+
+Alzabo::Schema - Schema objects
+
+=head1 SYNOPSIS
+
+  use Alzabo::Schema;
+
+  my $schema = Alzabo::Schema->load_from_file('foo');
+
+  foreach my $t ($schema->tables)
+  {
+     print $t->name;
+  }
+
+=head1 DESCRIPTION
+
+Objects in this class represent the entire schema, containing table
+objects, which in turn contain foreign key objects and column objects,
+which in turn contain column definition objects.
+
+=head1 METHODS
+
+=over 4
+
+=item * name
+
+Returns the name of the schema.
+
+=item * table ($name)
+
+Given a table name, it returns an object representing the table.
+
+Exceptions:
+
+ AlzaboException - Table doesn't exist in the schema.
+
+=item * tables
+
+Returns all the table objects in this schema
+
+=item * driver
+
+Returns the Alzabo::Driver object for the schema.
+
+=back
+
+=head1 AUTHOR
+
+Dave Rolsky, <autarch@urth.org>
+
+=cut

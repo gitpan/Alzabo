@@ -1,0 +1,28 @@
+<%args>
+$schema
+$table
+$name
+</%args>
+
+<%init>
+use Alzabo::Config;
+
+my ($s, $t);
+eval
+{
+    $s = Alzabo::Create::Schema->load_from_file( name => $schema );
+
+    $t = $s->table($table);
+    $t->set_name($name);
+    $s->save_to_file;
+};
+
+$m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+
+$m->comp( &Alzabo::Config::mason_url_path . '/common/redirect', url => 'view_table' . Alzabo::Config::mason_extension() . '?schema=' . $s->name . '&table=' . $t->name );
+
+</%init>
+
+<%flags>
+inherit => undef
+</%flags>

@@ -1,0 +1,112 @@
+<table width="100%" cellspacing="5">
+ <tr valign="top">
+  <td>
+<table width="100%" cellspacing="5">
+ <tr>
+  <td>
+<form action="change_column_name<% Alzabo::Config::mason_extension() %>">
+ <input type="hidden" name="schema" value="<% $s->name %>">
+ <input type="hidden" name="table" value="<% $t->name %>">
+ <input type="hidden" name="column" value="<% $c->name %>">
+ <input type="text" name="name" value="<% $c->name %>">
+ <input type="submit" value="Change name">
+</form>
+  </td>
+<form action="change_column<% Alzabo::Config::mason_extension() %>">
+ <input type="hidden" name="schema" value="<% $s->name %>">
+ <input type="hidden" name="table" value="<% $t->name %>">
+ <input type="hidden" name="column" value="<% $c->name %>">
+
+ <tr valign="top">
+  <td>Change type:</td>
+ <tr>
+  <td><input type="textfield" name="type" value="<% $c->type %>" size="20"></td>
+ </tr>
+
+ <tr>
+  <td>Change/add attributes:<br>
+ (to delete an attribute simply erase it)
+  </td>
+ </tr>
+% foreach my $a (sort $c->attributes) {
+ <tr>
+  <td>
+   <input type="hidden" name="old_attributes" value="<% $a %>">
+   <input type="textfield" name="attributes" value="<% $a %>" size="20">
+  </td>
+ </tr>
+% }
+ <tr>
+  <td><input type="textfield" name="attributes" size="20"></td>
+ </tr>
+ <tr>
+  <td><input type="textfield" name="attributes" size="20"></td>
+ </tr>
+
+ <tr>
+  <td>
+   Allow nulls: <input type="checkbox" name="null" <% $c->null ? 'checked=checked' : '' %>><br>
+   Primary key: <input type="checkbox" name="primary_key" <% $t->column_is_primary_key($c) ? 'checked=checked' : '' %>><br>
+   Sequenced: <input type="checkbox" name="sequenced" <% $c->sequenced ? 'checked=checked' : '' %>>
+  </td>
+ </tr>
+
+ <tr>
+  <td><input type="submit" value="Submit"></td>
+ </tr>
+</form>
+
+ </tr>
+</table>
+  </td>
+  <td>
+<table width="100%" cellspacing="5">
+ <tr>
+  <td>
+<form action="delete_column<% Alzabo::Config::mason_extension() %>">
+ <input type="hidden" name="schema" value="<% $s->name %>">
+ <input type="hidden" name="table" value="<% $t->name %>">
+ <input type="hidden" name="column" value="<% $c->name %>">
+ <input type="submit" value="Delete column">
+</form>
+  </td>
+ </tr>
+ <tr>
+% if ( (my @cols = $t->columns) > 2 ) {
+<form action="move_column<% Alzabo::Config::mason_extension() %>">
+ <input type="hidden" name="schema" value="<% $s->name %>">
+ <input type="hidden" name="table" value="<% $t->name %>">
+ <input type="hidden" name="column" value="<% $c->name %>">
+ <tr>
+  <td>
+   <h2>Move column</h2>
+   After column:
+   <select name="after">
+%   foreach my $c (@cols) {
+    <option value="<% $c->name %>"><% $c->name %></option>
+%   }
+   </select>
+  </td>
+ </tr>
+ <tr>
+  <td>
+   <input type="submit" value="Submit">
+  </td>
+ </tr>
+</form>
+% } else {
+    &nbsp;
+% }
+  </td>
+ </tr>
+</table>
+
+  </td>
+ </tr>
+</table>
+
+<%args>
+$s
+$t
+$c
+</%args>

@@ -1,0 +1,15 @@
+<%args>
+$s
+$user => undef
+$password => undef
+$host => undef
+</%args>
+
+<%init>
+if ($user)
+{
+    $s->set_user($user);
+    $s->set_password($password);
+    $s->connect( host => $host );
+}
+</%init>

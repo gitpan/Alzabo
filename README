@@ -1,0 +1,19 @@
+Alzabo is a two-fold program. Its first function is as a data
+modelling tool. Through either a schema creation interface or a custom
+perl program, you can create a set of schema, table, column,
+etc. objects that represent your data model. Alzabo is also capable of
+reverse engineering an existing data model.
+
+Its second function is as a RDBMS to object mapping system. Once you
+have created a schema, you can use the Alzabo::Runtime::Table and
+Alzabo::Runtime::Row classes to access its data. These classes offer a
+low level interface to common operations such as SQL SELECT, INSERT,
+DELETE, and UPDATE commands.
+
+To take it a step further, you could then aggregate a set of rows from
+different tables into a larger container object which could understand
+the logical relationship between these tables.
+
+For more information please see perldoc Alzabo or the Alzabo homepage
+at alzabo.sourceforge.net.  Install information is in the INSTALL
+file.

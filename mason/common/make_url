@@ -1,0 +1,83 @@
+<%init>
+use URI;
+use URI::Escape ();
+
+# Deal with arguments
+my $proto = $ARGS{proto};
+my $user  = $ARGS{username};
+my $pass  = $ARGS{password};
+my $host  = $ARGS{host};
+my $port  = $ARGS{port};
+my $path  = $ARGS{path};
+my $text  = $ARGS{text};
+my $refQuery = $ARGS{query};
+
+# Screening Function -- this should expect a reference to the URI object
+my $refScreener = $ARGS{"screen"};
+
+# Go through defaults
+if ($host && !$proto)
+{
+    $proto = "http";
+}
+
+if ($host && !$port && $r->get_server_port() != 80)
+{
+    $port = $r->get_server_port();
+}
+
+my $urlString = '';
+my $qs;
+my $auth;
+my @queryString;
+
+# Do some formatting...
+if($user && $pass)
+{
+    $auth = "$user:$pass\@";
+}
+else
+{
+    $auth = "";
+}
+
+if ($host && $port && $port != 80)
+{
+    $host = $host . ":" . $port;
+}
+
+# The URL string thus far...
+if ($host)
+{
+    $urlString .= "$proto://$auth" . $host;
+    $urlString .= '/' unless substr($path, 0, 1) eq '/';
+}
+$urlString .= $path;
+
+# Deal with a query string, if applicable
+if($refQuery)
+{
+    my $non_escape = '^A-Za-z0-9_';
+    while(my($key, $value) = each(%$refQuery)) {
+	$key = URI::Escape::uri_escape($key, $non_escape);
+	$value = URI::Escape::uri_escape(defined $value ? $value : '', $non_escape);
+	push @queryString, "$key=$value";
+    }
+}
+$qs = join '&', @queryString;
+if($qs)
+{
+    $urlString .= "?$qs";
+}
+
+# Did the user submit a screening function?  Call it!
+my $uri = URI->new($urlString);
+
+if ($refScreener)
+{
+    $refScreener->($uri);
+}
+
+return $uri->canonical;
+</%init>
+

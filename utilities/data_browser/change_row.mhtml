@@ -1,0 +1,59 @@
+<%args>
+$s
+$t
+$id
+$start_row
+$max_rows
+$filter_from => undef
+$filter_where => undef
+$user => undef
+$password => undef
+$column_count
+@column_names
+@column_vals
+</%args>
+
+<%init>
+my $row = $t->row_by_id(row_id => $id);
+
+eval
+{
+    my %cur_vals;
+    @cur_vals{@column_names} = $row->select(@column_names);
+
+    my %new_vals;
+    my $changed = 0;
+    for (my $x = 0; $x < $column_count; $x++)
+    {
+	if ( $ARGS{"column_null_$x"} && defined $cur_vals{ $column_names[$x] } )
+	{
+	    $new_vals{ $column_names[$x] } = undef;
+	    $changed = 1;
+	}
+	elsif ( $column_vals[$x] ne $cur_vals{ $column_names[$x] } )
+	{
+	    $new_vals{ $column_names[$x] } = $column_vals[$x];
+	    $changed = 1;
+	}
+    }
+
+    $row->update(%new_vals) if $changed;
+};
+
+$m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+
+my $url = $m->comp( Alzabo::Config::mason_url_path() . '/common/make_url',
+		    path => 'browse_table' . Alzabo::Config::mason_extension(),
+		    query => { schema => $s->name,
+			       table => $t->name,
+			       start_row => $start_row,
+			       max_rows => $max_rows,
+			       filter_from => $filter_from,
+			       filter_where => $filter_where,
+			       user => $user,
+			       password => $password
+			     } );
+
+$m->comp( Alzabo::Config::mason_url_path() . '/common/redirect', 
+	  url => $url );
+</%init>

@@ -1,0 +1,32 @@
+% if (@c) {
+ <tr><td colspan="5">&nbsp;</td></tr>
+ <tr>
+  <td colspan="5" align="center"><font size="+1"><b>Columns</b></font>
+ </tr>
+%   for (my $x = 0; $x <= int ($#c / 5); $x++) {
+ <tr>
+%     for (my $y = $x * 5; $y < ($x * 5) + 5; $y++) {
+  <td align="center">
+%       if ( my $c = $c[$y] ) {
+%         if ( $y > 0 ) {
+   <font size="-1"><& &Alzabo::Config::mason_url_path . '/common/href', text => '<', path => 'move_column' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $t->name, before => $c[ $y - 1 ]->name, column => $c->name } &></font>
+%         }
+   <font size="-1"><& &Alzabo::Config::mason_url_path . '/common/href', text => $c->name, path => 'view_column' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $t->name, column => $c->name } &></font>
+%         if ($t->column_is_primary_key($c)) {
+<font size="-1"> : <b>pk</b></font>
+%         }
+%         if ( $c[ $y + 1 ] ) {
+   <font size="-1"><& &Alzabo::Config::mason_url_path . '/common/href', text => '>', path => 'move_column' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $t->name, after => $c[ $y + 1 ]->name, column => $c->name } &></font>
+%         }
+%       }
+  </td>
+%     }
+ </tr>
+%   }
+% }
+
+<%init>
+my $t = shift;
+
+my @c = $t->columns;
+</%init>

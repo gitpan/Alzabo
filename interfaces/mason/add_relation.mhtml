@@ -1,0 +1,74 @@
+<form action="add_relation_2<% Alzabo::Config::mason_extension() %>">
+<input type="hidden" name="schema" value="<% $s->name %>">
+<input type="hidden" name="table_from" value="<% $t_from->name %>">
+<input type="hidden" name="table_to" value="<% $t_to->name %>">
+<table width="100%" cellspacing="5">
+ <tr valign="top">
+  <td>
+   <h3>Table: <% $t_from->name %></h3>
+   <select name="column_from">
+% foreach my $c ($t_from->columns) {
+    <option value="<% $c->name %>"<% eval { $t_to->column( $c->name ) } ? ' selected' : '' %>><% $c->name %></option>
+% }
+   </select>
+   <br>
+   <select name="min_max_from_1">
+% foreach my $mm (@min_max_1) {
+    <option value="<% $mm %>"><% $mm %></option>
+% }
+   </select>
+  ..
+   <select name="min_max_from_2">
+% foreach my $mm (@min_max_2) {
+    <option value="<% $mm %>"><% $mm %></option>
+% }
+   </select>
+  </td>
+  <td>
+   <h3>Table: <% $t_to->name %></h3>
+   <select name="column_to">
+% foreach my $c ($t_to->columns) {
+    <option value="<% $c->name %>"><% $c->name %></option>
+% }
+   </select>
+   <br>
+   <select name="min_max_to_1">
+% foreach my $mm (@min_max_1) {
+    <option value="<% $mm %>"><% $mm %></option>
+% }
+   </select>
+  ..
+   <select name="min_max_to_2">
+% foreach my $mm (@min_max_2) {
+    <option value="<% $mm %>"><% $mm %></option>
+% }
+   </select>
+  </td>
+ </tr>
+ <tr valign="top">
+  <td colspan="2">
+   <input type="submit" value="Submit">
+  </td>
+ </tr>
+</table> 
+</form>
+
+<%args>
+$schema
+$table_from
+$table_to
+</%args>
+
+<%init>
+my ($s, $t_from, $t_to);
+eval
+{
+    $s = Alzabo::Create::Schema->load_from_file( name => $schema );
+
+    $t_to = $s->table($table_to);
+    $t_from = $s->table($table_from);
+};
+
+my @min_max_1 = qw(0 1);
+my @min_max_2 = qw(1 n);
+</%init>

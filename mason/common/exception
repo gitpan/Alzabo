@@ -1,0 +1,79 @@
+<html>
+<head>
+<title>Alzabo: Error</title>
+</head>
+
+<body>
+
+<table width="100%">
+ <tr>
+  <td bgcolor="#ffeeee">
+   Error message:
+  </td>
+  <td bgcolor="#eeffff">
+   <% UNIVERSAL::isa($exc, 'Exception::Class::Base') ? $exc->error : $exc %>
+  </td>
+ </tr>
+% if ( UNIVERSAL::isa($exc, 'Exception::Class::Base') ) {
+ <tr>
+  <td bgcolor="#ffeeee">
+   Error class:
+  </td>
+  <td bgcolor="#eeffff">
+   <% ref $exc %>
+  </td>
+ </tr>
+%   if ($exc->trace) {
+ <tr>
+  <td bgcolor="#ffeeee">
+   Trace
+  </td>
+  <td bgcolor="#eeffff">
+   <pre>
+   <% $exc->trace->as_string %>
+   </pre>
+  </td>
+ </tr>
+%   }
+%   if ( $exc->isa('Alzabo::Driver::Exception') ) {
+ <tr>
+  <td bgcolor="#ffeeee">
+   SQL:
+  </td>
+  <td bgcolor="#eeffff">
+   <% $exc->sql %>
+  </td>
+ </tr>
+ <tr>
+  <td bgcolor="#ffeeee">
+   Bind values:
+  </td>
+  <td bgcolor="#eeffff">
+%     if (my @b = $exc->bind) {
+   <ul>
+%       foreach my $b (@b) {
+    <li><% $b %>
+%       }
+   </ul>
+%     }
+  </td>
+ </tr>
+%   }
+% }
+</table>
+
+</body>
+</html>
+
+<%init>
+my $exc = shift;
+$m->clear_buffer;
+</%init>
+
+<%cleanup>
+$m->abort;
+</%cleanup>
+
+<%flags>
+inherit => undef
+</%flags>

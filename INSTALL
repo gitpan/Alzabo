@@ -1,0 +1,42 @@
+NOTE: This code uses Michael Schwern's excellent Class::Fields
+package, which comes with a number of modules.  Two of these modules,
+base.pm and fields.pm, have the same names as existing Perl packages
+that come with the core Perl installation.  It is recommended that you
+install these over your existing base.pm and fields.pm if you want to
+use this package as this guarantees that some of the code in Alzabo
+will work for Perl 5.00503, 5.6 and most likely for future versions as
+well.  For 5.00503 and 5.6, the exisitng base.pm will most likely
+work, though either the Class::Fields or 5.6 version of fields.pm are
+required.  It's probably just best to use the Class::Fields version,
+which is better anyway.
+
+To make sure you have the Class::Fields version, make sure
+Class::Fields is installed with the following command:
+
+  make install UNINST=1
+
+
+Also, the Exception::Class module that Alzabo uses does not like Perl
+5.6 (specifically, the Devel::StackTrace module doesn't).  This is due
+to bugs in Perl 5.6.  If you don't turn on debugging mode then this
+shouldn't be a problem.
+
+Installing Alzabo:
+
+perl Makefile.PL
+(answer the questions you're asked)
+make test
+make install
+
+
+To use the Mason based schema creator, you must load the
+Alzabo::Create modules.  To do this, add the following line to your
+startup.pl (or mason_handler.pl or whatever) file:
+
+use Alzabo::Create;
+
+Adding a PerlModule line in your httpd.conf or a <Perl> section that
+uses the module would work just as well.
+
+For the Mason based data browser, you'll also need to load the
+Alzabo::Runtime classes.

@@ -1,0 +1,40 @@
+Short term:
+
+- doc 
+
+- non-Mason interface (curses, plain CGI)
+
+- PostgreSQL driver & rules.  This requires actually checking that the
+  transactional aspects work.
+
+- complete regression tests for core API
+
+- refine exceptions.  right now almost all exceptions are of the class
+  AlzaboException.  This isn't terribly useful as it means that errors
+  are really distinguished by the error message, rather than the
+  class.  In addition, there are probably too many exception being
+  thrown.  In some cases, a false return value may be a better way to
+  indicate failure.
+
+- convert everything to plain hashes.  too many problems with
+  pseudohashes.
+
+Medium term:
+
+- expand data browser to be configurable between sessions (for
+  example, to use textarea fields for certain things)
+
+- Help text for all interfaces (some of it should be shared since the
+  basic ideas are the same)
+
+- More drivers & rules (Oracle, Sybase, Interbase, Solid, and so on)
+
+- remove sort of nasty hack in Alzabo::Create::Schema that makes
+  Runtime objects and replace this with something better.
+
+- save objects to disk in something a bit more robust than a
+  serialized object form.  Probably this will be some sort of XML.
+
+Long term:
+
+- GUI (preferably both UNIX & Win32 so Tk?)

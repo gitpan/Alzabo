@@ -1,0 +1,24 @@
+<%args>
+$schema
+</%args>
+
+<%init>
+use Alzabo::Config;
+
+my $s;
+eval
+{
+    $s = Alzabo::Create::Schema->load_from_file( name => $schema );
+
+    $s->delete;
+};
+
+$m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+
+$m->comp( &Alzabo::Config::mason_url_path . '/common/redirect', url => 'index' . Alzabo::Config::mason_extension() );
+
+</%init>
+
+<%flags>
+inherit => undef
+</%flags>

@@ -1,0 +1,239 @@
+0.10_4
+
+- fix Makefile.PL bug
+
+- auto select a column when adding a relation (if there is a logical
+one to select).
+
+0.10_3
+
+- Fix bug with deleting foreign key objects from tables.
+
+0.10
+
+**FIRST BETA VERSION**
+
+- Doc bug fixes in Alzabo::Runtime::Schema.
+
+- Fix fact that Alzabo::Runtime::Row rows_by_foreign_key method could
+return either a Row _or_ RowCursor object.  Now it always returns a
+cursor object.
+
+- Fix fact that no_cache parameter was not propagated through the
+RowCursor object to the rows it created.
+
+- Add all all_rows method to Alzabo::Runtime::RowCursor.
+
+- Add ability to reset instantiation flag in schema creation
+interface.
+
+- Updated INSTALL to mention how to get the schema creator and data
+browser working.
+
+- Finally make creating relations between tables _without_ specifying
+the columns work.  This does some, IMHO, pretty cool DWIMmery.
+
+- Added primary_key param to Alzabo::Runtime::Table make_column
+method.
+
+- Added set_host and host methods to Alzabo::Runtime::Schema.
+
+- Added drop method to Alzabo::Create::Schema and necessary support in
+driver modules.
+
+- Changed 'id' param to 'pk' for Alzabo::Runtime::Table row_by_pk
+method.  'id' still works, for now, but is deprecated.
+
+- Fix problem where an insert could generate a referential integrity
+exception but still end up in the database.  Note, without
+transactions (in MySQL, for example), there's no way to make the all
+of the referential integrity code work correctly 100% of the time.
+
+- Added new class Alzabo::ObjectCache to make sure that objects stay
+in sync after referential integrity operations happen.  This is now
+the default caching class.  Please make sure to read the docs for this
+new module, particularly if you're running Alzabo under a persistent
+environment where this module can be quite the memory hog if not used
+properly (clear the cache!).
+
+- Fixed breakage in maintenance of referential integrity caused by
+switch to cursors (and me not fixing all the code that expected row
+objects).
+
+- Added Alzabo::Runtime::Cursor base class.
+
+- Added join method to Alzabo::Runtime::Schema.  *EXPERIMENTAL*
+
+- Added Alzabo::Runtime::JoinCursor class.  *EXPERIMENTAL*
+
+- Began conversion of all classes from pseudohash to hash.
+
+- Both schema creator and data browser now respect user choice of
+component extension.
+
+0.09
+
+- MAJOR CHANGE: All the Alzabo::Runtime::Row methods that used to
+return lists of rows now return the new Alzabo::Runtime::RowCursor
+object.  This change is a major speed and memory optimization.  It
+does, however, break the old interface.  But its worth it.
+
+- Set autohandlers for schema maker and data browser so that they
+won't inherit from other autohandlers higher up the directory tree.
+
+- Fix bug in Alzabo::Driver which made it so that the one_row_hash
+method always returned a hash with keys.  This caused spurious row
+object to be created in the Alzabo::Runtime::Row class.
+
+- Fix bug in Alzabo::Table::rows_where method where it wasn't handling
+the construct $table->rows_where( where => { foo => undef } )
+properly.
+
+0.08
+
+- Lazy column evaluation had made it possible to create an
+Alzabo::Runtime::Row object that did not correspond to any data in the
+database if its table object did specify any rows to prefetch.  This
+would have only been discovered later by calling the select method on
+a non-primary key column.  This hole was plugged.
+
+- As a corollary to the above change methods in Alzabo::Runtime::Table
+that produce rows now always return an empty list or undef when the
+rows cannot be made because the specified primary key doesn't exist.
+Previously, the rows_by_where_clause method did this while others
+would cause an exception either during the object creation or later,
+depending upon the situation described above.
+
+- GENERAL NOTE: I probably used exceptions too much, as in the above
+case.  I will probably be making a few more changes like this in the
+future.
+
+- Bug fix in Alzabo::RDBMSRules when making SQL diffs.  Forgot to
+account for new foreign key method names.
+
+- Bug fix related to MySQL auto_increment column and
+Alzabo::Runtime::Table insert method.  Basically, you couldn't insert
+an to a table and use its auto_increment feature.
+
+- Alzabo::Table::set_prefetch now makes sure that primary key columns
+are not included.  It simply ignores them but they will not be
+returned by the prefetch method.
+
+- fix bug where some row retrieval methods would fail if not given a
+'bind' parameter.
+
+- Doc bug fix.  Docs for Alzabo::Runtime::Table listed group_by_column
+as simply group.  Of course, this probably only needs to be used by
+Alzabo::Runtime::Row anyway.
+
+- Added Alzabo::Runtime::Table rows_where method.
+
+- Added Alzabo::Runtime::Table all_rows method.
+
+- Documented 'bind' parameter for Alzabo::Runtime::Table
+rows_by_where_clause method.
+
+0.07
+
+- Fixed major bugs in Alzabo::Runtime::Table::insert method.
+
+- Fixed bug in Alzabo::Runtime::Row::delete method related to API
+change in 0.06
+
+- Reduce amount of work done in Alzabo::Runtime::Row when referential
+integrity maintenance is set to false.
+
+- Added new method to Alzabo::Runtime::Row: rows_by_foreign_key.  A
+row can now fetch the rows that are related to it automatically.
+
+- Made all Alzabo::Table foreign key object returning methods
+list/scalar context sensitive.  This is useful when you know that
+there is only one foreign key that matches what you are looking for.
+
+0.06
+
+- change return value from Alzabo::Index id method to be something
+that can be an actual index name.  This is a bug fix as previously
+index SQL was not valid (at least not for MySQL).
+
+- cosmetic fixes in schema creator
+
+- moved exception component to common mason files so its shared by
+schema creator and data browser.
+
+- added Index attribute of unique (so we can make unique indexes).
+
+- made SQL making code for MySQL aware of this.
+
+- added ability to set this to schema creator.
+
+- added ability to specify column order in an index in schema creator.
+
+- made it possible for a table to have more than one foreign from a
+given column.  documented how this changes API in Alzbo::Table.
+
+- API: The Alzabo::Table foreign_keys() method name has been changed
+to all_foreign_keys().  The foreign_key method (which returns keys by
+table to and column from) is now the foreign_keys() method because it
+can return more than one object.
+
+- change schema creator, Alzabo::Create::Schema module, and
+03/create.t test to handle this properly.
+
+- added ability to move columns and tables to arbitrary new locations
+after they've been created (without the arrows).
+
+0.05
+
+- bug fix for Alzabo::Runtime::Row calling wrong method from schema
+object
+
+- got rid of the locking stuff in the MySQL driver.  Since its not
+possible to have more than 1 lock at a time with the GET_LOCK function
+there's no way to have the right kinds of locks for cascading deletes.
+It might be possible to do this kind of locking via some other
+mechanism (semaphores, DBM files, whatever, but that's a hack for
+another day.
+
+0.04
+
+- Switched to use Tie::IxHash object interface
+
+- fixed stupid bug in Alzabo::RDBMSRules::MySQL
+
+- changed the way Alzabo::ChangeTracker works.  it requires fewer
+method calls to do its job now.
+
+- added set_referential_integrity/referential_integrity methods to
+Alzabo::Runtime::Schema.  The default is to not attempt to maintain
+referential_integrity.
+
+- It should no longer be possible for Alzabo::Runtime::ForeignKey
+objects to create loops when maintaining referential integrity.  It
+also should be a bit more efficient in the register_delete method.  If
+no action needs to be taken, it won't loop through all the rows in the
+related table before finding this out.
+
+- fixed data browser bug when putting in a filter on any page that was
+not the first page of results for a table.
+
+- fixed data browser bug in paging with filters.
+
+0.03
+
+- Fixed bugs in Alzabo::ObjectCacheIPC so it now works.
+
+- Added lazy column evaluation (see Alzabo::Runtime::Table) docs
+
+- Added Alzabo::DriverStatement and Alzabo::Driver::Exception to Alzabo::Driver
+
+- improved data browser memory efficiency
+
+- minor bug fixes (bad links) in data browser and schema maker
+
+- minor buglet fix in Alzabo::Driver::MySQL
+
+- big fix to how Alzabo::Runtime::Schema is saved from
+Alzabo::Create::Schema.  Previous implementation was accidentally
+saving both the runtime and create versions at once.  The new version
+fixes this.

@@ -1,0 +1,45 @@
+<%args>
+$schema
+$table_from
+$table_to
+$column_from
+$column_to
+$min_max_from_1
+$min_max_from_2
+$min_max_to_1
+$min_max_to_2
+</%args>
+
+<%init>
+use Alzabo::Config;
+
+my $s;
+eval
+{
+    $s = Alzabo::Create::Schema->load_from_file( name => $schema );
+
+    my $t_from = $s->table($table_from);
+    my $t_to = $s->table($table_to);
+    my $c_from = $t_from->column($column_from);
+    my $c_to = $t_to->column($column_to);
+
+    $s->add_relation( table_from => $t_from,
+		      table_to   => $t_to,
+		      column_from => $c_from,
+		      column_to   => $c_to,
+		      min_max_from => [$min_max_from_1, $min_max_from_2],
+		      min_max_to   => [$min_max_to_1, $min_max_to_2],
+		    );
+
+    $s->save_to_file;
+};
+
+$m->comp( &Alzabo::Config::mason_url_path . '/common/exception', $@ ) if $@;
+
+$m->comp( &Alzabo::Config::mason_url_path . '/common/redirect', url => 'view_table' . Alzabo::Config::mason_extension() . '?schema=' . $s->name . '&table=' . $table_from );
+
+</%init>
+
+<%flags>
+inherit => undef
+</%flags>
