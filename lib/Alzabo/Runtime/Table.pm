@@ -8,9 +8,11 @@ use Alzabo::Runtime;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
+use Time::HiRes qw(time);
+
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.47 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.49 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -70,6 +72,7 @@ sub insert
 
 	$self->schema->driver->do( sql => $sql->sql,
 				   bind => $sql->bind );
+	$p{time} = time;
 
 	foreach my $pk (@pk)
 	{
@@ -96,6 +99,8 @@ sub row_by_pk
     my $self = shift;
     my %p = @_;
 
+    my $row_class = delete $p{row_class} || 'Alzabo::Runtime::Row';
+
     my $pk_val = exists $p{pk} ? delete $p{pk} : delete $p{id};
 
     my @pk = $self->primary_key;
@@ -115,9 +120,9 @@ sub row_by_pk
 	}
     }
 
-    return Alzabo::Runtime::Row->new( %p,
-				      table => $self,
-				      id => $pk_val );
+    return $row_class->new( %p,
+			    table => $self,
+			    id => $pk_val );
 }
 
 sub row_by_id

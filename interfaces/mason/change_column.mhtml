@@ -55,7 +55,22 @@ eval
 	$c->set_default(undef);
     }
 
-    if ( defined $length || defined $precision )
+    if ( $extended_type && $c->type ne $extended_type &&
+	 $s->rules->feature('extended_column_types') )
+    {
+	$c->alter( type => $extended_type,
+		   length => $length,
+		   precision => $precision,
+		 );
+    }
+    elsif ($type && $c->type ne $type)
+    {
+	$c->alter( type => $type,
+		   length => $length,
+		   precision => $precision,
+		 );
+    }
+    elsif ($length ne $c->length || $precision ne $c->precision)
     {
 	$c->set_length( length => $length,
 			precision => $precision );
@@ -73,16 +88,6 @@ eval
 	$t->delete_primary_key($c);
     }
 
-    if ( $extended_type && $c->type ne $extended_type &&
-	 $s->rules->feature('extended_column_types') )
-    {
-	$c->set_type($extended_type);
-    }
-    elsif ($type && $c->type ne $type)
-    {
-	$c->set_type($type);
-    }
-
     @attributes = grep {$_} @attributes;
     foreach my $a (@attributes)
     {
@@ -96,6 +101,14 @@ eval
 
     $s->save_to_file;
 };
+
+if ( $@ && UNIVERSAL::isa( $@, 'Alzabo::Exception::RDBMSRules' ) )
+{
+    $m->comp( '../common/redirect',
+	      url => $m->comp( '../common/make_url',
+			       path => 'view_column' . Alzabo::Config::mason_extension(),
+			       query => { errors => $@->error, %ARGS } ) );
+}
 
 $m->comp( '../common/exception', $@ ) if $@;
 

@@ -8,7 +8,7 @@ use Alzabo::Util;
 use Params::Validate qw( validate validate_pos );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.33 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -163,18 +163,12 @@ sub index_sql
     my $self = shift;
     my $index = shift;
 
-    my @cols = $index->columns;
-
     my $index_name = $index->id;
 
     my $sql = 'CREATE';
     $sql .= ' UNIQUE' if $index->unique;
     $sql .= " INDEX $index_name ON " . $index->table->name . ' ( ';
-
-    $sql .= join ', ', ( map { my $sql = $_->name;
-			       $sql .= '(' . $index->prefix($_) . ')' if $index->prefix($_);
-			       $sql; } @cols );
-
+    $sql .= join ', ', map { $_->name } $index->columns;
     $sql .= ' )';
 
     return $sql;

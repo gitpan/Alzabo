@@ -84,4 +84,3 @@ if ($screener)
 
 return $uri->canonical;
 </%init>
-

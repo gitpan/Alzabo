@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::Index);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -19,15 +19,18 @@ sub new
     my $proto = shift;
     my $class = ref $proto || $proto;
 
-    validate( @_, { table   => { isa => 'Alzabo::Create::Table' },
-		    columns => { type => ARRAYREF },
-		    unique  => { optional => 1 } } );
+    validate( @_, { table    => { isa => 'Alzabo::Create::Table' },
+		    columns  => { type => ARRAYREF },
+		    unique   => { optional => 1 },
+		    fulltext => { optional => 1 },
+		  } );
     my %p = @_;
 
     my $self = bless {}, $class;
 
     $self->{table} = $p{table};
     $self->{unique} = $p{unique} || 0;
+    $self->{fulltext} = $p{fulltext} || 0;
 
     $self->{columns} = Tie::IxHash->new;
 
@@ -118,6 +121,14 @@ sub set_unique
     $self->{unique} = shift;
 }
 
+sub set_fulltext
+{
+    my $self = shift;
+
+    validate_pos( @_, 1 );
+    $self->{fulltext} = shift;
+}
+
 sub register_column_name_change
 {
     my $self = shift;
@@ -178,6 +189,10 @@ the hashref is optional.
 
 Indicates whether or not this is a unique index.
 
+=item * fulltext => $boolean
+
+Indicates whether or not this is a fulltext index.
+
 =back
 
 =head3 Returns
@@ -225,6 +240,12 @@ Delete the given column from the index.
 =head2 set_unique ($boolean)
 
 Set whether or not the index is a unique index.
+
+=for pod_merge fulltext
+
+=head2 set_fulltext ($boolean)
+
+Set whether or not the index is a fulltext index.
 
 =head2 register_column_name_change
 

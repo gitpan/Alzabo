@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::Column);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.29 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.30 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -186,6 +186,21 @@ sub delete_attribute
     delete $self->{attributes}{$attr};
 }
 
+sub alter
+{
+    my $self = shift;
+    $self->{definition}->alter(@_);
+
+    # this will force them to go through the rules code again.
+    # Attributes that don't work with the new type are silently
+    # discarded.
+    foreach ( $self->attributes )
+    {
+	$self->delete_attribute($_);
+	eval { $self->add_attribute($_) };
+    }
+}
+
 sub set_type
 {
     my $self = shift;
@@ -315,6 +330,24 @@ A new C<Alzabo::Create::Column> object.
 L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =for pod_merge type
+
+=head2 alter
+
+This method allows you to change a column's type, length, and
+precision as a single operation and should be instead of calling
+C<set_type> followed by C<set_length>.
+
+=head3 Parameters
+
+=over 4
+
+=item * type => $type
+
+=item * length => $length (optional)
+
+=item * precision => $precision (optional)
+
+=back
 
 =head2 set_type ($type)
 

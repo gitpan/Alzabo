@@ -30,7 +30,7 @@
   </td>
   <td bgcolor="#eeffff">
    <pre>
-   <% $exc->trace->as_string %>
+   <% join "\n\n", split /\n+/, $exc->trace->as_string %>
    </pre>
   </td>
  </tr>

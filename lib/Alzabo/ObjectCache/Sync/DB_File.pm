@@ -10,7 +10,7 @@ use Alzabo::Exceptions;
 use DB_File;
 use Fcntl qw( :flock O_RDONLY O_RDWR O_CREAT );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -19,10 +19,10 @@ sub import
     my $class = shift;
     my %p = @_;
 
-    Alzabo::Exception::Params->throw( error => "The 'dbm_file' parameter is required when using the " . __PACKAGE__ . ' module' )
-	unless exists $p{dbm_file};
+    Alzabo::Exception::Params->throw( error => "The 'sync_dbm_file' parameter is required when using the " . __PACKAGE__ . ' module' )
+	unless exists $p{sync_dbm_file};
 
-    $FILE = $p{dbm_file};
+    $FILE = $p{sync_dbm_file};
 
     if ( ( ! -e $FILE) || $p{clear_on_startup} )
     {
@@ -98,7 +98,7 @@ Alzabo::ObjectCache::Sync::DB_File - Uses a Berkeley DB file to sync object cach
 
   use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
                            sync  => 'Alzabo::ObjectCache::Sync::DB_File',
-                           dbm_file => 'somefilename.db',
+                           sync_dbm_file => 'somefilename.db',
                            clear_on_startup => 1 );
 
 =head1 DESCRIPTION
@@ -112,7 +112,7 @@ reading/writing data.
 
 =over 4
 
-=item * dbm_file => $filename
+=item * sync_dbm_file => $filename
 
 This parameter is required.  It is the name of the file which will be
 used to store the syncing data.  If the file does not exist, it will

@@ -51,5 +51,4 @@ foreach my $test (@$tests)
 	 "Reverse engineered schema's SQL differed from original's SQL:\n$sql\n" );
 
     $s1->delete;
-    eval { $s1->drop(%$test); };
 }

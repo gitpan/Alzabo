@@ -2,8 +2,9 @@
 $schema
 $table
 $unique => 0
+$fulltext => 0
 @columns
-@prefixes
+@prefixes => ()
 </%args>
 
 <%init>
@@ -17,16 +18,26 @@ eval
     $t = $s->table($table);
 
     my @cols = ( map { { column => $t->column( $columns[$_] ),
-		         defined $prefixes[$_] ? ( prefix => $prefixes[$_] ) : () } }
+		         $prefixes[$_] ? ( prefix => $prefixes[$_] ) : () } }
 		 0..$#columns );
 
     @cols = sort { $ARGS{ $a->{column}->name . '_order' } <=> $ARGS{ $b->{column}->name . '_order' } } @cols;
 
     $t->make_index( columns => \@cols,
-		    unique => $unique );
+		    unique => $unique,
+		    fulltext => $fulltext,
+		  );
 
     $s->save_to_file;
 };
+
+if ( $@ && UNIVERSAL::isa( $@, 'Alzabo::Exception::RDBMSRules' ) )
+{
+    $m->comp( '../common/redirect',
+	      url => $m->comp( '../common/make_url',
+			       path => 'add_index_1' . Alzabo::Config::mason_extension(),
+			       query => { errors => $@->error, %ARGS } ) );
+}
 
 $m->comp( '../common/exception', $@ ) if $@;
 

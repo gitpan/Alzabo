@@ -12,11 +12,9 @@ Short term:
   list of all the method and what objects they apply to.  This has
   been started.
 
-- Alzabo::ObjectCache::DBIStore - this module will also do syncing all
-  in one.  This will allow the caching/syncing to occur across
+- Alzabo::ObjectCache::Store::RDBMS - this module will also do syncing
+  all in one.  This will allow the caching/syncing to occur across
   multiple machines with multiple processes.
-
-- Alzabo::ObjectCache::RDBMSStore.
 
 - Expand regression tests for core API - SQLMaker, RDBMSRules.
 
@@ -38,17 +36,13 @@ Short term:
 - Support transactions in the caching system.  this eventually means
   real transactions at the middleware layer.  argh!
 
-- Switch to cardinality/dependency concepts for ForeignKeys.
-  Internals I'm not worried about as much as external API and language
-  (in www interface, for example).
-
 Medium term:
 
 - Add an Alzabo::Database class between the schema and table.  This
-  will allow multiple database (on multiple platforms ideally) and
-  allow you to do joins between these databases.  This probably raises
-  all sorts of horrid caching and transactional issues I haven't yet
-  thought of.
+  will allow multiple databases in a schema (on multiple platforms
+  ideally) and allow you to do joins between these databases.  This
+  probably raises all sorts of horrid caching and transactional issues
+  I haven't yet thought of.
 
 - Attempt to guess relationships when reverse engineering a schema
   without foreign key information.
@@ -65,6 +59,9 @@ Medium term:
   basic ideas are the same)
 
 - More drivers & rules (Oracle, Sybase, Interbase, Solid, and so on)
+
+- Overhaul foreign key objects so that one relation has one such
+  object, shared by two tables.
 
 Long term:
 

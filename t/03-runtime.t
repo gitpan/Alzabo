@@ -38,18 +38,25 @@ my @cache = ( [
 	    );
 
 my $sync = 0;
-if ( eval { require DB_File } && $DB_File::VERSION >= 1.76 && ! $@ )
+
+my %has;
+$has{DB_File} = eval { require DB_File } && $DB_File::VERSION >= 1.76 && ! $@;
+$has{IPC} = eval { require IPC::Shareable } && $IPC::Shareable::VERSION >= 0.54 && ! $@;
+$has{BekeleyDB} = eval { require BerkeleyDB } && $BerkeleyDB::VERSION >= 0.15 && ! $@;
+$has{SDBM_File} = eval { require SDBM_File } && ! $@;
+
+if ($has{DB_File})
 {
     unshift @cache, [ { store => 'Alzabo::ObjectCache::Store::Memory',
 			sync  => 'Alzabo::ObjectCache::Sync::DB_File',
-			dbm_file => 't/db_filesynctest.dbm',
+			sync_dbm_file => 't/db_filesynctest.dbm',
 			clear_on_startup => 1,
 		      },
 		      1
 		    ];
     $sync++;
 }
-if ( eval { require IPC::Shareable } && $IPC::Shareable::VERSION >= 0.54 && ! $@ )
+if ($has{IPC})
 {
     unshift @cache, [ { store => 'Alzabo::ObjectCache::Store::Memory',
 			sync  => 'Alzabo::ObjectCache::Sync::IPC' },
@@ -57,27 +64,52 @@ if ( eval { require IPC::Shareable } && $IPC::Shareable::VERSION >= 0.54 && ! $@
 		    ];
     $sync++;
 }
-if ( eval { require BerkeleyDB } && $BerkeleyDB::VERSION >= 0.15 && ! $@ )
+if ($has{BekeleyDB})
 {
     unshift @cache, [ { store => 'Alzabo::ObjectCache::Store::Memory',
 			sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB',
-			dbm_file => 't/berkeleydbsynctest.dbm',
+			sync_dbm_file => 't/bdb_sync_1.dbm',
+			clear_on_startup => 1,
+		      },
+		      1
+		    ];
+    $sync++;
+
+    unshift @cache, [ { store => 'Alzabo::ObjectCache::Store::BerkeleyDB',
+			sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB',
+			store_dbm_file => 't/bdb_store.dbm',
+			sync_dbm_file => 't/bdb_sync_2.dbm',
 			clear_on_startup => 1,
 		      },
 		      1
 		    ];
     $sync++;
 }
-if ( eval { require SDBM_File } && ! $@ )
+if ($has{SDBM_FILE})
 {
     unshift @cache, [ { store => 'Alzabo::ObjectCache::Store::Memory',
 			sync  => 'Alzabo::ObjectCache::Sync::SDBM_File',
-			dbm_file => 't/sdbmsynctest.dbm',
+			sync_dbm_file => 't/sdbmsynctest.dbm',
 			clear_on_startup => 1,
 		      },
 		      1
 		    ];
     $sync++;
+}
+foreach ( qw( BerkeleyDB SDBM_File DB_File IPC ) )
+{
+    if ($has{$_})
+    {
+	unshift @cache, [ { store => 'Alzabo::ObjectCache::Store::Null',
+			    sync => "Alzabo::ObjectCache::Sync::$_",
+			    sync_dbm_file => 't/sync_test_null_store.db',
+			    clear_on_startup => 1,
+			  },
+			  1
+			];
+	$sync++;
+	last;
+    }
 }
 
 my $TESTS_PER_RUN = 70;

@@ -7,9 +7,9 @@ use vars qw($SELF $VERSION $DB $ENV);
 use base qw( Alzabo::ObjectCache::Sync::DBM );
 
 use Alzabo::Exceptions;
-use BerkeleyDB qw( DB_CREATE DB_INIT_MPOOL DB_INIT_LOCK DB_INIT_CDB DB_INIT_TXN );
+use BerkeleyDB qw( DB_CREATE DB_INIT_MPOOL DB_INIT_CDB DB_NOTFOUND );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -18,26 +18,23 @@ sub import
     my $class = shift;
     my %p = @_;
 
-    Alzabo::Exception::Params->throw( error => "The 'dbm_file' parameter is required when using the " . __PACKAGE__ . ' module' )
-	unless exists $p{dbm_file};
+    Alzabo::Exception::Params->throw( error => "The 'sync_dbm_file' parameter is required when using the " . __PACKAGE__ . ' module' )
+	unless exists $p{sync_dbm_file};
 
-    if ( ( ! -e $p{dbm_file}) || $p{clear_on_startup} )
+    if ( -e $p{sync_dbm_file} && $p{clear_on_startup} )
     {
-	if (-e $p{dbm_file})
-	{
-	    unlink $p{dbm_file} or Alzabo::Exception::System->throw( error => "Can't delete '$p{dbm_file}': $!" );
-	}
-
+	unlink $p{sync_dbm_file}
+	    or Alzabo::Exception::System->throw( error => "Can't delete '$p{sync_dbm_file}': $!" );
     }
 
     $ENV = BerkeleyDB::Env->new( -Flags => DB_CREATE | DB_INIT_MPOOL | DB_INIT_CDB )
 	or Alzabo::Exception->throw( error => "Can't create environment: $BerkeleyDB::Error\n" );
-    $DB = BerkeleyDB::Hash->new( -Filename => $p{dbm_file},
+    $DB = BerkeleyDB::Hash->new( -Filename => $p{sync_dbm_file},
 				 -Mode => 0644,
 				 -Env => $ENV,
 				 -Flags => DB_CREATE,
 			       )
-	or Alzabo::Exception::System->throw( error => "Can't create '$p{dbm_file}': $! $BerkeleyDB::Error" );
+	or Alzabo::Exception::System->throw( error => "Can't create '$p{sync_dbm_file}': $! $BerkeleyDB::Error" );
 }
 
 sub dbm
@@ -51,14 +48,17 @@ sub dbm
     my $return;
     if ($mode eq 'read' || $preserve)
     {
-	$DB->db_get($id, $return);
+	my $status = $DB->db_get($id, $return);
+	Alzabo::Exception::System->throw( error => "Error retrieving sync time for id $id from Berkeley DB: $BerkeleyDB::Error" )
+	    unless $status == 0 || $status == DB_NOTFOUND;
     }
 
     if ($mode eq 'write')
     {
 	unless ($preserve && defined $return && $return > 0)
 	{
-	    $DB->db_put( $id => $val );
+	    $DB->db_put( $id => $val ) == 0
+		or Alzabo::Exception::System->throw( error => "Error storing object id $id from Berkeley DB: $BerkeleyDB::Error" );
 	    $return = $val;
 	}
     }
@@ -76,7 +76,7 @@ Alzabo::ObjectCache::Sync::BerkeleyDB - Uses a DBM file to sync object caches
 
   use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
                            sync  => 'Alzabo::ObjectCache::Sync::BerkeleyDB',
-                           dbm_file => 'somefilename.db',
+                           sync_dbm_file => 'somefilename.db',
                            clear_on_startup => 1 );
 
 =head1 DESCRIPTION
@@ -99,7 +99,7 @@ module.
 
 =over 4
 
-=item * dbm_file => $filename
+=item * sync_dbm_file => $filename
 
 This parameter is required.  It is the name of the file which will be
 used to store the syncing data.  If the file does not exist, it will

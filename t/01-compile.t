@@ -23,6 +23,7 @@ if ( eval { require DB_File } && ! $@ )
 if ( eval { require BerekeleyDB } && ! $@ )
 {
     require Alzabo::ObjectCache::Sync::BerkeleyDB;
+    require Alzabo::ObjectCache::Store::BerkeleyDB;
 }
 
 if ( eval { require SDBM_File } && ! $@ )
@@ -55,6 +56,7 @@ if ( eval { require DBD::Pg } && ! $@ )
     require Alzabo::RDBMSRules::PostgreSQL;
 }
 
+require Alzabo::MethodMaker;
 
 print "1..1\n";
 print "ok 1\n";

@@ -10,11 +10,11 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::Runtime::Row);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
-sub new
+sub retrieve
 {
     my $proto = shift;
     my $class = ref $proto || $proto;
@@ -59,7 +59,7 @@ sub _init
     $self->SUPER::_init(%p);
 
     $self->{cache}->store_object($self, $p{time});
-    $self->{cache}->register_change($self) if $p{insert};
+    $self->{cache}->register_change($self, $p{time}) if $p{insert};
 }
 
 sub _get_data

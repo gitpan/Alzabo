@@ -13,7 +13,7 @@ use Alzabo::Config;
 
 use vars qw($VERSION);
 
-$VERSION = '0.44';
+$VERSION = '0.45';
 
 1;
 
@@ -295,7 +295,7 @@ movie.  Here's what it looks like:
   my $person = $person_t->row_by_pk( pk => 42 );
 
   # all the rows in the credit table that have the person_id of 42.
-  my $cursor = $person->rows_by_foreign_key( fk => $person_t->foreign_keys_by_table($credit_t) );
+  my $cursor = $person->rows_by_foreign_key( foreign_key => $person_t->foreign_keys_by_table($credit_t) );
 
   print $person->select('name'), " was in the following films:\n\n";
   while (my $credit = $cursor->next_row)
@@ -304,10 +304,10 @@ movie.  Here's what it looks like:
       # call its next_row method, knowing it will only have one row (if
       # it doesn't then our referential integrity is in trouble!)
       my $movie =
-          $credit->rows_by_foreign_key( fk => $credit_t->foreign_keys_by_table($movie_t) )->next_row;
+          $credit->rows_by_foreign_key( foreign_key => $credit_t->foreign_keys_by_table($movie_t) )->next_row;
 
       my $job =
-          $credit->rows_by_foreign_key( fk => $credit_t->foreign_keys_by_table($job_t) )->next_row;
+          $credit->rows_by_foreign_key( foreign_key => $credit_t->foreign_keys_by_table($job_t) )->next_row;
 
       print $movie->select('title'), " released in ", $movie->select('release_year'), "\n";
       print '  ', $job->('job'), "\n";

@@ -6,6 +6,16 @@
  <tr valign="top">
   <td>
    <h3>Table: <% $t_from->name %></h3>
+  </td>
+  <td>
+   <h3>Cardinality</h3>
+  </td>
+  <td>
+   <h3>Table: <% $t_to->name %></h3>
+  </td>
+ </tr>
+ <tr valign="top">
+  <td>
 % foreach my $c (@columns_from) {
    <input type="hidden" name="columns_from" value="<% $c %>">
    <% $c %><br>
@@ -17,20 +27,23 @@
 % }
    </select>
    <br>
-   <select name="min_max_from_1">
-% foreach my $mm (@min_max_1) {
-    <option value="<% $mm %>"<% $min_max_from_1 eq $mm ? ' selected' : '' %>><% $mm %></option>
+   Is dependent on <% $t_to->name %>?
+   <input type="checkbox" name="from_is_dependent" value="1" <% $from_is_dependent && 'checked' %>>
+  </td>
+  <td>
+   <select name="cardinality_from">
+% foreach my $cf (@cardinality) {
+    <option value="<% $cf   %>"<% $cardinality_from eq $cf && ' selected' %>><% $cf %></option>
 % }
    </select>
   ..
-   <select name="min_max_from_2">
-% foreach my $mm (@min_max_2) {
-    <option value="<% $mm %>"<% $min_max_from_2 eq $mm ? ' selected' : '' %>><% $mm %></option>
+   <select name="cardinality_to">
+% foreach my $ct (@cardinality) {
+    <option value="<% $ct %>"<% $cardinality_to eq $ct && ' selected' %>><% $ct %></option>
 % }
    </select>
   </td>
   <td>
-   <h3>Table: <% $t_to->name %></h3>
 % foreach my $c (@columns_to) {
    <input type="hidden" name="columns_to" value="<% $c %>">
    <% $c %><br>
@@ -42,28 +55,19 @@
 % }
    </select>
    <br>
-   <select name="min_max_to_1">
-% foreach my $mm (@min_max_1) {
-    <option value="<% $mm %>""<% $min_max_to_1 eq $mm ? ' selected' : '' %>><% $mm %></option>
-% }
-   </select>
-  ..
-   <select name="min_max_to_2">
-% foreach my $mm (@min_max_2) {
-    <option value="<% $mm %>"<% $min_max_to_2 eq $mm ? ' selected' : '' %>><% $mm %></option>
-% }
-   </select>
+   Is dependent on <% $t_from->name %>?
+   <input type="checkbox" name="to_is_dependent" value="1" <% $to_is_dependent && 'checked' %>>
   </td>
  </tr>
 % if ( @columns_from < $t_from->columns - 1 && @columns_to < $t_to->columns - 1) {
  <tr valign="top">
-  <td colspan="2">
+  <td colspan="3">
    <input type="submit" name="more" value="Add More Columns">
   </td>
  </tr>
 % }
  <tr valign="top">
-  <td colspan="2">
+  <td colspan="3">
    <input type="submit" name="submit" value="Submit">
   </td>
  </tr>
@@ -71,27 +75,24 @@
 </form>
 
 <%args>
-$schema
+$s
 $table_from
 $table_to
-$min_max_from_1 => '0'
-$min_max_from_2 => 'n'
-$min_max_to_1 => '1'
-$min_max_to_2 => '1'
+$cardinality_from => '0'
+$cardinality_to => '1'
+$from_is_dependent => 1
+$to_is_dependent => 0
 @columns_from => ()
 @columns_to => ()
 </%args>
 
 <%init>
-my ($s, $t_from, $t_to);
+my ($t_from, $t_to);
 eval
 {
-    $s = Alzabo::Create::Schema->load_from_file( name => $schema );
-
     $t_from = $s->table($table_from);
     $t_to = $s->table($table_to);
 };
 
-my @min_max_1 = qw(0 1);
-my @min_max_2 = qw(1 n);
+my @cardinality = qw(1 n);
 </%init>

@@ -4,10 +4,10 @@ $table_from
 $table_to
 @columns_from
 @columns_to
-$min_max_from_1
-$min_max_from_2
-$min_max_to_1
-$min_max_to_2
+$cardinality_from
+$cardinality_to
+$from_is_dependent => 0
+$to_is_dependent => 0
 </%args>
 
 <%init>
@@ -33,16 +33,28 @@ eval
     my @c_from = $t_from->columns(@columns_from);
     my @c_to = $t_to->columns(@columns_to);
 
+    my (@mm_from, @mm_to);
+    @mm_from = ( ( $from_is_dependent ? 1 : 0 ), ( $cardinality_from eq '1' ? 1 : 'n' ) );
+    @mm_to = ( ( $to_is_dependent ? 1 : 0 ), ( $cardinality_to eq '1' ? 1 : 'n') );
+
     $s->add_relation( table_from => $t_from,
 		      table_to   => $t_to,
 		      columns_from => \@c_from,
 		      columns_to   => \@c_to,
-		      min_max_from => [$min_max_from_1, $min_max_from_2],
-		      min_max_to   => [$min_max_to_1, $min_max_to_2],
+		      min_max_from => \@mm_from,
+		      min_max_to   => \@mm_to,
 		    );
 
     $s->save_to_file;
 };
+
+if ( $@ && UNIVERSAL::isa( $@, 'Alzabo::Exception::RDBMSRules' ) )
+{
+    $m->comp( '../common/redirect',
+	      url => $m->comp( '../common/make_url',
+			       path => 'add_relation' . Alzabo::Config::mason_extension(),
+			       query => { errors => $@->error, %ARGS } ) );
+}
 
 $m->comp( '../common/exception', $@ ) if $@;
 

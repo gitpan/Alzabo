@@ -10,7 +10,7 @@ use DBI;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.29 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.30 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -43,7 +43,7 @@ sub create_database
 
     my $db = $self->{schema}->name;
 
-    my $dbh = $self->_make_dbh( name => 'mysql',
+    my $dbh = $self->_make_dbh( name => '',
 				%p );
 
     eval { $dbh->func( 'createdb', $db, 'admin' ) };
@@ -59,7 +59,7 @@ sub drop_database
 
     my $db = $self->{schema}->name;
 
-    my $dbh = $self->_make_dbh( name => 'mysql',
+    my $dbh = $self->_make_dbh( name => '',
 				%p );
 
     eval { $dbh->func( 'dropdb', $db, 'admin' ) };

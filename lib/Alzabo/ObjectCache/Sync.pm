@@ -7,7 +7,7 @@ use strict;
 use Alzabo::Exceptions;
 use Time::HiRes qw( time );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -20,7 +20,8 @@ sub new
 
     $SELF = bless {}, $class;
     $SELF->_init(@_);
-    $SELF->{times} = {};
+    $SELF->{obj_times} = {};
+    $SELF->{id_times} = {};
 
     return $SELF;
 }
@@ -36,14 +37,15 @@ sub register_store
     my $obj = shift;
     my $id = $obj->id;
 
-    return if
-	exists $self->{times}{$id} && defined $self->{times}{$id} && $self->{times}{$id} > 0;
-
     my $time = shift || time;
+    $self->{obj_times}{$obj} = $time;
+
+    return if
+	exists $self->{id_times}{$id};
+
     # don't overwrite
     $self->update( $id => $time, 0 );
-
-    $self->{times}{$id} = $time;
+    $self->{id_times}{$id} = $time;
 }
 
 sub is_expired
@@ -52,9 +54,15 @@ sub is_expired
     my $obj = shift;
     my $id = $obj->id;
 
-    return unless exists $self->{times}{$id};
+#    return unless exists $self->{obj_times}{$obj} || exists $self->{id_times}{$id};
 
-    return $self->{times}{$id} < $self->sync_time($id);
+    my $sync_time = $self->sync_time($id);
+
+    return 1 if exists $self->{obj_times}{$obj} && $self->{obj_times}{$obj} < $sync_time;
+
+    return 1 if exists $self->{id_times}{$id} && $self->{id_times}{$id} < $sync_time;
+
+    return 1 if $sync_time && ! ( exists $self->{id_times}{$id} || exists $self->{obj_times}{$obj} );
 }
 
 sub register_refresh
@@ -63,9 +71,9 @@ sub register_refresh
     my $obj = shift;
     my $id = $obj->id;
 
-    return unless exists $self->{times}{$id};
+    return unless exists $self->{obj_times}{$obj};
 
-    $self->{times}{$id} = time;
+    $self->{obj_times}{$obj} = time;
 }
 
 sub register_change
@@ -74,10 +82,10 @@ sub register_change
     my $obj = shift;
     my $id = $obj->id;
 
-    return unless exists $self->{times}{$id};
+    return unless exists $self->{id_times}{$id};
 
-    my $time = time;
-    $self->{times}{$id} = $time;
+    my $time = shift || time;
+    $self->{id_times}{$id} = $self->{obj_times}{$obj} = $time;
     $self->update( $id => $time, 1 );
 }
 
@@ -87,10 +95,11 @@ sub register_delete
     my $obj = shift;
     my $id = $obj->id;
 
-    return unless exists $self->{times}{$id};
+    return unless exists $self->{id_times}{$id};
 
-    $self->{times}{$id} = -1;
     $self->update( $id => -1, 1 );
+    delete $self->{id_times}{$id};
+    delete $self->{obj_times}{$obj};
 }
 
 sub is_deleted
@@ -107,7 +116,7 @@ sub delete_from_cache
 {
     my $self = shift;
 
-    delete $self->{times}{ shift->id };
+    delete $self->{obj_times}{ +shift };
 }
 
 sub clear

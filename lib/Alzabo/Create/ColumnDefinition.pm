@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::ColumnDefinition);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -39,15 +39,48 @@ sub _init
     $self->set_type( $p{type} );
 }
 
+sub alter
+{
+    my $self = shift;
+
+    validate( @_, { type  => { type => SCALAR },
+		    length => { type => UNDEF | SCALAR,
+				optional => 1 },
+		    precision  => { type => UNDEF | SCALAR,
+				    optional => 1 },
+		  } );
+    my %p = @_;
+
+    my $old_type = $self->{type};
+    my $old_length = $self->{length};
+    my $old_precision = $self->{precision};
+
+    $self->{type} = $p{type};
+    $self->{length} = $p{length} if exists $p{length};
+    $self->{precision} = $p{precision} if exists $p{precision};
+
+    eval
+    {
+	$self->owner->table->schema->rules->validate_column_type($p{type});
+	$self->owner->table->schema->rules->validate_primary_key($self->owner)
+	    if $self->owner->is_primary_key;
+	$self->owner->table->schema->rules->validate_column_length($self->owner);
+    };
+    if ($@)
+    {
+	$self->{type} = $old_type;
+	$self->{length} = $old_length;
+	$self->{precision} = $old_precision;
+	$@->rethrow;
+    }
+}
+
 sub set_type
 {
     my $self = shift;
 
     validate_pos( @_, { type => SCALAR } );
     my $type = shift;
-
-    $type =~ s/\A\s+//;
-    $type =~ s/\s+\z//;
 
     my $old_type = $self->{type};
     $self->{type} = $type;
@@ -135,6 +168,24 @@ C<Alzabo::ColumnDefinition>
 =head3 Returns
 
 A new C<Alzabo::Create::ColumnDefinition> object.
+
+=head2 alter
+
+This method allows you to change a column's type, length, and
+precision as a single operation and should be instead of calling
+C<set_type> followed by C<set_length>.
+
+=head3 Parameters
+
+=over 4
+
+=item * type => $type
+
+=item * length => $length (optional)
+
+=item * precision => $precision (optional)
+
+=back
 
 =for pod_merge type
 

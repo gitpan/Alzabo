@@ -2,7 +2,7 @@ package Alzabo::ObjectCache::Store::Memory;
 
 use vars qw($SELF $VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -58,12 +58,12 @@ __END__
 
 =head1 NAME
 
-Alzabo::ObjectCache::MemoryStore - Cache objects in memory
+Alzabo::ObjectCache::Store::Memory - Cache objects in memory
 
 =head1 SYNOPSIS
 
-  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::MemoryStore',
-                           sync  => 'Alzabo::ObjectCache::NullSync' );
+  use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
+                           sync  => 'Alzabo::ObjectCache::Sync::Null' );
 
 =head1 DESCRIPTION
 
@@ -75,18 +75,14 @@ given object should never have to be created twice.
 Note that pretty much all the methods that take an object as an
 argument will silently do nothing if the object is not already in the
 cache.  The obvious exception is the
-L<C<store_object>|Alzabo::ObjectCache::MemoryStore/store_object
+L<C<store_object>|Alzabo::ObjectCache::Store::Memory/store_object
 ($object)> method.
-
-Many of the methods in this class really don't do anything and are
-here merely to support the interface that
-L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> expects.
 
 =head2 new
 
 =head3 Returns
 
-A new C<Alzabo::ObjectCache::MemoryStore> object.
+A new C<Alzabo::ObjectCache::Store::Memory> object.
 
 =head2 fetch_object ($id)
 
@@ -99,7 +95,7 @@ undef.
 
 Stores an object in the cache.  This will not overwrite an existing
 object in the cache.  To do that you must first call the
-L<C<delete_from_cache>|Alzabo::ObjectCache::MemoryStore/delete_from_cache
+L<C<delete_from_cache>|Alzabo::ObjectCache::Store::Memory/delete_from_cache
 ($object)> method.
 
 =head2 delete_from_cache ($object)

@@ -11,7 +11,7 @@ use Alzabo::Exceptions;
 use Fcntl qw( :flock O_RDONLY O_RDWR O_CREAT );
 use SDBM_File;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -20,17 +20,17 @@ sub import
     my $class = shift;
     my %p = @_;
 
-    Alzabo::Exception::Params->throw( error => "The 'dbm_file' parameter is required when using the " . __PACKAGE__ . ' module' )
-	unless exists $p{dbm_file};
+    Alzabo::Exception::Params->throw( error => "The 'sync_dbm_file' parameter is required when using the " . __PACKAGE__ . ' module' )
+	unless exists $p{sync_dbm_file};
 
-    $FILE = $p{dbm_file};
+    $FILE = $p{sync_dbm_file};
     $LOCK_FILE = $p{lock_file} || Alzabo::Config::root_dir() . '/SDBM_File.lock';
 
-    if ( ( ! -e $p{dbm_file}) || $p{clear_on_startup} )
+    if ( ( ! -e $p{sync_dbm_file}) || $p{clear_on_startup} )
     {
-	if (-e $p{dbm_file})
+	if (-e $p{sync_dbm_file})
 	{
-	    unlink $p{dbm_file} or Alzabo::Exception::System->throw( error => "Can't delete '$p{dbm_file}': $!" );
+	    unlink $p{sync_dbm_file} or Alzabo::Exception::System->throw( error => "Can't delete '$p{sync_dbm_file}': $!" );
 	}
     }
 }
@@ -84,7 +84,7 @@ Alzabo::ObjectCache::SDBM_File - Uses an SDBM file to sync object caches
 
   use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
                            sync  => 'Alzabo::ObjectCache::Sync::SDBM_File',
-                           dbm_file => 'somefilename.db',
+                           sync_dbm_file => 'somefilename.db',
                            clear_on_startup => 1 );
 
 =head1 DESCRIPTION
@@ -96,7 +96,7 @@ using an SDBM_File.
 
 =over 4
 
-=item * dbm_file => $filename
+=item * sync_dbm_file => $filename
 
 This parameter is required.  It is the name of the file which will be
 used to store the syncing data.  If the file does not exist, it will

@@ -5,7 +5,7 @@ use vars qw($VERSION);
 
 use Alzabo;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -64,6 +64,13 @@ sub cardinality
     my $self = shift;
 
     return ( $self->{min_max_from}->[1], $self->{min_max_to}->[1] );
+}
+
+sub dependent
+{
+    my $self = shift;
+
+    return $self->{min_max_from}[0] eq '1';
 }
 
 sub id
@@ -165,6 +172,22 @@ An array of array references.  The references are to two column array
 of L<C<Alzabo::Column>|Alzabo::Column> objects.  These two columns
 correspond in the tables being linked together.
 
+=head2 cardinality
+
+This will be either 1..1 or 1..n.
+
+=head3 Returns
+
+A two element array containing the two portions of the cardinality of
+the relationship.
+
+=head2 dependent
+
+=head3 Returns
+
+A boolean value indicating whether there is a depdency on the table to
+which the relationship is to.
+
 =head2 min_max_from
 
 =head2 min_max_to
@@ -174,15 +197,6 @@ correspond in the tables being linked together.
 A two element array containing the two portions of the min_max value.
 
 Examples: (0, 1) -- (1, 'n')
-
-=head2 cardinality
-
-This will be either 1..1 or 1..n.
-
-=head3 Returns
-
-A two element array containing the two portions of the cardinality of
-the relationship.
 
 =head1 AUTHOR
 

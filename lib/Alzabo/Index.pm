@@ -7,7 +7,7 @@ use Alzabo;
 
 use Tie::IxHash;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -40,6 +40,13 @@ sub unique
     my $self = shift;
 
     return $self->{unique};
+}
+
+sub fulltext
+{
+    my $self = shift;
+
+    return $self->{fulltext};
 }
 
 sub id
@@ -113,6 +120,12 @@ is no prefix for this column in the index, then it returns undef.
 =head3 Returns
 
 A boolean value indicating whether or not the index is a unique index.
+
+=head2 fulltext
+
+=head3 Returns
+
+A boolean value indicating whether or not the index is a fulltext index.
 
 =head2 id
 

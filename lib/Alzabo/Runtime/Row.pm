@@ -8,7 +8,9 @@ use Alzabo::Runtime;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.52 $ =~ /(\d+)\.(\d+)/;
+use Storable ();
+
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.55 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -37,7 +39,7 @@ sub new
     my $self;
     if ( $Alzabo::ObjectCache::VERSION && ! $p{no_cache} )
     {
-	$self = Alzabo::Runtime::CachedRow->new(%p);
+	$self = Alzabo::Runtime::CachedRow->retrieve(%p);
 	return $self if exists $self->{data};
     }
     else
@@ -266,7 +268,7 @@ sub rows_by_foreign_key
 
     my $fk = delete $p{foreign_key};
 
-    my %fk_vals = map { $_->name => $self->select( $_->name ) } $fk->columns_from;
+    my %fk_vals = map { $_->[1]->name => $self->select( $_->[0]->name ) } $fk->column_pairs;
 
     if ( ( grep { $_->is_primary_key } $fk->columns_to ) == scalar $fk->table_to->primary_key )
     {
@@ -279,7 +281,7 @@ sub rows_by_foreign_key
 	    $p{where} = [ $p{where} ] unless UNIVERSAL::isa( $p{where}[0], 'ARRAY' );
 	}
 
-	push @{ $p{where} }, map { [ $_->[1], '=', $fk_vals{ $_->[0]->name } ] } $fk->column_pairs;
+	push @{ $p{where} }, map { [ $_, '=', $fk_vals{ $_->name } ] } $fk->columns_to;
 	return $fk->table_to->rows_where(%p);
     }
 }
@@ -320,6 +322,42 @@ sub _no_such_row_error
     }
     $err .= join ', ', @vals;
     Alzabo::Exception::NoSuchRow->throw( error => $err );
+}
+
+sub freeze
+{
+    my $self = shift;
+
+    my $table = delete $self->{table};
+    my $cache = delete $self->{cache};
+
+    $self->{schema} = $table->schema->name;
+    $self->{table_name} = $table->name;
+
+    my $ser = eval { Storable::nfreeze $self };
+
+    $self->{table} = $table;
+    $self->{cache} = $cache;
+
+    Alzabo::Exception::Storable->throw( error => $@ ) if $@;
+
+    return $ser;
+}
+
+sub thaw
+{
+    my $class = shift;
+
+    my $obj = eval { Storable::thaw(shift) };
+
+    Alzabo::Exception::Storable->throw( error => $@ ) if $@;
+
+    $obj->{cache} = Alzabo::ObjectCache->new;
+
+    my $s = Alzabo::Runtime::Schema->load_from_file( name => delete $obj->{schema} );
+    $obj->{table} = $s->table( delete $obj->{table_name} );
+
+    return $obj;
 }
 
 __END__

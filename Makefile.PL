@@ -40,15 +40,19 @@ my %prereq;
 
 {
     # extra prereqs for certain features
-    my @extra_prereq = ( [ 'the MySQL driver', 'DBD::mysql' => 0, 'mysql' ],
-			 [ 'the PostgreSQL driver', 'DBD::Pg' => 0.95, 'pg' ],
-#			 [ 'the Oracle driver', 'DBD::Oracle', 0, 'oracle' ],
-			 [ 'the IPC cache syncing code', 'IPC::Shareable' => 0.54 ],
-			 [ 'the DB_File 1.x cache syncing code', 'DB_File' => 1.76 ],
-			 [ 'the BerkeleyDB 2.x/3.x cache syncing code', 'BerkeleyDB' => 0.15 ],
-			 [ 'the SDBM_File cache syncing code', 'SDBM_File' => 0 ],
-			 [ 'the HTML::Mason based schema creation interface', 'HTML::Mason' => 0.896, undef, 'mason_schema' ],
-			 [ 'the HTML::Mason based data browser', 'HTML::Mason' => 0.896, undef, 'mason_browser' ],
+    my @extra_prereq = ( [ 'the MySQL driver', [ [ 'DBD::mysql' => 0 ] ], 'mysql' ],
+			 [ 'the PostgreSQL driver', [ [ 'DBD::Pg' => 0.95 ] ], 'pg' ],
+#			 [ 'the Oracle driver', [ [ 'DBD::Oracle' => 0 ] ], 'oracle' ],
+			 [ 'the IPC caching code', [ [ 'IPC::Shareable' => 0.54 ] ] ],
+			 [ 'the DB_File 1.x caching code', [ [ 'DB_File' => 1.76 ] ] ],
+			 [ 'the BerkeleyDB 2.x/3.x caching code', [ [ 'BerkeleyDB' => 0.15 ] ] ],
+			 [ 'the SDBM_File caching code', [ [ 'SDBM_File' => 0 ] ] ],
+			 [ 'the HTML::Mason based schema creation interface', [ [ 'HTML::Mason' => 0.896 ],
+										[ 'HTTP::BrowserDetect' => 0 ], ],
+			   undef, 'mason_schema' ],
+			 [ 'the HTML::Mason based data browser', , [ [ 'HTML::Mason' => 0.896 ],
+								     [ 'HTTP::BrowserDetect' => 0 ], ],
+			   undef, 'mason_browser' ],
 		       );
 
     print <<'EOF';
@@ -61,15 +65,19 @@ EOF
     foreach my $p ( @extra_prereq )
     {
 	print "\n";
-	my $requires = $p->[1];
-	$requires .= " (version $p->[2])" if $p->[2];
-	print "\u$p->[0] requires $requires.\n";
-	my $yesno = prompt( "  Use $p->[0]?", has_module($p->[1], $p->[2]) ? 'yes' : 'no' );
+	my $requires = '';
+	$requires .= join ', ', map { my $x = $_->[0]; $x .= $_->[1] ? " ($_->[1])": ''; $x } @{ $p->[1] };
+	print "\u$p->[0] requires: $requires.\n";
+	my $has = ( grep { has_module(@$_) } @{ $p->[1] } ) == @{ $p->[1] };
+	my $yesno = prompt( "  Use $p->[0]?", $has ? 'yes' : 'no' );
 	if ( $yesno && $yesno !~ /\A[Nn]/)
 	{
-	    $prereq{ $p->[1] } = $p->[2];
-	    $test{ $p->[3] } = 1 if $p->[3];
-	    $extra{ $p->[4] } = 1 if $p->[4];
+	    foreach ( @{ $p->[1] } )
+	    {
+		$prereq{ $_->[0] } = $_->[1];
+	    }
+	    $test{ $p->[2] } = 1 if $p->[2];
+	    $extra{ $p->[3] } = 1 if $p->[3];
 	}
     }
 }
@@ -124,6 +132,11 @@ if ( keys %Alazabo::Config::CONFIG )
 write_config_module(%config);
 get_test_setup();
 
+if ( has_module( 'DBD::mysql', 2.09 ) )
+{
+    warn "You appear to have DBD::mysql installed.  This version has a bug which causes major problems with Alzabo.  Please upgrade or downgrade.\n";
+}
+
 %prereq = ( 'DBI' => 0,
 	    'Storable' => 0,
 	    'Tie::IxHash' => 0,
@@ -141,7 +154,7 @@ WriteMakefile( 'NAME'	=> 'Alzabo',
 	       'VERSION_FROM' => 'lib/Alzabo.pm',
 	       PREREQ_PM => \%prereq,
 
-	       realclean => { FILES => './lib/Alzabo/Config.pm schemas t/sdbmsynctest.dbm.* t/db_filesynctest.dbm t/berkeleydbsynctest.dbm SDBM_File.lock __db.* log.*' },
+	       realclean => { FILES => './lib/Alzabo/Config.pm schemas t/*.dbm.* t/*.dbm t/*.db.* SDBM_File.lock __db.* log.*' },
 
 	       AUTHOR => 'Dave Rolsky <autarch@urth.org>',
 	       ABSTRACT => 'Perl data modelling tool',

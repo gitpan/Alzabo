@@ -12,7 +12,7 @@ use Time::HiRes qw(time);
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -55,7 +55,6 @@ sub next_row
     {
 	$self->{errors} = [];
 
-	my $time = time;
 	my @row = $self->{statement}->next_row;
 
 	return unless @row && grep { defined } @row;
@@ -73,7 +72,6 @@ sub next_row
 	$row = eval { $self->{table}->row_by_pk( @_,
 						 pk => \%hash,
 						 prefetch => \%prefetch,
-						 time => $time,
 						 %{ $self->{row_params} },
 					       ); };
 	if ($@)

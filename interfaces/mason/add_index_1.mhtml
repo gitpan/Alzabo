@@ -7,7 +7,11 @@
    <h4>Column</h4>
   </td>
   <td>
+% if ( $s->rules->feature('index_prefix') ) {
    <h4>Prefix (optional)</h4>
+% } else {
+   &nbsp;
+% }
   </td>
   <td>
 % if (@columns > 1) {
@@ -24,12 +28,16 @@
    <input type="hidden" name="columns" value="<% $c %>">
   </td>
   <td>
+%   if ( $s->rules->feature('index_prefix') ) {
    <input type="text" size="5" name="prefixes">
+%   } else {
+   &nbsp;
+%   }
   </td>
   <td>
-% if (@columns > 1) {
+%   if (@columns > 1) {
    <input type="text" size="2" maxlength="2" name="<% "${c}_order" %>" value="<% $x++ %>">
-% } else {
+%   } else {
   &nbsp;
 % }
   </td>
@@ -40,6 +48,13 @@
    Unique? <input type="checkbox" name="unique">
   </td>
  </tr>
+% if ( $s->rules->feature('fulltext_index') ) {
+ <tr>
+  <td colspan="2">
+   Fulltext? <input type="checkbox" name="fulltext">
+  </td>
+ </tr>
+% }
  <tr>
   <td colspan="2">
    <input type="submit" value="Submit">

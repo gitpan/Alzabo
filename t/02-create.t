@@ -447,7 +447,8 @@ foreach my $db (@db)
     ok( $index eq $index2,
 	"The index retrieved from newt1 should be the same as the one first made but it is not");
 
-    $t1->column('foo_pk')->set_type('varchar');
+    $t1->column('foo_pk')->alter( type => 'varchar',
+				  length => 20 );
     if ($db eq 'MySQL')
     {
 	ok( ! $t1->column('foo_pk')->attributes,
@@ -461,15 +462,15 @@ foreach my $db (@db)
 	    "Attempting to set a primary key column to the 'text' type should cause an error" );
     }
 
-    $tbi->set_type('varchar');
-    $tbi->set_length( length => 20 );
+    $tbi->alter( type => 'varchar',
+		 length => 20 );
     $tbi->set_type('text');
 
     ok( ! defined $tbi->length,
 	"Length should be undef after switching column type from 'varchar' to 'text'" );
 
-    $tbi->set_type('varchar');
-    $tbi->set_length( length => 20 );
+    $tbi->alter( type => 'varchar',
+		 length => 20 );
     $tbi->set_type('char');
     ok( $tbi->length && $tbi->length == 20,
 	"Length should remain the same after switching column type from 'varchar' to 'char'" );

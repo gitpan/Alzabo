@@ -15,6 +15,14 @@ eval
     $s->save_to_file;
 };
 
+if ( $@ && UNIVERSAL::isa( $@, 'Alzabo::Exception::RDBMSRules' ) )
+{
+    $m->comp( '../common/redirect',
+	      url => $m->comp( '../common/make_url',
+			       path => 'view_column' . Alzabo::Config::mason_extension(),
+			       query => { errors => $@->error, %ARGS } ) );
+}
+
 $m->comp( '../common/exception', $@ ) if $@;
 
 $m->comp( '../common/redirect', url => 'view_schema' . Alzabo::Config::mason_extension() . '?schema=' . $s->name );

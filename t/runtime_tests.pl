@@ -87,7 +87,7 @@ sub run_tests
 
     my %emp;
     eval { $emp{bill} = $emp_t->insert( values => { name => 'Big Bill',
-						    department_id => $borg_id,
+						    dep_id => $borg_id,
 						    smell => 'robotic',
 						    cash => 20.2,
 						  } ); };
@@ -95,7 +95,7 @@ sub run_tests
 	"Unable to insert row into employee table: $@" );
 
     eval { $emp_t->insert( values => { name => undef,
-				       department_id => $borg_id,
+				       dep_id => $borg_id,
 				       smell => 'robotic',
 				       cash => 20.2,
 				     } )->delete; };
@@ -103,7 +103,7 @@ sub run_tests
 	"Inserting a non-nullable column as NULL should have produced an Alzabo::Exception::Params exception: $@" );
 
     eval { $emp_t->insert( values => { name => 'asfalksf',
-				       department_id => $borg_id,
+				       dep_id => $borg_id,
 				       smell => undef,
 				       cash => 20.2,
 				     } )->delete; };
@@ -127,7 +127,7 @@ sub run_tests
 
     eval { $emp{2} = $emp_t->insert( values => { name => 'unit 2',
 						 smell => 'good',
-						 department_id => $dep{lying}->select('department_id') } ); };
+						 dep_id => $dep{lying}->select('department_id') } ); };
     ok( ! $@,
 	"Unable to create employee 'unit 2': $@" );
 
@@ -180,11 +180,11 @@ sub run_tests
 
     $x = 0;
     my @rows;
+
     eval { $cursor = $emp_t->all_rows;
-	   while ( my $row = $cursor->next_row )
-	   {
-	       $x++;
-	   } };
+	   $x++ while $cursor->next_row;
+         };
+
     ok( ! $@ && ! $cursor->errors && $x == 2,
 	"The employee table had $x rows but should have had 2" );
 
@@ -206,6 +206,7 @@ sub run_tests
 	"Join cursor did not return rows in expected order or did not return 3 rows" );
 
     my $id = $emp{bill}->select('employee_id');
+
     $emp{bill}->delete;
 
     eval { my $c = $emp_t->row_by_pk( pk => $id ) };
@@ -228,49 +229,49 @@ sub run_tests
 
     my $dep_id = $dep{borg}->select('department_id');
 
-    $emp_t->insert( values => { name => 'bob', smell => 'awful', department_id => $dep_id } );
-    $emp_t->insert( values => { name => 'rachel', smell => 'horrid', department_id => $dep_id } );
-    $emp_t->insert( values => { name => 'al', smell => 'bad', department_id => $dep_id } );
+    $emp_t->insert( values => { name => 'bob', smell => 'awful', dep_id => $dep_id } );
+    $emp_t->insert( values => { name => 'rachel', smell => 'horrid', dep_id => $dep_id } );
+    $emp_t->insert( values => { name => 'al', smell => 'bad', dep_id => $dep_id } );
 
     my @emps = eval { $emp_t->all_rows( order_by => { columns => $emp_t->column('name') } )->all_rows };
     ok( ! $@, "Error attempting to select all rows with ORDER BY: $@" );
     ok( scalar @emps == 4,
 	"There are ", scalar @emps, " employee table rows rather than 4" );
     ok( $emps[0]->select('name') eq 'al' &&
-	 $emps[1]->select('name') eq 'bob' &&
-	 $emps[2]->select('name') eq 'rachel' &&
-	 $emps[3]->select('name') eq 'unit 2',
-	 "The rows returned from the ORDER BY query do not appear to be ordered alphabetically by name" );
+	$emps[1]->select('name') eq 'bob' &&
+	$emps[2]->select('name') eq 'rachel' &&
+	$emps[3]->select('name') eq 'unit 2',
+	"The rows returned from the ORDER BY query do not appear to be ordered alphabetically by name" );
 
     @emps = eval { $emp_t->all_rows( order_by => $emp_t->column('name') )->all_rows };
     ok( ! $@, "Error attempting to select all rows with ORDER BY: $@" );
     ok( scalar @emps == 4,
 	"There are ", scalar @emps, " employee table rows rather than 4" );
     ok( $emps[0]->select('name') eq 'al' &&
-	 $emps[1]->select('name') eq 'bob' &&
-	 $emps[2]->select('name') eq 'rachel' &&
-	 $emps[3]->select('name') eq 'unit 2',
-	 "The rows returned from the ORDER BY query do not appear to be ordered alphabetically by name" );
+	$emps[1]->select('name') eq 'bob' &&
+	$emps[2]->select('name') eq 'rachel' &&
+	$emps[3]->select('name') eq 'unit 2',
+	"The rows returned from the ORDER BY query do not appear to be ordered alphabetically by name" );
 
     @emps = eval { $emp_t->all_rows( order_by => [ $emp_t->column('name') ] )->all_rows };
     ok( ! $@, "Error attempting to select all rows with ORDER BY: $@" );
     ok( scalar @emps == 4,
 	"There are ", scalar @emps, " employee table rows rather than 4" );
     ok( $emps[0]->select('name') eq 'al' &&
-	 $emps[1]->select('name') eq 'bob' &&
-	 $emps[2]->select('name') eq 'rachel' &&
-	 $emps[3]->select('name') eq 'unit 2',
-	 "The rows returned from the ORDER BY query do not appear to be ordered alphabetically by name" );
+	$emps[1]->select('name') eq 'bob' &&
+	$emps[2]->select('name') eq 'rachel' &&
+	$emps[3]->select('name') eq 'unit 2',
+	"The rows returned from the ORDER BY query do not appear to be ordered alphabetically by name" );
 
     @emps = eval { $emp_t->all_rows( order_by => { columns => $emp_t->column('smell') } )->all_rows };
     ok( ! $@, "Error attempting to select all rows with ORDER BY (2): $@" );
     ok( scalar @emps == 4,
 	"There are", scalar @emps, "employee table rows rather than 4" );
     ok( $emps[0]->select('name') eq 'bob' &&
-	 $emps[1]->select('name') eq 'al' &&
-	 $emps[2]->select('name') eq 'unit 2' &&
-	 $emps[3]->select('name') eq 'rachel',
-	 "The rows returned from the ORDER BY query do not appear to be ordered alphabetically by smell" );
+	$emps[1]->select('name') eq 'al' &&
+	$emps[2]->select('name') eq 'unit 2' &&
+	$emps[3]->select('name') eq 'rachel',
+	"The rows returned from the ORDER BY query do not appear to be ordered alphabetically by smell" );
 
     @emps = eval { $emp_t->all_rows( order_by => { columns => $emp_t->column('smell'),
 						   sort => 'desc' } )->all_rows };
@@ -278,10 +279,10 @@ sub run_tests
     ok( scalar @emps == 4,
 	"There are", scalar @emps, "employee table rows rather than 4" );
     ok( $emps[0]->select('name') eq 'rachel' &&
-	 $emps[1]->select('name') eq 'unit 2' &&
-	 $emps[2]->select('name') eq 'al' &&
-	 $emps[3]->select('name') eq 'bob',
-	 "The rows returned from the ORDER BY query do not appear to be reverse ordered alphabetically by smell" );
+	$emps[1]->select('name') eq 'unit 2' &&
+	$emps[2]->select('name') eq 'al' &&
+	$emps[3]->select('name') eq 'bob',
+	"The rows returned from the ORDER BY query do not appear to be reverse ordered alphabetically by smell" );
 
     $count = eval { $emp_t->row_count; };
 
@@ -376,15 +377,15 @@ sub run_tests
     $emp_t->insert( values => { employee_id => 9000,
 				name => 'bob9000',
 				smell => 'a',
-				department_id => $dep_id } );
+				dep_id => $dep_id } );
     $emp_t->insert( values => { employee_id => 9001,
 				name => 'bob9001',
 				smell => 'b',
-				department_id => $dep_id } );
+				dep_id => $dep_id } );
     $emp_t->insert( values => { employee_id => 9002,
 				name => 'bob9002',
 				smell => 'c',
-				department_id => $dep_id } );
+				dep_id => $dep_id } );
 
     my $eid_c = $emp_t->column('employee_id');
     @emps = $emp_t->rows_where( where => [ [ $eid_c, '=', 9000 ],
@@ -457,7 +458,7 @@ sub parent
     $s->connect;
 
     my $emp = eval { $s->table('employee')->insert( values => { name => 'parent',
-								department_id => 1,
+								dep_id => 1,
 							      } ); };
     ok( ! $@,
 	"Unable to insert new row into employee table: $@" );
@@ -513,8 +514,8 @@ sub parent
     # This should come from the cache.
     $emp2 = $s->table('employee')->row_by_pk( pk => $emp2_id );
     eval { $emp2->update( name => 'newname3' ); };
-    ok( ! $@,
-	"Attempt to update row immediately after update in child failed: $@" );
+    ok( $@ && $@->isa('Alzabo::Exception::Cache::Expired'),
+	"Attempt to update row immediately after update in child succeeded." );
 
     # K.
     print $c_write "1\n";
@@ -531,7 +532,7 @@ sub parent
     ok( ! $res, $res );
 
     my $emp3 = eval { $s->table('employee')->insert( values => { name => 'parent',
-								 department_id => 1,
+								 dep_id => 1,
 							       } ); };
     my $emp3_id = $emp3->select('employee_id');
 
@@ -575,7 +576,7 @@ sub parent
 
     my $e1000 = eval { $s->table('employee')->insert( values => { employee_id => 1000,
 								  name => 'alive1',
-								  department_id => 1,
+								  dep_id => 1,
 								} ); };
     $e1000->delete;
 
@@ -586,6 +587,7 @@ sub parent
     get_pipe_data($c_read);
 
     my $new_name = eval { $e1000->select('name') };
+
     ok( ! $@,
 	"Attempt to retrieve employee_id 1000 caused an error: $@" );
 
@@ -594,6 +596,7 @@ sub parent
 
     $s->table('employee')->set_prefetch( $s->table('employee')->column('name') );
     Alzabo::ObjectCache->clear;
+
     my $cursor = $s->table('employee')->rows_where( where => [ $s->table('employee')->column('employee_id'), '=', 1000 ] );
 
     # U.
@@ -664,7 +667,7 @@ sub child
 		     "Attempt to select from deleted row should have caused an Alzabo::Exception::Cache::Deleted exception but we got: $@" );
     print $p_write "\n";
 
-    my $emp2 = eval { $s->table('employee')->insert( values => { name => 'newname', department_id => 1 } ); };
+    my $emp2 = eval { $s->table('employee')->insert( values => { name => 'newname', dep_id => 1 } ); };
 
     # H.
     print $p_write $emp2->select('employee_id'), "\n";
@@ -684,19 +687,19 @@ sub child
 
     # L.
     print $p_write( $@ ?
-		    0 :
-		    "Expected Alzabo::Exception::Cache::Expired exception but got: $@" );
+		    "Got exception attempting to update emp2 row: $@" :
+		    0 );
     print $p_write "\n";
 
     # M.
     get_pipe_data($p_read);
 
     # N.
-    print $p_write( eval { $emp2->select('name') eq 'newname3' } ?
+    print $p_write( eval { $emp2->select('name') eq 'newname4' } ?
 		    0 :
 		    ( $@ ?
 		      "Attempt to select name threw exception: $@" :
-		      "Name should be 'newname3' but it is " . $emp2->select('name') ) );
+		      "Name should be 'newname4' but it is " . $emp2->select('name') ) );
     print $p_write "\n";
 
     # O.
@@ -704,7 +707,7 @@ sub child
 
     my $emp3 = eval { $s->table('employee')->insert( values => { employee_id => $emp3_id,
 								 name => 'lazarus',
-								 department_id => 1,
+								 dep_id => 1,
 							       } ); };
 
     # P.
@@ -729,7 +732,7 @@ sub child
 
     my $e1000 = eval { $s->table('employee')->insert( values => { employee_id => 1000,
 								  name => 'alive2',
-								  department_id => 1,
+								  dep_id => 1,
 								} ); };
 
     # T.

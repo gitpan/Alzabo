@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -57,7 +57,6 @@ sub _check_name
 	unless $name =~ /\A[a-zA-Z]\w*\z/;
 }
 
-my $complex = join '|', qw(  );
 sub validate_column_type
 {
     my $self = shift;
@@ -164,6 +163,9 @@ sub validate_index
 	Alzabo::Exception::RDBMSRules->throw( error => "PostgreSQL does not support index prefixes" )
 	    if defined $index->prefix($c)
     }
+
+    Alzabo::Exception::RDBMSRules->throw( error => "PostgreSQL does not support fulltext indexes" )
+	if $index->fulltext;
 }
 
 sub type_is_numeric

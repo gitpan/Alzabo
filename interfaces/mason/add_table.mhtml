@@ -1,6 +1,6 @@
 <%args>
 $schema
-$table
+$table_name
 $after => undef
 </%args>
 
@@ -12,17 +12,25 @@ eval
 {
     $s = Alzabo::Create::Schema->load_from_file( name => $schema );
 
-    my %p = ( name => $table );
+    my %p = ( name => $table_name );
     $p{after} = $s->table( $after ) if defined $after;
 
-    $s->make_table(%p); 
+    $s->make_table(%p);
 
     $s->save_to_file;
 };
 
+if ( $@ && UNIVERSAL::isa( $@, 'Alzabo::Exception::RDBMSRules' ) )
+{
+    $m->comp( '../common/redirect',
+	      url => $m->comp( '../common/make_url',
+			       path => 'view_schema' . Alzabo::Config::mason_extension(),
+			       query => { errors => $@->error, %ARGS } ) );
+}
+
 $m->comp( '../common/exception', $@ ) if $@;
 
-$m->comp( '../common/redirect', url => 'view_table' . Alzabo::Config::mason_extension() . '?schema=' . $s->name . '&table=' . $table );
+$m->comp( '../common/redirect', url => 'view_table' . Alzabo::Config::mason_extension() . '?schema=' . $s->name . '&table=' . $table_name );
 
 </%init>
 

@@ -3,7 +3,7 @@ package Alzabo::Exceptions;
 use strict;
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
 
 my %e;
 
@@ -13,55 +13,62 @@ BEGIN
 	   { description => 'Generic exception within the Alzabo API.  Should only be used as a base class.' },
 
 	   'Alzabo::Exception::Cache' =>
-	   { isa => 'Alzabo::Exception',
-	     description => 'An operation was attempted on a row that is either deleted or expired in the cache.'},
+	   { description => 'An operation was attempted on a row that is either deleted or expired in the cache.',
+	     isa => 'Alzabo::Exception' },
 
 	   'Alzabo::Exception::Cache::Deleted' =>
-	   { isa => 'Alzabo::Exception::Cache',
-	     description => 'An operation was attempted on a row that is deleted in the cache.'},
+	   { description => 'An operation was attempted on a row that is deleted in the cache.',
+	     isa => 'Alzabo::Exception::Cache' },
 
 	   'Alzabo::Exception::Cache::Expired' =>
-	   { isa => 'Alzabo::Exception::Cache',
-	     description => 'An operation was attempted on a row that is expired in the cache.'},
+	   { description => 'An operation was attempted on a row that is expired in the cache.',
+	     isa => 'Alzabo::Exception::Cache' },
 
 	   'Alzabo::Exception::Eval' =>
-	   { description => 'An attempt to eval a string failed' },
+	   { description => 'An attempt to eval a string failed',
+	     isa => 'Alzabo::Exception::Cache' },
 
 	   'Alzabo::Exception::Logic' =>
 	   { description => 'An internal logic error occurred (presumably, Alzabo was asked to do something that cannot be done)',
 	     isa => 'Alzabo::Exception' },
 
 	   'Alzabo::Exception::NoSuchRow' =>
-	   { isa => 'Alzabo::Exception',
-	     description => 'An attempt to fetch data from the database for a primary key that did not exist in the specified table' },
+	   { description => 'An attempt to fetch data from the database for a primary key that did not exist in the specified table',
+	     isa => 'Alzabo::Exception' },
 
 	   'Alzabo::Exception::Params' =>
 	   { description => 'An exception generated when there is an error in the parameters passed in a method of function call',
 	     isa => 'Alzabo::Exception' },
 
 	   'Alzabo::Exception::RDBMSRules' =>
-	   { isa => 'Alzabo::Exception',
-	     description => 'An RDBMS rule check failed' },
+	   { description => 'An RDBMS rule check failed',
+	     isa => 'Alzabo::Exception' },
 
 	   'Alzabo::Exception::ReferentialIntegrity' =>
-	   { isa => 'Alzabo::Exception',
-	     description => 'An operation was attempted that would violate referential integrity' },
+	   { description => 'An operation was attempted that would violate referential integrity',
+	     isa => 'Alzabo::Exception' },
 
 	   'Alzabo::Exception::SQL' =>
-	   { description => 'An exception generated when there a logical error in a set of operation on an ALzabo::SQLMaker object',
+	   { description => 'An exception generated when there a logical error in a set of operation on an Alzabo::SQLMaker object',
+	     isa => 'Alzabo::Exception' },
+
+	   'Alzabo::Exception::Storable' =>
+	   { description => 'An attempt to call a function from the Storable module failed',
 	     isa => 'Alzabo::Exception' },
 
 	   'Alzabo::Exception::System' =>
-	   { description => 'An attempt to interact with the file system failed' },
+	   { description => 'An attempt to interact with the system failed',
+	     isa => 'Alzabo::Exception' },
 
 	   'Alzabo::Exception::VirtualMethod' =>
-	   { description => 'Indicates that the method called must be subclassed in the appropriate class' },
+	   { description => 'Indicates that the method called must be subclassed in the appropriate class',
+	     isa => 'Alzabo::Exception' },
 
 	 );
 }
 
 use Exception::Class (%e);
-$ENV{ALZABO_DEBUG} = 1;
+
 if ($ENV{ALZABO_DEBUG})
 {
     Exception::Class::Base->do_trace(1);
@@ -202,6 +209,11 @@ integrity constraints.
 
 An error thrown when there is an attempt to generate invalid SQL via
 the Alzabo::SQLMaker module.
+
+=item * Alzabo::Exception::System
+
+A error when trying to freeze, thaw, or clone an object using
+Storable.
 
 =item * Alzabo::Exception::System
 

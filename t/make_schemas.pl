@@ -91,6 +91,8 @@ sub mysql_make_schema
 		      min_max_to => [ '0', 'n' ],
 		    );
 
+    $emp_t->column('department_id')->set_name('dep_id');
+
     $s->add_relation( table_from => $emp_t,
 		      table_to   => $proj_t,
 		      min_max_from => [ '0', 'n' ],
@@ -194,6 +196,8 @@ sub pg_make_schema
 		      min_max_to => [ '0', 'n' ],
 		    );
     $proj_t->make_index( columns => [ { column => $proj_t->column('name') } ] );
+
+    $emp_t->column('department_id')->set_name('dep_id');
 
     $s->add_relation( table_from => $emp_t,
 		      table_to   => $proj_t,

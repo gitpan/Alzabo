@@ -4,6 +4,10 @@ use strict;
 
 use Alzabo::Create;
 use Alzabo::Runtime;
+
+use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
+			 sync  => 'Alzabo::ObjectCache::Sync::Null' );
+
 require Alzabo::MethodMaker;
 
 use lib '.', './t';
@@ -18,12 +22,11 @@ unless (defined $ENV{ALZABO_RDBMS_TESTS})
 
 my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
 
-print "1..39\n";
+print "1..41\n";
 
 my $t = $tests->[0];
 make_schema(%$t);
 
-$ENV{ALZABO_DEBUG}=1;
 Alzabo::MethodMaker->import( schema => $t->{db_name},
 			     all => 1,
 			     class_root => 'Alzabo::MM::Test',
@@ -92,13 +95,13 @@ foreach my $t ($s->tables)
 {
     eval { $s->Location_t->insert( values => { location_id => 100,
 					       location => 'die' } ) };
-    ok( $@->error eq 'TEST',
+    ok( $@ && $@->error eq 'TEST',
 	"validate_insert should have thrown an exception with the error message 'TEST' but it did not" );
 
     my $loc100 = $s->Location_t->insert( values => { location_id => 100,
 						     location => 'a'} );
     eval { $loc100->update( location => 'die' ); };
-    ok( $@->error eq 'TEST',
+    ok( $@ && $@->error eq 'TEST',
 	"validate_update should have thrown an exception with the error message 'TEST' but it did not" );
 
     $s->ToiletType_t->insert( values => { toilet_type_id => 1,
@@ -138,6 +141,14 @@ foreach my $t ($s->tables)
     ok( $tl[0]->location_id == 1 && $tl[0]->toilet_id == 1 &&
 	$tl[1]->location_id == 100 && $tl[1]->toilet_id == 1,
 	"The toilet location rows should be 1/1 & 100/1 but they are not" );
+
+    my $row = $s->Toilet_t->row_by_pk( id => 1 );
+    ok( $row->isa('Alzabo::MM::Test::CachedRow::Toilet'),
+	"The Toilet object should be of the Alzabo::MM::Test::CachedRow::Toilet class but it is a @{[ref $row]}." );
+
+    $row = $s->Toilet_t->row_by_pk( id => 1, no_cache => 1 );
+    ok( $row->isa('Alzabo::MM::Test::UncachedRow::Toilet'),
+	"The Toilet object should be of the Alzabo::MM::Test::UncachedRow::Toilet class but it is a @{[ref $row]}." );
 }
 
 sub make_schema

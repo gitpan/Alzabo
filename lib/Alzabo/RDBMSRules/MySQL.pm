@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.45 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -46,9 +46,9 @@ sub validate_table_name
 
     Alzabo::Exception::RDBMSRules->throw( error => "Table name must at least one character long" )
 	unless length $name;
-    Alzabo::Exception::RDBMSRules->throw( error => "Table name '$name' is too long.  Names must be 64 characters or less." )
+    Alzabo::Exception::RDBMSRules->throw( error => "Table name is too long.  Names must be 64 characters or less." )
 	if length $name >= 64;
-    Alzabo::Exception::RDBMSRules->throw( error => "Table name '$name' must only contain alphanumerics or underscore(_)." )
+    Alzabo::Exception::RDBMSRules->throw( error => "Table name must only contain alphanumerics or underscore(_)." )
 	if $name =~ /\W/;
 }
 
@@ -62,11 +62,11 @@ sub validate_column_name
     Alzabo::Exception::RDBMSRules->throw( error => 'Name is too long.  Names must be 64 characters or less.' )
 	if length $name >= 64;
     Alzabo::Exception::RDBMSRules->throw( error =>
-					  'Name contains only digits.  Names must contain at least one alpha character.' )
-	unless $name =~ /[^\W\d]/;
-    Alzabo::Exception::RDBMSRules->throw( error =>
 					  'Name contains characters that are not alphanumeric or the dollar sign ($).' )
 	if $name =~ /[^\w\$]/;
+    Alzabo::Exception::RDBMSRules->throw( error =>
+					  'Name contains only digits.  Names must contain at least one alpha character.' )
+	unless $name =~ /[^\W\d]/;
 }
 
 sub validate_column_type
@@ -145,7 +145,7 @@ sub validate_column_length
 	Alzabo::Exception::RDBMSRules->throw( error => "Max display value is too long.  Maximum allowed value is 255." )
 	    if defined $column->length && $column->length > 255;
 
-	Alzabo::Exception::RDBMSRules->throw( error => "Cannot specify a precision value for an integer column." )
+	Alzabo::Exception::RDBMSRules->throw( error => $column->type . " columns cannot have a precision." )
 	    if defined $column->precision;
 	return;
     }
@@ -184,6 +184,8 @@ sub validate_column_length
     {
 	Alzabo::Exception::RDBMSRules->throw( error => "Max display value is too long.  Maximum allowed value is 14." )
 	    if defined $column->length && $column->length > 14;
+	Alzabo::Exception::RDBMSRules->throw( error => $column->type . " columns cannot have a precision." )
+	    if defined $column->precision;
 	return;
     }
 
@@ -191,6 +193,10 @@ sub validate_column_length
     {
 	Alzabo::Exception::RDBMSRules->throw( error => "Max display value is too long.  Maximum allowed value is 255." )
 	    if defined $column->length && $column->length > 255;
+	Alzabo::Exception::RDBMSRules->throw( error => "CHAR and VARCHAR columns must have a length provided." )
+	    unless defined $column->length;
+	Alzabo::Exception::RDBMSRules->throw( error => $column->type . " columns cannot have a precision." )
+	    if defined $column->precision;
 	return;
     }
 
@@ -201,7 +207,7 @@ sub validate_column_length
 	return;
     }
 
-    Alzabo::Exception::RDBMSRules->throw( error => $column->type . " columns cannot have a length or precision attribute" )
+    Alzabo::Exception::RDBMSRules->throw( error => $column->type . " columns cannot have a length or precision." )
 	if defined $column->length || defined $column->precision;
 }
 
@@ -272,12 +278,22 @@ sub validate_index
 		unless $self->type_is_blob( $c->type ) || $self->type_is_char( $c->type );
 	}
 
-	if ( $self->type_is_blob( $c->type ) )
+	if ( $c->is_blob )
 	{
 	    Alzabo::Exception::RDBMSRules->throw( error => 'Blob columns must have an index prefix' )
 		unless $prefix;
 	}
+
+	if ( $index->fulltext )
+	{
+	    Alzabo::Exception::RDBMSRules->throw( error => 'A fulltext index can only include text or char columns' )
+		unless $c->is_character || $c->type =~ /\A(?:TINY|MEDIUM|LONG)?TEXT\z/i;
+	}
     }
+
+    Alzabo::Exception::RDBMSRules->throw( error => 'An fulltext index cannot be unique' )
+	if $index->unique && $index->fulltext;
+
 }
 
 sub type_is_numeric
@@ -308,7 +324,7 @@ sub type_is_blob
     my $self = shift;
     my $type = uc shift;
 
-    return 1 if $type =~ /\A(?:TEXT|BLOB)\z/;
+    return 1 if $type =~ /\A(?:TINY|MEDIUM|LONG)?(?:TEXT|BLOB)\z/;
 }
 
 sub column_types
@@ -347,7 +363,7 @@ sub column_types
 
 my %features = map { $_ => 1 } qw ( extended_column_types
 				    index_prefix
-				    fulltext_prefix
+				    fulltext_index
 				  );
 sub feature
 {
@@ -433,6 +449,27 @@ sub column_sql
 			    @unsigned,
 			    @default,
 			    sort values %attr );
+
+    return $sql;
+}
+
+sub index_sql
+{
+    my $self = shift;
+    my $index = shift;
+
+    my $index_name = $index->id;
+
+    my $sql = 'CREATE';
+    $sql .= ' UNIQUE' if $index->unique;
+    $sql .= ' FULLTEXT' if $index->fulltext;
+    $sql .= " INDEX $index_name ON " . $index->table->name . ' ( ';
+
+    $sql .= join ', ', ( map { my $sql = $_->name;
+			       $sql .= '(' . $index->prefix($_) . ')' if $index->prefix($_);
+			       $sql; } $index->columns );
+
+    $sql .= ' )';
 
     return $sql;
 }

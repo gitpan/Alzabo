@@ -6,7 +6,7 @@ use vars qw($SELF $VERSION %ARGS);
 # load this for use by Alzabo::Runtime::Row
 use Alzabo::Runtime::CachedRow;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -243,15 +243,18 @@ Assume two process, ids 1 and 2.
 
 =item * No caching
 
-The correct data (from process 2's update) is returned.
+The data from process 2's update is returned.
 
 =item * Alzabo::ObjectCache::NullSync module is in use
 
-Incorrect data (from process 1's update) is returned.
+The data from process 1's update is returned.
 
 =item * Any other syncing module is in use
 
-The correct data (from process 2's update) is returned.
+An C<Alzabo::Exception::Cache::Expired> exception is thrown when
+process 2 attempts to update the row.  If process 2 were to then
+attempt the update B<again> it would succeed (as the object is updated
+before the exception is thrown).
 
 =back
 
@@ -281,7 +284,8 @@ case it shouldn't be reusing the same object anyway.
 =back
 
 This example may seem a bit far-fetched but is actually quite likely
-when using MySQL's C<auto_increment> feature.
+when using MySQL's C<auto_increment> feature with older versions of
+MySQL, where numbers could be re-used.
 
 =head2 Summary
 

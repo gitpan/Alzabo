@@ -7,7 +7,7 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::ForeignKey);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -162,11 +162,13 @@ C<Alzabo::ForeignKey>
 
 =for pod_merge columns_to
 
+=for pod_merge cardinality
+
+=for pod_merge dependent
+
 =for pod_merge min_max_from
 
 =for pod_merge min_max_to
-
-=for pod_merge cardinality
 
 =head2 register_insert ($new_value)
 

@@ -1,9 +1,10 @@
 <html>
 <head>
 <title>Alzabo: The Perl Data Modeling Tool</title>
+<link rel=stylesheet href="<% $stylesheet %>" type="text/css">
 </head>
 
-<body>
+<body bgcolor="#ffffff">
 
 <table width="100%" cellspacing="0">
 
@@ -17,9 +18,20 @@
 <& table_menubar, $t &>
 %   }
 % }
+% if (@errors) {
+ <tr>
+  <td colspan="5">&nbsp;</td>
+ </tr>
+%   foreach (@errors) {
+ <tr>
+  <td colspan="5"><span class="red16"><% $_ %></span></td>
+ </tr>
+%   }
+% }
 </table>
 
-% $m->call_next(%args);
+
+<& $m->fetch_next, %args, %ARGS &>
 
 </body>
 </html>
@@ -31,9 +43,13 @@ $column => undef
 $foreign_key_table_to => undef
 $foreign_key_columns_from => undef
 $foreign_key_columns_to => undef
+@errors => ()
 </%args>
 
 <%init>
+use Alzabo::Create;
+use HTTP::BrowserDetect;
+
 my $s;
 my %args;
 my ($comp, @args);
@@ -60,6 +76,14 @@ if ($column)
     $args{c} = $c;
 }
 
+my $browser = HTTP::BrowserDetect->new( $ENV{USER_AGENT} );
+my $stylesheet = 'styles_ns.css';
+if ( $browser->major >= 4 &&
+     $browser->ie &&
+     ( $browser->mac || $browser->windows ) )
+{
+    $stylesheet = 'styles_ie.css';
+}
 </%init>
 
 <%def .title>
@@ -90,7 +114,7 @@ if (defined $s)
 <a href="index.mhtml"><!--<img src="/alzabo/images/alzabo-logo.jpg" alt="return to index" border="0" width="75" height="50" hspacing="0" vspacing="0">-->Top level</a>
 <hr width="25%" />
 % if (@t) {
-  <h2><% join ' : ', @t %></h2>
+  <span class="teal16bold"><% join ' : ', @t %></span>
 % }
 </div>
 </%def>

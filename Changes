@@ -1,3 +1,76 @@
+0.45
+
+Incompatibilities:
+
+- The 'dbm_file' parameter given when loading a syncing module that
+used DBM files (such as Alzabo::ObjectCache::Sync::SDBM_File) has been
+changed to 'sync_dbm_file', because this release includes a new cache
+storage module that uses DBM files as well.
+
+- The schema creator now requires HTTP::BrowserDetect.
+
+- Fix what was arguably a bug in the caching/syncing code.
+Previously, one process could update a row and another process could
+then update that same row.  Now the second process will throw an
+exception.
+
+Bug fixes:
+
+- Accidentally left debugging turned on in Alzabo::Exceptions.
+
+- The schema creator did not allow you to remove a length or precision
+setting for a column once it had been made.
+
+- Require a length for CHAR and VARCHAR columns with MySQL.
+
+- Add error on setting precision for any column that doesn't allow
+them with MySQL.
+
+- The interaction of caching rows and Alzabo::MethodMaker was not
+right.  Basically, it was determined at compile time whether or not to
+use the cached row class but this needs to be determined at run time.
+This has been fixed.
+
+- Using the Alzabo::Runtime::Row->rows_by_foreign_key method would
+fail when the column in one table did not have the same name as a
+column in the other table.  Reported by Michael Graham (along with a
+correct diagnosis, thanks!).
+
+- Don't specify a database name when creating or dropping a database.
+Reported and patched by Dana Powers.
+
+Enhancements:
+
+- Rules violations error messages (bad table name, for example) in the
+schema creator are now handled in a much friendlier manner.  Instead
+of the big error dump exception page it returns you to the page you
+submitted from with an error message.
+
+- Add Alzabo::Create::Column->alter method which allows you to change
+the column type, length, and precision all at once.  This is necessary
+because some of the column type validation code will insist that a
+column have a length setting.  If you try to change them in two
+separate operations it will throw an exception.
+
+- Add Alzabo::ObjectCache::Store::Null - This allows you to use any
+multi-process syncing module without using up the memory that
+Alzabo::ObjectCache::Store::Memory uses.
+
+- Add Alzabo::ObjectCache::Store::BerkeleyDB - I'm not sure if storing
+in a db file is really a performance win (vs. null storage) because of
+the work needed to freeze & thaw the row objects.  Benchmarks are
+needed.
+
+- Add support for fulltext indexes (MySQL).
+
+- Don't show fulltext or column prefix options when creating indexes
+for databases that don't support these features.
+
+- Use cardinality & dependency language for relations.
+
+- Add some style to the schema creator (via stylesheets).  It looks a
+little better now.
+
 0.44
 
 Bug fixes:

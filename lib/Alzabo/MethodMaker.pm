@@ -8,7 +8,7 @@ use Alzabo::Runtime::Schema;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
@@ -91,6 +91,8 @@ sub make
     {
 	$self->{table_class} = join '::', $self->{class_root}, 'Table', $t->name;
 	$self->{row_class} = join '::', $self->{class_root}, 'Row', $t->name;
+	$self->{uncached_row_class} = join '::', $self->{class_root}, 'UncachedRow', $t->name;
+	$self->{cached_row_class} = join '::', $self->{class_root}, 'CachedRow', $t->name;
 
 	bless $t, $self->{table_class};
 	$self->eval_table_class;
@@ -174,7 +176,7 @@ sub row_by_pk
 {
     my \$self = shift;
 
-    return bless \$self->SUPER::row_by_pk(\@_), '$self->{row_class}';
+    return \$self->SUPER::row_by_pk(\@_, row_class => '$self->{row_class}');
 }
 
 1;
@@ -185,11 +187,34 @@ sub eval_row_class
 {
     my $self = shift;
 
-    my $base_class = $Alzabo::Runtime::CachedRow::VERSION ? 'Alzabo::Runtime::CachedRow' : 'Alzabo::Runtime::Row';
     eval <<"EOF";
 package $self->{row_class};
 
-use base qw( $base_class );
+sub new
+{
+    my \$class = shift;
+
+    my \%p = \@_;
+    my \$row = Alzabo::Runtime::Row->new(\@_);
+
+    if ( \$p{no_cache} || ! \$Alzabo::ObjectCache::VERSION )
+    {
+        return bless \$row, '$self->{uncached_row_class}';
+    }
+    else
+    {
+        return bless \$row, '$self->{cached_row_class}';
+    }
+}
+
+package $self->{uncached_row_class};
+
+\@$self->{uncached_row_class}::ISA = qw($self->{row_class} Alzabo::Runtime::Row);
+
+package $self->{cached_row_class};
+
+\@$self->{cached_row_class}::ISA = qw($self->{row_class} Alzabo::Runtime::CachedRow);
+
 
 1;
 EOF
@@ -479,10 +504,7 @@ sub make_insert_method
 
     return unless $self->{table_class}->can('validate_insert');
 
-    my $name = $self->{opts}{name_maker}->( type => 'insert',
-					    table => $table );
-
-    my $method = join '::', $self->{table_class}, $name;
+    my $method = join '::', $self->{table_class}, 'insert';
 
     {
 	no strict 'refs';
@@ -493,7 +515,7 @@ sub make_insert_method
     eval <<"EOF";
 {
     package $self->{table_class};
-    sub $name
+    sub insert
     {
         my \$s = shift;
         my \%p = \@_;
@@ -509,29 +531,50 @@ sub make_update_method
     my $self = shift;
     my $table = shift;
 
-    return unless $self->{row_class}->can( 'validate_update' );
+    return unless $self->{row_class}->can('validate_update');
 
-    my $name = $self->{opts}{name_maker}->( type => 'update',
-					    table => $table );
+    my $method = join '::', $self->{cached_row_class}, 'update';
 
-    my $method = join '::', $self->{row_class}, $name;
+    {
+	no strict 'refs';
+	goto UNCACHED if *{$method}{CODE};
+    }
+
+    warn "Making update method $method\n" if $DEBUG;
+
+    eval <<"EOF";
+{
+    package $self->{cached_row_class};
+    sub update
+    {
+        my \$s = shift;
+        my \%p = \@_;
+        \$s->validate_update(\%p);
+        \$s->Alzabo::Runtime::CachedRow::update(\%p);
+    }
+}
+EOF
+
+ UNCACHED:
+
+    $method = join '::', $self->{uncached_row_class}, 'update';
 
     {
 	no strict 'refs';
 	return if *{$method}{CODE};
     }
 
-    warn "Making update method $method\n";
+    warn "Making update method $method\n" if $DEBUG;
 
     eval <<"EOF";
 {
-    package $self->{row_class};
-    sub $name
+    package $self->{uncached_row_class};
+    sub update
     {
         my \$s = shift;
         my \%p = \@_;
         \$s->validate_update(\%p);
-        \$s->SUPER::update(\%p);
+        \$s->Alzabo::Runtime::Row::update(\%p);
     }
 }
 EOF
@@ -575,8 +618,6 @@ sub name
 
     return $p{parent} ? 'parent' : 'children'
 	if $p{type} eq 'self_relation';
-
-    return $p{type} if grep { $p{type} eq $_ } qw( insert update );
 
     die "unknown type in call to naming sub: $p{type}\n";
 }
@@ -751,7 +792,9 @@ to it.
 
 =head3 Rows
 
-<class root>::Row::<table name>
+<class root>::Row::<table name>, subclassed by <class
+root>::CachedRow::<table name> and <class root>::UncachedRow::<table
+name>
 
 With a root of 'My::Stuff', and a schema with only two tables, 'movie'
 and 'image', this would result in the following class names:
@@ -759,8 +802,12 @@ and 'image', this would result in the following class names:
  My::Stuff::Schema
  My::Stuff::Table::movie
  My::Stuff::Row::movie
+   My::Stuff::CachedRow::movie
+   My::Stuff::UncachedRow::movie
  My::Stuff::Table::image
  My::Stuff::Row::image
+   My::Stuff::CachedRow::image
+   My::Stuff::UncachedRow::image
 
 =head2 Loading Classes
 
@@ -772,13 +819,16 @@ this module will not attempt to generate them.
 
 =head3 C<validate_insert> and C<validate_update> methods
 
-These methods can be defined in the relevant table and row classes,
+These methods can be defined in the relevant table and row class,
 respectively.  If they are defined then they will be called before any
 actual inserts or updates are done.
 
+The C<validate_update> method should be defined in the C<E<lt>class
+rootE<gt>::Row::E<lt>table nameE<gt>> class, not its subclasses.
+
 They both should expect to receive a hash of column names to values as
-a parameter.  For C<validate_insert>, this will represent the new row
-to be inserted.  For C<validate_update>, this will represent the
+their parameters.  For C<validate_insert>, this will represent the new
+row to be inserted.  For C<validate_update>, this will represent the
 changes to the existing row.
 
 These methods should throw exceptions if there are errors with this

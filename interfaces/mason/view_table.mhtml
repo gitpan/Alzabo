@@ -24,15 +24,16 @@
 %   if ($t->all_foreign_keys) {
    <table width="100%" border="1" align="center" cellspacing="0" cellpadding="0">
     <tr valign="top">
-     <td colspan="3" align="center"><b>Foreign keys</b></td>
+     <td colspan="4" align="center"><b>Foreign keys</b></td>
     </tr>
     <tr valign="middle">
      <td align="center"><b>From</b></td>
+     <td>&nbsp;</td>
      <td align="center"><b>To</b></td>
      <td>&nbsp;</td>
     </tr>
 %     foreach my $fk ($t->all_foreign_keys) {
-    <tr valign="top">
+    <tr valign="middle">
      <td align="center">
 %       foreach my $c_from ($fk->columns_from) {
 <& '../common/href', text => $c_from->name, path => 'view_column' . Alzabo::Config::mason_extension(), query => { schema => $t->schema->name, table => $t->name, column => $c_from->name } &>
@@ -40,7 +41,10 @@
 <br>
 %         }
 %       }
- (<% join '..', $fk->min_max_from %>)
+     - <% $fk->dependent ? '' : 'in' %>dependent
+     </td>
+     <td align="center">
+      <% join '..', $fk->cardinality %>
      </td>
      <td align="center">
 %       foreach my $c_to ($fk->columns_to) {
@@ -51,7 +55,6 @@
 <br>
 %         }
 %       }
- (<% join '..', $fk->min_max_to %>)
      </td>
      <td align="center">
 <form action="delete_foreign_key<% Alzabo::Config::mason_extension() %>">
@@ -72,10 +75,10 @@
 %   if ($t->indexes) {
    <table width="100%" border="1" align="center" cellspacing="0" cellpadding="0">
     <tr valign="top">
-     <td align="center"><b>Indexes</b></td>
+     <td align="center" colspan="2"><b>Indexes</b></td>
     </tr>
 %     foreach my $i ($t->indexes) {
-    <tr valign="top">
+    <tr valign="middle">
      <td align="center">
 <& .index, $i &>
      </td>
@@ -110,7 +113,7 @@
      <td>Name:</td>
     </tr>
     <tr valign="top">
-     <td><input type="textfield" name="column" size="20"></td>
+     <td><input type="textfield" name="column_name" size="20"></td>
     </tr>
 
     <tr valign="top">
@@ -302,7 +305,10 @@ my $last = $columns[-1];
 <%def .index>
 <% join ', ', @c %>
 % if ($i->unique) {
-(unique)
+ - <b>unique</b>
+% }
+% if ($i->fulltext) {
+ - <b>fulltext</b>
 % }
 <%init>
 my $i = shift;
