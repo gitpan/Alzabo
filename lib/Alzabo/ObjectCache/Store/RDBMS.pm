@@ -5,8 +5,9 @@ use strict;
 use vars qw($VERSION $SCHEMA %CONNECT_PARAMS);
 
 use Digest::MD5 ();
+use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
 
 sub import
 {
@@ -138,7 +139,7 @@ sub fetch_object
 
     return unless $ser;
 
-    return Alzabo::Runtime::Row->thaw($ser);
+    return Storable::thaw($ser);
 }
 
 sub store_object
@@ -148,7 +149,7 @@ sub store_object
 
     my $id = Digest::MD5::md5_base64($obj->id);
 
-    my $ser = $obj->freeze;
+    my $ser = Storable::nfreeze($obj);
 
     # Must just try to insert, otherwise we have race conditions
     eval
@@ -160,7 +161,9 @@ sub store_object
     return unless $@;
 
     # If we got an exception it may just be that the row exists.  If
-    # not, we ignore the error and try again.
+    # not, we ignore the error and try again.  If the row gets deleted
+    # between these two attempts we're kind of screwed.  Maybe we
+    # should lock the table?  But that won't help speed.
     $self->{driver}->do( sql => 'UPDATE AlzaboObjectCacheStore SET object_data = ? WHERE object_id = ?',
 			 bind => [ $ser, $id ] );
 }

@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::Index);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -65,7 +65,14 @@ sub add_column
     if ($@)
     {
 	$self->{columns}->DELETE($new_name);
-	$@->rethrow;
+	if ( UNIVERSAL::can( $@, 'rethrow' ) )
+	{
+	    $@->rethrow;
+	}
+	else
+	{
+	    Alzabo::Exception->throw( error => $@ );
+	}
     }
 }
 
@@ -109,7 +116,15 @@ sub set_prefix
 	{
 	    delete $col->{prefix};
 	}
-	$@->rethrow;
+
+	if ( UNIVERSAL::can( $@, 'rethrow' ) )
+	{
+	    $@->rethrow;
+	}
+	else
+	{
+	    Alzabo::Exception->throw( error => $@ );
+	}
     }
 }
 

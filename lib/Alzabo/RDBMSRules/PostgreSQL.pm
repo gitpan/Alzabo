@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -238,6 +238,7 @@ sub column_types
 }
 
 my %features = map { $_ => 1 } qw ( extended_column_types
+                                    constraints
 				  );
 sub feature
 {

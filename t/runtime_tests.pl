@@ -72,8 +72,8 @@ sub run_tests
     $s->connect;
 
     my $dbh = $s->driver->handle;
-    my_isa_ok( $dbh, ref $s->driver->{dbh},
-	    "Object returned by \$s->driver->handle method should be a database handle" );
+    isa_ok( $dbh, ref $s->driver->{dbh},
+	    "Object returned by \$s->driver->handle method" );
 
     eval_ok( sub { $s->driver->handle($dbh) },
 	     "Set \$s->driver->handle" );
@@ -98,8 +98,8 @@ sub run_tests
     eval_ok( sub { $dep{borg} = $dep_t->row_by_pk( pk => $borg_id ) },
 	     "Retrieve borg department row via row_by_pk method" );
 
-    my_isa_ok( $dep{borg}, 'Alzabo::Runtime::Row',
-	    "Borg department should be an Alzabo::Runtime::Row object" );
+    isa_ok( $dep{borg}, 'Alzabo::Runtime::Row',
+	    "Borg department" );
 
     is( $dep{borg}->select('name'), 'borging',
 	"Department's name should be 'borging'" );
@@ -107,8 +107,8 @@ sub run_tests
     eval { $dep_t->insert( values => { name => 'will break',
 				       manager_id => 1 } ); };
 
-    my_isa_ok( $@, 'Alzabo::Exception::ReferentialIntegrity',
-	    "Attempt to insert a non-existent manager_id into department should have cause a referential integrity exception" );
+    isa_ok( $@, 'Alzabo::Exception::ReferentialIntegrity',
+	    "Exception thrown from attempt to insert a non-existent manager_id into department" );
 
     my %emp;
     eval_ok( sub { $emp{bill} = $emp_t->insert( values => { name => 'Big Bill',
@@ -130,8 +130,8 @@ sub run_tests
 				       cash => 20.2,
 				     } ); };
 
-    my_isa_ok( $@, 'Alzabo::Exception::Params',
-	    "Inserting a non-nullable column as NULL should produce an Alzabo::Exception::Params exception" );
+    isa_ok( $@, 'Alzabo::Exception::Params',
+	    "Exception thrown from inserting a non-nullable column as NULL" );
 
     eval_ok( sub { $emp_t->insert( values => { name => 'asfalksf',
 					       dep_id => $borg_id,
@@ -145,13 +145,13 @@ sub run_tests
 				       cash => 1.1,
 				     } ) };
 
-    my_isa_ok( $@, 'Alzabo::Exception::Params',
-	    "Attempt to insert a NULL into dep_id for an employee should cause an Alzabo::Exception::Params exception" );
+    isa_ok( $@, 'Alzabo::Exception::Params',
+	    "Exception thrown from attempt to insert a NULL into dep_id for an employee" );
 
     eval { $emp{bill}->update( dep_id => undef ) };
 
-    my_isa_ok( $@, 'Alzabo::Exception::Params',
-	    "Attempt to update dep_id to NULL for an employee should cause  an Alzabo::Exception::Params exception" );
+    isa_ok( $@, 'Alzabo::Exception::Params',
+	    "Exception thrown from attempt to update dep_id to NULL for an employee" );
 
     $emp{bill}->update( cash => undef, smell => 'hello!' );
     ok( ! defined $emp{bill}->select('cash'),
@@ -161,8 +161,8 @@ sub run_tests
 	"smell for bill should be 'hello!'" );
 
     eval { $emp{bill}->update( name => undef ) };
-    my_isa_ok( $@, 'Alzabo::Exception::Params',
-	    "Attempt to update a non-nullable column to NULL should produce an Alzabo::Exception::Params exception" );
+    isa_ok( $@, 'Alzabo::Exception::Params',
+	    "Exception thrown from attempt to update a non-nullable column to NULL" );
 
     eval_ok( sub { $dep{borg}->update( manager_id => $emp{bill}->select('employee_id') ) },
 	     "Set manager_id column for borg department" );
@@ -309,8 +309,8 @@ sub run_tests
 				 [ $s->tables( 'outer_1', 'outer_2' ) ] ],
 		     where =>  [ $emp_t->column('employee_id'), '=', 1 ] ) };
 
-    my_isa_ok( $@, 'Alzabo::Exception::Logic',
-	    "Join with table map that does not connect should throw an Alzabo::Exception::Logic exception" );
+    isa_ok( $@, 'Alzabo::Exception::Logic',
+	    "Exception thrown from join with table map that does not connect" );
 
     {
 
@@ -395,13 +395,13 @@ sub run_tests
     $emp{bill}->delete;
 
     eval { my $c = $emp_t->row_by_pk( pk => $id ) };
-    my_isa_ok( $@, 'Alzabo::Exception::NoSuchRow',
-	       "Selecting a deleted row should throw an Alzabo::Exception::NoSuchRow exception" );
+    isa_ok( $@, 'Alzabo::Exception::NoSuchRow',
+	       "Exception thrown by selecting a deleted row" );
 
     eval { $emp{bill}->select('name'); };
     my $expect = $Alzabo::ObjectCache::VERSION ? 'Alzabo::Exception::Cache::Deleted' : 'Alzabo::Exception::NoSuchRow';
-    my_isa_ok( $@, $expect,
-        "Attempt to select from deleted row object should throw an $expect exception" );
+    isa_ok( $@, $expect,
+        "Exception thrown from attempt to select from deleted row object" );
 
     eval { $emp_proj_t->row_by_pk( pk => { employee_id => $id,
 					   project_id => $proj{extend}->select('project_id') } ); };
@@ -412,8 +412,8 @@ sub run_tests
     }
     else
     {
-	my_isa_ok( $@, 'Alzabo::Exception::NoSuchRow',
-		"Checking cascading deletes should throw an Alzabo::Exception::NoSuchRow exception" );
+	isa_ok( $@, 'Alzabo::Exception::NoSuchRow',
+		"Exception thrown selecting row deleted by cascading deletes" );
     }
 
     ok( ! defined $dep{borg}->select('manager_id'),
@@ -516,6 +516,17 @@ sub run_tests
     is( $count, 4,
 	"There should still be just 4 rows" );
 
+    my $statement;
+    eval_ok( sub { $statement = $emp_t->select( select => COUNT( $emp_t->column('employee_id') ) ) },
+	     "Get row count via even spiffier new ->select method" );
+
+    isa_ok( $statement, 'Alzabo::DriverStatement',
+	    "Return value from Table->select method" );
+
+    $count = $statement->next;
+    is( $count, 4,
+	"There should still be just 4 rows" );
+
     eval_ok( sub { @emps = $emp_t->all_rows( order_by => { columns => $emp_t->column('smell'),
 							   sort => 'desc' },
 					     limit => 2 )->all_rows },
@@ -558,14 +569,14 @@ sub run_tests
     }
     else
     {
-	my_isa_ok( $@, 'Alzabo::Exception::NoSuchRow',
-		"Attempt to fetch deleted row should throw an Alzabo::Exception::NoSuchRow exception" );
+	isa_ok( $@, 'Alzabo::Exception::NoSuchRow',
+		"Exception thrown trying to fetch deleted row" );
     }
 
     eval { $char_row->select('char_col'); };
     $expect = $Alzabo::ObjectCache::VERSION ? 'Alzabo::Exception::Cache::Deleted' : 'Alzabo::Exception::NoSuchRow';
-    my_isa_ok( $@, $expect,
-	    "Attempt to select from deleted row should throw an $expect exception" );
+    isa_ok( $@, $expect,
+	    "Exception thrown from attempt to select from deleted row" );
 
     eval_ok( sub { $char_row = $s->table('char_pk')->insert( values => { char_col => 'pk value' } ) },
 	     "Insert into char_pk table again with same pk" );
@@ -599,8 +610,8 @@ sub run_tests
     $emps[0]->delete;
     eval { $emps[0]->update( smell => 'kaboom' ); };
     $expect = $Alzabo::ObjectCache::VERSION ? 'Alzabo::Exception::Cache::Deleted' : 'Alzabo::Exception::NoSuchRow';
-    my_isa_ok( $@, $expect,
-	"Attempt to update a deleted row should throw an $expect exception" );
+    isa_ok( $@, $expect,
+	"Exception thrown from attempt to update a deleted row" );
 
     my $row_id = $emps[1]->id;
     my $row;
@@ -637,11 +648,12 @@ sub run_tests
 	"Second row returned should be employee id 9002" );
 
     @emps = $emp_t->rows_where( where => [ [ $emp_t->column('smell'), '!=', 'c' ],
+					   'and',
 					   (
 					    '(',
 					    [ $eid_c, '=', 9000 ],
 					    'or',
-					    [ $eid_c, '=', 9002, ')' ],
+					    [ $eid_c, '=', 9002 ],
 					    ')',
 					   ),
 					 ] )->all_rows;
@@ -649,6 +661,19 @@ sub run_tests
 	"Do another complex query with 'or' and subgroups" );
     is( $emps[0]->select('employee_id'), 9000,
 	"The row returned should be employee id 9000" );
+
+    undef @emps;
+    @emps = $emp_t->rows_where( where => [ $eid_c, 'between', 9000, 9002 ] )->all_rows;
+    @emps = sort { $a->select('employee_id') <=> $b->select('employee_id') } @emps;
+
+    is( @emps, 3,
+	"Select using between should return 3 rows" );
+    is( $emps[0]->select('employee_id'), 9000,
+	"First row returned should be employee id 9000" );
+    is( $emps[1]->select('employee_id'), 9001,
+	"Second row returned should be employee id 9001" );
+    is( $emps[2]->select('employee_id'), 9002,
+	"Third row returned should be employee id 9002" );
 
     $emp_t->insert( values => { name => 'Smelly',
 				smell => 'a',
@@ -694,8 +719,153 @@ sub run_tests
     is( $smells{horrid}, 1,
 	"Check count of smell = 'horrid'" );
 
+    $statement = $emp_t->select( select => [ $emp_t->column('smell'), COUNT( $emp_t->column('smell') ) ],
+				 group_by => $emp_t->column('smell') );
+
+    @smells = $statement->all_rows;
+
+    # map smell to count
+    %smells = map { $_->[0] => $_->[1] } @smells;
+    is( @smells, 6,
+	"Query with group by should return 6 values - via ->select" );
+    is( $smells{a}, 2,
+	"Check count of smell = 'a' - via ->select" );
+    is( $smells{b}, 1,
+	"Check count of smell = 'b' - via ->select" );
+    is( $smells{c}, 1,
+	"Check count of smell = 'c' - via ->select" );
+    is( $smells{awful}, 1,
+	"Check count of smell = 'awful' - via ->select" );
+    is( $smells{good}, 1,
+	"Check count of smell = 'good' - via ->select" );
+    is( $smells{horrid}, 1,
+	"Check count of smell = 'horrid' - via ->select" );
+
+    @rows = $emp_t->function( select => $emp_t->column('smell'),
+			      where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ],
+			      order_by => $emp_t->column('smell') );
+    is( @rows, 4,
+	"There should only be four rows which have a single character smell" );
+    is( $rows[0], 'a',
+	"First smell should be 'a'" );
+    is( $rows[1], 'a',
+	"Second smell should be 'a'" );
+    is( $rows[2], 'b',
+	"Third smell should be 'b'" );
+    is( $rows[3], 'c',
+	"Fourth smell should be 'c'" );
+
+    $statement = $emp_t->select( select => $emp_t->column('smell'),
+				 where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ],
+				 order_by => $emp_t->column('smell') );
+    @rows = $statement->all_rows;
+
+    is( @rows, 4,
+	"There should only be four rows which have a single character smell - via ->select" );
+    is( $rows[0], 'a',
+	"First smell should be 'a' - via ->select" );
+    is( $rows[1], 'a',
+	"Second smell should be 'a' - via ->select" );
+    is( $rows[2], 'b',
+	"Third smell should be 'b' - via ->select" );
+    is( $rows[3], 'c',
+	"Fourth smell should be 'c' - via ->select" );
+
+    @rows = $emp_t->function( select => $emp_t->column('smell'),
+			      where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ],
+			      order_by => $emp_t->column('smell'),
+			      limit => 2,
+			    );
+    is( @rows, 2,
+	"There should only be two rows which have a single character smell - with limit" );
+    is( $rows[0], 'a',
+	"First smell should be 'a' - with limit" );
+    is( $rows[1], 'a',
+	"Second smell should be 'a' - with limit" );
+
+    $statement = $emp_t->select( select => $emp_t->column('smell'),
+				 where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ],
+				 order_by => $emp_t->column('smell'),
+				 limit => 2,
+			       );
+    @rows = $statement->all_rows;
+
+    is( @rows, 2,
+	"There should only be two rows which have a single character smell -  with limit via ->select" );
+    is( $rows[0], 'a',
+	"First smell should be 'a' - with limit via ->select" );
+    is( $rows[1], 'a',
+	"Second smell should be 'a' - with limit via ->select" );
+
+    foreach ( [ 9000, 1 ], [ 9000, 2 ], [ 9001, 1 ], [ 9002, 1 ] )
+    {
+	$emp_proj_t->insert( values => { employee_id => $_->[0],
+					 project_id => $_->[1] } );
+    }
+
+    # find staffed projects
+    @rows = $s->function( select => [ $proj_t->column('name'),
+				      COUNT( $proj_t->column('name') ) ],
+			  tables => [ $emp_proj_t, $proj_t ],
+			  group_by => $proj_t->column('name') );
+    is( @rows, 2,
+	"Only two projects should be returned from schema->function" );
+    is( $rows[0][0], 'Embrace',
+	"First project should be Embrace" );
+    is( $rows[1][0], 'Extend',
+	"Second project should be Extend" );
+    is( $rows[0][1], 1,
+	"First project should have 1 employee" );
+    is( $rows[1][1], 3,
+	"Second project should have 3 employees" );
+
+    $statement = $s->select( select => [ $proj_t->column('name'),
+					 COUNT( $proj_t->column('name') ) ],
+			     tables => [ $emp_proj_t, $proj_t ],
+			     group_by => $proj_t->column('name') );
+    @rows = $statement->all_rows;
+
+    is( @rows, 2,
+	"Only two projects should be returned from schema->select" );
+    is( $rows[0][0], 'Embrace',
+	"First project should be Embrace - via ->select" );
+    is( $rows[1][0], 'Extend',
+	"Second project should be Extend - via ->select" );
+    is( $rows[0][1], 1,
+	"First project should have 1 employee - via ->select" );
+    is( $rows[1][1], 3,
+	"Second project should have 3 employees - via ->select" );
+
+    @rows = $s->function( select => [ $proj_t->column('name'),
+				      COUNT( $proj_t->column('name') ) ],
+			  tables => [ $emp_proj_t, $proj_t ],
+			  group_by => $proj_t->column('name'),
+			  limit => [1, 1],
+			);
+    is( @rows, 1,
+	"Only one projects should be returned from schema->function - with limit" );
+    is( $rows[0][0], 'Extend',
+	"First project should be Extend - with limit" );
+    is( $rows[0][1], 3,
+	"First project should have 3 employees - with limit" );
+
+    $statement = $s->select( select => [ $proj_t->column('name'),
+					 COUNT( $proj_t->column('name') ) ],
+			     tables => [ $emp_proj_t, $proj_t ],
+			     group_by => $proj_t->column('name'),
+			     limit => [1, 1],
+			   );
+    @rows = $statement->all_rows;
+
+    is( @rows, 1,
+	"Only one projects should be returned from schema->select - with limit via ->select" );
+    is( $rows[0][0], 'Extend',
+	"First project should be Extend - with limit via ->select" );
+    is( $rows[0][1], 3,
+	"First project should have 3 employees - with limit via ->select" );
+
     my $p1 = $proj_t->insert( values => { name => 'P1',
-					       department_id => $dep_id,
+					  department_id => $dep_id,
 					} );
     my $p2 = $proj_t->insert( values => { name => 'P2',
 					  department_id => $dep_id,
@@ -808,6 +978,59 @@ sub run_tests
 	    "That row should be named Timestamp" );
     }
 
+    # Potential rows
+    my $p_emp;
+    eval_ok( sub { $p_emp = $emp_t->potential_row },
+	     "Create potential row object");
+
+    is( $p_emp->select('smell'), 'grotesque',
+	"Potential Employee should have default smell, 'grotesque'" );
+
+    $p_emp->update( cash => undef, smell => 'hello!' );
+    ok( ! defined $p_emp->select('cash'),
+	"Potential Employee cash column is not defined" );
+
+    is( $p_emp->select('smell'), 'hello!',
+	"smell for employee should be 'hello!' after update" );
+
+    $p_emp->update( name => 'Ilya' );
+    is( $p_emp->select('name'), 'Ilya',
+        "New employee got a name" );
+
+    $p_emp->update( dep_id => $dep_id );
+    is( $p_emp->select('dep_id'), $dep_id,
+        "New employee got a department" );
+
+    eval { $p_emp->update( wrong => 'column' ) };
+    isa_ok( $@, 'Alzabo::Exception::Params',
+	    "Exception thrown from attempt to update a column which doesn't exist" );
+
+    eval { $p_emp->update( name => undef ) };
+    isa_ok( $@, 'Alzabo::Exception::Params',
+	    "Exception thrown from attempt to update a non-NULLable column in a potential row to null" );
+
+    eval { $p_emp->delete };
+    isa_ok( $@, 'Alzabo::Exception::Logic',
+	    "Exception thrown from attempt to delete a potential row object" );
+
+    eval_ok( sub { $p_emp->make_live( values => { smell => 'cottony' } ) },
+	     "Make potential row live");
+
+    is( $p_emp->select('name'), 'Ilya',
+        "Formerly potential employee row object should have same name as before" );
+
+    is( $p_emp->select('smell'), 'cottony',
+        "Formerly potential employee row object should have new smell of 'cottony'" );
+
+    eval_ok ( sub { $p_emp->delete },
+	      "Delete new employee" );
+
+    eval_ok( sub { $p_emp = $emp_t->potential_row( values => { cash => 100 } ) },
+	     "Create potential row object and set some fields ");
+
+    is( $p_emp->select('cash'), 100,
+	"Employee cash should be 100" );
+
     if ( $ENV{OBJECTCACHE_PARAMS} )
     {
 	eval_ok( sub { Alzabo::ObjectCache->clear },
@@ -895,8 +1118,8 @@ sub parent
 
     $emp->delete;
     eval { $emp->select('name') };
-    my_isa_ok( $@, 'Alzabo::Exception::Cache::Deleted',
-	    "Attempt to select from deleted row should have caused an Alzabo::Exception::Cache::Deleted exception" );
+    isa_ok( $@, 'Alzabo::Exception::Cache::Deleted',
+	    "Exception thrown from attempt to select from deleted row" );
 
     # F.
     print $c_write "1\n";
@@ -922,8 +1145,8 @@ sub parent
     # This should come from the cache.
     $emp2 = $s->table('employee')->row_by_pk( pk => $emp2_id );
     eval { $emp2->update( name => 'newname3' ); };
-    my_isa_ok( $@, 'Alzabo::Exception::Cache::Expired',
-	    "Attempt to update row immediately should throw an Alzabo::Exception::Cache::Expired exception" );
+    isa_ok( $@, 'Alzabo::Exception::Cache::Expired',
+	    "Exception thrown from attempt to update row that is expired" );
 
     # K.
     print $c_write "1\n";

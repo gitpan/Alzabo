@@ -85,7 +85,7 @@ Rows <% $rows_fetched ? $start_row + 1 : 0 %>-<% $start_row + $rows_used %> (out
 
 <%def .table_body>
 % $rows_fetched = $rows_used = 0;
-% while (my $row = $cursor->next_row) {
+% while (my $row = $cursor->next) {
 %   $rows_fetched++;
 %   #next if $rows_fetched <= $start_row;
 %   #last if $rows_fetched > $max_rows + $start_row;

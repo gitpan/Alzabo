@@ -17,7 +17,7 @@ require 'base.pl';
 my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
 die $@ if $@;
 
-eval "use Test::More ( tests => 64 )";
+eval "use Test::More ( tests => 76 )";
 die $@ if $@;
 
 my $t = $tests->[0];
@@ -98,15 +98,15 @@ foreach my $t ($s->tables)
 {
     eval { $s->Location_t->insert( values => { location_id => 666,
 					       location => 'pre_die' } ) };
-    my_isa_ok( $@, 'Alzabo::Exception',
-	       "pre_insert should have thrown an Alzabo::Exception exception" );
+    isa_ok( $@, 'Alzabo::Exception',
+	    "Exception thrown from pre_insert" );
     is( $@->error, 'PRE INSERT TEST',
 	"pre_insert error message should be PRE INSERT TEST" );
 
     eval { $s->Location_t->insert( values => { location_id => 666,
 					       location => 'post_die' } ) };
-    my_isa_ok( $@, 'Alzabo::Exception',
-	       "post_insert should have thrown an Alzabo::Exception exception" );
+    isa_ok( $@, 'Alzabo::Exception',
+	    "Exception thrown by post_insert" );
     is( $@->error, 'POST INSERT TEST',
 	"pre_insert error message should be POST INSERT TEST" );
 
@@ -116,14 +116,14 @@ foreach my $t ($s->tables)
 	 "pre_insert should change the value of location to 'insert tweaked'" );
 
     eval { $tweaked->update( location => 'pre_die' ) };
-    my_isa_ok( $@, 'Alzabo::Exception',
-	       "pre_update should have thrown an Alzabo::Exception exception" );
+    isa_ok( $@, 'Alzabo::Exception',
+	    "Exception thrown from pre_update" );
     is( $@->error, 'PRE UPDATE TEST',
 	"pre_update error message should be PRE UPDATE TEST" );
 
     eval { $tweaked->update( location => 'post_die' ) };
-    my_isa_ok( $@, 'Alzabo::Exception',
-	       "post_update should have thrown an Alzabo::Exception exception" );
+    isa_ok( $@, 'Alzabo::Exception',
+	    "Exception thrown by post_update" );
     is( $@->error, 'POST UPDATE TEST',
 	"post_update error message should be POST UPDATE TEST" );
 
@@ -132,16 +132,22 @@ foreach my $t ($s->tables)
 	 "pre_update should change the value of location to 'update tweaked'" );
 
     eval { $tweaked->select('pre_sel_die') };
-    my_isa_ok( $@, 'Alzabo::Exception',
-	       "pre_select should have thrown an Alzabo::Exception exception" );
+    isa_ok( $@, 'Alzabo::Exception',
+	    "Exception thrown by pre_select" );
     is( $@->error, 'PRE SELECT TEST',
 	"pre_select error message should be PRE SELECT TEST" );
 
     $tweaked->update( location => 'post_sel_die' );
 
     eval { $tweaked->select('location') };
-    my_isa_ok( $@, 'Alzabo::Exception',
-	       "post_select should have thrown an Alzabo::Exception exception" );
+    isa_ok( $@, 'Alzabo::Exception',
+	    "Exception thrown by post_select" );
+    is( $@->error, 'POST SELECT TEST',
+	"post_select error message should be POST SELECT TEST" );
+
+    eval { $tweaked->select_hash('location') };
+    isa_ok( $@, 'Alzabo::Exception',
+	    "Exception thrown by post_select" );
     is( $@->error, 'POST SELECT TEST',
 	"post_select error message should be POST SELECT TEST" );
 
@@ -206,12 +212,51 @@ foreach my $t ($s->tables)
 
     my $expect = $Alzabo::ObjectCache::VERSION ? 'Alzabo::MM::Test::CachedRow::Toilet' : 'Alzabo::MM::Test::UncachedRow::Toilet';
     my $row = $s->Toilet_t->row_by_pk( pk => 1 );
-    my_isa_ok( $row, $expect,
-	       "The Toilet object should be of the $expect class" );
+    isa_ok( $row, $expect,
+	    "The Toilet object" );
 
     $row = $s->Toilet_t->row_by_pk( pk => 1, no_cache => 1 );
-    my_isa_ok( $row, 'Alzabo::MM::Test::UncachedRow::Toilet',
-	       "The Toilet object should be of the Alzabo::MM::Test::UncachedRow::Toilet" );
+    isa_ok( $row, 'Alzabo::MM::Test::UncachedRow::Toilet',
+	    "The Toilet object" );
+
+    my $p_row = $s->Location_t->potential_row;
+    isa_ok( $p_row, 'Alzabo::MM::Test::PotentialRow::Location',
+	    "Potential row object" );
+
+    $p_row->location( 'zzz' );
+    $p_row->location_id( 999 );
+    is( $p_row->location_id, 999,
+ 	"location_id of potential object should be 99" );
+    is( $p_row->location, 'zzz',
+ 	"Location name of potential object should be 'zzz'" );
+
+    eval { $p_row->update( location => 'pre_die' ); };
+    isa_ok( $@, 'Alzabo::Exception',
+	    "Exception thrown by pre_update" );
+
+    eval { $p_row->update( location => 'post_die' ); };
+    isa_ok( $@, 'Alzabo::Exception',
+	    "Exception thrown by post_update" );
+
+    $p_row->update( location => 'update tweak me' );
+    is ( $p_row->select('location'), 'update tweaked',
+	 "pre_update should change the value of location to 'update tweaked'" );
+
+    eval { $p_row->select('pre_sel_die') };
+    isa_ok( $@, 'Alzabo::Exception',
+	    "Exception thrown by pre_select" );
+
+    $p_row->update( location => 'select tweak me' );
+    is( $p_row->select('location'), 'select tweaked',
+	 "post_select should change the value of location to 'select tweaked'" );
+
+    %d = $p_row->select_hash('location');
+    is( $d{location}, 'select tweaked',
+	 "post_select_hash should change the value of location to 'select tweaked'" );
+
+    $p_row->make_live;
+    is( $p_row->location_id, 999,
+	"Check that live row has same location id" );
 }
 
 sub make_schema
@@ -365,7 +410,7 @@ sub my_PL
     {
 	my $self = shift;
 	my $p = shift;
-	Alzabo::Exception->throw( error => "POST UPDATE TEST" ) if $p->{location} eq 'post_die';
+	Alzabo::Exception->throw( error => "POST UPDATE TEST" ) if $p->{location} && $p->{location} eq 'post_die';
     }
 
     sub pre_select
@@ -381,19 +426,9 @@ sub my_PL
 	my $self = shift;
 	my $data = shift;
 
-	Alzabo::Exception->throw( error => "POST SELECT TEST" ) if grep { defined && $_ eq 'post_sel_die' } @$data;
+	Alzabo::Exception->throw( error => "POST SELECT TEST" ) if exists $data->{location} && $data->{location} eq 'post_sel_die';
 
-	$data->[0] = 'select tweaked' if $data->[0] && $data->[0] eq 'select tweak me';
-    }
-
-    sub post_select_hash
-    {
-	my $self = shift;
-	my $data = shift;
-
-	Alzabo::Exception->throw( error => "POST SELECT HASH TEST" ) if $data->{location} eq 'post_sel_die';
-
-	$data->{location} = 'select tweaked' if $data->{location} eq 'select tweak me';
+	$data->{location} = 'select tweaked' if exists $data->{location} && $data->{location} eq 'select tweak me';
     }
 
     sub pre_delete

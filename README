@@ -22,6 +22,17 @@ http://alzabo.sourceforge.net/docs/
 
 Install information is in the INSTALL file.
 
+SUPPORT
+
+The Alzabo docs are conveniently located online at
+http://alzabo.sourceforge.net/docs/.
+
+There is also a mailing list.  You can sign up at
+http://lists.sourceforge.net/lists/listinfo/alzabo-general.
+
+Please don't email me directly.  Use the list instead so others can
+see your questions.
+
 UPGRADING
 
 If you have an older version of Alzabo installed and you want to
@@ -66,15 +77,21 @@ helping me find problems with the install process.
 Bob Gustafson has provided extensive assistance in testing and
 debugging.
 
+Ilya Martynov has provided lots of suggestions, as well as actual
+code.
+
+Some features in Alzabo have been borrowed or influenced by Class:DBI
+(Michael Schwern and Tony Bowden) and Tangram (Jean-Louis Leroy).
+
 Various bug reports and assistance from:
 
 Robin Berjon
 Rami Cohen-Scali
 Martin Ertl
 Robert Goff
+Raul Nohea Goodness
 Michael Graham
 Sam Horrocks
 Aaron Johnson
-Ilya Martynov
 Dana Powers
 Ron Savage

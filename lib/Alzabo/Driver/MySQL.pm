@@ -10,7 +10,7 @@ use DBI;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.34 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -106,6 +106,31 @@ sub next_sequence_number
     # This will cause an auto_increment column to go up (because we're
     # inserting a NULL into it).
     return undef;
+}
+
+sub rollback
+{
+    my $self = shift;
+
+    # Ugh, there's no way to know if you're operating on tables that
+    # support rollback or not so we just ignore exceptions.  This is
+    # so damn lame!
+    eval { $self->SUPER::rollback };
+
+    if ($@)
+    {
+	unless ( $@->error =~ /Some non-transactional changed tables/ )
+	{
+	    if ( UNIVERSAL::can( $@, 'rethrow' ) )
+	    {
+		$@->rethrow;
+	    }
+	    else
+	    {
+		Alzabo::Exception->throw( error => $@ );
+	    }
+	}
+    }
 }
 
 sub get_last_id

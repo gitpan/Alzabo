@@ -6,7 +6,7 @@ use vars qw($SELF $VERSION %ARGS);
 # load this for use by Alzabo::Runtime::Row
 use Alzabo::Runtime::CachedRow;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.29 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.31 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -39,7 +39,7 @@ sub import
     foreach ( ( $ARGS{lru_size} ? () : $ARGS{store} ), ( $store eq $ARGS{sync} ? () : $ARGS{sync} ) )
     {
 	eval "require $_";
-	die $@ if $@;
+	Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 	$_->import(%ARGS);
     }
 }
@@ -110,6 +110,12 @@ sub delete_from_cache
     my $self = shift;
     $self->{sync}->delete_from_cache($_[0]->id);
     $self->{store}->delete_from_cache(@_);
+}
+
+sub sync_time
+{
+    my $self = shift;
+    return $self->{sync}->sync_time( shift->id );
 }
 
 __END__

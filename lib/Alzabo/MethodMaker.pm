@@ -3,12 +3,13 @@ package Alzabo::MethodMaker;
 use strict;
 use vars qw($VERSION $DEBUG);
 
+use Alzabo::Exceptions;
 use Alzabo::Runtime::Schema;
 
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.34 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
@@ -116,6 +117,7 @@ sub make
 	$self->{row_class} = join '::', $self->{class_root}, 'Row', $t->name;
 	$self->{uncached_row_class} = join '::', $self->{class_root}, 'UncachedRow', $t->name;
 	$self->{cached_row_class} = join '::', $self->{class_root}, 'CachedRow', $t->name;
+	$self->{potential_row_class} = join '::', $self->{class_root}, 'PotentialRow', $t->name;
 
 	bless $t, $self->{table_class};
 	$self->eval_table_class;
@@ -176,7 +178,7 @@ use base qw( Alzabo::Runtime::Schema );
 1;
 EOF
 
-    die $@ if $@;
+    Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 }
 
 sub make_table_method
@@ -214,10 +216,17 @@ sub row_by_pk
     return \$self->SUPER::row_by_pk(\@_, row_class => '$self->{row_class}');
 }
 
+sub potential_row
+{
+    my \$self = shift;
+
+    return '$self->{potential_row_class}'->Alzabo::Runtime::PotentialRow::new( \@_, table => \$self );
+}
+
 1;
 EOF
 
-    die $@ if $@;
+    Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 }
 
 sub eval_row_class
@@ -252,11 +261,15 @@ package $self->{cached_row_class};
 
 \@$self->{cached_row_class}::ISA = qw($self->{row_class} Alzabo::Runtime::CachedRow);
 
+package $self->{potential_row_class};
+
+\@$self->{potential_row_class}::ISA = qw(Alzabo::Runtime::PotentialRow $self->{row_class});
+
 
 1;
 EOF
 
-    die $@ if $@;
+    Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 }
 
 sub load_class
@@ -445,7 +458,7 @@ sub make_self_relation
 		sub { my $self = shift;
 		      my @where = map { [ $_->[0], '=', $self->select( $_->[1] ) ] } @pairs;
 		      return $table->rows_where( where => \@where,
-						 @_ )->next_row; };
+						 @_ )->next; };
 	}
     }
 
@@ -593,9 +606,13 @@ sub make_insert_hooks
     my $self = shift;
 
     my $code = '';
-    $code .= "        \$s->pre_insert(\\\%p);\n" if $self->{table_class}->can('pre_insert');
-    $code .= "        my \$new = \$s->SUPER::insert(\%p);\n";
-    $code .= "        \$s->post_insert({\%p, row => \$new});\n" if $self->{table_class}->can('post_insert');
+    $code .= "        return \$s->schema->run_in_transaction( sub {\n";
+    $code .= "            my \$new;\n";
+    $code .= "            \$s->pre_insert(\\\%p);\n" if $self->{table_class}->can('pre_insert');
+    $code .= "            \$new = \$s->SUPER::insert(\%p);\n";
+    $code .= "            \$s->post_insert({\%p, row => \$new});\n" if $self->{table_class}->can('post_insert');
+    $code .= "            return \$new;\n";
+    $code .= "        } );\n";
 
     eval <<"EOF";
 {
@@ -604,14 +621,14 @@ sub make_insert_hooks
     {
         my \$s = shift;
         my \%p = \@_;
+
 $code
 
-        return \$new;
     }
 }
 EOF
 
-    die $@ if $@;
+    Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 }
 
 sub make_update_hooks
@@ -619,9 +636,11 @@ sub make_update_hooks
     my $self = shift;
 
     my $code = '';
-    $code .= "        \$s->pre_update(\\\%p);\n" if $self->{row_class}->can('pre_update');
-    $code .= "        \$s->Alzabo::Runtime::CachedRow::update(\%p);\n";
-    $code .= "        \$s->post_update(\\\%p);\n" if $self->{row_class}->can('post_update');
+    $code .= "        \$s->schema->run_in_transaction( sub {\n";
+    $code .= "            \$s->pre_update(\\\%p);\n" if $self->{row_class}->can('pre_update');
+    $code .= "            \$s->Alzabo::Runtime::CachedRow::update(\%p);\n";
+    $code .= "            \$s->post_update(\\\%p);\n" if $self->{row_class}->can('post_update');
+    $code .= "        } );\n";
 
     eval <<"EOF";
 {
@@ -630,14 +649,34 @@ sub make_update_hooks
     {
         my \$s = shift;
         my \%p = \@_;
+
 $code
+
     }
 }
 EOF
 
-    die $@ if $@;
+    Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 
-    $code =~ s/CachedRow::/Row::/;
+    $code =~ s/CachedRow::/PotentialRow::/;
+
+    eval <<"EOF";
+{
+    package $self->{potential_row_class};
+    sub update
+    {
+        my \$s = shift;
+        my \%p = \@_;
+
+$code
+
+    }
+}
+EOF
+
+    Alzabo::Exception::Eval->throw( error => $@ ) if $@;
+
+    $code =~ s/PotentialRow::/Row::/;
 
     eval <<"EOF";
 {
@@ -646,106 +685,75 @@ EOF
     {
         my \$s = shift;
         my \%p = \@_;
+
 $code
+
     }
 }
 EOF
 
-    die $@ if $@;
+    Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 }
 
 sub make_select_hooks
 {
     my $self = shift;
 
-    my $pre = '';
-    $pre  = "\$s->pre_select(\\\@_);\n" if $self->{row_class}->can('pre_select');
+    my $pre = "            \$s->pre_select(\\\@cols);\n" if $self->{row_class}->can('pre_select');
 
-    my $post = '';
-    $post = "\$s->post_select(\\\@r);\n" if $self->{row_class}->can('post_select');
+    my $post = "            \$s->post_select(\\\%r);\n" if $self->{row_class}->can('post_select');
 
-    my $post_hash = '';
-    $post_hash = "\$s->post_select_hash(\\\%r);\n" if $self->{row_class}->can('post_select_hash');
-
-    eval <<"EOF";
+    foreach ( qw( cached_row_class uncached_row_class potential_row_class ) )
+    {
+	eval <<"EOF";
 {
-    package $self->{cached_row_class};
+    package $self->{$_};
     sub select
     {
         my \$s = shift;
+        my \@cols = \@_;
 
-        $pre
+        return \$s->schema->run_in_transaction( sub {
 
-        my (\@r, \$r);
-        if (wantarray)
-        {
-            \@r = \$s->SUPER::select(\@_);
-        }
-        else
-        {
-            \$r = \$s->SUPER::select(\@_);
-            \@r = \$r;
-        }
+$pre
+            my \@r;
+            my %r;
 
-        $post
-
-        return wantarray ? \@r : \$r[0];
+            if (wantarray)
+            {
+                \@r{ \@cols } = \$s->SUPER::select(\@cols);
+            }
+            else
+            {
+                \$r{ \$cols[0] } = (scalar \$s->SUPER::select(\$cols[0]));
+            }
+$post
+            return wantarray ? \@r{\@cols} : \$r{ \$cols[0] };
+        } );
     }
 
     sub select_hash
     {
         my \$s = shift;
+        my \@cols = \@_;
 
-        $pre
+        return \$s->schema->run_in_transaction( sub {
 
-        my \%r = \$s->SUPER::select_hash(\@_);
+$pre
 
-        $post_hash
+            my \%r = \$s->SUPER::select_hash(\@cols);
 
-        return \%r;
-    }
-}
+$post
 
-{
-    package $self->{uncached_row_class};
-    sub select
-    {
-        my \$s = shift;
-
-        $pre
-
-        my (\@r, \$r);
-        if (wantarray)
-        {
-            \@r = \$s->SUPER::select(\@_);
-        }
-        else
-        {
-            \$r = \$s->SUPER::select(\@_);
-            \@r = \$r;
-        }
-
-        $post
-
-        return wantarray ? \@r : \$r[0];
-    }
-
-    sub select_hash
-    {
-        my \$s = shift;
-
-        $pre
-
-        my \%r = \$s->SUPER::select_hash(\@_);
-
-        $post_hash
-
-        return \%r;
+            return \%r;
+        } );
     }
 }
 EOF
 
-    die $@ if $@;
+	Alzabo::Exception::Eval->throw( error => $@ ) if $@;
+
+    }
 }
 
 sub make_delete_hooks
@@ -753,9 +761,11 @@ sub make_delete_hooks
     my $self = shift;
 
     my $code = '';
-    $code .= "        \$s->pre_delete(\\\%p);\n" if $self->{row_class}->can('pre_delete');
-    $code .= "        \$s->Alzabo::Runtime::CachedRow::delete(\%p);\n";
-    $code .= "        \$s->post_delete(\\\%p);\n" if $self->{row_class}->can('post_delete');
+    $code .= "        \$s->schema->run_in_transaction( sub {\n";
+    $code .= "            \$s->pre_delete(\\\%p);\n" if $self->{row_class}->can('pre_delete');
+    $code .= "            \$s->Alzabo::Runtime::CachedRow::delete(\%p);\n";
+    $code .= "            \$s->post_delete(\\\%p);\n" if $self->{row_class}->can('post_delete');
+    $code .= "        } );\n";
 
     eval <<"EOF";
 {
@@ -764,12 +774,14 @@ sub make_delete_hooks
     {
         my \$s = shift;
         my \%p = \@_;
+
 $code
+
     }
 }
 EOF
 
-    die $@ if $@;
+    Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 
     $code =~ s/CachedRow::/Row::/;
 
@@ -780,12 +792,14 @@ EOF
     {
         my \$s = shift;
         my \%p = \@_;
+
 $code
+
     }
 }
 EOF
 
-    die $@ if $@;
+    Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 }
 
 sub name
@@ -893,7 +907,7 @@ sub make_insert_method
 }
 EOF
 
-    die $@ if $@;
+    Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 }
 
 sub make_update_method
@@ -924,7 +938,7 @@ sub make_update_method
 }
 EOF
 
-    die $@ if $@;
+    Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 
  UNCACHED:
 
@@ -950,7 +964,7 @@ EOF
 }
 EOF
 
-    die $@ if $@;
+    Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 }
 
 1;
@@ -1104,7 +1118,7 @@ Look for hooks to wrap around the C<insert> method in
 L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table>.  See L<Loading
 Classes> for more details.  You have to define either a C<pre_insert>
 or C<post_insert> method (or both) for the generated table class or
-this parameter will not do anything.  See the L<HOOKS|HOOKS> section
+this parameter will not do anything.  See the L<HOOK|/"HOOKS"> section
 for more details.
 
 =head2 Row object methods
@@ -1121,7 +1135,7 @@ Look for hooks to wrap around the C<update> method in
 L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>.  See L<Loading
 Classes> for more details.  You have to define either a C<pre_update>
 or C<post_update> method (or both) for the generated row class or this
-parameter will not do anything.  See the L<HOOKS|HOOKS> section for
+parameter will not do anything.  See the L<HOOK|/"HOOKS"> section for
 more details.
 
 =head3 select_hooks => $bool
@@ -1130,7 +1144,7 @@ Look for hooks to wrap around the C<select> method in
 L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>.  See L<Loading
 Classes> for more details.  You have to define either a C<pre_select>
 or C<post_select> method (or both) for the generated row class or this
-parameter will not do anything.  See the L<HOOKS|HOOKS> section for
+parameter will not do anything.  See the L<HOOK|/"HOOKS"> section for
 more details.
 
 =head3 delete_hooks => $bool
@@ -1139,7 +1153,7 @@ Look for hooks to wrap around the C<delete> method in
 L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>.  See L<Loading
 Classes> for more details.  You have to define either a C<pre_delete>
 or C<post_delete> method (or both) for the generated row class or this
-parameter will not do anything.  See the L<HOOKS|HOOKS> section for
+parameter will not do anything.  See the L<HOOK|/"HOOKS"> section for
 more details.
 
 =head3 foreign_keys => $bool
@@ -1209,6 +1223,9 @@ you to do data validation on inserts and updates as well as giving you
 a chance to filter incoming our outgoing data as needed (for example,
 if you need to convert dates to and from a specific RDBMS format).
 
+All hooks are inside a transaction which is rolled back if any part of
+the process fails.
+
 Each of these hooks receives different parameters, documented below:
 
 =head2 Insert Hooks
@@ -1269,16 +1286,12 @@ methods are called.
 =item * post_select
 
 This method is called after the
-L<C<Alzabo::Runtime::Row-E<gt>select>|Alzabo::Runtime::Row/select>.
-It receives an array reference containing the values returned from the
-C<select> method, which it may modify.
-
-=item * post_select_hash
-
-This method is called after the
-L<C<Alzabo::Runtime::Row-E<gt>select_hash>|Alzabo::Runtime::Row/select_hash>.
-It receives a reference to the hash returned from the C<select_hash>
-method.
+L<C<Alzabo::Runtime::Row-E<gt>select>|Alzabo::Runtime::Row/select> or
+L<C<Alzabo::Runtime::Row-E<gt>select_hash>|Alzabo::Runtime::Row/select_hash>
+methods.  It receives a hash containing the name and values returned
+from the revelant method, which it may modify.  If the values of this
+hash reference are modified, then this will be seen by the original
+caller.
 
 =back
 

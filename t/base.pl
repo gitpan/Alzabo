@@ -27,12 +27,6 @@ BEGIN
     $^W = 0;
 }
 
-# lame hack til my patch gets incorporated into Test::More
-sub my_isa_ok ($$;$)
-{
-    Test::More::isa_ok($_[0], $_[1]);
-}
-
 sub Test::More::eval_ok (&$)
 {
     my ($code, $name) = @_;

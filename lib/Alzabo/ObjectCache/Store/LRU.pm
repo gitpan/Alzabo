@@ -4,7 +4,7 @@ use strict;
 
 use vars qw($SELF $VERSION @ISA);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -18,7 +18,7 @@ sub import
     @ISA = $parent;
 
     eval "require $parent";
-    die $@ if $@;
+    Alzabo::Exception::Eval->throw( error => $@ ) if $@;
     $parent->import(%args);
 }
 

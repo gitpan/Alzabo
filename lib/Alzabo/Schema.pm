@@ -17,7 +17,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 use Storable ();
 use Tie::IxHash ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.36 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.38 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -172,15 +172,32 @@ sub run_in_transaction
 
     $self->start_transaction;
 
-    eval { $code->() };
-
-    if ($@)
+    my (@r, $r);
+    if (wantarray)
     {
-	$self->rollback;
-	die $@;
+	@r = eval { $code->() };
+    }
+    else
+    {
+	$r = eval { $code->() };
+    }
+
+    if (my $e = $@)
+    {
+	eval { $self->rollback };
+	if ( UNIVERSAL::can( $e, 'rethrow' ) )
+	{
+	    $e->rethrow;
+	}
+	else
+	{
+	    Alzabo::Exception->throw( error => $e );
+	}
     }
 
     $self->finish_transaction;
+
+    return wantarray ? @r : $r;
 }
 
 sub driver
@@ -283,6 +300,9 @@ times.
 =head2 run_in_transaction ( sub { code... } )
 
 This method takes a subroutine reference and wraps it in a transaction.
+
+It will preserve the context of the caller and returns whatever the
+wrapped code would have returned.
 
 =head2 driver
 

@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw( Alzabo::Runtime::JoinCursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -37,7 +37,7 @@ sub next
     {
 	$self->{errors} = [];
 
-	my @data = $self->{statement}->next_row
+	my @data = $self->{statement}->next
 	    or return;
 
     TABLES:
@@ -66,7 +66,14 @@ sub next
 		}
 		else
 		{
-		    $@->rethrow;
+		    if ( UNIVERSAL::can( $@, 'rethrow' ) )
+		    {
+			$@->rethrow;
+		    }
+		    else
+		    {
+			Alzabo::Exception->throw( error => $@ );
+		    }
 		}
 	    }
 	    push @rows, $row;

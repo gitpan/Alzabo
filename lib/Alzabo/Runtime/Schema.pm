@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.37 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.40 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -97,19 +97,18 @@ sub connect
 sub join
 {
     my $self = shift;
-    my %p = validate( @_,
-		      { tables => { type => ARRAYREF | OBJECT },
-			select => { type => ARRAYREF | OBJECT,
-				    optional => 1 },
-			where => { type => ARRAYREF,
-				   optional => 1 },
-			order_by => { type => ARRAYREF | HASHREF | OBJECT,
-				      optional => 1 },
-			limit => { type => SCALAR | ARRAYREF,
-				   optional => 1 },
-			distinct => { isa => 'Alzabo::Table',
-				      optional => 1 },
-		      } );
+    my %p = validate( @_, { tables => { type => ARRAYREF | OBJECT },
+			    select => { type => ARRAYREF | OBJECT,
+					optional => 1 },
+			    where => { type => ARRAYREF,
+				       optional => 1 },
+			    order_by => { type => ARRAYREF | HASHREF | OBJECT,
+					  optional => 1 },
+			    limit => { type => SCALAR | ARRAYREF,
+				       optional => 1 },
+			    distinct => { isa => 'Alzabo::Table',
+					  optional => 1 },
+			  } );
 
     $p{tables} = [ $p{tables} ] unless UNIVERSAL::isa($p{tables}, 'ARRAY');
 
@@ -239,6 +238,81 @@ sub _outer_join
     return Alzabo::Runtime::OuterJoinCursor->new( type => $p{type},
 						  statement => $statement,
 						  tables => \@select );
+}
+
+sub function
+{
+    my $self = shift;
+    my %p = @_;
+
+    my $sql = $self->_select_sql(%p);
+
+    my $method = UNIVERSAL::isa( $p{select}, 'ARRAY' ) && @{ $p{select} } > 1 ? 'rows' : 'column';
+
+    return $self->driver->$method( sql => $sql->sql,
+				   bind => $sql->bind );
+}
+
+sub select
+{
+    my $self = shift;
+
+    my $sql = $self->_select_sql(@_);
+
+    return $self->driver->statement( sql => $sql->sql,
+				     bind => $sql->bind );
+}
+
+sub _select_sql
+{
+    my $self = shift;
+    my %p = validate( @_, { select => { type => ARRAYREF | OBJECT,
+					optional => 1 },
+			    tables => { type => ARRAYREF | OBJECT },
+			    where => { type => ARRAYREF,
+				       optional => 1 },
+			    order_by => { type => ARRAYREF | HASHREF | OBJECT,
+					  optional => 1 },
+			    group_by => { type => ARRAYREF | HASHREF | OBJECT,
+					  optional => 1 },
+			    limit => { type => SCALAR | ARRAYREF,
+				       optional => 1 },
+			  } );
+
+    $p{tables} = [ $p{tables} ] unless UNIVERSAL::isa($p{tables}, 'ARRAY');
+
+    my @tables;
+
+    if ( UNIVERSAL::isa( $p{tables}->[0], 'ARRAY' ) )
+    {
+	# flattens the nested structure and produces a unique set of
+	# tables
+	@tables = values %{ { map { $_ => $_ }
+			      map { @$_ } @{ $p{tables} } } };
+    }
+    else
+    {
+	@tables = @{ $p{tables} };
+    }
+
+    my @funcs = UNIVERSAL::isa( $p{select}, 'ARRAY' ) ? @{ $p{select} } : $p{select};
+
+    my $sql = ( $self->sqlmaker->
+		select(@funcs)->
+		from(@tables) );
+
+    $self->_join_all_tables( sql => $sql,
+			     tables => $p{tables} );
+
+    Alzabo::Runtime::process_where_clause( $sql, $p{where}, 1 ) if exists $p{where};
+
+    Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} ) if exists $p{order_by};
+
+    Alzabo::Runtime::process_group_by_clause( $sql, $p{group_by} ) if exists $p{group_by};
+
+    $sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} ) if $p{limit};
+
+    return $sql;
 }
 
 sub _join_all_tables
@@ -527,17 +601,20 @@ certain relevant rows from B.
 =item * where
 
 See the L<documentation on where clauses for the
-Alzabo::Runtime::Table class|Alzabo::Runtime::Table/rows_where>.
+Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
+Parameters>.
 
 =item * order_by
 
 See the L<documentation on order by clauses for the
-Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common Parameters>.
+Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
+Parameters>.
 
 =item * limit
 
 See the L<documentation on limit clauses for the
-Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common Parameters>.
+Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
+Parameters>.
 
 =back
 
@@ -583,17 +660,20 @@ outer join will be between the first pair of tables.
 =item * where
 
 See the L<documentation on where clauses for the
-Alzabo::Runtime::Table class|Alzabo::Runtime::Table/rows_where>.
+Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
+Parameters>.
 
 =item * order_by
 
 See the L<documentation on order by clauses for the
-Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common Parameters>.
+Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
+Parameters>.
 
 =item * limit
 
 See the L<documentation on limit clauses for the
-Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common Parameters>.
+Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
+Parameters>.
 
 =back
 
@@ -606,6 +686,78 @@ object.  representing the results of the join.
 =head3 Throws
 
 L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+
+=head2 function/select
+
+These two methods differ only in their return values.
+
+=head3 Parameters
+
+=over 4
+
+=item * select => $function or [ SQL functions and/or C<Alzabo::Column> objects ]
+
+If you pass an array reference for this parameter, it may contain
+either SQL functions or column objects.  For example:
+
+  $schema->function( select => [ $table->column('name'), LENGTH( $table->column('name') ) ] );
+
+=item * tables => <see below>
+
+See the L<documentation on the tables parameter for the join
+method|Alzabo::Runtime::Schema/join E<lt>see belowE<gt>>.
+
+=item * where
+
+See the L<documentation on where clauses for the
+Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
+Parameters>.
+
+=item * order_by
+
+See the L<documentation on order by clauses for the
+Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
+Parameters>.
+
+=item * group_by
+
+See the L<documentation on group by clauses for the
+Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
+Parameters>.
+
+=item * limit
+
+See the L<documentation on limit clauses for the
+Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
+Parameters>.
+
+=back
+
+This method is used to call arbitrary SQL functions such as 'AVG' or
+'MAX'.  The function (or functions) should be the return values from
+the functions exported by the SQLMaker subclass that you are using.
+Please see L<Using SQL functions|Alzabo/Using SQL functions> for more
+details.
+
+=head3 Returns
+
+=head4 function
+
+The return value of this method is highly context sensitive.
+
+If you only requested a single function ( DISTINCT(foo) ), then it
+returns the first value in scalar context and all the values in list
+context.
+
+If you requested multiple functions ( AVG(foo), MAX(foo) ) then it
+returns a single array reference (the first row of values) in scalar
+context and a list of array references in list context.
+
+=head4 select
+
+This method always returns a new
+L<C<Alzabo::DriverStatement>|Alzabo::Driver/Alzabo::DriverStatement>
+object containing the results of the query.
 
 =for pod_merge name
 

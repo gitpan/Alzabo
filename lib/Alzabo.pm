@@ -15,7 +15,7 @@ use vars qw($VERSION);
 
 use 5.005;
 
-$VERSION = '0.58';
+$VERSION = '0.59';
 
 1;
 
@@ -91,50 +91,58 @@ L<Alzabo - PostgreSQL|"PostgreSQL">
 
 =back
 
-L<Alzabo::Runtime::Schema> - The most important parts here are those
-related to loading a schema and connecting to a database.  Also be
-sure to read about the L<C<join>|Alzabo::Runtime::Schema/join> method.
+L<The Alzabo::Runtime::Schema docs|Alzabo::Runtime::Schema> - The most
+important parts here are those related to loading a schema and
+connecting to a database.  Also be sure to read about the
+L<C<join>|Alzabo::Runtime::Schema/join> method.
 
-L<Alzabo::Runtime::Table> - This contains most of the methods used to
-fetch rows from the database, as well as the
-L<C<insert>|Alzabo::Runtime::Table/insert> method.
+L<The Alzabo::Runtime::Table docs|Alzabo::Runtime::Table> - This
+contains most of the methods used to fetch rows from the database, as
+well as the L<C<insert>|Alzabo::Runtime::Table/insert> method.
 
-L<Alzabo::Runtime::Row> - The row objects contain the methods used to
-update, delete, and retrieve data from the database.
+L<The Alzabo::Runtime::Row docs|Alzabo::Runtime::Row> - The row
+objects contain the methods used to update, delete, and retrieve data
+from the database.
 
-L<Alzabo::Runtime::Cursor> - The most important part of the
-documentation here is the L<HANDLING
+L<The Alzabo::Runtime::PotentialRow
+docs|Alzabo::Runtime::PotentialRow> - Potential rows are objects that
+look like real rows but have yet been inserted into the database.
+
+L<The Alzabo::Runtime::Cursor docs|Alzabo::Runtime::Cursor> - The most
+important part of the documentation here is the L<HANDLING
 ERRORS|Alzabo::Runtime::Cursor/"HANDLING ERRORS"> section.
 
-L<Alzabo::Runtime::RowCursor> - A cursor object that returns only a
-single row.
+L<The Alzabo::Runtime::RowCursor docs|Alzabo::Runtime::RowCursor> - A
+cursor object that returns only a single row.
 
-L<Alzabo::Runtime::JoinCursor> - A cursor object that returns multiple
-rows at once.
+L<The Alzabo::Runtime::JoinCursor docs|Alzabo::Runtime::JoinCursor> -
+A cursor object that returns multiple rows at once.
 
-L<Alzabo::Runtime::OuterJoinCursor> - Returns multiple rows/undefs at
-once.
+L<The Alzabo::Runtime::OuterJoinCursor
+docs|Alzabo::Runtime::OuterJoinCursor> - Returns multiple rows/undefs
+at once.
 
-L<Alzabo::MethodMaker> - One of the most useful parts of Alzabo.  This
-module can be used to auto-generate methods based on the structure of
-your schema.
+L<The Alzabo::MethodMaker docs|Alzabo::MethodMaker> - One of the most
+useful parts of Alzabo.  This module can be used to auto-generate
+methods based on the structure of your schema.
 
-L<Alzabo::ObjectCache> - This describes how to select the caching
-modules you want to use.  It contains a number of scenarios and
-describes how they are affected by caching.  If you plan on using
-Alzabo in a multi-process environment (such as mod_perl) this is very
-important.
+L<The Alzabo::ObjectCache docs|Alzabo::ObjectCache> - This describes
+how to select the caching modules you want to use.  It contains a
+number of scenarios and describes how they are affected by caching.
+If you plan on using Alzabo in a multi-process environment (such as
+mod_perl) this is very important.
 
-L<Alzabo::Exceptions> - Describes the nature of all the exceptions
-used in Alzabo.
+L<The Alzabo::Exceptions docs|Alzabo::Exceptions> - Describes the
+nature of all the exceptions used in Alzabo.
 
-L<Alzabo::FAQ>
+L<The FAQ|Alzabo::FAQ>.
 
-L<Alzabo::QuickRef> - A quick reference for the various methods of the
-Alzabo objects.
+L<The quick reference|Alzabo::QuickRef> - A quick reference for the
+various methods of the Alzabo objects.
 
 Other areas of interest may include the L<Validating data>, L<Using
-SQL functions>, L<Referential integrity>, and L<Changing the schema>.
+SQL functions>, L<Referential integrity>, and L<Changing the schema>
+sections in this document.
 
 =head2 Alzabo concepts
 
@@ -239,6 +247,18 @@ interface for examples.
 
 Also see the L<C<Alzabo::Exceptions>|Alzabo::Exceptions> documentation,
 which lists all of the different exception used by Alzabo.
+
+Its important to note that some metohds (such as the driver's rollback
+method) may use C<eval> internally.  This means that if you intend to
+use them as part of the cleanup after an exception, you may need to
+store the original exception as C<$@> will be overwritten at the next
+C<eval>.
+
+In addition, some methods you might use during cleanup can throw
+exceptions of their own.
+
+This is the point where I start wishing Perl had a B<real> exception
+handling mechanism built into the language.
 
 =head2 Usage Examples
 
@@ -399,9 +419,11 @@ that allow you to use all the SQL functions that your RDBMS provides.
 These functions are normal Perl functions.  They take as argument
 normal scalars (strings and numbers), C<Alzabo::Column> objects, or
 the return value of another SQL function.  They may be used to select
-data via the
-L<C<Alzabo::Runtime::Table-E<gt>function>|Alzabo::Runtime::Table/function>
-method.  They may also be used as part updates, inserts, and where
+data via the C<select> and C<function> methods in both the
+L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table/"function/select">
+and
+L<C<Alzabo::Runtime::Schema>|Alzabo::Runtime::Schema/"function/select">
+classes.  They may also be used as part updates, inserts, and where
 clauses, any place that is appropriate.
 
 Examples:

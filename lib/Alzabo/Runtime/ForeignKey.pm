@@ -7,7 +7,7 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::ForeignKey);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.23 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -101,7 +101,7 @@ sub register_delete
     my @where = map { [ $_->[1], '=', $row->select( $_->[0]->name ) ] } $self->column_pairs;
     my $cursor = $self->table_to->rows_where( where => \@where );
 
-    while ( my $related_row = $cursor->next_row )
+    while ( my $related_row = $cursor->next )
     {
 	($cursor->errors)[0]->rethrow if $cursor->errors;
 

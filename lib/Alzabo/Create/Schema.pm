@@ -21,7 +21,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.69 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.70 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -100,7 +100,14 @@ sub set_name
     if ($@)
     {
 	$self->{name} = $old_name;
-	$@->rethrow;
+	if ( UNIVERSAL::can( $@, 'rethrow' ) )
+	{
+	    $@->rethrow;
+	}
+	else
+	{
+	    Alzabo::Exception->throw( error => $@ );
+	}
     }
 
     # Gotta clean up old files or we have a mess!
@@ -320,7 +327,14 @@ sub add_relation
     if ($@)
     {
 	$tracker->backout;
-	$@->rethrow;
+	if ( UNIVERSAL::can( $@, 'rethrow' ) )
+	{
+	    $@->rethrow;
+	}
+	else
+	{
+	    Alzabo::Exception->throw( error => $@ );
+	}
     }
 
     my @fk;
@@ -335,7 +349,14 @@ sub add_relation
     if ($@)
     {
 	$tracker->backout;
-	$@->rethrow;
+	if ( UNIVERSAL::can( $@, 'rethrow' ) )
+	{
+	    $@->rethrow;
+	}
+	else
+	{
+	    Alzabo::Exception->throw( error => $@ );
+	}
     }
 
     $tracker->add( sub { $f_table->delete_foreign_key($_) foreach @fk } );
@@ -376,7 +397,14 @@ sub add_relation
     if ($@)
     {
 	$tracker->backout;
-	$@->rethrow;
+	if ( UNIVERSAL::can( $@, 'rethrow' ) )
+	{
+	    $@->rethrow;
+	}
+	else
+	{
+	    Alzabo::Exception->throw( error => $@ );
+	}
     }
 }
 
@@ -682,7 +710,14 @@ sub _create_linking_table
     if ($@)
     {
 	$tracker->backout;
-	$@->rethrow;
+	if ( UNIVERSAL::can( $@, 'rethrow' ) )
+	{
+	    $@->rethrow;
+	}
+	else
+	{
+	    Alzabo::Exception->throw( error => $@ );
+	}
     }
 }
 

@@ -49,11 +49,11 @@ foreach my $db (@db)
     ok( $s->name eq "foo_$db",
 	"Make sure schema name is " . $s->name );
 
-    my_isa_ok( $s->rules,"Alzabo::RDBMSRules::$db",
-	    "Make sure schema's rules object is in the 'Alzabo::RDBMSRules::$db' class" );
+    isa_ok( $s->rules,"Alzabo::RDBMSRules::$db",
+	    "Schema's rules object" );
 
-    my_isa_ok( $s->driver,"Alzabo::Driver::$db",
-	    "Make sure schema's driver object is in the 'Alzabo::Driver::$db' class" );
+    isa_ok( $s->driver,"Alzabo::Driver::$db",
+	    "Schema's driver object" );
 
     my $dir = Alzabo::Config->schema_dir;
     {
@@ -77,8 +77,8 @@ foreach my $db (@db)
 
     my $t1;
     eval_ok( sub { $t1 = $s->table('footab') }, "Retrieve 'footab' table from schema" );
-    my_isa_ok( $t1, 'Alzabo::Create::Table',
-	    "Object returned from \$s->table isa 'Alzabo::Create::Table'" );
+    isa_ok( $t1, 'Alzabo::Create::Table',
+	    "Object returned from \$s->table" );
 
     my $att = $db eq 'MySQL' ? 'unsigned' : 'check > 5';
 
@@ -93,8 +93,8 @@ foreach my $db (@db)
     my $t1_c1;
     eval_ok( sub { $t1_c1 = $t1->column('foo_pk') },
 	     "Retrieve 'foo_pk' from 'footab'" );
-    my_isa_ok( $t1_c1, 'Alzabo::Create::Column',
-	    "Object returned from \$table->column isa 'Alzabo::Create::Column'" );
+    isa_ok( $t1_c1, 'Alzabo::Create::Column',
+	    "Object returned from \$table->column" );
 
     is( $t1_c1->type, 'INTEGER',
 	"foo_pk type should be 'INTEGER'" );
@@ -121,8 +121,8 @@ foreach my $db (@db)
     my $t2;
     eval_ok( sub { $t2 = $s->table('bartab') },
 	     "Retrieve table 'bartab'" );
-    my_isa_ok( $t2, 'Alzabo::Create::Table',
-	    "'bartab' isa 'Alzabo::Create::Table'" );
+    isa_ok( $t2, 'Alzabo::Create::Table',
+	    "'bartab'" );
 
     eval_ok( sub { $t2->make_column( name => 'bar_pk',
 				     type => 'int',
@@ -135,8 +135,8 @@ foreach my $db (@db)
     my $t2_c1;
     eval_ok( sub { $t2_c1 = $t2->column('bar_pk') },
 	     "Retrieve 'bar_pk' from 'bartab'" );
-    my_isa_ok( $t2_c1, 'Alzabo::Create::Column',
-	    "'bar_pk' isa 'Alzabo::Create::Column'" );
+    isa_ok( $t2_c1, 'Alzabo::Create::Column',
+	    "'bar_pk'" );
 
     is( $t2_c1->default, '10',
 	"bar_pk default should be '10'" );
@@ -155,8 +155,8 @@ foreach my $db (@db)
     my $link;
     eval_ok( sub { $link = $s->table('footab_bartab') },
 	     "Retrieve linking table 'footab_bartab'" );
-    my_isa_ok( $link, 'Alzabo::Create::Table',
-	    "'footab_bartab' isa 'Alzabo::Create::Table'" );
+    isa_ok( $link, 'Alzabo::Create::Table',
+	    "'footab_bartab'" );
 
     my @t1_fk;
     eval_ok( sub { @t1_fk = $t1->foreign_keys( table => $link,
@@ -168,8 +168,8 @@ foreach my $db (@db)
 
     my $t1_fk = $t1_fk[0];
 
-    my_isa_ok( $t1_fk, 'Alzabo::Create::ForeignKey',
-	    "Return value from footab->foreign_keys isa 'Alzabo::Create::ForeignKey'" );
+    isa_ok( $t1_fk, 'Alzabo::Create::ForeignKey',
+	    "Return value from footab->foreign_keys" );
 
     is( $t1_fk->columns_from->name, 'foo_pk',
 	"The foreign key from footab to the footab_bartab table's columns_from value should be 'foo_pk'" );
@@ -194,8 +194,8 @@ foreach my $db (@db)
 
     my $t2_fk = $t2_fk[0];
 
-    my_isa_ok( $t2_fk, 'Alzabo::Create::ForeignKey',
-	    "Return value from bartab->foreign_keys isa 'Alzabo::Create::ForeignKey'" );
+    isa_ok( $t2_fk, 'Alzabo::Create::ForeignKey',
+	    "Return value from bartab->foreign_keys" );
 
     is( $t2_fk->columns_from->name, 'bar_pk',
 	"The foreign key from bartab to the table's columns_from value should be 'bar_pk'" );
@@ -367,7 +367,7 @@ foreach my $db (@db)
 	"baztab table should have 0 foreign keys after deleting footab table" );
 
     ok( ! exists $t2->{fk}{footab},
-	"The $t2 object's internal {fk} hash should not have a {footab} entry" );
+	"The \$t2 object's internal {fk} hash should not have a {footab} entry" );
 
     my $tc = $s->make_table( name => 'two_col_pk' );
     $tc->make_column( name => 'pk1',
@@ -510,8 +510,8 @@ foreach my $db (@db)
     if ($db eq 'MySQL')
     {
 	eval { $t1->column('foo_pk')->set_type('text') };
-	my_isa_ok( $@, 'Alzabo::Exception::RDBMSRules',
-		"Attempting to set a primary key column to the 'text' type should throw an exception" );
+	isa_ok( $@, 'Alzabo::Exception::RDBMSRules',
+		"Exception thrown from attempt to set a primary key column to the 'text' type" );
     }
 
     $tbi->alter( type => 'varchar',
@@ -581,6 +581,6 @@ foreach my $db (@db)
 
     eval { $other->make_column( name => 'bad name',
 				type => 'int' ) };
-    my_isa_ok( $@, 'Alzabo::Exception::RDBMSRules',
-	    "Making a column with a bad name" );
+    isa_ok( $@, 'Alzabo::Exception::RDBMSRules',
+	    "Exception thrown making a column with a bad name" );
 }

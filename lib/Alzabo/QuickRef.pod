@@ -171,6 +171,15 @@ object.
 
 =for html link=L<More|Alzabo::Runtime::Schema/join>
 
+=item * function/select
+
+=for html type=object
+
+Allows you to execute arbitrary column aggregate SQL functions such as
+C<AVG> or C<MAX> with a multi-table join.
+
+=for html link=L<More|Alzabo::Runtime::Schema/function/select>
+
 =item * table ($name)
 
 =for html type=object
@@ -243,14 +252,14 @@ Retrieves all the rows in the table.
 
 =for html link=L<More|Alzabo::Runtime::Table/all_rows>
 
-=item * function
+=item * function/select
 
 =for html type=object
 
 Allows you to execute arbitrary column aggregate SQL functions such as
 C<AVG> or C<MAX>.
 
-=for html link=L<More|Alzabo::Runtime::Table/function>
+=for html link=L<More|Alzabo::Runtime::Table/function/select>
 
 =back
 
@@ -313,14 +322,14 @@ a few extra lines in your code.
 
 =over 4
 
-=item * next_row
+=item * next
 
 =for html type=object
 
 Returns the next L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>
 object, or undef if there are no more.
 
-=for html link=L<More|Alzabo::Runtime::RowCursor/next_row>
+=for html link=L<More|Alzabo::Runtime::RowCursor/next>
 
 =item * all_rows
 

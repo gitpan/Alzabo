@@ -9,7 +9,7 @@ use Alzabo::Util;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -373,9 +373,9 @@ sub condition
 		  { type => OBJECT },
 		  { type => SCALAR },
 		  { type => UNDEF | SCALAR | OBJECT },
-		  ( { type => SCALAR | OBJECT, optional => 1 } ) x (@_ - 3) );
+		  ( { type => UNDEF | SCALAR | OBJECT, optional => 1 } ) x (@_ - 3) );
     my $lhs = shift;
-    my $comp = lc shift;
+    my $comp = uc shift;
     my $rhs = shift;
 
     $self->{last_op} = 'condition';
@@ -384,7 +384,6 @@ sub condition
     {
 	unless ( $self->{tables}{ $lhs->table } )
 	{
-	    die $@ if $@;
 	    my $err = 'Cannot use column (';
 	    $err .= join '.', $lhs->table->name, $lhs->name;
 	    $err .= ") in \U$self->{type}\E unless its table is included in the ";
@@ -399,7 +398,7 @@ sub condition
 	$self->{sql} .= $lhs->as_string;
     }
 
-    if ( $comp eq 'between' )
+    if ( $comp eq 'BETWEEN' )
     {
 	Alzabo::Exception::SQL->throw( error => "The BETWEEN comparison operator requires an additional argument" )
 	    unless @_ == 1;
@@ -409,6 +408,7 @@ sub condition
 	Alzabo::Exception::SQL->throw( error => "The BETWEEN comparison operator cannot accept a subselect" )
 	    if grep { UNIVERSAL::isa( $_, 'Alzabo::SQLMaker' ) } $rhs, $rhs2;
 
+	$self->{sql} .= ' BETWEEN ';
 	$self->{sql} .= $self->_rhs($lhs, $rhs);
 	$self->{sql} .= " AND ";
 	$self->{sql} .= $self->_rhs($lhs, $rhs2);
@@ -416,7 +416,7 @@ sub condition
 	return;
     }
 
-    if ( $comp eq 'in' )
+    if ( $comp eq 'IN' )
     {
 	$self->{sql} .= ' IN (';
 	$self->{sql} .= join ', ', map { ( UNIVERSAL::isa( $_, 'Alzabo::SQLMaker' ) ?
@@ -426,6 +426,9 @@ sub condition
 
 	return;
     }
+
+    Alzabo::Exception::Params->throw( error => 'Too many parameter to Alzabo::SQLMaker->condition method' )
+	if @_;
 
     if ( ! ref $rhs && defined $rhs )
     {
@@ -1022,7 +1025,7 @@ a string.  The third argument can be one of three things.  It can be
 an C<Alzabo::Column> object, a value (a number or string), or an
 C<Alzabo::SQLMaker> object.  The latter is treated as a subselect.
 
-Values given as parameters will be properly quoted an escaped.
+Values given as parameters will be properly quoted and escaped.
 
 Some comparison operators allow additional parameters.
 

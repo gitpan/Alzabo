@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.62 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.68 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -19,16 +19,18 @@ sub new
     my $proto = shift;
     my $class = ref $proto || $proto;
 
-    validate( @_, { table => { isa => 'Alzabo::Runtime::Table' },
-		    pk => { type => SCALAR | HASHREF,
-			    optional => 1 },
-		    prefetch => { type => UNDEF | HASHREF,
-				  optional => 1 },
-		    time => { type => UNDEF | SCALAR,
-			      optional => 1 },
-		    no_cache => { optional => 1 },
-		    insert => { optional => 1 } } );
-    my %p = @_;
+    my %p = validate( @_, { table => { isa => 'Alzabo::Runtime::Table' },
+			    pk => { type => SCALAR | HASHREF,
+				    optional => 1 },
+			    prefetch => { type => UNDEF | HASHREF,
+					  optional => 1 },
+			    time => { type => UNDEF | SCALAR,
+				      optional => 1 },
+			    no_cache => { optional => 1 },
+			    insert => { optional => 1 },
+			    potential_row => { isa => 'Alzabo::Runtime::PotentialRow',
+					       optional => 1 },
+			  } );
 
     unless ( ref $p{prefetch} && $p{time} )
     {
@@ -42,15 +44,16 @@ sub new
 	$self = Alzabo::Runtime::CachedRow->retrieve(%p);
 	return $self if exists $self->{data};
     }
+    elsif( $p{potential_row} )
+    {
+	$self = bless $p{potential_row}, $class;
+    }
     else
     {
 	$self = bless {}, $class;
     }
 
     $self->{table} = $p{table};
-
-    Alzabo::Exception::Logic->throw( error => "Can't make rows for tables without a primary key" )
-	unless $self->table->primary_key;
 
     $self->{id} = $self->_make_id_hash(%p);
 
@@ -97,12 +100,11 @@ sub _make_id_hash
 sub _get_data
 {
     my $self = shift;
-    my @cols = @_;
 
     my $driver = $self->table->schema->driver;
 
     my $sql = ( $self->table->schema->sqlmaker->
-		select( $self->table->columns(@cols) )->
+		select( $self->table->columns(@_) )->
 		from( $self->table ) );
     $self->_where($sql);
 
@@ -111,7 +113,7 @@ sub _get_data
 	or $self->_no_such_row_error;
 
     my %data;
-    @data{@cols} = @row;
+    @data{@_} = @row;
 
     return %data;
 }
@@ -120,11 +122,9 @@ sub select
 {
     my $self = shift;
 
-    my @cols = @_;
+    my %data = $self->_get_data(@_);
 
-    my %data = $self->_get_data(@cols);
-
-    return wantarray ? @data{@cols} : $data{ $cols[0] };
+    return wantarray ? @data{@_} : $data{ $_[0] };
 }
 
 sub select_hash
@@ -194,10 +194,18 @@ sub update
 
 	$driver->finish_transaction if @fk;
     };
-    if ($@)
+    if (my $e = $@)
     {
-	$driver->rollback;
-	$@->rethrow;
+	eval { $driver->rollback };
+
+	if ( UNIVERSAL::can( $e, 'rethrow' ) )
+	{
+	    $e->rethrow;
+	}
+	else
+	{
+	    Alzabo::Exception->throw( error => $e );
+	}
     }
 }
 
@@ -231,10 +239,17 @@ sub delete
 
 	$driver->finish_transaction if @fk;
     };
-    if ($@)
+    if (my $e = $@)
     {
-	$driver->rollback;
-	$@->rethrow;
+	eval { $driver->rollback };
+	if ( UNIVERSAL::can( $e, 'rethrow' ) )
+	{
+	    $e->rethrow;
+	}
+	else
+	{
+	    Alzabo::Exception->throw( error => $e );
+	}
     }
 
     $self->{deleted} = 1;
@@ -256,6 +271,13 @@ sub table
     my $self = shift;
 
     return $self->{table};
+}
+
+sub schema
+{
+    my $self = shift;
+
+    return $self->table->schema;
 }
 
 sub rows_by_foreign_key
@@ -315,6 +337,7 @@ sub _no_such_row_error
     my @vals;
     while ( my ($k, $v) = each %{ $self->{id} } )
     {
+	$v = '<NULL>' unless defined $v;
 	my $val = "$k = $v";
 	push @vals, $val;
     }
@@ -322,40 +345,48 @@ sub _no_such_row_error
     Alzabo::Exception::NoSuchRow->throw( error => $err );
 }
 
-sub freeze
+sub STORABLE_freeze
 {
     my $self = shift;
+    my $cloning = shift;
 
-    my $table = delete $self->{table};
-    my $cache = delete $self->{cache};
+    my %data = %$self;
 
-    $self->{schema} = $table->schema->name;
-    $self->{table_name} = $table->name;
+    my $table = delete $data{table};
+    my $cache = delete $data{cache};
 
-    my $ser = eval { Storable::nfreeze $self };
+    $data{schema} = $table->schema->name;
+    $data{table_name} = $table->name;
 
-    $self->{table} = $table;
-    $self->{cache} = $cache;
+    $data{sync_time} = $self->{sync_time} = $cache->sync_time($self) if $cache;
+
+    my $ser = eval { Storable::nfreeze \%data };
 
     Alzabo::Exception::Storable->throw( error => $@ ) if $@;
 
     return $ser;
 }
 
-sub thaw
+sub STORABLE_thaw
 {
-    my $class = shift;
+    my $self = shift;
+    my $cloning = shift;
+    my $ser = shift;
 
-    my $obj = eval { Storable::thaw(shift) };
+    my $data = eval { Storable::thaw($ser) };
 
     Alzabo::Exception::Storable->throw( error => $@ ) if $@;
 
-    $obj->{cache} = Alzabo::ObjectCache->new;
+    %$self = %$data;
 
-    my $s = Alzabo::Runtime::Schema->load_from_file( name => delete $obj->{schema} );
-    $obj->{table} = $s->table( delete $obj->{table_name} );
+    my $s = Alzabo::Runtime::Schema->load_from_file( name => delete $self->{schema} );
+    $self->{table} = $s->table( delete $self->{table_name} );
 
-    return $obj;
+    if ( $Alzabo::ObjectCache::VERSION )
+    {
+	$self->{cache} = Alzabo::ObjectCache->new;
+	$self->{cache}->store_object($self, delete $self->{sync_time} );
+    }
 }
 
 __END__
@@ -373,8 +404,9 @@ Alzabo::Runtime::Row - Row objects
 These objects represent actual rows from the database containing
 actual data.  In general, you will want to use the
 L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table> object to retrieve
-rows.  The L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table> can return
-either single rows or L<row cursors|Alzabo::Runtime::RowCursor>.
+rows.  The L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table> object
+can return either single rows or L<row
+cursors|Alzabo::Runtime::RowCursor>.
 
 =head1 CACHING
 
@@ -418,6 +450,12 @@ method to recreate the row later.
 
 Returns the L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table> object
 that this row belongs to.
+
+=head2 schema
+
+Returns the L<C<Alzabo::Runtime::Schema>|Alzabo::Runtime::Schema>
+object that this row's table belongs to.  This is a shortcut for C<<
+$row->table->schema >>.
 
 =head2 rows_by_foreign_key
 
@@ -480,7 +518,7 @@ were created with this parameter as it will probably cause problems.
 
 =head3 Returns
 
-A new C<Alzabo::Runtiem::Row> object.  It will attempt to retrieve the
+A new C<Alzabo::Runtime::Row> object.  It will attempt to retrieve the
 row from the cache first unless the C<no_cache> parameter is true.  If
 no object matches these values then an exception will be thrown.
 

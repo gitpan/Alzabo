@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::Runtime::Row);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -31,6 +31,14 @@ sub retrieve
     elsif ( ! defined $CACHE )
     {
 	$CACHE = Alzabo::ObjectCache->new;
+    }
+
+    if ( $p{potential_row} )
+    {
+	my $self = $p{potential_row};
+	$self->{cache} = $CACHE;
+
+	return bless $self, $class;
     }
 
     return bless { cache => $CACHE }, $class;

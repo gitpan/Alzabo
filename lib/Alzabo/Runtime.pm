@@ -10,6 +10,7 @@ use Alzabo::Runtime::ForeignKey;
 use Alzabo::Runtime::Index;
 use Alzabo::Runtime::JoinCursor;
 use Alzabo::Runtime::OuterJoinCursor;
+use Alzabo::Runtime::PotentialRow;
 use Alzabo::Runtime::Row;
 use Alzabo::Runtime::RowCursor;
 use Alzabo::Runtime::Schema;
@@ -17,7 +18,7 @@ use Alzabo::Runtime::Table;
 
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
 
 1;
 

@@ -3,7 +3,7 @@ package Alzabo::Exceptions;
 use strict;
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
 
 my %e;
 
@@ -38,6 +38,10 @@ BEGIN
 
 	   'Alzabo::Exception::Params' =>
 	   { description => 'An exception generated when there is an error in the parameters passed in a method of function call',
+	     isa => 'Alzabo::Exception' },
+
+	   'Alzabo::Exception::Panic' =>
+	   { description => 'An exception generated when something totally unexpected happens',
 	     isa => 'Alzabo::Exception' },
 
 	   'Alzabo::Exception::RDBMSRules' =>
@@ -188,6 +192,11 @@ rows for a table without a primary key.
 
 An attempt was made to fetch data from the database with a primary key
 that does not actually exist in the specified table.
+
+=item * Alzabo::Exception::Panic
+
+This exception is thrown when something completely unexpected happens
+(think Monty Python).
 
 =item * Alzabo::Exception::Params
 

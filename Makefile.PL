@@ -140,7 +140,7 @@ if ( eval { require DBD::mysql } && $DBD::mysql::VERSION == 2.09 )
 }
 
 %prereq = ( 'DBI' => 0,
-	    'Storable' => 0,
+	    'Storable' => 0.7,
 	    'Tie::IxHash' => 0,
 	    'Exception::Class' => 0.8,
 	    'Time::HiRes' => 0,

@@ -12,13 +12,16 @@ use Time::HiRes qw(time);
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.58 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.63 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub insert
 {
     my $self = shift;
+
+    Alzabo::Exception::Logic->throw( error => "Can't make rows for tables without a primary key" )
+	unless $self->primary_key;
 
     my %p = @_;
     validate( @_, { values => { type => HASHREF },
@@ -87,10 +90,17 @@ sub insert
 	# must come after call to ->get_last_id for MySQL
 	$driver->finish_transaction if @fk;
     };
-    if ($@)
+    if (my $e = $@)
     {
-	$driver->rollback;
-	$@->rethrow;
+	eval { $driver->rollback };
+	if ( UNIVERSAL::can( $e, 'rethrow' ) )
+	{
+	    $e->rethrow;
+	}
+	else
+	{
+	    Alzabo::Exception->throw( error => $e );
+	}
     }
 
     return $self->row_by_pk( pk => \%id, %p, insert => 1 );
@@ -99,6 +109,10 @@ sub insert
 sub row_by_pk
 {
     my $self = shift;
+
+    Alzabo::Exception::Logic->throw( error => "Can't make rows for tables without a primary key" )
+	unless $self->primary_key;
+
     my %p = @_;
 
     my $row_class = delete $p{row_class} || 'Alzabo::Runtime::Row';
@@ -199,6 +213,16 @@ sub _cursor_by_sql
 					    no_cache => $p{no_cache} );
 }
 
+sub potential_row
+{
+    my $self = shift;
+
+    Alzabo::Exception::Logic->throw( error => "Can't make rows for tables without a primary key" )
+	unless $self->primary_key;
+
+    return Alzabo::Runtime::PotentialRow->new( @_, table => $self );
+}
+
 sub row_count
 {
     my $self = shift;
@@ -210,6 +234,29 @@ sub row_count
 sub function
 {
     my $self = shift;
+    my %p = @_;
+
+    my $sql = $self->_select_sql(%p);
+
+    my $method = UNIVERSAL::isa( $p{select}, 'ARRAY' ) && @{ $p{select} } > 1 ? 'rows' : 'column';
+
+    return $self->schema->driver->$method( sql => $sql->sql,
+					   bind => $sql->bind );
+}
+
+sub select
+{
+    my $self = shift;
+
+    my $sql = $self->_select_sql(@_);
+
+    return $self->schema->driver->statement( sql => $sql->sql,
+					     bind => $sql->bind );
+}
+
+sub _select_sql
+{
+    my $self = shift;
 
     my %p = validate( @_, { select => { type => ARRAYREF | OBJECT },
 			    where  => { type => ARRAYREF | OBJECT,
@@ -218,11 +265,11 @@ sub function
 					  optional => 1 },
 			    group_by => { type => ARRAYREF | HASHREF | OBJECT,
 					  optional => 1 },
+			    limit => { type => SCALAR | ARRAYREF,
+				       optional => 1 },
 			  } );
 
     my @funcs = UNIVERSAL::isa( $p{select}, 'ARRAY' ) ? @{ $p{select} } : $p{select};
-
-    my $method = @funcs > 1 ? 'rows' : 'column';
 
     my $sql = $self->schema->sqlmaker->select(@funcs)->from($self);
 
@@ -232,8 +279,9 @@ sub function
 
     Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} ) if exists $p{order_by};
 
-    return $self->schema->driver->$method( sql => $sql->sql,
-					   bind => $sql->bind );
+    $sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} ) if $p{limit};
+
+    return $sql;
 }
 
 # deprecated
@@ -433,46 +481,10 @@ A new L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> object.  If no
 rows in the database match the value(s) given then an empty list or
 undef will be returned (for list or scalar context).
 
-=head2 Methods that return an C<Alzabo::Runtime::RowCursor> object
+=head2 Common Parameters
 
-The following methods all return an
-L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object
-representing the results of the query.  This is the case even for
-queries that end up returning one or zero rows.
-
-=head3 Common Parameters
-
-These three methods all take the following parameters in addition to
-whatever is described:
-
-=over 4
-
-=item * order_by => see below
-
-This parameter can take one of three different things.  The simplest
-form is to just give it a single column object.  Alternatively, you
-can give it an array reference to a list of column objects.  Finally
-you can give it a hash reference such as:
-
-  order_by => { columns => $column_object or \@column_objects,
-                sort => 'ASC' or 'DESC' }
-
-=item * limit => $limit or [ $limit, $offset ]
-
-For databases that support LIMIT clauses, this incorporates such a
-clause into the SQL.  For databases that don't, the limit will be
-implemented programatically as rows are being requested.  If an offset
-is given, this will be the number of rows skipped in the result set
-before the first one is returned.
-
-=back
-
-=head2 rows_where
-
-A simple way to retrieve a row cursor based on one or more colum
-values.  This does not handle any conditionals besides equality.
-
-=head3 Parameters
+A number of methods in this clas take the same parameters.  These are
+documented below.
 
 =over 4
 
@@ -488,9 +500,9 @@ The parameter can also be an array of references to such arrays:
    [ C<Alzabo::Column> object or SQL function, $comparison, $value or C<Alzabo::Column> object ] ]
 
 For more details on exactly what the possibilities are here, please
-see the L<documentation for Alzabo::SQLMaker|Alzabo::SQLMaker/where (
+see the L<documentation for Alzabo::SQLMaker|Alzabo::SQLMaker/"where (
 (Alzabo::Column object or SQL function), $comparison, (Alzabo::Column
-object, $value, or Alzabo::SQLMaker statement), [ see below ] )>.
+object, $value, or Alzabo::SQLMaker object), [ see below ] )">.
 
 By default, each clause represented by an array reference is joined
 together with an 'AND'.  However, you can put the string 'or' between
@@ -523,14 +535,64 @@ which would generate SQL something like:
 Make sure that your parentheses balance out or an exception will be
 thrown.
 
-You can also use the SQL functions (L<Alzabo/Using SQL functions>)
-exported from the SQLMaker subclass you are using.  For example:
+You can also use the SQL functions (L<Using SQL functions|Alzabo/Using
+SQL functions>) exported from the SQLMaker subclass you are using.
+For example:
 
  [ LENGTH($foo_col), '<', 10 ]
 
 would generate something like:
 
  WHERE LENGTH(foo) < 10
+
+=item * order_by => see below
+
+This parameter can take one of three different things.  The simplest
+form is to just give it a single column object.  Alternatively, you
+can give it an array reference to a list of column objects.  Finally
+you can give it a hash reference such as:
+
+  order_by => { columns => $column_object or \@column_objects,
+                sort => 'ASC' or 'DESC' }
+
+=item * group_by => see below
+
+This parameter is exactly like the order_by parameter.
+
+  group_by => { columns => $column_object or \@column_objects,
+                sort => 'ASC' or 'DESC' }
+
+=item * limit => $limit or [ $limit, $offset ]
+
+For databases that support LIMIT clauses, this incorporates such a
+clause into the SQL.  For databases that don't, the limit will be
+implemented programatically as rows are being requested.  If an offset
+is given, this will be the number of rows skipped in the result set
+before the first one is returned.
+
+=back
+
+=head2 Methods that return an C<Alzabo::Runtime::RowCursor> object
+
+The following methods all return an
+L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object
+representing the results of the query.  This is the case even for
+queries that end up returning one or zero rows.
+
+=head2 rows_where
+
+A simple way to retrieve a row cursor based on one or more colum
+values.  This does not handle any conditionals besides equality.
+
+=head3 Parameters
+
+=over 4
+
+=item * where => see L<Common Parameters|Alzabo::Runtime::Table/Common Parameters>
+
+=item * order_by => see L<Common Parameters|Alzabo::Runtime::Table/Common Parameters>
+
+=item * limit => see L<Common Parameters|Alzabo::Runtime::Table/Common Parameters>
 
 =back
 
@@ -552,7 +614,15 @@ Simply returns all the rows in the table.
 
 =head3 Parameters
 
-All parameters given will be passed directly to the
+=over 4
+
+=item * order_by => see L<Common Parameters|Alzabo::Runtime::Table/Common Parameters>
+
+=item * limit => see L<Common Parameters|Alzabo::Runtime::Table/Common Parameters>
+
+=back
+
+All other parameters given will be passed directly to the
 L<C<Alzabo::Runtime::Row-E<gt>new>|Alzabo::Runtime::Row/new> method
 (such as the C<no_cache> parameter).
 
@@ -561,15 +631,53 @@ L<C<Alzabo::Runtime::Row-E<gt>new>|Alzabo::Runtime::Row/new> method
 An L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object
 representing the query.
 
+=head2 potential_row
+
+This method is used to create a new
+L<C<Alzabo::Runtime::PotentialRow>|Alzabo::Runtime::PotentialRow>
+object.
+
+=head3 Parameters
+
+=over 4
+
+=item * values => \%values
+
+This should be a hash reference containing column names, just as is
+given to L<insert|/insert>.
+
+It is ok to omit columns that are normally not nullable, but they
+cannot be B<explicitly> set to null.
+
+Any values given will be set in the new potential row object.
+
+=back
+
+=head3 Returns
+
+A new
+L<C<Alzabo::Runtime::PotentialRow>|Alzabo::Runtime::PotentialRow>
+object.
+
 =head2 Other Methods
 
 =head2 row_count
+
+=head3 Parameters
+
+=over 4
+
+=item * where => see L<Common Parameters|Alzabo::Runtime::Table/Common Parameters>
+
+=back
 
 =head3 Returns
 
 A scalar indicating how many rows the table has.
 
-=head2 function
+=head2 function/select
+
+These two methods differ only in their return values.
 
 =head3 Parameters
 
@@ -578,30 +686,29 @@ A scalar indicating how many rows the table has.
 =item * select => $function or [ SQL functions and/or C<Alzabo::Column> objects ]
 
 If you pass an array reference for this parameter, it may contain
-either SQL function of column objects.  For example:
+either SQL functions or column objects.  For example:
 
-  $table->function( select => [ $table->column('name'), COUNT( $table->column('name') ) ] );
+  $table->function( select => [ $table->column('name'), LENGTH( $table->column('name') ) ] );
 
-=item * where => see L<rows_where|Alzabo::Runtime::Table/rows_where> method
+=item * where => see L<Common Parameters|Alzabo::Runtime::Table/Common Parameters>
 
-=item * group_by => see below
+=item * order_by => see L<Common Parameters|Alzabo::Runtime::Table/Common Parameters>
 
-This parameter can take one of three different things.  The simplest
-form is to just give it a single column object.  Alternatively, you
-can give it an array reference to a list of column objects.  Finally
-you can give it a hash reference such as:
+=item * group_by => see L<Common Parameters|Alzabo::Runtime::Table/Common Parameters>
 
-  group_by => { columns => $column_object or \@column_objects,
-                sort => 'ASC' or 'DESC' }
+=item * limit => see L<Common Parameters|Alzabo::Runtime::Table/Common Parameters>
 
 =back
 
 This method is used to call arbitrary SQL functions such as 'AVG' or
 'MAX'.  The function (or functions) should be the return values from
 the functions exported by the SQLMaker subclass that you are using.
-Please see L<Alzabo/Using SQL functions> for more details.
+Please see L<Using SQL functions|Alzabo/Using SQL functions> for more
+details.
 
 =head3 Returns
+
+=head4 function
 
 The return value of this method is highly context sensitive.
 
@@ -612,6 +719,12 @@ context.
 If you requested multiple functions ( AVG(foo), MAX(foo) ) then it
 returns a single array reference (the first row of values) in scalar
 context and a list of array references in list context.
+
+=head4 select
+
+This method always returns a new
+L<C<Alzabo::DriverStatement>|Alzabo::Driver/Alzabo::DriverStatement>
+object containing the results of the query.
 
 =for pod_merge schema
 
@@ -671,11 +784,11 @@ immediately after object creation or after an object discovers it is
 expired in the cache.  These should be columns that you expect to use
 extremely frequently.
 
-The second method, L<C<add_group>|Alzabo::Runtime::Table/add_group (Alzabo::Column objects)>,
-allows you to group columns together.  If you attempt to fetch one of
-these columns, then all the columns in the group will be fetched.
-This is useful in cases where you don't often want certain data, but
-when you do you need several related pieces.
+The second method, L<C<add_group>|Alzabo::Runtime::Table/add_group
+(Alzabo::Column objects)>, allows you to group columns together.  If
+you attempt to fetch one of these columns, then all the columns in the
+group will be fetched.  This is useful in cases where you don't often
+want certain data, but when you do you need several related pieces.
 
 =head2 Lazy column loading related methods
 

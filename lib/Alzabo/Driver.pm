@@ -10,7 +10,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.50 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.52 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -327,11 +327,13 @@ sub rollback
 {
     my $self = shift;
 
-    $self->{dbh}->rollback unless $self->{dbh}->{AutoCommit};
+    $self->{tran_count} = undef;
+
+    eval { $self->{dbh}->rollback unless $self->{dbh}->{AutoCommit} };
+
+    Alzabo::Exception::Driver->throw( error => $@ ) if $@;
 
     $self->{dbh}->{AutoCommit} = 1;
-
-    $self->{tran_count} = undef;
 }
 
 sub finish_transaction
@@ -452,7 +454,7 @@ sub execute
 				      bind => $self->{bind} ) if $@;
 }
 
-sub next_row
+sub next
 {
     my $self = shift;
 
@@ -479,7 +481,7 @@ sub next_row
     return wantarray ? @row : $row[0];
 }
 
-sub next_row_hash
+sub next_hash
 {
     my $self = shift;
 
@@ -489,7 +491,7 @@ sub next_row_hash
     my $active;
     eval
     {
-	$self->{sth}->bind_columns( \ ( @hash{ @{ $self->{sth}->{NAME_uc} } } ) );
+	$self->{sth}->bind_columns( \ ( @hash{ @{ $self->{sth}->{NAME_lc} } } ) );
 	do
 	{
 	    $active = $self->{sth}->fetch;
@@ -504,6 +506,34 @@ sub next_row_hash
     return unless $active;
 
     return %hash;
+}
+
+sub all_rows
+{
+    my $self = shift;
+
+    my @rows;
+
+    while (my @row = $self->next)
+    {
+	push @rows, @row > 1 ? \@row : $row[0];
+    }
+
+    return @rows;
+}
+
+sub all_rows_hash
+{
+    my $self = shift;
+
+    my @rows;
+
+    while (my %h = $self->next_hash)
+    {
+	push @rows, \%h;
+    }
+
+    return @rows;
 }
 
 sub bind
@@ -699,9 +729,9 @@ C<$offset> defaults to 0.
 
 A new L<C<Alzabo::DriverStatement>|Alzabo::DriverStatement> handle,
 ready to return data via the
-L<C<Alzabo::DriverStatement-E<gt>next_row>|Alzabo::DriverStatement/next_row>
+L<C<Alzabo::DriverStatement-E<gt>next>|Alzabo::DriverStatement/next>
 or
-L<C<Alzabo::DriverStatement-E<gt>next_row_hash>|Alzabo::DriverStatement/next_row_hash>
+L<C<Alzabo::DriverStatement-E<gt>next_hash>|Alzabo::DriverStatement/next_hash>
 methods.
 
 =head3 Throws
@@ -714,27 +744,53 @@ This class is a wrapper around C<DBI>'s statement handles.  It finishes
 automatically as appropriate so the end user does need not worry about
 doing this.
 
-=head2 next_row
+=head2 next
 
 Use this method in a while loop to fetch all the data from a
 statement.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
 
 =head3 Returns
 
 An array containing the next row of data for statement or an empty
 list if no more data is available.
 
-=head2 next_row_hash
+=head3 Throws
+
+L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
+
+=head2 next_hash
 
 =head3 Returns
 
 A hash containing the next row of data for statement or an empty list
-if no more data is available.  All the keys of the hash are in
-uppercase.
+if no more data is available.  All the keys of the hash will be
+lowercased.
+
+=head3 Throws
+
+L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
+
+=head2 all_rows
+
+=head3 Returns
+
+If the select for which this statement is cursor was for a single
+column (or aggregate value), then method returns an array containing
+each B<remaining> value from the database.
+
+Otherwise, it returns an array of array references, each one
+containing a returned row from the database.
+
+=head3 Throws
+
+L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
+
+=head2 all_rows_hash
+
+=head3 Returns
+
+An array of hashes, each hash representing a single row returned from
+the database.  The hash keys are all in lowercase.
 
 =head3 Throws
 

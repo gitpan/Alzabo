@@ -5,7 +5,9 @@ use vars qw($SELF $VERSION);
 use Alzabo::Exceptions;
 use BerkeleyDB qw( DB_CREATE DB_INIT_MPOOL DB_INIT_CDB DB_NEXT DB_NOOVERWRITE DB_KEYEXIST DB_NOTFOUND DB_RMW DB_WRITECURSOR );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/;
+use Storable ();
+
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -82,7 +84,7 @@ sub fetch_object
     Alzabo::Exception::System->throw( error => "Error retrieving object id '$id' from Berkeley DB: $BerkeleyDB::Error" )
 	if $status;
 
-    return Alzabo::Runtime::Row->thaw($ser);
+    return Storable::thaw($ser);
 }
 
 sub store_object
@@ -92,7 +94,7 @@ sub store_object
 
     my $id = $obj->id;
 
-    my $ser = $obj->freeze;
+    my $ser = Storable::nfreeze($obj);
 
     my $status = $self->{dbm}->db_put( $id => $ser, DB_NOOVERWRITE );
 

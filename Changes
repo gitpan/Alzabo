@@ -1,3 +1,68 @@
+0.59
+
+ENHANCEMENTS:
+
+- Got rid of the post_select_hash hook and combined it with
+post_select, which now receives a hash reference.  Suggested by Ilya
+Martynov.
+
+- Run all hooks inside Alzabo::Schema->run_in_transaction method to
+ensure database integrity in cases where your hooks might
+update/delete/insert data.  Suggested by Ilya Martynov.
+
+- Added new Alzabo::Runtime::Table->select method.  This is just like
+the existing ->function method, but returns a cursor instead of the
+entire result set.
+
+- Added a 'limit' parameter to the ->function method (also works for
+the ->select method).
+
+- Added new Alzabo::Runtime::Schema->select method.  This is like the
+method of the same name in the table class but it allows for joins.
+
+- Added new potential rows, which are objects with (largely) the same
+interface as regular rows, but which are not (yet) inserted into the
+database.  They are created via the new
+Alzabo::Runtime::Table->potential_row method.  Thanks to Ilya Martynov
+for suggestions and code for this feature.
+
+- Added Alzabo::Runtime::Row->schema method.  Suggested by Ilya
+Martynov.
+
+- Made it possible to use Storable to freeze and thaw any type of row
+object.  Previously, this would have worked but would have serialized
+basically every single Alzabo object in memory (whee!).  Patch by Ilya
+Martynov.
+
+- Make Alzabo::Schema->run_in_transaction preserve scalar/array
+context and return whatever was returned by the wrapped code.
+
+BUG FIXES:
+
+- Did some review and cleanup of the exception handling code.  There
+were some places where exceptions were being handled in an unsafe
+manner as well as some spots where exception objects should have been
+thrown that were just using die.
+
+- Ignore failure to rollback for MySQL when not using transactional
+table.
+
+- Alzabo was not handling the BETWEEN operator in where clauses
+properly.  Patch by Eric Hillman.
+
+- Passing in something like this to rows_where:
+
+ ( where => [ $col_foo, '=', 1,
+              $col_bar, '=', 2 ] )
+
+- Trying to do a select that involved a group by and a limit was not
+being allowed.
+
+INCOMPATIBILITIES:
+
+- Got rid of the post_select_hash hook and combined it with
+post_select, which now receives a hash reference.
+
 0.58
 
 ENHANCEMENTS:

@@ -12,7 +12,7 @@ use Tie::IxHash;
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.43 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -65,7 +65,14 @@ sub set_name
     if ($@)
     {
 	$self->{name} = $old_name;
-	$@->rethrow;
+	if ( UNIVERSAL::can( $@, 'rethrow' ) )
+	{
+	    $@->rethrow;
+	}
+	else
+	{
+	    Alzabo::Exception->throw( error => $@ );
+	}
     }
 
     if ( $old_name && eval { $self->schema->table($old_name) } )

@@ -12,7 +12,7 @@ use Time::HiRes qw(time);
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -55,7 +55,7 @@ sub next
     {
 	$self->{errors} = [];
 
-	my @row = $self->{statement}->next_row;
+	my @row = $self->{statement}->next;
 
 	return unless @row && grep { defined } @row;
 
@@ -90,7 +90,14 @@ sub next
 	    }
 	    else
 	    {
-		$@->rethrow;
+		if ( UNIVERSAL::can( $@, 'rethrow' ) )
+		{
+		    $@->rethrow;
+		}
+		else
+		{
+		    Alzabo::Exception->throw( error => $@ );
+		}
 	    }
 	}
     } until (defined $row);

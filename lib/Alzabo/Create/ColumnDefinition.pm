@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::ColumnDefinition);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.23 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -77,7 +77,14 @@ sub alter
 	$self->{type} = $old_type;
 	$self->{length} = $old_length;
 	$self->{precision} = $old_precision;
-	$@->rethrow;
+	if ( UNIVERSAL::can( $@, 'rethrow' ) )
+	{
+	    $@->rethrow;
+	}
+	else
+	{
+	    Alzabo::Exception->throw( error => $@ );
+	}
     }
 }
 
@@ -99,7 +106,14 @@ sub set_type
     if ($@)
     {
 	$self->{type} = $old_type;
-	$@->rethrow;
+	if ( UNIVERSAL::can( $@, 'rethrow' ) )
+	{
+	    $@->rethrow;
+	}
+	else
+	{
+	    Alzabo::Exception->throw( error => $@ );
+	}
     }
 }
 
@@ -125,7 +139,14 @@ sub set_length
     {
 	$self->{length} = $old_length;
 	$self->{precision} = $old_precision;
-	$@->rethrow;
+	if ( UNIVERSAL::can( $@, 'rethrow' ) )
+	{
+	    $@->rethrow;
+	}
+	else
+	{
+	    Alzabo::Exception->throw( error => $@ );
+	}
     }
 }
 
