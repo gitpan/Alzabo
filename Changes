@@ -1,6 +1,14 @@
+0.42
+
+Bug fixes:
+
+- The schema creator was broken (for lack of quotes around one string)
+
+- Remove 255 char limit on prefix length (this needs more research).
+
 0.41
 
-Bugs:
+Bug fixes:
 
 - 0.40 was missing a file in the distro
 (lib/Alzabo/ObjectCache/Sync/DBM.pm).

@@ -194,6 +194,7 @@ my @order = ( qw( Alzabo
 		    Alzabo::ObjectCache::Sync::SDBM_File
 		    Alzabo::ObjectCache::Sync::DB_File
 		    Alzabo::ObjectCache::Sync::IPC
+		    Alzabo::ObjectCache::Sync::DBM
 		  ) ],
 
 	      qw( Alzabo::Exceptions

@@ -95,5 +95,5 @@ if (defined $s)
 </div>
 </%def>
 <%flags>
-inherit => syshandler
+inherit => 'syshandler'
 </%flags>

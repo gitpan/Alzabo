@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.40 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.41 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -264,9 +264,6 @@ sub validate_index
 	{
 	    Alzabo::Exception::RDBMSRules->throw( error => "Invalid prefix specification ('$prefix')" )
 		unless $prefix =~ /\d+/ && $prefix > 0;
-
-	    Alzabo::Exception::RDBMSRules->throw( error => "Prefix value must be less than 255" )
-		unless $prefix < 255;
 
 	    Alzabo::Exception::RDBMSRules->throw( error => 'Non-character/blob columns cannot have an index prefix' )
 		unless $self->type_is_blob( $c->type ) || $self->type_is_char( $c->type );
