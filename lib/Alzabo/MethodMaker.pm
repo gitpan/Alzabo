@@ -5,7 +5,7 @@ use vars qw($VERSION $DEBUG);
 
 use Alzabo::Runtime::Schema;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
@@ -428,7 +428,7 @@ sub make_linking_table_method
 
 		  return $s->join( tables => \@t,
 				   select => $select,
-				   @_ ); };
+				   %p ); };
     }
 
     return 1;

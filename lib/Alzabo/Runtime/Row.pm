@@ -5,7 +5,7 @@ use vars qw($VERSION $CACHE);
 
 use Alzabo::Runtime;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.43 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -213,7 +213,7 @@ sub update
 
     my $sql = ( $self->table->schema->sqlmaker->
 		update( $self->table ) );
-    $sql->set( $self->table->column($_), $data{$_} ) foreach sort keys %data;
+    $sql->set( map { $self->table->column($_), $data{$_} } keys %data );
 
     $self->_where($sql);
 

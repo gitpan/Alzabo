@@ -17,7 +17,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.52 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.55 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -70,7 +70,9 @@ sub reverse_engineer
     $self->{rules}->reverse_engineer($self);
 
     $self->set_instantiated(1);
+    my $driver = delete $self->{driver};
     $self->{original} = Storable::dclone($self);
+    $self->{driver} = $driver;
     delete $self->{original}{original};
     return $self;
 }
@@ -677,7 +679,9 @@ sub create
     }
 
     $self->set_instantiated(1);
+    my $driver = delete $self->{driver};
     $self->{original} = Storable::dclone($self);
+    $self->{driver} = $driver;
     delete $self->{original}{original};
 }
 
@@ -767,9 +771,10 @@ sub make_runtime_clone
 {
     my $self = shift;
 
+    my %s;
     my $clone = Storable::dclone($self);
 
-    foreach my $f ( qw( original instantiated rules ) )
+    foreach my $f ( qw( original instantiated rules driver ) )
     {
 	delete $clone->{$f};
     }
@@ -796,9 +801,6 @@ sub make_runtime_clone
 	bless $t, 'Alzabo::Runtime::Table';
     }
     bless $clone, 'Alzabo::Runtime::Schema';
-
-    $clone->{driver} = Alzabo::Driver->new( rdbms => $self->{driver}->driver_id,
-					    schema => $clone );
 
     return $clone;
 }
@@ -1090,6 +1092,8 @@ SQL necessary to change the database.  This may be destructive
 (dropping tables, columns, etc) so be careful.  This will cause the
 schema to be marked as instantiated.
 
+Wherever possible, existing data will be preserved.
+
 =head3 Parameters
 
 =over 4
@@ -1130,7 +1134,8 @@ The schema's L<C<Alzabo::RDBMSRules>|Alzabo::RDBMSRules> object.
 
 An array containing the SQL statements necessary to either create the
 database from scratch or update the database to match the schema
-object.
+object.  See the L<C<create>|Alzabo::Create::Schema/create> method for
+more details.
 
 =head2 drop
 

@@ -7,7 +7,7 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.23 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.25 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -142,20 +142,31 @@ sub join
 
     if ( exists $p{order_by} )
     {
-	Alzabo::Exception::Params->throw( error => "No columns provided for order by" )
-	    unless $p{order_by}{columns};
-
-	my @c = ( UNIVERSAL::isa( $p{order_by}{columns}, 'ARRAY' ) ?
-		  @{ $p{order_by}{columns} } :
-		  $p{order_by}{columns} );
-
-	$sql->order_by( @c );
-
-	if ( defined $p{order_by}{sort} )
+	my @c;
+	my $s;
+	if ( UNIVERSAL::isa( $p{order_by}, 'Alzabo::Column' ) )
 	{
-	    my $s = lc $p{order_by}{sort};
-	    $sql->$s();
+	    @c = $p{order_by};
 	}
+	elsif ( UNIVERSAL::isa( $p{order_by}, 'ARRAY' ) )
+	{
+	    @c = @{ $p{order_by} };
+	}
+	else
+	{
+	    Alzabo::Exception::Params->throw( error => "No columns provided for order by" )
+		    unless $p{order_by}{columns};
+
+	    @c = ( UNIVERSAL::isa( $p{order_by}{columns}, 'ARRAY' ) ?
+		   @{ $p{order_by}{columns} } :
+		   $p{order_by}{columns} );
+
+	    $s = lc $p{order_by}{sort}
+		if exists $p{order_by}{sort};
+	}
+
+	$sql->order_by(@c);
+	$sql->$s() if $s;
     }
 
     my $statement = $self->driver->statement( sql => $sql->sql,
@@ -260,7 +271,7 @@ Set the host to use when connecting to the database.
 =head3 Returns
 
 A boolean value indicating whether this schema will attempt to
-maintain referential integrity.  Defaults to false.
+maintain referential integrity.
 
 =head2 set_referential_integrity ($boolean)
 
@@ -271,6 +282,8 @@ deleted, updated, or inserted, they will report this activity to any
 relevant L<C<Alzabo::Runtime::ForeignKey>|Alzabo::Runtime::ForeignKey>
 objects for the row, so that the foreign key objects can take
 appropriate action.
+
+Defaults to false.
 
 =head2 connect (%params)
 

@@ -18,7 +18,7 @@ unless ($tests)
     exit;
 }
 
-print "1..37\n";
+print "1..39\n";
 
 my $t = $tests->[0];
 make_schema(%$t);
@@ -115,13 +115,20 @@ foreach my $t ($s->tables)
     $s->ToiletLocation_t->insert( values => { toilet_id => 1,
 					      location_id => 1 } );
 
-    my @l = $t->Locations( order_by => { columns => $s->Location_t->location_id_c } )->all_rows;
+    my @l = $t->Locations( order_by => $s->Location_t->location_id_c )->all_rows;
 
     ok( @l == 2,
 	"The toilet should have two locations but it has " . scalar @l );
 
     ok( $l[0]->location_id == 1 && $l[1]->location_id == 100,
-	"Toilet's location ids should be 1 and 100 but that are not" );
+	"Toilet's location ids should be 1 and 100 but they are not" );
+
+    my @t = $l[0]->Toilets->all_rows;
+    ok ( @t == 1,
+	 "The location should have one toilet but it has " . scalar @t );
+
+    ok( $t[0]->toilet_id == 1,
+	"Location's toiler id should be 1 but it is " . $t[0]->toilet_id );
 
     my @tl = $t->ToiletLocations->all_rows;
 

@@ -7,7 +7,7 @@ use Alzabo::Create;
 
 use base qw(Alzabo::Column);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.26 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.27 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -121,7 +121,7 @@ sub set_attributes
 {
     my $self = shift;
 
-    tie %{ $self->{attributes} }, 'Tie::IxHash';
+    %{ $self->{attributes} } = ();
 
     foreach (@_)
     {
@@ -160,6 +160,21 @@ sub set_type
     my $t = shift;
 
     $self->{definition}->set_type($t);
+
+    # this will force them to go through the rules code again.
+    # Attributes that don't work with the new type are silently
+    # discarded.
+    foreach ( $self->attributes )
+    {
+	$self->delete_attribute($_);
+	eval { $self->add_attribute($_) };
+    }
+    unless ( eval { $self->set_length( length => $self->length,
+				       precision => $self->precision ) } )
+    {
+	$self->set_length( length => undef,
+			   precision => undef );
+    }
 }
 
 sub set_sequenced

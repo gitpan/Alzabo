@@ -8,7 +8,7 @@ use Alzabo::Util;
 
 use DBI;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.39 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.40 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -237,16 +237,19 @@ sub func
     my $self = shift;
 
     my @r;
-    if (wantarray)
+    eval
     {
-	@r = eval { $self->{dbh}->func(@_); };
-	return @r;
-    }
-    else
-    {
-	$r[0] = eval { $self->{dbh}->func(@_); };
-	return $r[0];
-    }
+	if (wantarray)
+	{
+	    @r = $self->{dbh}->func(@_);
+	    return @r;
+	}
+	else
+	{
+	    $r[0] = $self->{dbh}->func(@_);
+	    return $r[0];
+	}
+    };
     Alzabo::Exception::Driver->throw( error => $@ ) if $@;
 }
 
@@ -259,7 +262,7 @@ sub DESTROY
 sub disconnect
 {
     my $self = shift;
-    $self->{dbh}->disconnect if ref $self->{dbh};
+    $self->{dbh}->disconnect if $self->{dbh};
 }
 
 sub connect

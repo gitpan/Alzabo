@@ -12,7 +12,7 @@ my $cwd = Cwd::cwd();
 mkdir "$cwd/schemas", 0755
     or die "Can't make dir '$cwd/schemas' for testing: $!\n";
 
-print "1..91\n";
+print "1..94\n";
 
 ok(1);
 
@@ -76,7 +76,7 @@ ok( defined $t1_c1,
 
 ok( $t1_c1->type eq 'int',
     "foo_pk type should be 'int'" );
-ok( $t1_c1->attributes == 1 && ($t1_c1->attributes)[0], 'unsigned',
+ok( $t1_c1->attributes == 1 && ($t1_c1->attributes)[0] eq 'unsigned',
     "foo_pk should have one attribute, 'unsigned'" );
 ok( $t1_c1->has_attribute( attribute => 'UNSIGNED' ),
     "foo_pk should have attribute 'UNSIGNED' (case-insensitive check)" );
@@ -421,6 +421,21 @@ ok( ! $@,
 
 ok( $index eq $index2,
     "The index retrieved from newt1 should be the same as the one first made but it is not");
+
+$t1->column('foo_pk')->set_type('varchar');
+ok( ! $t1->column('foo_pk')->attributes,
+    "The unsigned attribute should not have survived the change from 'int' to 'varchar'" );
+
+eval { $t1->column('foo_pk')->set_type('text'); };
+ok( $@,
+    "Attempting to set a primary key column to the 'text' type should cause an error" );
+
+$tbi->set_type('varchar');
+$tbi->set_length( length => 20 );
+$tbi->set_type('text');
+
+ok( ! defined $tbi->length,
+    "Length should be undef after switching column type from 'varchar' to 'text'" );
 
 eval { $s->save_to_file };
 ok( ! $@,

@@ -7,7 +7,7 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.36 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.38 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -164,20 +164,31 @@ sub _cursor_by_sql
 
     if ( exists $p{order_by} )
     {
-	Alzabo::Exception::Params->throw( error => "No columns provided for order by" )
-	    unless $p{order_by}{columns};
-
-	my @c = ( UNIVERSAL::isa( $p{order_by}{columns}, 'ARRAY' ) ?
-		  @{ $p{order_by}{columns} } :
-		  $p{order_by}{columns} );
-
-	$p{sql}->order_by( @c );
-
-	if ( defined $p{order_by}{sort} )
+	my @c;
+	my $s;
+	if ( UNIVERSAL::isa( $p{order_by}, 'Alzabo::Column' ) )
 	{
-	    my $s = lc $p{order_by}{sort};
-	    $p{sql}->$s();
+	    @c = $p{order_by};
 	}
+	elsif ( UNIVERSAL::isa( $p{order_by}, 'ARRAY' ) )
+	{
+	    @c = @{ $p{order_by} };
+	}
+	else
+	{
+	    Alzabo::Exception::Params->throw( error => "No columns provided for order by" )
+		    unless $p{order_by}{columns};
+
+	    @c = ( UNIVERSAL::isa( $p{order_by}{columns}, 'ARRAY' ) ?
+		   @{ $p{order_by}{columns} } :
+		   $p{order_by}{columns} );
+
+	    $s = lc $p{order_by}{sort}
+		if exists $p{order_by}{sort};
+	}
+
+	$p{sql}->order_by(@c);
+	$p{sql}->$s() if $s;
     }
 
     if ( exists $p{limit} )
@@ -198,7 +209,19 @@ sub row_count
 {
     my $self = shift;
 
-    my $sql = $self->schema->sqlmaker->select->count('*')->from($self);
+    return $self->func( func => 'COUNT',
+			args => '*',
+			@_ );
+}
+
+sub func
+{
+    my $self = shift;
+    my %p = @_;
+
+    my $func = $p{func};
+    my @args = exists $p{args} ? ( UNIVERSAL::isa( $p{args}, 'ARRAY' ) ? @{ $p{args} } : $p{args} ) : ();
+    my $sql = $self->schema->sqlmaker->select->$func(@args)->from($self);
 
     $self->_add_where_clause($sql, @_);
 
@@ -410,14 +433,17 @@ whatever is described:
 
 =over 4
 
-=item * order_by => $group_by_clause
-
-=item * group_by => $sort_by_clause
+=item * order_by => see below
 
 =back
 
-These items should be valid SQL, though there is not need to include
-the keywords 'ORDER BY' or 'GROUP BY'.
+This parameter can take one of three different things.  The simplest
+form is to just give it a single column object.  Alternatively, you
+can give it an array reference to a list of column objects.  Finally
+you can give it a hash reference such as:
+
+  order_by => { columns => $column_object or \@column_objects,
+                sort => 'ASC' or 'DESC' }
 
 =head2 rows_where
 
@@ -481,6 +507,30 @@ representing the query.
 =head3 Returns
 
 A scalar indicating how many rows the table has.
+
+=head2 func
+
+=head3 Parameters
+
+=over 4
+
+=item * func => $function
+
+=item * args => \@args
+
+=item * where => see L<rows_where|Alzabo::Runtime::Table/rows_where> method
+
+=back
+
+This method is used to call arbitrary SQL functions such as 'AVG' or
+'MAX'.  If the function needs arguments, these can be passed in the
+C<args> parameter.  These may be either strings or C<Alzabo::Column>
+objects.  Either way, the arguments will be joined together by commas
+and placed in parentheses.
+
+=head3 Returns
+
+The value returned from the SQL function.
 
 =for pod_merge schema
 

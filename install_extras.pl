@@ -11,7 +11,7 @@ use Getopt::Long;
 print <<"EOF";
 
 Currently, Alzabo only comes with one schema creation interface.  This
-is a web application that uses HTML::Mason (0.87 or greater) and
+is a web application that uses HTML::Mason (0.896 or greater) and
 requires mod_perl to function.  Modifying the code to not require
 mod_perl would be fairly trivial (just modify the file
 './mason/common/redirect').

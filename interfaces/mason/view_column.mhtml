@@ -61,9 +61,9 @@
 
     <tr>
      <td>
-      Allow nulls: <input type="checkbox" name="null" <% $c->nullable ? 'checked="checked"' : '' %>><br>
-      Primary key: <input type="checkbox" name="primary_key" <% $c->is_primary_key ? 'checked="checked"' : '' %>><br>
-      Sequenced: <input type="checkbox" name="sequenced" <% $c->sequenced ? 'checked="checked"' : '' %>>
+      Allow nulls: <input type="checkbox" name="nullable" value="1" <% $c->nullable ? 'checked="checked"' : '' %>><br>
+      Primary key: <input type="checkbox" name="primary_key" value="1" <% $c->is_primary_key ? 'checked="checked"' : '' %>><br>
+      Sequenced: <input type="checkbox" name="sequenced" value="1" <% $c->sequenced ? 'checked="checked"' : '' %>>
      </td>
     </tr>
 

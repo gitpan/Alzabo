@@ -21,7 +21,7 @@ $Data::Dumper::Indent = 0;
 
 my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
 
-my $TESTS_PER_RUN = 55;
+my $TESTS_PER_RUN = 64;
 my $SYNC_TESTS_PER_RUN = 15;
 my $test_count = ($TESTS_PER_RUN * (@$tests + 3)) + ($SYNC_TESTS_PER_RUN * 2);
 

@@ -1,14 +1,17 @@
 Short term:
 
+- Robin Berjon suggested a single documentation 'page' that contains a
+  list of all the method and what objects they apply to.
+
 - Alzabo::ObjectCache::DBIStore - this module will also do syncing all
   in one.  This will allow the caching/syncing to occur across
   multiple machines with multiple processes.
 
 - Make multiple row classes (one for caching and for non-caching).
-Maybe also create null row class (always return undef).
+  Maybe also create null row class (always return undef).
 
 - expand regression tests for core API - SQLMaker, RDBMSRules,
-MethodMaker, Runtime;:Table->set_group
+  Runtime::Table->set_group
 
 - After conversion, make local $table->{prefetch} work (tied scalar).
   I'm no longer sure this is possible.  My most recent attempt caused
@@ -22,12 +25,20 @@ MethodMaker, Runtime;:Table->set_group
 - non-Mason interface (curses, plain CGI)
 
 - make caching system more atomic.  I'm sure there are subtle race
-conditions in there that should be fixed (timestamps are generated
-more than once, which could be a problem, for one).
+  conditions in there that should be fixed (timestamps are generated
+  more than once, which could be a problem, for one).
+
+- switch to cardinality/dependency concepts for ForeignKeys.
+  Internals I'm not worried about as much as external API and language
+  (in www interface, for example).
 
 Medium term:
 
-- support any and all SQL, of arbitrary complexity.
+- attempt to guess relationships when reverse engineering a schema
+  without foreign key information.
+
+- support any and all SQL, of arbitrary complexity.  This is actually
+  a decent part of the way there already.
 
 - rewrite data browser to not suck so much
 

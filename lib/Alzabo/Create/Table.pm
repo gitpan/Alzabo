@@ -9,7 +9,7 @@ use Tie::IxHash;
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.36 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.37 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -366,7 +366,7 @@ index, and foreign key objects.
 
 =head1 INHERITS FROM
 
-Alzabo::Table
+C<Alzabo::Table>
 
 =for pod_merge merged
 

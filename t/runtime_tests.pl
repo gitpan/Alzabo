@@ -110,12 +110,15 @@ sub run_tests
     ok( ! $@,
 	"Inserting a non-nullable column with a default as NULL should not have produced an exception: $@" );
 
-    $emp{bill}->update( cash => undef );
-    ok ( ! defined $emp{bill}->select('cash'),
-	 "cash for bill should be NULL but it's", $emp{bill}->select('cash') );
+    $emp{bill}->update( cash => undef, smell => 'hello!' );
+    ok( ! defined $emp{bill}->select('cash'),
+	"cash for bill should be NULL but it's", $emp{bill}->select('cash') );
+
+    ok( $emp{bill}->select('smell') eq 'hello!',
+	"smell for bill should be 'hello!' but it's", $emp{bill}->select('smell') );
 
     eval { $emp{bill}->update( name => undef ) };
-    ok ( $@ && $@->isa('Alzabo::Exception::Params'),
+    ok( $@ && $@->isa('Alzabo::Exception::Params'),
 	 "Attempt to update a non-nullable column to NULL should have produced an Alzabo::Exception::Params exception: $@" );
 
     eval { $dep{borg}->update( manager_id => $emp{bill}->select('employee_id') ); };
@@ -206,7 +209,7 @@ sub run_tests
     $emp{bill}->delete;
 
     eval { my $c = $emp_t->row_by_pk( pk => $id ) };
-    ok ( $@ && $@->isa('Alzabo::Exception::NoSuchRow' ),
+    ok( $@ && $@->isa('Alzabo::Exception::NoSuchRow' ),
 	 "There should be no bill row in the employee table" );
 
     eval { $emp{bill}->select('name'); };
@@ -217,7 +220,7 @@ sub run_tests
     eval { $emp_proj_t->row_by_pk( pk => { employee_id => $id,
 					   project_id => $proj{extend}->select('project_id') } ); };
     # 5.6.0 is broken and gives a wack error here
-    ok ( $@ && ( $@->isa('Alzabo::Exception::NoSuchRow') || $] == 5.006 ),
+    ok( $@ && ( $@->isa('Alzabo::Exception::NoSuchRow') || $] == 5.006 ),
 	 "There should be no bill/extend row in the employee_project table: $@" );
 
     ok( ! defined $dep{borg}->select('manager_id'),
@@ -230,20 +233,40 @@ sub run_tests
     $emp_t->insert( values => { name => 'al', smell => 'bad', department_id => $dep_id } );
 
     my @emps = eval { $emp_t->all_rows( order_by => { columns => $emp_t->column('name') } )->all_rows };
-    ok ( ! $@, "Error attempting to select all rows with ORDER BY: $@" );
-    ok ( scalar @emps == 4,
+    ok( ! $@, "Error attempting to select all rows with ORDER BY: $@" );
+    ok( scalar @emps == 4,
 	"There are ", scalar @emps, " employee table rows rather than 4" );
-    ok ( $emps[0]->select('name') eq 'al' &&
+    ok( $emps[0]->select('name') eq 'al' &&
+	 $emps[1]->select('name') eq 'bob' &&
+	 $emps[2]->select('name') eq 'rachel' &&
+	 $emps[3]->select('name') eq 'unit 2',
+	 "The rows returned from the ORDER BY query do not appear to be ordered alphabetically by name" );
+
+    @emps = eval { $emp_t->all_rows( order_by => $emp_t->column('name') )->all_rows };
+    ok( ! $@, "Error attempting to select all rows with ORDER BY: $@" );
+    ok( scalar @emps == 4,
+	"There are ", scalar @emps, " employee table rows rather than 4" );
+    ok( $emps[0]->select('name') eq 'al' &&
+	 $emps[1]->select('name') eq 'bob' &&
+	 $emps[2]->select('name') eq 'rachel' &&
+	 $emps[3]->select('name') eq 'unit 2',
+	 "The rows returned from the ORDER BY query do not appear to be ordered alphabetically by name" );
+
+    @emps = eval { $emp_t->all_rows( order_by => [ $emp_t->column('name') ] )->all_rows };
+    ok( ! $@, "Error attempting to select all rows with ORDER BY: $@" );
+    ok( scalar @emps == 4,
+	"There are ", scalar @emps, " employee table rows rather than 4" );
+    ok( $emps[0]->select('name') eq 'al' &&
 	 $emps[1]->select('name') eq 'bob' &&
 	 $emps[2]->select('name') eq 'rachel' &&
 	 $emps[3]->select('name') eq 'unit 2',
 	 "The rows returned from the ORDER BY query do not appear to be ordered alphabetically by name" );
 
     @emps = eval { $emp_t->all_rows( order_by => { columns => $emp_t->column('smell') } )->all_rows };
-    ok ( ! $@, "Error attempting to select all rows with ORDER BY (2): $@" );
-    ok ( scalar @emps == 4,
+    ok( ! $@, "Error attempting to select all rows with ORDER BY (2): $@" );
+    ok( scalar @emps == 4,
 	"There are", scalar @emps, "employee table rows rather than 4" );
-    ok ( $emps[0]->select('name') eq 'bob' &&
+    ok( $emps[0]->select('name') eq 'bob' &&
 	 $emps[1]->select('name') eq 'al' &&
 	 $emps[2]->select('name') eq 'unit 2' &&
 	 $emps[3]->select('name') eq 'rachel',
@@ -251,10 +274,10 @@ sub run_tests
 
     @emps = eval { $emp_t->all_rows( order_by => { columns => $emp_t->column('smell'),
 						   sort => 'desc' } )->all_rows };
-    ok ( ! $@, "Error attempting to select all rows with ORDER BY (3): $@" );
-    ok ( scalar @emps == 4,
+    ok( ! $@, "Error attempting to select all rows with ORDER BY (3): $@" );
+    ok( scalar @emps == 4,
 	"There are", scalar @emps, "employee table rows rather than 4" );
-    ok ( $emps[0]->select('name') eq 'rachel' &&
+    ok( $emps[0]->select('name') eq 'rachel' &&
 	 $emps[1]->select('name') eq 'unit 2' &&
 	 $emps[2]->select('name') eq 'al' &&
 	 $emps[3]->select('name') eq 'bob',
@@ -266,24 +289,30 @@ sub run_tests
     ok( $count == 4,
 	"There are $count employee table rows rather than 4" );
 
+    $count = eval { $emp_t->func( func => 'COUNT', args => $emp_t->column('employee_id') ); };
+
+    ok( ! $@, "Error attempting to get row count via func method: $@" );
+    ok( $count == 4,
+	"There are $count employee table rows rather than 4" );
+
     @emps = eval { $emp_t->all_rows( order_by => { columns => $emp_t->column('smell'),
 						   sort => 'desc' },
 				     limit => 2 )->all_rows };
 
-    ok ( ! $@, "Error attempting to select all rows with ORDER BY & LIMIT: $@" );
-    ok ( scalar @emps == 2,
+    ok( ! $@, "Error attempting to select all rows with ORDER BY & LIMIT: $@" );
+    ok( scalar @emps == 2,
 	"There are", scalar @emps, "employee table rows rather than 2" );
-    ok ( $emps[0] && $emps[0]->select('name') eq 'rachel' &&
+    ok( $emps[0] && $emps[0]->select('name') eq 'rachel' &&
 	 $emps[1] && $emps[1]->select('name') eq 'unit 2',
 	 "The rows returned from the ORDER BY & LIMIT query do not appear to be reverse ordered alphabetically by smell" );
 
     @emps = eval { $emp_t->all_rows( order_by => { columns => $emp_t->column('smell'),
 						   sort => 'desc' },
 				     limit => [2, 2] )->all_rows };
-    ok ( ! $@, "Error attempting to select all rows with ORDER BY & LIMIT: $@" );
-    ok ( scalar @emps == 2,
+    ok( ! $@, "Error attempting to select all rows with ORDER BY & LIMIT: $@" );
+    ok( scalar @emps == 2,
 	"There are", scalar @emps, "employee table rows rather than 2" );
-    ok ( $emps[0] && $emps[0]->select('name') eq 'al' &&
+    ok( $emps[0] && $emps[0]->select('name') eq 'al' &&
 	 $emps[1] && $emps[1]->select('name') eq 'bob',
 	 "The rows returned from the ORDER BY & LIMIT query do not appear to be reverse ordered alphabetically by smell (or the offset is not being respected)" );
 
@@ -294,7 +323,7 @@ sub run_tests
     $char_row->delete;
     eval { $s->table('char_pk')->row_by_pk( pk => 'pk value' ); };
     # 5.6.0 is broken and gives a wack error here
-    ok ( $@ && ( $@->isa('Alzabo::Exception::NoSuchRow') || $] == 5.006 ),
+    ok( $@ && ( $@->isa('Alzabo::Exception::NoSuchRow') || $] == 5.006 ),
 	 "Attempt to fetch deleted row should have thrown an Alzabo::Exception::NoSuchRow exception but threw: $@" );
 
     my $val;
@@ -308,7 +337,7 @@ sub run_tests
 	"Insert into char_pk table threw exception: $@" );
 
     eval { $s->table('char_pk')->row_by_pk( pk => 'pk value' ); };
-    ok ( ! $@,
+    ok( ! $@,
 	 "Attempt to fetch char_pk row where char => 'pk value' threw an exception: $@" );
 
     my $val;

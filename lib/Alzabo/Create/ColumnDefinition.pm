@@ -7,7 +7,7 @@ use Alzabo::Create;
 
 use base qw(Alzabo::ColumnDefinition);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -46,6 +46,9 @@ sub set_type
     eval
     {
 	$self->owner->table->schema->rules->validate_column_type($type);
+	$self->owner->table->schema->rules->validate_primary_key($self->owner)
+	    if eval { $self->owner->is_primary_key };
+	# eval ^^ cause if we're creating the column its not in the table yet
     };
     if ($@)
     {
