@@ -285,7 +285,7 @@ sub make_schema
     # self relation
     $s->add_relation( columns_from => $loc->column('parent_location_id'),
 		      columns_to => $loc->column('location_id'),
-		      cardinality => [ 1, 'n' ],
+		      cardinality => [ 'n', 1 ],
 		      from_is_dependent => 0,
 		      to_is_dependent => 0,
 		    );

@@ -151,8 +151,8 @@ foreach ( qw( BerkeleyDB SDBM_File DB_File IPC ) )
     }
 }
 
-my $TESTS_PER_RUN = 233;
-my $SYNC_TESTS_PER_RUN = 19;
+my $TESTS_PER_RUN = 249;
+my $SYNC_TESTS_PER_RUN = 20;
 
 #
 # For each test in @$tests, the non-sync tests will be run once.  For

@@ -8,7 +8,7 @@ use BerkeleyDB qw( DB_CREATE DB_INIT_MPOOL DB_INIT_CDB DB_NEXT DB_NOOVERWRITE DB
 use File::Basename ();
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -32,6 +32,7 @@ sub import
 			       )
 	or Alzabo::Exception->throw( error => "Can't create environment: $BerkeleyDB::Error\n" );
 
+    $suffix ||= '';
     $DB = BerkeleyDB::Hash->new( -Filename => $filename . $suffix,
 				 -Mode => 0644,
 				 -Env => $ENV,
@@ -110,8 +111,9 @@ sub store_object
 sub delete_from_cache
 {
     my $self = shift;
+    my $id = shift;
 
-    $self->{dbm}->db_del(shift);
+    $self->{dbm}->db_del($id);
 }
 
 __END__

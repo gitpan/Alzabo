@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.69 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.72 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -32,10 +32,9 @@ sub new
 					       optional => 1 },
 			  } );
 
-    unless ( ref $p{prefetch} && $p{time} )
+    unless ( ref $p{prefetch} && %{ $p{prefetch} } && $p{time} )
     {
-	delete $p{prefetch};
-	delete $p{time};
+	delete @p{ 'prefetch', 'time' };
     }
 
     my $self;
@@ -321,9 +320,15 @@ sub id
     else
     {
 	my $id_hash = $self->_make_id_hash(%p);
-	$id_string = join ';:;_;:;', ( $p{table}->schema->name,
-				       $p{table}->name,
-				       map { $_, $id_hash->{$_} } sort keys %$id_hash );
+
+	{
+	    local $^W; # weirdly, enough there are code paths that can
+                       # lead here that'd lead to $id_hash having some
+                       # values that are undef
+	    $id_string = join ';:;_;:;', ( $p{table}->schema->name,
+					   $p{table}->name,
+					   map { $_, $id_hash->{$_} } sort keys %$id_hash );
+	}
     }
 
     return $id_string;
@@ -382,7 +387,7 @@ sub STORABLE_thaw
     my $s = Alzabo::Runtime::Schema->load_from_file( name => delete $self->{schema} );
     $self->{table} = $s->table( delete $self->{table_name} );
 
-    if ( $Alzabo::ObjectCache::VERSION )
+    if ( $Alzabo::ObjectCache::VERSION && $self->can('cache_id') )
     {
 	$self->{cache} = Alzabo::ObjectCache->new;
 	$self->{cache}->store_object($self, delete $self->{sync_time} );

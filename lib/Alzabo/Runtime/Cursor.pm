@@ -5,7 +5,7 @@ use vars qw($VERSION);
 
 use Alzabo::Runtime;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -200,21 +200,7 @@ Even more importantly than that, the old implementation used up about
 10MB of memory versus about 4MB!  Now imagine that with a 1,000,000
 row table.
 
-For those curious to know why, here's the reason.  Under perl, the
-following code:
-
- foreach (1..1_000_000)
- {
-     print "$_\n";
- }
-
-first constructs a temporary array with _all_ the values (that's an
-array one million scalars long!) and then returns it one by one.  It
-takes a nontrivial amount of time to construct that array, meaning
-that the first print statement is delayed.  Even worse, the array uses
-up memory.
-
-Thus Alzabo now uses cursors so can scale better.  This is a
+Thus Alzabo uses cursors so it can scale better.  This is a
 particularly big win in the case where you are working through a long
 list of rows and may stop before the end is reached.  With cursors,
 Alzabo creates only as many rows as you need.  Plus the start up time

@@ -57,6 +57,19 @@ version of MySQL being used.
 
 Again, Alzabo ignores these lengths when reverse engineering a schema.
 
+=item *
+
+All of this may lead to apparent inconsistencies when using the with
+the C<<
+Alzabo::Create::Schema->sync_backend|Alzabo::Create::Schema/"sync_backend"
+>> or C<<
+Alzabo::Create::Schema->sync_backend_sql|Alzabo::Create::Schema/"sync_backend_sql"
+>> methods.  If you are using this feature from the web based schema
+creator, you will see that even immediately after running the
+C<sync_backend> method, Alzabo may still think there are differences
+between the two schemas.  This is not a problem, as running the SQL
+Alzabo generates will not actually change your database.
+
 =back
 
 =head2 Transactions

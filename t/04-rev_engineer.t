@@ -49,7 +49,7 @@ foreach my $test (@$tests)
 					    new => $s2 );
 
     my $sql = join "\n", @diff;
-    ok ( ! $sql,
+    is ( $sql, '',
 	 "Reverse engineered schema's SQL should be the same as the original's" );
 
     $s1->delete;

@@ -9,7 +9,7 @@ use Alzabo::Runtime;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.45 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.46 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
@@ -431,7 +431,7 @@ sub make_self_relation
     my $fk = shift;
 
     my (@pairs, @reverse_pairs);
-    if ($fk->is_many_to_one)
+    if ($fk->is_one_to_many)
     {
 	@pairs = map { [ $_->[0], $_->[1]->name ] } $fk->column_pairs;
 	@reverse_pairs = map { [ $_->[1], $_->[0]->name ] } $fk->column_pairs;
@@ -457,8 +457,7 @@ sub make_self_relation
 	    *{$parent} =
 		sub { my $self = shift;
 		      my @where = map { [ $_->[0], '=', $self->select( $_->[1] ) ] } @pairs;
-		      return $table->rows_where( where => \@where,
-						 @_ )->next; };
+		      return $table->one_row( where => \@where, @_ ) };
 	}
     }
 
@@ -1064,8 +1063,9 @@ C<E<lt>class rootE<gt>::Table::<table nameE<gt>>
 =head3 Rows
 
 C<E<lt>class rootE<gt>::Row::<table nameE<gt>>, subclassed by
-C<E<lt>class rootE<gt>::CachedRow::<table nameE<gt>> and C<E<lt>class
-rootE<gt>::UncachedRow::<table nameE<gt>>
+C<E<lt>class rootE<gt>::CachedRow::<table nameE<gt>>, C<E<lt>class
+rootE<gt>::UncachedRow::<table nameE<gt>>, and C<E<lt>class
+rootE<gt>::PotentialRow::<table nameE<gt>>
 
 With a root of 'My::Stuff', and a schema with only two tables, 'Movie'
 and 'Image', this would result in the following class names:
@@ -1075,10 +1075,12 @@ and 'Image', this would result in the following class names:
  My::Stuff::Row::Movie
    My::Stuff::CachedRow::Movie
    My::Stuff::UncachedRow::Movie
+   My::Stuff::PotentialRow::Movie
  My::Stuff::Table::Image
  My::Stuff::Row::Image
    My::Stuff::CachedRow::Image
    My::Stuff::UncachedRow::Image
+   My::Stuff::PotentialRow::Image
 
 =head2 Loading Classes
 

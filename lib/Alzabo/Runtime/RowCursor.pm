@@ -12,7 +12,7 @@ use Time::HiRes qw(time);
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -27,11 +27,11 @@ sub new
 			    distinct => { optional => 1 },
 			  } );
 
-    my $self = bless \%p, $class;
-
-    $self->{seen} = {};
-
-    $self->{errors} = [];
+    my $self = bless { %p,
+		       time => sprintf( '%11.23f', time ),
+		       seen => {},
+		       errors => [],
+		     }, $class;
 
     return $self;
 }
@@ -80,6 +80,7 @@ sub next
 	$row = eval { $self->{table}->row_by_pk( @_,
 						 pk => \%hash,
 						 prefetch => \%prefetch,
+						 time => $self->{time},
 						 %{ $self->{row_params} },
 					       ); };
 	if ($@)

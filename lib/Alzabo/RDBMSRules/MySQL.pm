@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.53 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.56 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -608,6 +608,17 @@ my %ignored_defaults = ( DATETIME => '0000-00-00 00:00:00',
 			 DECIMAL => '0.00',
 			 FLOAT => '0.00',
 			 YEAR => '0000',
+			 TINYINT => 0,
+			 SMALLINT => 0,
+			 INTEGER => 0,
+			 MEDIUMINT => 0,
+			 BIGINT => 0,
+			 CHAR => '',
+			 VARCHAR => '',
+			 TINTYTEXT => '',
+			 SMALLTEXT => '',
+			 TEXT => '',
+			 LONGTEXT => '',
 		       );
 sub reverse_engineer
 {
@@ -631,7 +642,7 @@ sub reverse_engineer
                 ($type, @a) = split /\s+/, $row->[1];
             }
 
-	    my $default = $row->[4] if $row->[4] && uc $row->[4] ne 'NULL';
+	    my $default = $row->[4] if defined $row->[4] && uc $row->[4] ne 'NULL';
 
 	    my $seq = 0;
 	    foreach my $a ( split /\s+/, $row->[5] )
@@ -657,7 +668,9 @@ sub reverse_engineer
 			 $type eq 'SMALLINT' && ( $2 == 6 || $2 == 5 ) ||
 			 $type eq 'MEDIUMINT' && ( $2 == 6 || $2 == 5 ) ||
 			 $type eq 'INTEGER' && ( $2 == 11 || $2 == 10 )  ||
-			 $type eq 'BIGINT' && ( $2 == 21 || $2 == 20 ) )
+			 $type eq 'BIGINT' && ( $2 == 21 || $2 == 20 ) ||
+			 $type eq 'YEAR' && $2 == 4
+		       )
 		{
 		    $p{length} = $2;
 		    $p{precision} = $3;
@@ -666,8 +679,11 @@ sub reverse_engineer
 
 	    $type = $self->_capitalize_type($type);
 
-	    $default = undef
-		if exists $ignored_defaults{$type} && $default eq $ignored_defaults{$type};
+	    if (defined $default)
+	    {
+		$default = undef
+		    if exists $ignored_defaults{$type} && $default eq $ignored_defaults{$type};
+	    }
 
  	    my $c = $t->make_column( name => $row->[0],
 				     type => $type,

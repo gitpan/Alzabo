@@ -21,7 +21,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.73 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.74 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -786,7 +786,7 @@ sub sync_backend
 
     $self->{driver}->connect(@_);
 
-    foreach my $statement ( $self->sync_existing_sql(@_) )
+    foreach my $statement ( $self->sync_backend_sql(@_) )
     {
 	$self->driver->do( sql => $statement );
     }
@@ -1266,6 +1266,17 @@ schema match the Alzabo schema object.
 
 After this method is called, the schema will be considered to be
 instantiated.
+
+This method will never be perfect because some RDBMS backends alter
+table definitions as they are created.  For example, MySQL has default
+column "lengths" for all of its integer columns.  Alzabo tries to
+account for these.
+
+In the end, this means that Alzabo may never think that a schema in
+the RDBMS exactly matches the state of the Alzabo schema object.  Even
+immediately after running this method, running it again may still
+cause it to execute SQL commands.  Fortunately, the SQL it generates
+will not cause anything to break.
 
 =head3 Parameters
 

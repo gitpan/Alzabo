@@ -11,7 +11,7 @@ use base qw(Alzabo::SQLMaker);
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
 
 my $MADE_LITERALS;
 my %functions;
@@ -76,8 +76,7 @@ sub _make_literals
 		  groups => [ 'string' ],
 		);
 
-    foreach ( [ WEEK => [1,0], [ 'datetime' ] ],
-	      [ ENCRYPT => [1,1], [ 'misc' ] ] )
+    foreach ( [ ENCRYPT => [1,1], [ 'misc' ] ] )
     {
 	make_literal( literal => $_->[0],
 		      min => 0,
@@ -161,6 +160,18 @@ sub _make_literals
 		    );
     }
 
+    foreach ( [ WEEK => [1,0], [ 'datetime' ] ],
+	      [ YEARWEEK => [1,0], [ 'datetime' ] ],
+	    )
+    {
+	make_literal( literal => $_->[0],
+		      min => 1,
+		      max => 2,
+		      quote => $_->[1],
+		      groups => $_->[2],
+		    );
+    }
+
     make_literal( literal => 'CONCAT_WS',
 		  min => 3,
 		  max => undef,
@@ -230,7 +241,7 @@ sub _make_literals
 	      [ DAYNAME  => [1], [ 'datetime' ] ],
 	      [ MONTHNAME  => [1], [ 'datetime' ] ],
 	      [ QUARTER  => [1], [ 'datetime' ] ],
-	      [ YEARWEEK  => [1], [ 'datetime' ] ],
+	      [ YEAR  => [1], [ 'datetime' ] ],
 	      [ HOUR  => [1], [ 'datetime' ] ],
 	      [ MINUTE  => [1], [ 'datetime' ] ],
 	      [ SECOND  => [1], [ 'datetime' ] ],
@@ -578,6 +589,7 @@ functions (organized by tag) are:
  DAYNAME
  MONTHNAME
  QUARTER
+ YEAR
  YEARWEEK
  HOUR
  MINUTE

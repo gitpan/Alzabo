@@ -9,7 +9,7 @@ use Class::Factory::Util;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.27 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.29 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -131,6 +131,7 @@ sub new
 		   sql => '',
 		   bind => [],
 		   driver => $driver,
+		   as_id => 'aaaaa',
 		 }, $class;
 }
 
@@ -163,7 +164,11 @@ sub select
 	}
 	elsif ( UNIVERSAL::isa( $_, 'Alzabo::SQLMaker::Literal' ) )
 	{
-	    push @sql, $_->as_string( $self->{driver} );
+	    my $string = $_->as_string( $self->{driver} );
+	    push @sql, " $string AS " . $self->{as_id};
+	    $self->{functions}{$string} = $self->{as_id};
+
+	    ++$self->{as_id};
 	}
 	elsif ( ! ref $_ )
 	{
@@ -370,7 +375,7 @@ sub subgroup_end
     $self->{sql} .= ' )';
     $self->{subgroup}--;
 
-    $self->{last_op} = 'subgroup_start';
+    $self->{last_op} = 'subgroup_end';
 
     return $self;
 }
@@ -521,8 +526,10 @@ sub order_by
 
     validate_pos( @_, ( { type => SCALAR | OBJECT,
 			  callbacks =>
-			  { 'column_or_sort' => sub { UNIVERSAL::isa( $_[0], 'Alzabo::Column' ) ||
-				                      $_[0] =~ /^ASC|DESC$/i } } }
+			  { 'column_or_function_or_sort' =>
+			    sub { UNIVERSAL::isa( $_[0], 'Alzabo::Column' ) ||
+				  UNIVERSAL::isa( $_[0], 'Alzabo::SQLMaker::Literal' ) ||
+				  $_[0] =~ /^ASC|DESC$/i } } }
 		      ) x @_ );
 
     $self->{sql} .= ' ORDER BY ';
@@ -546,6 +553,15 @@ sub order_by
 	    $self->{sql} .= join '.', $i->table->name, $i->name;
 
 	    $last = 'column';
+	}
+	elsif ( UNIVERSAL::isa( $i, 'Alzabo::SQLMaker::Literal' ) )
+	{
+	    my $string = $i->as_string( $self->{driver} );
+	    Alzabo::Exception::SQL->throw( error => "Cannot order by a previously unused function ($string)" )
+		unless $self->{functions}{$string};
+
+	    $self->{sql} .= ', ', if $x++;
+	    $self->{sql} .= $self->{functions}{$string};
 	}
 	else
 	{

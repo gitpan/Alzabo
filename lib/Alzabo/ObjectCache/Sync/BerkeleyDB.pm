@@ -11,7 +11,7 @@ use BerkeleyDB qw( DB_CREATE DB_INIT_MPOOL DB_INIT_CDB DB_NOTFOUND DB_NOOVERWRIT
 
 use File::Basename ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -35,6 +35,7 @@ sub import
 			       )
 	or Alzabo::Exception->throw( error => "Can't create environment: $BerkeleyDB::Error\n" );
 
+    $suffix ||= '';
     $DB = BerkeleyDB::Hash->new( -Filename => $filename . $suffix,
 				 -Mode => 0644,
 				 -Env => $ENV,

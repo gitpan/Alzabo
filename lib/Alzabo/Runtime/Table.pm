@@ -12,7 +12,7 @@ use Time::HiRes qw(time);
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.66 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.69 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -24,17 +24,17 @@ sub insert
 	unless $self->primary_key;
 
     my %p = @_;
-    validate( @_, { values => { type => HASHREF },
-		    ( map { $_ => { optional => 1 } } keys %p ) } );
+    %p = validate( @_, { values => { type => HASHREF, optional => 1 },
+			 ( map { $_ => { optional => 1 } } keys %p ) } );
 
-    my $vals = delete $p{values};
+    my $vals = delete $p{values} || {};
 
     my $driver = $self->schema->driver;
 
     my @pk = $self->primary_key;
     foreach my $pk (@pk)
     {
-	unless (exists $vals->{ $pk->name })
+	unless ( exists $vals->{ $pk->name } )
 	{
 	    if ($pk->sequenced)
 	    {
@@ -137,9 +137,21 @@ sub row_by_pk
 	}
     }
 
-    return $row_class->new( %p,
-			    table => $self,
-			    pk => $pk_val );
+    my $ignore = delete $p{ignore_nosuchrow};
+
+    my $row = eval { $row_class->new( %p,
+				      table => $self,
+				      pk => $pk_val ) };
+
+    if ( my $e = $@ )
+    {
+	unless ( $ignore && UNIVERSAL::isa( $e, 'Alzabo::Exception::NoSuchRow' ) )
+	{
+	    $e->rethrow if UNIVERSAL::can( $e, 'rethrow' );
+	}
+    }
+
+    return $row;
 }
 
 sub row_by_id
@@ -164,6 +176,47 @@ sub rows_where
     Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
 
     return $self->_cursor_by_sql( %p, sql => $sql );
+}
+
+sub one_row
+{
+    my $self = shift;
+    my %p = @_;
+
+    my $sql = $self->_make_sql;
+
+    Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
+
+    Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} ) if exists $p{order_by};
+
+    if ( exists $p{limit} )
+    {
+	$sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} );
+    }
+
+    my @return = $self->schema->driver->one_row( sql => $sql->sql,
+						 bind => $sql->bind );
+
+    my $time = time;
+
+    my @pk = $self->primary_key;
+
+    my (%pk, %prefetch);
+
+    @pk{ map { $_->name } @pk } = splice @return, 0, scalar @pk;
+
+    # Must be some prefetch pieces
+    if (@return)
+    {
+	@prefetch{ $self->prefetch } = @return;
+    }
+
+    return $self->row_by_pk( pk => \%pk,
+			     prefetch => \%prefetch,
+			     time => $time,
+			     no_cache => $p{no_cache},
+			     ignore_nosuchrow => 1,
+			   );
 }
 
 sub all_rows
@@ -409,7 +462,8 @@ generated from the sequence.
 
 =item * values => $hashref
 
-The hashref contains column names and values for the new row.
+The hashref contains column names and values for the new row.  This
+parameter is optional.
 
 =back
 
@@ -549,11 +603,16 @@ would generate something like:
 =item * order_by => see below
 
 This parameter can take one of two different values.  The simplest
-form is to just give it a single column object.  Alternatively, you
-can give it an array reference to a list of column objects and
-strings like this:
+form is to just give it a single column object or SQL function.
+Alternatively, you can give it an array reference to a list of column
+objects, SQL functions and strings like this:
 
-  order_by => [ $col1, $col2, 'DESC', $col3, 'ASC' ]
+  order_by => [ $col1, COUNT('*'), $col2, 'DESC', $col3, 'ASC' ]
+
+It is important to note that you cannot simply use any old SQL
+function as part of your order by clause.  You need to use a function
+that is exactly the same as one that was given as part of the select
+parameter.
 
 =item * group_by => see below
 
@@ -577,10 +636,11 @@ before the first one is returned.
 
 =head2 Methods that return an C<Alzabo::Runtime::RowCursor> object
 
-The following methods all return an
+The C<rows_where> and C<all_rows> methods both return an
 L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object
 representing the results of the query.  This is the case even for
-queries that end up returning one or zero rows.
+queries that end up returning one or zero rows, because Alzabo cannot
+know in advance how many rows these queries will return.
 
 =head2 rows_where
 
@@ -633,6 +693,13 @@ L<C<Alzabo::Runtime::Row-E<gt>new>|Alzabo::Runtime::Row/new> method
 
 An L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object
 representing the query.
+
+=head2 one_row
+
+This method takes the exact same parameters as the
+L<C<rows_where>|Alzabo::Runtime::table/rows_where> method but instead
+of returning a cursor, it returns a single row.  This object will be
+the row for the first id returned by the database.
 
 =head2 potential_row
 

@@ -194,6 +194,14 @@ sub run_tests
     is( $emp{2}->select('name'), 'unit 2',
 	"Check that row found has name of 'unit 2'" );
 
+    {
+	my $row;
+	eval_ok( sub { $row = $emp_t->one_row( where => [ $emp_t->column('employee_id'), '=', $emp2_id ] ) },
+		 "Retrieve 'unit 2' employee via one_row method" );
+
+	is( $row->select('name'), 'unit 2',
+	    "Check that the single row returned has the name 'unit 2'" );
+    }
 
     my %proj;
     $proj{extend} = $proj_t->insert( values => { name => 'Extend',
@@ -267,6 +275,21 @@ sub run_tests
     is( $rows[2]->table->name, 'project',
 	"Third row is from project table" );
 
+    {
+	my @rows;
+	eval_ok( sub { @rows = $s->one_row( tables   => [ $emp_t, $emp_proj_t, $proj_t ],
+					    where    => [ $emp_t->column('employee_id'), '=', 1 ],
+					    order_by => $proj_t->column('project_id') ) },
+		 "Join employee, employee_project, and project tables where employee_id = 1 using one_row method" );
+
+	is( $rows[0]->table->name, 'employee',
+	    "First row is from employee table" );
+	is( $rows[1]->table->name, 'employee_project',
+	    "Second row is from employee_project table" );
+	is( $rows[2]->table->name, 'project',
+	    "Third row is from project table" );
+    }
+
     my $first_proj_id = $rows[2]->select('project_id');
     @rows = $cursor->next;
     my $second_proj_id = $rows[2]->select('project_id');
@@ -323,6 +346,14 @@ sub run_tests
 
     isa_ok( $@, 'Alzabo::Exception::Logic',
 	    "Exception thrown from join with table map that does not connect" );
+
+    eval_ok( sub { @rows = $s->join( tables => $emp_t,
+				     where  => [ $emp_t->column('employee_id'), '=', 1 ] )->all_rows },
+	     "Join with a single table" );
+    is( @rows, 1,
+	"Only one row should be returned" );
+    is( $rows[0]->select('employee_id'), 1,
+	"Returned employee should be employee number one" );
 
     {
 
@@ -437,77 +468,91 @@ sub run_tests
     $emp_t->insert( values => { name => 'rachel', smell => 'horrid', dep_id => $dep_id } );
     $emp_t->insert( values => { name => 'al', smell => 'bad', dep_id => $dep_id } );
 
-    my @emps;
-    eval_ok ( sub { @emps = $emp_t->all_rows( order_by =>
-					      { columns => $emp_t->column('name') } )->all_rows },
-	      "Select all employee rows with hashref to order_by" );
+    {
+	my @emps;
+	eval_ok ( sub { @emps = $emp_t->all_rows( order_by =>
+						  { columns => $emp_t->column('name') } )->all_rows },
+		  "Select all employee rows with hashref to order_by" );
 
-    is( scalar @emps, 4,
-	"There should be 4 rows in the employee table" );
-    is( $emps[0]->select('name'), 'al',
-	"First row name should be al" );
-    is( $emps[1]->select('name'), 'bob',
-	"Second row name should be bob" );
-    is( $emps[2]->select('name'), 'rachel',
-	"Third row name should be rachel" );
-    is( $emps[3]->select('name'), 'unit 2',
-	"Fourth row name should be 'unit 2'" );
+	is( scalar @emps, 4,
+	    "There should be 4 rows in the employee table" );
+	is( $emps[0]->select('name'), 'al',
+	    "First row name should be al" );
+	is( $emps[1]->select('name'), 'bob',
+	    "Second row name should be bob" );
+	is( $emps[2]->select('name'), 'rachel',
+	    "Third row name should be rachel" );
+	is( $emps[3]->select('name'), 'unit 2',
+	    "Fourth row name should be 'unit 2'" );
+    }
 
-    eval_ok( sub { @emps = $emp_t->all_rows( order_by => $emp_t->column('name') )->all_rows },
-	     "Select all employee rows with column obj to order_by" );
+    {
+	my @emps;
+	eval_ok( sub { @emps = $emp_t->all_rows( order_by => $emp_t->column('name') )->all_rows },
+		 "Select all employee rows with column obj to order_by" );
 
-    is( scalar @emps, 4,
-	"There should be 4 rows in the employee table" );
-    is( $emps[0]->select('name'), 'al',
-	"First row name should be al" );
-    is( $emps[1]->select('name'), 'bob',
-	"Second row name should be bob" );
-    is( $emps[2]->select('name'), 'rachel',
-	"Third row name should be rachel" );
-    is( $emps[3]->select('name'), 'unit 2',
-	"Fourth row name should be 'unit 2'" );
+	is( scalar @emps, 4,
+	    "There should be 4 rows in the employee table" );
+	is( $emps[0]->select('name'), 'al',
+	    "First row name should be al" );
+	is( $emps[1]->select('name'), 'bob',
+	    "Second row name should be bob" );
+	is( $emps[2]->select('name'), 'rachel',
+	    "Third row name should be rachel" );
+	is( $emps[3]->select('name'), 'unit 2',
+	    "Fourth row name should be 'unit 2'" );
+    }
 
-    eval_ok( sub { @emps = $emp_t->all_rows( order_by => [ $emp_t->column('name') ] )->all_rows },
-	     "Select all employee rows with arrayref to order_by" );
+    {
+	my @emps;
+	eval_ok( sub { @emps = $emp_t->all_rows( order_by => [ $emp_t->column('name') ] )->all_rows },
+		 "Select all employee rows with arrayref to order_by" );
 
-    is( scalar @emps, 4,
-	"There should be 4 rows in the employee table" );
-    is( $emps[0]->select('name'), 'al',
-	"First row name should be al" );
-    is( $emps[1]->select('name'), 'bob',
-	"Second row name should be bob" );
-    is( $emps[2]->select('name'), 'rachel',
-	"Third row name should be rachel" );
-    is( $emps[3]->select('name'), 'unit 2',
-	"Fourth row name should be 'unit 2'" );
+	is( scalar @emps, 4,
+	    "There should be 4 rows in the employee table" );
+	is( $emps[0]->select('name'), 'al',
+	    "First row name should be al" );
+	is( $emps[1]->select('name'), 'bob',
+	    "Second row name should be bob" );
+	is( $emps[2]->select('name'), 'rachel',
+	    "Third row name should be rachel" );
+	is( $emps[3]->select('name'), 'unit 2',
+	    "Fourth row name should be 'unit 2'" );
+    }
 
-    eval_ok( sub { @emps = $emp_t->all_rows( order_by =>
-					     { columns => $emp_t->column('smell') } )->all_rows },
-	     "Select all employee rows with hashref to order_by (by smell)" );
+    {
+	my @emps;
+	eval_ok( sub { @emps = $emp_t->all_rows( order_by =>
+						 { columns => $emp_t->column('smell') } )->all_rows },
+		 "Select all employee rows with hashref to order_by (by smell)" );
 
-    is( scalar @emps, 4,
-	"There should be 4 rows in the employee table" );
-    is( $emps[0]->select('name'), 'bob',
-	"First row name should be bob" );
-    is( $emps[1]->select('name'), 'al',
-	"Second row name should be al" );
-    is( $emps[2]->select('name'), 'unit 2',
-	"Third row name should be 'unit 2'" );
-    is( $emps[3]->select('name'), 'rachel',
-	"Fourth row name should be rachel" );
+	is( scalar @emps, 4,
+	    "There should be 4 rows in the employee table" );
+	is( $emps[0]->select('name'), 'bob',
+	    "First row name should be bob" );
+	is( $emps[1]->select('name'), 'al',
+	    "Second row name should be al" );
+	is( $emps[2]->select('name'), 'unit 2',
+	    "Third row name should be 'unit 2'" );
+	is( $emps[3]->select('name'), 'rachel',
+	    "Fourth row name should be rachel" );
+    }
 
-    eval_ok( sub { @emps = $emp_t->all_rows( order_by => { columns => $emp_t->column('smell'),
-							   sort => 'desc' } )->all_rows },
-	     "Select all employee rows order by smell (descending)" );
+    {
+	my @emps;
+	eval_ok( sub { @emps = $emp_t->all_rows( order_by => { columns => $emp_t->column('smell'),
+							       sort => 'desc' } )->all_rows },
+		 "Select all employee rows order by smell (descending)" );
 
-    is( $emps[0]->select('name'), 'rachel',
-	"First row name should be rachel" );
-    is( $emps[1]->select('name'), 'unit 2',
-	"Second row name should be 'unit 2'" );
-    is( $emps[2]->select('name'), 'al',
-	"Third row name should be al" );
-    is( $emps[3]->select('name'), 'bob',
-	"Fourth row name should be bob" );
+	is( $emps[0]->select('name'), 'rachel',
+	    "First row name should be rachel" );
+	is( $emps[1]->select('name'), 'unit 2',
+	    "Second row name should be 'unit 2'" );
+	is( $emps[2]->select('name'), 'al',
+	    "Third row name should be al" );
+	is( $emps[3]->select('name'), 'bob',
+	    "Fourth row name should be bob" );
+    }
 
     eval_ok( sub { $count = $emp_t->row_count },
 	     "Call row_count for employee table" );
@@ -539,36 +584,43 @@ sub run_tests
     is( $count, 4,
 	"There should still be just 4 rows" );
 
-    eval_ok( sub { @emps = $emp_t->all_rows( order_by => { columns => $emp_t->column('smell'),
-							   sort => 'desc' },
-					     limit => 2 )->all_rows },
-	     "Get all employee rows with ORDER BY and LIMIT" );
+    {
+	my @emps;
+	eval_ok( sub { @emps = $emp_t->all_rows( order_by => { columns => $emp_t->column('smell'),
+							       sort => 'desc' },
+						 limit => 2 )->all_rows },
+		 "Get all employee rows with ORDER BY and LIMIT" );
 
-    is( scalar @emps, 2,
-	"This should only return 2 rows" );
+	is( scalar @emps, 2,
+	    "This should only return 2 rows" );
 
-    is( $emps[0]->select('name'), 'rachel',
-	"First row should be rachel" );
-    is( $emps[1]->select('name'), 'unit 2',
-	"Second row is 'unit 2'" );
+	is( $emps[0]->select('name'), 'rachel',
+	    "First row should be rachel" );
+	is( $emps[1]->select('name'), 'unit 2',
+	    "Second row is 'unit 2'" );
+    }
 
-    eval_ok( sub { @emps = $emp_t->all_rows( order_by => { columns => $emp_t->column('smell'),
-							   sort => 'desc' },
-					     limit => [2, 2] )->all_rows },
-	     "Get all employee rows with ORDER BY and LIMIT (with offset)" );
+    {
+	my @emps;
+	eval_ok( sub { @emps = $emp_t->all_rows( order_by => { columns => $emp_t->column('smell'),
+							       sort => 'desc' },
+						 limit => [2, 2] )->all_rows },
+		 "Get all employee rows with ORDER BY and LIMIT (with offset)" );
 
-    is( scalar @emps, 2,
-	"This should only return 2 rows" );
+	is( scalar @emps, 2,
+	    "This should only return 2 rows" );
 
-    is( $emps[0]->select('name'), 'al',
-	"First row should be al" );
-    is( $emps[1]->select('name'), 'bob',
-	"Second row is bob" );
+	is( $emps[0]->select('name'), 'al',
+	    "First row should be al" );
+	is( $emps[1]->select('name'), 'bob',
+	    "Second row is bob" );
+    }
 
     # All this stuff with this 'char_pk' table is about making sure
     # that the caching system is ok when we insert a row into a table,
     # delete it, and then insert a new row with _the same primary key_
     my $char_row;
+    $::D = 1;
     eval_ok( sub { $char_row = $s->table('char_pk')->insert( values => { char_col => 'pk value' } ) },
 	     "Insert into char_pk table" );
 
@@ -586,6 +638,7 @@ sub run_tests
     }
 
     eval { $char_row->select('char_col'); };
+    $::D =0;
     $expect = $Alzabo::ObjectCache::VERSION ? 'Alzabo::Exception::Cache::Deleted' : 'Alzabo::Exception::NoSuchRow';
     isa_ok( $@, $expect,
 	    "Exception thrown from attempt to select from deleted row" );
@@ -615,22 +668,28 @@ sub run_tests
     is( $emp_t->row_count, 4,
 	"employee table should have 4 rows" );
 
-    my $smell = $emps[0]->select('smell');
-    is( $emp_t->row_count( where => [ $emp_t->column('smell'), '=', $smell ] ), 1,
-	"Call row_count method with where parameter." );
+    {
+	my @emps = $emp_t->all_rows( order_by => { columns => $emp_t->column('smell'),
+						   sort => 'desc' },
+				     limit => [2, 2] )->all_rows;
 
-    $emps[0]->delete;
-    eval { $emps[0]->update( smell => 'kaboom' ); };
-    $expect = $Alzabo::ObjectCache::VERSION ? 'Alzabo::Exception::Cache::Deleted' : 'Alzabo::Exception::NoSuchRow';
-    isa_ok( $@, $expect,
-	"Exception thrown from attempt to update a deleted row" );
+	my $smell = $emps[0]->select('smell');
+	is( $emp_t->row_count( where => [ $emp_t->column('smell'), '=', $smell ] ), 1,
+	    "Call row_count method with where parameter." );
 
-    my $row_id = $emps[1]->id;
-    my $row;
-    eval_ok( sub { $row = $emp_t->row_by_id( row_id => $row_id ) },
-	     "Fetch a row via the ->row_by_id method" );
-    is( $row->id, $emps[1]->id,
-	"Row retrieved via the ->row_by_id method should be the same as the row whose id was used" );
+	$emps[0]->delete;
+	eval { $emps[0]->update( smell => 'kaboom' ); };
+	$expect = $Alzabo::ObjectCache::VERSION ? 'Alzabo::Exception::Cache::Deleted' : 'Alzabo::Exception::NoSuchRow';
+	isa_ok( $@, $expect,
+		"Exception thrown from attempt to update a deleted row" );
+
+	my $row_id = $emps[1]->id;
+	my $row;
+	eval_ok( sub { $row = $emp_t->row_by_id( row_id => $row_id ) },
+		 "Fetch a row via the ->row_by_id method" );
+	is( $row->id, $emps[1]->id,
+	    "Row retrieved via the ->row_by_id method should be the same as the row whose id was used" );
+    }
 
     $emp_t->insert( values => { employee_id => 9000,
 				name => 'bob9000',
@@ -646,71 +705,110 @@ sub run_tests
 				dep_id => $dep_id } );
 
     my $eid_c = $emp_t->column('employee_id');
-    @emps = $emp_t->rows_where( where => [ [ $eid_c, '=', 9000 ],
-					   'or',
-					   [ $eid_c, '=', 9002 ] ] )->all_rows;
-    @emps = sort { $a->select('employee_id') <=> $b->select('employee_id') } @emps;
 
-    is( @emps, 2,
-	"Do a query with 'or' and count the rows" );
-    is( $emps[0]->select('employee_id'), 9000,
-	"First row returned should be employee id 9000" );
+    {
+	my @emps = $emp_t->rows_where( where => [ [ $eid_c, '=', 9000 ],
+						  'or',
+						  [ $eid_c, '=', 9002 ] ] )->all_rows;
 
-    is( $emps[1]->select('employee_id'), 9002,
-	"Second row returned should be employee id 9002" );
+	@emps = sort { $a->select('employee_id') <=> $b->select('employee_id') } @emps;
 
-    @emps = $emp_t->rows_where( where => [ [ $emp_t->column('smell'), '!=', 'c' ],
-					   'and',
-					   (
-					    '(',
-					    [ $eid_c, '=', 9000 ],
-					    'or',
-					    [ $eid_c, '=', 9002 ],
-					    ')',
-					   ),
-					 ] )->all_rows;
-    is( @emps, 1,
-	"Do another complex query with 'or' and subgroups" );
-    is( $emps[0]->select('employee_id'), 9000,
-	"The row returned should be employee id 9000" );
+	is( @emps, 2,
+	    "Do a query with 'or' and count the rows" );
+	is( $emps[0]->select('employee_id'), 9000,
+	    "First row returned should be employee id 9000" );
 
-    undef @emps;
-    @emps = $emp_t->rows_where( where => [ $eid_c, 'between', 9000, 9002 ] )->all_rows;
-    @emps = sort { $a->select('employee_id') <=> $b->select('employee_id') } @emps;
+	is( $emps[1]->select('employee_id'), 9002,
+	    "Second row returned should be employee id 9002" );
+    }
 
-    is( @emps, 3,
-	"Select using between should return 3 rows" );
-    is( $emps[0]->select('employee_id'), 9000,
-	"First row returned should be employee id 9000" );
-    is( $emps[1]->select('employee_id'), 9001,
-	"Second row returned should be employee id 9001" );
-    is( $emps[2]->select('employee_id'), 9002,
-	"Third row returned should be employee id 9002" );
+    {
+	my @emps = $emp_t->rows_where( where => [ [ $emp_t->column('smell'), '!=', 'c' ],
+						  'and',
+						  (
+						   '(',
+						   [ $eid_c, '=', 9000 ],
+						   'or',
+						   [ $eid_c, '=', 9002 ],
+						   ')',
+						  ),
+						] )->all_rows;
+	is( @emps, 1,
+	    "Do another complex query with 'or' and subgroups" );
+	is( $emps[0]->select('employee_id'), 9000,
+	    "The row returned should be employee id 9000" );
+    }
+
+    {
+	my @emps = $emp_t->rows_where( where => [ (
+						   '(',
+						   [ $eid_c, '=', 9000 ],
+						   'and',
+						   [ $eid_c, '=', 9000 ],
+						   ')',
+						  ),
+						  'or',
+						  (
+						   '(',
+						   [ $eid_c, '=', 9000 ],
+						   'and',
+						   [ $eid_c, '=', 9000 ],
+						   ')',
+						  ),
+						] )->all_rows;
+
+	is( @emps, 1,
+	    "Do another complex query with 'or', 'and' and subgroups" );
+	is( $emps[0]->select('employee_id'), 9000,
+	    "The row returned should be employee id 9000" );
+    }
+
+    {
+	my @emps = $emp_t->rows_where( where => [ $eid_c, 'between', 9000, 9002 ] )->all_rows;
+	@emps = sort { $a->select('employee_id') <=> $b->select('employee_id') } @emps;
+
+	is( @emps, 3,
+	    "Select using between should return 3 rows" );
+	is( $emps[0]->select('employee_id'), 9000,
+	    "First row returned should be employee id 9000" );
+	is( $emps[1]->select('employee_id'), 9001,
+	    "Second row returned should be employee id 9001" );
+	is( $emps[2]->select('employee_id'), 9002,
+	    "Third row returned should be employee id 9002" );
+    }
 
     $emp_t->insert( values => { name => 'Smelly',
 				smell => 'a',
 				dep_id => $dep_id,
 			      } );
 
-    @emps = eval { $emp_t->rows_where( where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ] )->all_rows };
+    {
+	my @emps = eval { $emp_t->rows_where( where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ] )->all_rows };
 
-    is( @emps, 4,
-	"There should be only 4 employees where the length of the smell column is 1" );
+	is( @emps, 4,
+	    "There should be only 4 employees where the length of the smell column is 1" );
+    }
 
-    eval_ok( sub { @emps = $emp_t->rows_where( where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ],
-					       limit => 2 )->all_rows },
-	     "Select all employee rows with WHERE and LIMIT" );
+    {
+	my @emps;
+	eval_ok( sub { @emps = $emp_t->rows_where( where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ],
+						   limit => 2 )->all_rows },
+		 "Select all employee rows with WHERE and LIMIT" );
 
-    is( scalar @emps, 2,
-       "Limit should cause only two employee rows to be returned" );
+	is( scalar @emps, 2,
+	    "Limit should cause only two employee rows to be returned" );
+    }
 
-    eval_ok( sub { @emps = $emp_t->rows_where( where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ],
-					       order_by => { columns => $emp_t->column('smell') },
-					       limit => 2 )->all_rows },
-	     "Select all employee rows with WHERE, ORDER BY, and LIMIT" );
+    {
+	my @emps;
+	eval_ok( sub { @emps = $emp_t->rows_where( where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ],
+						   order_by => { columns => $emp_t->column('smell') },
+						   limit => 2 )->all_rows },
+		 "Select all employee rows with WHERE, ORDER BY, and LIMIT" );
 
-    is( scalar @emps, 2,
-       "Limit should cause only two employee rows to be returned (again)" );
+	is( scalar @emps, 2,
+	    "Limit should cause only two employee rows to be returned (again)" );
+    }
 
     my @smells = $emp_t->function( select => [ $emp_t->column('smell'), COUNT( $emp_t->column('smell') ) ],
 				   group_by => $emp_t->column('smell') );
@@ -875,6 +973,25 @@ sub run_tests
 	"First project should be Extend - with limit via ->select" );
     is( $rows[0][1], 3,
 	"First project should have 3 employees - with limit via ->select" );
+
+    {
+	my @rows = eval{$s->function( select => [ $proj_t->column('name'),
+					     COUNT( $proj_t->column('name') ) ],
+				 tables => [ $emp_proj_t, $proj_t ],
+				 group_by => $proj_t->column('name'),
+				 order_by => [ COUNT( $proj_t->column('name') ), 'DESC' ] );};
+	warn $@ if $@;
+	is( @rows, 2,
+	    "Only two projects should be returned from schema->function ordered by COUNT(*)" );
+	is( $rows[0][0], 'Extend',
+	    "First project should be Extend" );
+	is( $rows[1][0], 'Embrace',
+	    "Second project should be Embrace" );
+	is( $rows[0][1], 3,
+	    "First project should have 3 employee" );
+	is( $rows[1][1], 1,
+	    "Second project should have 1 employees" );
+    }
 
     my $p1 = $proj_t->insert( values => { name => 'P1',
 					  department_id => $dep_id,
@@ -1282,8 +1399,10 @@ sub parent
     # This should come from the cache.
     $emp2 = $s->table('employee')->row_by_pk( pk => $emp2_id );
     eval { $emp2->update( name => 'newname3' ); };
-    isa_ok( $@, 'Alzabo::Exception::Cache::Expired',
-	    "Exception thrown from attempt to update row that is expired" );
+    is( $@ ? 1 : 0, 0,
+	"No exception should be thrown from attempt to update row recently retrieved from cache" );
+    is( $emp2->select('name'), 'newname3',
+	"emp2 name should now be 'newname3'" );
 
     # K.
     print $c_write "1\n";
@@ -1375,10 +1494,11 @@ sub parent
     # This is basically a test that the ->clear method for the cache
     # actually worked.
     my $rocko = $cursor->next;
+
     is( $rocko->select('name'), 'Rocko',
 	"The name of employee 1000 should now be 'Rocko'" );
 
-    $rocko->update( name => 'Bullo' );
+    eval{$rocko->update( name => 'Bullo' );}; warn $@ if $@;
 
     # W.
     print $c_write "1\n";
@@ -1471,16 +1591,17 @@ sub child
     eval { $emp2->update( name => 'newname4' ); };
 
     # L.
-    $tag = "Got exception attempting to update emp2 row";
-    print $p_write( $@ ? "0:$tag: $@" : "1:$tag" );
+    $tag = 'Attempting to update an expired row should throw an Alzabo::Exception::Cache::Expired exception';
+    my $ok = ref $@ && ref $@ eq 'Alzabo::Exception::Cache::Expired';
+    print $p_write( $@ ? "1:$tag" : "0:$tag: $@" );
     print $p_write "\n";
 
     # M.
     get_pipe_data($p_read);
 
     # N.
-    $tag = "Name should be 'newname4'. It is " . eval { $emp2->select('name') };
-    print $p_write( eval { $emp2->select('name') eq 'newname4' } ?
+    $tag = "Name should be 'newname3'. It is " . $emp2->select('name');
+    print $p_write( $emp2->select('name') eq 'newname3' ?
 		    "1:$tag" : "0:$tag: $@" );
     print $p_write "\n";
 

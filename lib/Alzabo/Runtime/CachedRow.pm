@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Runtime::Row);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -22,7 +22,7 @@ sub retrieve
 
     if ( $CACHE && ! $p{insert} )
     {
-	if ( my $row = $CACHE->fetch_object( $class->id(@_) ) )
+	if ( my $row = $CACHE->fetch_object( $class->id(%p) ) )
 	{
 	    $row->check_cache;
 	    return $row;
@@ -52,7 +52,7 @@ sub _init
     $self->{cache}->delete_from_cache($self)
 	if $p{insert};
 
-    if ($p{prefetch})
+    if ( $p{prefetch} )
     {
 	while ( my ($k, $v) = each %{ $p{prefetch} } )
 	{
@@ -62,12 +62,24 @@ sub _init
     elsif ( my @pre = grep { ! exists $self->{data}{$_} } $self->table->prefetch )
     {
 	$self->_get_data(@pre) if @pre;
+
+	# If we're doing a fetch now then ignore time given
+	delete $p{time};
     }
 
     $self->SUPER::_init(%p);
 
     $self->{cache}->store_object($self, $p{time});
     $self->{cache}->register_change($self, $p{time}) if $p{insert};
+}
+
+sub cache_id
+{
+    my $self = shift;
+
+    my ($mem) = "$self" =~ /\((.*)\)$/;
+
+    return join ' - ',  $self->table->name, $mem;
 }
 
 sub _get_data

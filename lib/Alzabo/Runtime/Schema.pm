@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.46 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -94,6 +94,12 @@ sub connect
     $self->driver->connect( %p, @_ );
 }
 
+sub one_row
+{
+    # could be replaced with something potentially more efficient
+    return shift->join(@_)->next;
+}
+
 sub join
 {
     my $self = shift;
@@ -155,7 +161,7 @@ sub join
     $self->_join_all_tables( sql => $sql,
 			     tables => $p{tables} );
 
-    Alzabo::Runtime::process_where_clause( $sql, $p{where}, 1 ) if exists $p{where};
+    Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
 
     Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} ) if exists $p{order_by};
 
@@ -226,7 +232,7 @@ sub _outer_join
 				 tables => $p{tables} );
     }
 
-    Alzabo::Runtime::process_where_clause( $sql, $p{where}, 1 ) if exists $p{where};
+    Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
 
     Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} ) if exists $p{order_by};
 
@@ -279,7 +285,7 @@ sub _select_sql
 				       optional => 1 },
 			  } );
 
-    $p{tables} = [ $p{tables} ] unless UNIVERSAL::isa($p{tables}, 'ARRAY');
+    $p{tables} = [ $p{tables} ] unless UNIVERSAL::isa( $p{tables}, 'ARRAY' );
 
     my @tables;
 
@@ -304,11 +310,11 @@ sub _select_sql
     $self->_join_all_tables( sql => $sql,
 			     tables => $p{tables} );
 
-    Alzabo::Runtime::process_where_clause( $sql, $p{where}, 1 ) if exists $p{where};
-
-    Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} ) if exists $p{order_by};
+    Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
 
     Alzabo::Runtime::process_group_by_clause( $sql, $p{group_by} ) if exists $p{group_by};
+
+    Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} ) if exists $p{order_by};
 
     $sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} ) if $p{limit};
 
@@ -686,6 +692,13 @@ object.  representing the results of the join.
 =head3 Throws
 
 L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+
+=head2 one_row
+
+This method takes the exact same parameters as the
+L<C<join>|Alzabo::Runtime::table/join> method but instead of returning
+a cursor, it returns a single array of row object.  These will be the
+rows representing the first ids that are returned by the database.
 
 =head2 function/select
 

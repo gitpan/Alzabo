@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
 
 sub new
 {
@@ -123,8 +123,8 @@ Alzabo::Runtime::JoinCursor - Cursor that returns arrays of C<Alzabo::Runtime::R
 
   while ( my @rows = $cursor->next )
   {
-      print $row[0]->select('foo'), "\n";
-      print $row[1]->select('bar'), "\n";
+      print $rows[0]->select('foo'), "\n";
+      print $rows[1]->select('bar'), "\n";
   }
 
 =head1 DESCRIPTION

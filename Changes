@@ -1,3 +1,70 @@
+0.61
+
+ENHANCEMENTS:
+
+- Improve documentation for new Alzabo::Create::Schema->sync_backend
+method and note its caveats.
+
+- It is now possible to use SQL functions as part of order_by clauses.
+For example:
+
+ my $cursor = $schema->select( select => [ COUNT('*'), $id_col ],
+                               tables => [ $foo_tab, $bar_tab ],
+                               group_by => $id_col,
+                               order_by => [ COUNT('*'), 'DESC' ] );
+
+- Allow a call to Alzabo::Runtime::Table->insert without a values
+parameter.  This is potentially useful for tables where the primary
+key is sequenced and the other columns have defaults or are NULLable.
+Patch by Ilya Martynov.
+
+BUG FIXES:
+
+- A call to the schema class's select or function methods that had
+both an order_by and group_by parameter would fail because it tried to
+process the order by clause before the group by clause.
+
+- When thawing potential row objects, Alzabo was trying to stick them
+into the cache, which may have worked before but not now, and should
+be avoided anyway.
+
+- The parent and children methods created by Alzabo::MethodMaker were
+incorrect (and unfortunately the tests of this feature were hosed
+too).
+
+- Add YEAR as exportable function from Alzabo::SQLMaker::MySQL.
+
+- Fix definition of WEEK and YEARWEEK functions exported from
+Alzabo::SQLMaker::MySQL to accept 1 or 2 parameters.
+
+- A bug in the caching code was throwing an exception when attempting
+to update objects that weren't expired.  This only seemed to occur in
+conjuction with the prefetch functionality.  The caching code has been
+simplified a bit and is hopefully now bug-free (I can dream, can't
+I?).
+
+- Make it possible to call Alzabo::Runtime::Schema->join with only one
+table in the tables parameter.  This is useful if you are constructing
+your join at runtime and you don't know how many tables you'll end up
+with.
+
+- Where clauses that began with '(' were not working.  Reported (with
+a test suite patch) by Ilya Martynov.
+
+- Where clauses that contained something like ( ')', 'and' (or 'or') )
+were not working either.
+
+- This file incorrectly thanked TJ Mather for separating out
+Class::Factory::Util, but this was done by Terrence Brannon.  Oops,
+brain fart.
+
+- Improve the recognition of more defaults that MySQL uses for column
+lengths and defaults, in order to improve reverse engineering.
+
+- Recognize defaults like 0 or '' for MySQL.
+
+- Fix Alzabo::Create::Schema->sync_backend method.
+
 0.60
 
 ENHANCEMENTS:
@@ -14,7 +81,7 @@ simpler to remember.
   $table->select( select => [ 1, $column ] ... );
 
 and have it work.  In this case, every row returned by the cursor will
-start have 1 as its first element.
+have 1 as its first element.
 
 - Added Alzabo::MySQL and Alzabo::PostgreSQL POD pages.  These pages
 document how Alzabo does (or does not) support various RDBMS specific
@@ -22,7 +89,8 @@ features.
 
 - Remove Alzabo::Util.  Use Class::Factory::Util from CPAN instead.
 Class::Factory::Util is a slight revision of Alzabo::Util that has
-been separated from the Alzabo core code by TJ Mather.  Thanks TJ.
+been separated from the Alzabo core code by Terrence Brannon.  Thanks
+Terrence.
 
 - Add the ability to sync the RDBMS backend to the current state of
 the Alzabo schema.  This allows you to arbitrarily update the RDBMS
@@ -903,7 +971,7 @@ foreign key objects.  Notably, the Alzabo::ForeignKey->column_from and
 Alzabo::ForeignKey->column_to methods are now
 Alzabo::ForeignKey->columns_from and Alzabo::ForeignKey->columns_to.
 In addition, the parameters given to the
-Alazbo::Create::Schema->add_relation have changed.
+Alzabo::Create::Schema->add_relation have changed.
 
 - Major changes to caching architecture.  The caching code has been
 split up.  There is now a 'storing' class, which holds onto the

@@ -18,7 +18,7 @@ use Alzabo::Runtime::Table;
 
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.24 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -33,9 +33,12 @@ sub import
 
 sub process_where_clause
 {
-    my ($sql, $where, $has_conditions) = @_;
+    my ($sql, $where) = @_;
 
-    $where = [ $where ] unless UNIVERSAL::isa( $where->[0], 'ARRAY' );
+    $where = [ $where ] unless UNIVERSAL::isa( $where->[0], 'ARRAY' ) || $where->[0] eq '(';
+
+    my $has_conditions = ( $sql->last_op eq 'where' || $sql->last_op eq 'and' ||
+			   $sql->last_op eq 'or' || $sql->last_op eq 'condition' ) ? 1 : 0;
 
     my $x = 0;
     my $needs_op = 1;
@@ -43,6 +46,11 @@ sub process_where_clause
     {
 	if (ref $clause)
 	{
+	    Alzabo::Exception::Params->throw( error => "Individual where clause components must be array references" )
+		unless UNIVERSAL::isa( $clause, 'ARRAY' );
+	    Alzabo::Exception::Params->throw( error => "Individual where clause components cannot be empty" )
+		unless @$clause;
+
 	    if ($needs_op)
 	    {
 		my $op = $x || $has_conditions ? 'and' : 'where';

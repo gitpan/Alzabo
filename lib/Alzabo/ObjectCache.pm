@@ -6,7 +6,7 @@ use vars qw($SELF $VERSION %ARGS);
 # load this for use by Alzabo::Runtime::Row
 use Alzabo::Runtime::CachedRow;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.33 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -96,7 +96,7 @@ sub register_change
 sub register_delete
 {
     my $self = shift;
-    $self->{store}->delete_from_cache($_[0]->id);
+    $self->{store}->delete_from_cache( $_[0]->id );
     $self->{sync}->register_delete(@_);
 }
 
@@ -108,7 +108,7 @@ sub is_deleted
 sub delete_from_cache
 {
     my $self = shift;
-    $self->{sync}->delete_from_cache($_[0]->id);
+    $self->{sync}->delete_from_cache($_[0]);
     $self->{store}->delete_from_cache(@_);
 }
 
