@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use Tie::IxHash;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.35 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.36 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -66,7 +66,7 @@ sub primary_key
 {
     my $self = shift;
 
-    return $self->{pk}->Values;
+    return $self->columns( $self->{pk}->Keys );
 }
 
 sub column_is_primary_key

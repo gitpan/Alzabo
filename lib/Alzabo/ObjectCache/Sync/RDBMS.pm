@@ -9,7 +9,7 @@ use base qw(Alzabo::ObjectCache::Sync);
 
 use Digest::MD5 ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
 
 sub import
 {
@@ -116,6 +116,7 @@ sub _init
     $SCHEMA->connect(%CONNECT_PARAMS);
 
     $self->{driver} = $SCHEMA->driver;
+    $self->{is_pg}  = $SCHEMA->driver->driver_id eq 'PostgreSQL';
 }
 
 sub sync_time
@@ -130,8 +131,7 @@ sub sync_time
 sub update
 {
     my $self = shift;
-    my $realid = shift;
-    my $id = Digest::MD5::md5_base64($realid);
+    my $id = Digest::MD5::md5_base64(shift);
     my $time = shift;
     my $overwrite = shift;
 
@@ -151,8 +151,24 @@ sub update
     # the latest sync time to be in there anyway.
     eval
     {
+	$self->{driver}->start_transaction;
+
+	# For Postgres, we don't want to try an insert that might fail
+	# because there's a duplicate key because that will abort any
+	# current transactions
+	if ( $self->{is_pg} )
+	{
+	    if ( $self->{driver}->one_row( sql => 'SELECT 1 FROM AlzaboObjectCacheSync WHERE object_id = ?',
+					   bind => $id ) )
+	    {
+		$self->{driver}->finish_transaction;
+		return;
+	    }
+	}
 	$self->{driver}->do( sql => 'INSERT INTO AlzaboObjectCacheSync (object_id, sync_time) VALUES (?, ?)',
-			     bind => [ $id, $time ] )
+			     bind => [ $id, $time ] );
+
+	$self->{driver}->finish_transaction;
     };
 }
 

@@ -7,7 +7,7 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::ForeignKey);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.23 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.24 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -96,8 +96,8 @@ sub register_delete
 
     return unless $self->to_is_dependent || @update;
 
-    # Make the rows in the other table that contain the relation to
-    # the row being deleted.
+    # Find the rows in the other table that are related to the row
+    # being deleted.
     my @where = map { [ $_->[1], '=', $row->select( $_->[0]->name ) ] } $self->column_pairs;
     my $cursor = $self->table_to->rows_where( where => \@where );
 

@@ -3,6 +3,12 @@ Short term:
 - Expand regression tests for core API - SQLMaker, RDBMSRules.
 
 - Make it possible to do multiple outer joins in a single query.
+  restructure join methods to be more flexible.  Something like:
+
+   $schema->join( join => [ [ $table1, $table2 ],
+                            [ $table2, $table3, $foreign_key ] ],
+                  left_outer => [ $table4, $table1 ],
+                  right_outer => [ $table5, $table4, $foreign_key ] );
 
 - Give the options to save objects to disk in something a bit more
   robust than a serialized object form.  Eventually, Alzabo will spit
@@ -19,7 +25,13 @@ Medium term:
 
 - Output Dia XML.
 
-- Add constraints to output SQL for Postgres.
+- Support for table attributes (constraints, MySQL table types)
+
+- Add constraints to output SQL for Postgres and MySQL (InnoDB tables
+  will actually use them).
+
+- Make sense of foreign key definitions in Postgres and for InnoDB
+  tables in MySQL.
 
 - Make a tool to convert schemas from one RDBMS to another.  This will
   probably require user prompting because some things are unresolvable
@@ -44,12 +56,16 @@ Medium term:
 
 - More drivers & rules (Oracle, Sybase, Interbase, Solid, and so on)
 
-- Overhaul foreign key objects so that one relation has one such
-  object, shared by two tables.
-
 - Non-Mason interface(s) (curses, plain CGI)
 
+- Integrate data validation into the code and schema creator in such a
+  way that Alzabo::MethodMaker can automatically create pre_insert and
+  pre_update methods.
+
 Long term:
+
+- Overhaul foreign key objects so that one relation has one such
+  object, shared by two tables.
 
 - GUI (preferably both UNIX & Win32 so Tk?)
 

@@ -15,6 +15,11 @@ the same RDBMS, you can simply do this:
 The C<@sql> array will contain all the SQL statements necessary to
 transform the schema in C<$schema1> into the schema in C<$schema2>.
 
+If you want to sync a schema object to the current state of the RDBMS
+backend's schema, check out the L<C<<
+Alzabo::Create::Schema->sync_backend
+>>|Alzabo::Create::Schema/sync_backend> method.
+
 =head2 How can I make Alzabo's RDBMS-OO mapping functionality run faster?
 
 You may choose to set the environment variable C<NO_VALIDATE> to a
@@ -106,11 +111,13 @@ it, like this:
   use Alzabo::Runtime qw( schema1 schema2 );
 
 Also, if you are using caching, the
-C<Alzabo::ObjectCache::Store::Memory> module has no limit on how much
-memory it will use.  You may want to simply set the maximum requests
-for each Apache child to a lower number.  Or you could call the
-C<< Alzabo::ObjectCache->clear >> method from time to time.  Or you
-could also simply use a different storage module, like
-C<Alzabo::ObjectCache::Store::BerkeleyDB>.
+C<Alzabo::ObjectCache::Store::Memory> module will store an unlimited
+number of objects.  Pass in the 'lru_size' parameter to
+L<C<Alzabo::ObjectCache>|Alzabo::ObjectCache/LRU STORAGE> to limit the
+size of the cache.  You may also want to simply set the maximum
+requests for each Apache child to a lower number.  Or you could call
+the C<< Alzabo::ObjectCache->clear >> method from time to time.  Or
+you could also simply use a different storage module that doesn't use
+a lot of memory, like C<Alzabo::ObjectCache::Store::BerkeleyDB>.
 
 =cut

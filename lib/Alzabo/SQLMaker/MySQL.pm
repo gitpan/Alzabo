@@ -11,7 +11,7 @@ use base qw(Alzabo::SQLMaker);
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
 
 my $MADE_LITERALS;
 my %functions;
@@ -115,7 +115,10 @@ sub _make_literals
 
 	      [ GET_LOCK => [1,0], [ 'system' ] ],
 	      [ BENCHMARK => [0,1], [ 'system' ] ],
-	      [ MASTER_POS_WAIT => [1,0], [ 'system' ]],
+	      [ MASTER_POS_WAIT => [1,0], [ 'system' ] ],
+
+	      [ IFNULL => [0,1], [ 'control' ] ],
+	      [ NULLIF => [0,0], [ 'control' ] ],
 	    )
     {
 	make_literal( literal => $_->[0],
@@ -150,6 +153,8 @@ sub _make_literals
 	      [ MID => [1,0,0], [ 'string' ] ],
 	      [ SUBSTRING_INDEX => [1,1,0], [ 'string' ] ],
 	      [ REPLACE => [1,1,1], [ 'string' ] ],
+
+	      [ IF => [0,1,1], [ 'control' ] ],
 	    )
     {
 	make_literal( literal => $_->[0],
@@ -402,59 +407,6 @@ sub sqlmaker_id
     return 'MySQL';
 }
 
-sub group_by
-{
-    my $self = shift;
-
-    $self->_assert_last_op( qw( select from condition ) );
-
-    Alzabo::Exception::SQL->throw( error => "Cannot use group by in a '$self->{type}' statement" )
-	unless $self->{type} eq 'select';
-
-    validate_pos( @_, ( { type => SCALAR | OBJECT,
-			  callbacks =>
-			  { 'column_or_sort' => sub { UNIVERSAL::isa( $_[0], 'Alzabo::Column' ) ||
-				                      $_[0] =~ /^ASC|DESC$/i } } }
-		      ) x @_ );
-
-    $self->{sql} .= ' GROUP BY ';
-
-    my $x = 0;
-    my $last = '';
-    foreach my $i (@_)
-    {
-	if ( UNIVERSAL::isa( $i, 'Alzabo::Column' ) )
-	{
-	    unless ( $self->{tables}{ $i->table } )
-	    {
-		my $err = 'Cannot use column (';
-		$err .= join '.', $i->table->name, $i->name;
-		$err .= ") in \U$self->{type}\E unless its table is included in the FROM clause";
-		Alzabo::Exception::SQL->throw( error => $err );
-	    }
-
-	    # no comma needed for first column
-	    $self->{sql} .= ', ', if $x++;
-	    $self->{sql} .= join '.', $i->table->name, $i->name;
-
-	    $last = 'column';
-	}
-	else
-	{
-	    Alzabo::Exception::Params->throw( error => 'A sort specifier cannot follow another sort specifier in a GROUP BY clause' )
-		if $last eq 'sort';
-
-	    $self->{sql} .= " \U$i";
-
-	    $last = 'sort';
-	}
-    }
-
-    $self->{last_op} = 'group_by';
-
-    return $self;
-}
-
 1;
 
 __END__
@@ -628,6 +580,14 @@ These are functions which return information about the MySQL server.
  RELEASE_LOCK
  BENCHMARK
  MASTER_POS_WAIT
+
+=head2 :control
+
+These are flow control functions:
+
+ IFNULL
+ NULLIF
+ IF
 
 =head2 :misc
 

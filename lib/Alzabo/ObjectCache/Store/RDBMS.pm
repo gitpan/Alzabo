@@ -7,7 +7,7 @@ use vars qw($VERSION $SCHEMA %CONNECT_PARAMS);
 use Digest::MD5 ();
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
 
 sub import
 {
@@ -96,6 +96,11 @@ sub import
     }
 
     $SCHEMA = Alzabo::Runtime::Schema->load_from_file( name => $p{store_schema_name} );
+
+    if ( $SCHEMA->driver->driver_id eq 'PostgreSQL' )
+    {
+	require MIME::Base64;
+    }
 }
 
 sub _load_create_code
@@ -117,6 +122,7 @@ sub new
     $SCHEMA->connect(%CONNECT_PARAMS);
 
     $self->{driver} = $SCHEMA->driver;
+    $self->{is_pg}  = $self->{driver}->driver_id eq 'PostgreSQL';
 
     return $self;
 }
@@ -139,6 +145,8 @@ sub fetch_object
 
     return unless $ser;
 
+    $ser = MIME::Base64::decode_base64($ser) if $self->{is_pg};
+
     return Storable::thaw($ser);
 }
 
@@ -151,11 +159,30 @@ sub store_object
 
     my $ser = Storable::nfreeze($obj);
 
+    $ser = MIME::Base64::encode_base64($ser) if $self->{is_pg};
+
     # Must just try to insert, otherwise we have race conditions
     eval
     {
+	$self->{driver}->start_transaction;
+
+	# For Postgres, we don't want to try an insert that might fail
+	# because there's a duplicate key because that will abort any
+	# current transactions
+	if ( $self->{is_pg} )
+	{
+	    if ( $self->{driver}->one_row( sql => 'SELECT 1 FROM AlzaboObjectCacheStore WHERE object_id = ?',
+					   bind => $id ) )
+	    {
+		$self->{driver}->finish_transaction;
+		return; # exits eval {} block
+	    }
+	}
+
 	$self->{driver}->do( sql => 'INSERT INTO AlzaboObjectCacheStore (object_id, object_data) VALUES (?, ?)',
-			     bind => [ $id, $ser ] )
+			     bind => [ $id, $ser ] );
+
+	$self->{driver}->finish_transaction;
     };
 
     return unless $@;

@@ -107,7 +107,8 @@ sub run_tests
     eval { $dep_t->insert( values => { name => 'will break',
 				       manager_id => 1 } ); };
 
-    isa_ok( $@, 'Alzabo::Exception::ReferentialIntegrity',
+    my $e = $@;
+    isa_ok( $e, 'Alzabo::Exception::ReferentialIntegrity',
 	    "Exception thrown from attempt to insert a non-existent manager_id into department" );
 
     my %emp;
@@ -130,27 +131,35 @@ sub run_tests
 				       cash => 20.2,
 				     } ); };
 
-    isa_ok( $@, 'Alzabo::Exception::Params',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception::Params',
 	    "Exception thrown from inserting a non-nullable column as NULL" );
 
-    eval_ok( sub { $emp_t->insert( values => { name => 'asfalksf',
-					       dep_id => $borg_id,
-					       smell => undef,
-					       cash => 20.2,
-					     } )->delete },
-	     "Inserting a NULL into a non-nullable column that has a default should produce an exception" );
+    {
+	my $new_emp;
+	eval_ok( sub { $new_emp = $emp_t->insert( values => { name => 'asfalksf',
+							      dep_id => $borg_id,
+							      smell => undef,
+							      cash => 20.2,
+							    } ) },
+		 "Inserting a NULL into a non-nullable column that has a default should not produce an exception" );
+
+	eval_ok( sub { $new_emp->delete },
+		 "Delete a just-created employee" );
+    }
 
     eval { $emp_t->insert( values => { name => 'YetAnotherTest',
 				       dep_id => undef,
 				       cash => 1.1,
 				     } ) };
 
-    isa_ok( $@, 'Alzabo::Exception::Params',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception::Params',
 	    "Exception thrown from attempt to insert a NULL into dep_id for an employee" );
 
     eval { $emp{bill}->update( dep_id => undef ) };
-
-    isa_ok( $@, 'Alzabo::Exception::Params',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception::Params',
 	    "Exception thrown from attempt to update dep_id to NULL for an employee" );
 
     $emp{bill}->update( cash => undef, smell => 'hello!' );
@@ -161,7 +170,8 @@ sub run_tests
 	"smell for bill should be 'hello!'" );
 
     eval { $emp{bill}->update( name => undef ) };
-    isa_ok( $@, 'Alzabo::Exception::Params',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception::Params',
 	    "Exception thrown from attempt to update a non-nullable column to NULL" );
 
     eval_ok( sub { $dep{borg}->update( manager_id => $emp{bill}->select('employee_id') ) },
@@ -275,6 +285,63 @@ sub run_tests
     is( $rows[2]->table->name, 'project',
 	"Third row is from project table" );
 
+    my $first_proj_id = $rows[2]->select('project_id');
+    @rows = $cursor->next;
+    my $second_proj_id = $rows[2]->select('project_id');
+
+    ok( $first_proj_id < $second_proj_id,
+	"Order by clause should cause project rows to come back in ascending order of project id" );
+
+    # Alias code
+    {
+	my $e_alias;
+	eval_ok( sub { $e_alias = $emp_t->alias },
+		 "Create an alias object for the employee table" );
+
+	my $p_alias;
+	eval_ok( sub { $p_alias = $proj_t->alias },
+		 "Create an alias object for the project table" );
+
+	eval_ok( sub { $cursor = $s->join( tables   => [ $e_alias, $emp_proj_t, $p_alias ],
+					   where    => [ $e_alias->column('employee_id'), '=', 1 ],
+					   order_by => $p_alias->column('project_id') ) },
+		 "Join employee, employee_project, and project tables where employee_id = 1 using aliases" );
+
+	my @rows = $cursor->next;
+
+	is( scalar @rows, 3,
+	    "3 rows per cursor ->next call" );
+	is( $rows[0]->table->name, 'employee',
+	    "First row is from employee table" );
+	is( $rows[1]->table->name, 'employee_project',
+	    "Second row is from employee_project table" );
+	is( $rows[2]->table->name, 'project',
+	    "Third row is from project table" );
+    }
+
+    # Alias code & multiple joins to the same table
+    {
+	my $p_alias = $proj_t->alias;
+
+	eval_ok( sub { $cursor = $s->join( select   => [ $p_alias, $proj_t ],
+					   tables   => [ $p_alias, $emp_proj_t, $proj_t ],
+					   where    => [ [ $p_alias->column('project_id'), '=', 1 ],
+							 [ $proj_t->column('project_id'), '=', 1 ] ],
+					 ) },
+		 "Join employee_project and project table (twice) using aliases" );
+
+	my @rows = $cursor->next;
+
+	is( scalar @rows, 2,
+	    "2 rows per cursor ->next call" );
+	is( $rows[0]->table->name, 'project',
+	    "First row is from project table" );
+	is( $rows[1]->table->name, 'project',
+	    "Second row is from project table" );
+	is( $rows[0]->table, $rows[1]->table,
+	    "The two rows should share the same table object (the alias should be gone at this point)" );
+    }
+
     {
 	my @rows;
 	eval_ok( sub { @rows = $s->one_row( tables   => [ $emp_t, $emp_proj_t, $proj_t ],
@@ -289,13 +356,6 @@ sub run_tests
 	is( $rows[2]->table->name, 'project',
 	    "Third row is from project table" );
     }
-
-    my $first_proj_id = $rows[2]->select('project_id');
-    @rows = $cursor->next;
-    my $second_proj_id = $rows[2]->select('project_id');
-
-    ok( $first_proj_id < $second_proj_id,
-	"Order by clause should cause project rows to come back in ascending order of project id" );
 
     $cursor = $s->join( tables   => [ $emp_t, $emp_proj_t, $proj_t ],
 			where    => [ $emp_t->column('employee_id'), '=', 1 ],
@@ -344,7 +404,8 @@ sub run_tests
 				 [ $s->tables( 'outer_1', 'outer_2' ) ] ],
 		     where =>  [ $emp_t->column('employee_id'), '=', 1 ] ) };
 
-    isa_ok( $@, 'Alzabo::Exception::Logic',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception::Logic',
 	    "Exception thrown from join with table map that does not connect" );
 
     eval_ok( sub { @rows = $s->join( tables => $emp_t,
@@ -438,12 +499,14 @@ sub run_tests
     $emp{bill}->delete;
 
     eval { my $c = $emp_t->row_by_pk( pk => $id ) };
-    isa_ok( $@, 'Alzabo::Exception::NoSuchRow',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception::NoSuchRow',
 	       "Exception thrown by selecting a deleted row" );
 
     eval { $emp{bill}->select('name'); };
     my $expect = $Alzabo::ObjectCache::VERSION ? 'Alzabo::Exception::Cache::Deleted' : 'Alzabo::Exception::NoSuchRow';
-    isa_ok( $@, $expect,
+    $e = $@;
+    isa_ok( $e, $expect,
         "Exception thrown from attempt to select from deleted row object" );
 
     eval { $emp_proj_t->row_by_pk( pk => { employee_id => $id,
@@ -455,7 +518,8 @@ sub run_tests
     }
     else
     {
-	isa_ok( $@, 'Alzabo::Exception::NoSuchRow',
+	$e = $@;
+	isa_ok( $e, 'Alzabo::Exception::NoSuchRow',
 		"Exception thrown selecting row deleted by cascading deletes" );
     }
 
@@ -620,7 +684,6 @@ sub run_tests
     # that the caching system is ok when we insert a row into a table,
     # delete it, and then insert a new row with _the same primary key_
     my $char_row;
-    $::D = 1;
     eval_ok( sub { $char_row = $s->table('char_pk')->insert( values => { char_col => 'pk value' } ) },
 	     "Insert into char_pk table" );
 
@@ -633,14 +696,16 @@ sub run_tests
     }
     else
     {
-	isa_ok( $@, 'Alzabo::Exception::NoSuchRow',
+	$e = $@;
+	isa_ok( $e, 'Alzabo::Exception::NoSuchRow',
 		"Exception thrown trying to fetch deleted row" );
     }
 
     eval { $char_row->select('char_col'); };
-    $::D =0;
+
     $expect = $Alzabo::ObjectCache::VERSION ? 'Alzabo::Exception::Cache::Deleted' : 'Alzabo::Exception::NoSuchRow';
-    isa_ok( $@, $expect,
+    $e = $@;
+    isa_ok( $e, $expect,
 	    "Exception thrown from attempt to select from deleted row" );
 
     eval_ok( sub { $char_row = $s->table('char_pk')->insert( values => { char_col => 'pk value' } ) },
@@ -680,7 +745,8 @@ sub run_tests
 	$emps[0]->delete;
 	eval { $emps[0]->update( smell => 'kaboom' ); };
 	$expect = $Alzabo::ObjectCache::VERSION ? 'Alzabo::Exception::Cache::Deleted' : 'Alzabo::Exception::NoSuchRow';
-	isa_ok( $@, $expect,
+	$e = $@;
+	isa_ok( $e, $expect,
 		"Exception thrown from attempt to update a deleted row" );
 
 	my $row_id = $emps[1]->id;
@@ -975,12 +1041,12 @@ sub run_tests
 	"First project should have 3 employees - with limit via ->select" );
 
     {
-	my @rows = eval{$s->function( select => [ $proj_t->column('name'),
+	my @rows = $s->function( select => [ $proj_t->column('name'),
 					     COUNT( $proj_t->column('name') ) ],
 				 tables => [ $emp_proj_t, $proj_t ],
 				 group_by => $proj_t->column('name'),
-				 order_by => [ COUNT( $proj_t->column('name') ), 'DESC' ] );};
-	warn $@ if $@;
+				 order_by => [ COUNT( $proj_t->column('name') ), 'DESC' ] );
+
 	is( @rows, 2,
 	    "Only two projects should be returned from schema->function ordered by COUNT(*)" );
 	is( $rows[0][0], 'Extend',
@@ -1133,29 +1199,6 @@ sub run_tests
 	is( $rows[0]->select('name'), 'Timestamp',
 	    "That row should be named Timestamp" );
 
-    TODO:
-	{
-	    local $TODO = "MySQL docs claim this should work but it doesn't work for me with 3.23.45\n";
-
-	    $statement = $s->select( select => [ $proj_t->column('name'),
-						 COUNT( $proj_t->column('name') ) ],
-				     tables => [ $emp_proj_t, $proj_t ],
-				     group_by => { columns => $proj_t->column('name'),
-						   sort => 'DESC' } );
-
-	    @rows = $statement->all_rows;
-
-	    is( $rows[0][0], 'Extend',
-		"First project should be Extend - via ->select" );
-	    is( $rows[1][0], 'Embrace',
-		"Second project should be Embrace - via ->select" );
-	    is( $rows[0][1], 3,
-		"First project should have 1 employee - via ->select" );
-	    is( $rows[1][1], 1,
-		"Second project should have 3 employees - via ->select" );
-
-	}
-
 	# Fulltext support tests
 	my $snuffle_id = $emp_t->insert( values => { name => 'snuffleupagus',
 						     smell => 'invisible',
@@ -1180,6 +1223,18 @@ sub run_tests
 	      "Returned score should be some sort of number (integer or floating point)" );
 	ok( $score > 0,
 	    "The score should be greater than 0 because the match was successful" );
+
+	eval_ok( sub { @rows = $emp_t->all_rows( order_by => [ IF( 'employee_id < 100',
+								   $emp_t->column('employee_id'),
+								   $emp_t->column('smell'), ) ],
+					       )->all_rows },
+		 "Order by IF() function" );
+	is( @rows, 16,
+	    "Seventeen rows should have been returned" );
+	is( $rows[0]->select('employee_id'), 3,
+	    "First row should be id 3" );
+	is( $rows[-1]->select('employee_id'), 999993,
+	    "Last row should be id 999993" );
     }
     elsif ( $p{rdbms} eq 'pg' )
     {
@@ -1251,15 +1306,18 @@ sub run_tests
         "New employee got a department" );
 
     eval { $p_emp->update( wrong => 'column' ) };
-    isa_ok( $@, 'Alzabo::Exception::Params',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception::Params',
 	    "Exception thrown from attempt to update a column which doesn't exist" );
 
     eval { $p_emp->update( name => undef ) };
-    isa_ok( $@, 'Alzabo::Exception::Params',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception::Params',
 	    "Exception thrown from attempt to update a non-NULLable column in a potential row to null" );
 
     eval { $p_emp->delete };
-    isa_ok( $@, 'Alzabo::Exception::Logic',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception::Logic',
 	    "Exception thrown from attempt to delete a potential row object" );
 
     eval_ok( sub { $p_emp->make_live( values => { smell => 'cottony' } ) },
@@ -1292,7 +1350,8 @@ sub run_tests
 
     eval { $emp_t->rows_where( where => [ $eid_c, '=', 9000,
 					  $eid_c, '=', 9002 ] ) };
-    isa_ok( $@, 'Alzabo::Exception::Params',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception::Params',
 	    "Exception from where clause as single arrayref with <>3 elements" );
 }
 
@@ -1372,7 +1431,8 @@ sub parent
 
     $emp->delete;
     eval { $emp->select('name') };
-    isa_ok( $@, 'Alzabo::Exception::Cache::Deleted',
+    my $e = $@;
+    isa_ok( $e, 'Alzabo::Exception::Cache::Deleted',
 	    "Exception thrown from attempt to select from deleted row" );
 
     # F.
@@ -1498,7 +1558,7 @@ sub parent
     is( $rocko->select('name'), 'Rocko',
 	"The name of employee 1000 should now be 'Rocko'" );
 
-    eval{$rocko->update( name => 'Bullo' );}; warn $@ if $@;
+    $rocko->update( name => 'Bullo' );
 
     # W.
     print $c_write "1\n";

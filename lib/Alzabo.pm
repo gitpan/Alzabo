@@ -15,7 +15,7 @@ use vars qw($VERSION);
 
 use 5.005;
 
-$VERSION = '0.61';
+$VERSION = '0.62';
 
 1;
 
@@ -701,6 +701,17 @@ ever look at documentation on methods that alter the schema and its
 contained objects.
 
 =back
+
+=head1 SUPPORT
+
+The Alzabo docs are conveniently located online at
+http://alzabo.sourceforge.net/docs/.
+
+There is also a mailing list.  You can sign up at
+http://lists.sourceforge.net/lists/listinfo/alzabo-general.
+
+Please don't email me directly.  Use the list instead so others can
+see your questions.
 
 =head1 LICENSE
 

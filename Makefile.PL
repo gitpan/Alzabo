@@ -41,17 +41,18 @@ my %prereq;
 {
     # extra prereqs for certain features
     my @extra_prereq = ( [ 'to use the MySQL driver', [ [ 'DBD::mysql' => 2.1004 ] ], 'mysql' ],
-			 [ 'to use the PostgreSQL driver', [ [ 'DBD::Pg' => 0.95 ] ], 'pg' ],
-#			 [ 'to use the Oracle driver', [ [ 'DBD::Oracle' => 0 ] ], 'oracle' ],
-			 [ 'to use the IPC caching code', [ [ 'IPC::Shareable' => 0.54 ] ] ],
-			 [ 'to use the DB_File 1.x caching code', [ [ 'DB_File' => 1.76 ] ] ],
-			 [ 'to use the BerkeleyDB 2.x/3.x caching code', [ [ 'BerkeleyDB' => 0.15 ] ] ],
-			 [ 'to use the SDBM_File caching code', [ [ 'SDBM_File' => 0 ] ] ],
+			 [ 'to use the PostgreSQL driver', [ [ 'DBD::Pg' => 0.95 ], [ 'MIME::Base64' => 0 ] ], 'pg' ],
+#			 [ 'to use Oracle driver', [ [ 'DBD::Oracle' => 0 ] ], 'oracle' ],
+			 [ 'to use IPC for cache syncing', [ [ 'IPC::Shareable' => 0.54 ] ] ],
+			 [ 'to use DB_File 1.x for cache syncing', [ [ 'DB_File' => 1.76 ] ] ],
+			 [ 'to use BerkeleyDB 2.x/3.x for cache syncing', [ [ 'BerkeleyDB' => 0.15 ] ] ],
+			 [ 'to use SDBM_File for cache syncing', [ [ 'SDBM_File' => 0 ] ] ],
+			 [ 'to use Cache::Mmap for cache syncing', [ [ 'Cache::Mmap' => 0.04 ] ] ],
 			 [ 'to use the HTML::Mason based schema creation interface', [ [ 'HTML::Mason' => 0.896 ],
-										[ 'HTTP::BrowserDetect' => 0 ], ],
+										       [ 'HTTP::BrowserDetect' => 0 ], ],
 			   undef, 'mason_schema' ],
 			 [ 'to use the HTML::Mason based data browser', , [ [ 'HTML::Mason' => 0.896 ],
-								     [ 'HTTP::BrowserDetect' => 0 ], ],
+									    [ 'HTTP::BrowserDetect' => 0 ], ],
 			   undef, 'mason_browser' ],
 			 [ 'to view graphs of your schema in the schema creator',
 			   [ [ GraphViz => 1.4 ] ] ],
@@ -335,17 +336,35 @@ EOF
 
 package MY;
 
-sub top_targets
+sub postamble
+{
+    # add pod merge target
+    my $make = <<MAKE;
+
+pure_all :: pod_merge
+\t\$(NOOP)
+
+pod_merge: pm_to_blib
+\t\$(PERL) pod_merge.pl lib \$(INST_LIB)
+\t\@\$(TOUCH) \$\@
+
+clean ::
+\t\$(RM_F) pod_merge
+MAKE
+
+    return $make;
+}
+
+sub manifypods
 {
     my $self = shift;
 
-    my $tt = $self->SUPER::top_targets;
+    my $make = $self->SUPER::manifypods;
 
-    $tt =~ s/all :: pure_all manifypods/all :: pure_all pod_merge manifypods/;
+    # use PODs from INST_LIB for man page creation
+    $make =~ s/(\s)lib/$1\$(INST_LIB)/g;
 
-    $tt .= "\npod_merge :\n\t\$(PERL) pod_merge.pl lib \$(INST_LIB)";
-
-    return $tt;
+    return $make;
 }
 
 sub install

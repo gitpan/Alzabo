@@ -9,7 +9,7 @@ use Alzabo::Runtime;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.46 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.47 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
@@ -296,10 +296,12 @@ sub make_table_column_methods
 
 	my $method = join '::', $self->{table_class}, $name;
 
+	my $col_name = $c->name;
+
 	warn "Making column object $method: returns column object\n" if $DEBUG;
 	{
 	    no strict 'refs';
-	    *{$method} = sub { return $c };
+	    *{$method} = sub { return $_[0]->column($col_name) };
 	}
     }
 }
@@ -326,7 +328,7 @@ sub make_row_column_methods
 	    *{$method} = sub { my $self = shift;
 			       if (@_)
 			       {
-				   $self->update( $col_name => shift );
+				   $self->update( $col_name => $_[0] );
 			       }
 			       return $self->select($col_name); };
 	}

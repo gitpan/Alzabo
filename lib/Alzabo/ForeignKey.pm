@@ -5,7 +5,7 @@ use vars qw($VERSION);
 
 use Alzabo;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -42,6 +42,14 @@ sub column_pairs
     my $self = shift;
 
     return ( map { [ $self->{columns_from}[$_] => $self->{columns_to}[$_] ] }
+	     0..$#{ $self->{columns_from} } );
+}
+
+sub column_pair_names
+{
+    my $self = shift;
+
+    return ( map { [ $self->{columns_from}[$_]->name => $self->{columns_to}[$_]->name ] }
 	     0..$#{ $self->{columns_from} } );
 }
 

@@ -510,7 +510,8 @@ foreach my $db (@db)
     if ($db eq 'MySQL')
     {
 	eval { $t1->column('foo_pk')->set_type('text') };
-	isa_ok( $@, 'Alzabo::Exception::RDBMSRules',
+	my $e = $@;
+	isa_ok( $e, 'Alzabo::Exception::RDBMSRules',
 		"Exception thrown from attempt to set a primary key column to the 'text' type" );
     }
 
@@ -581,6 +582,7 @@ foreach my $db (@db)
 
     eval { $other->make_column( name => 'bad name',
 				type => 'int' ) };
-    isa_ok( $@, 'Alzabo::Exception::RDBMSRules',
+    my $e = $@;
+    isa_ok( $e, 'Alzabo::Exception::RDBMSRules',
 	    "Exception thrown making a column with a bad name" );
 }

@@ -4,10 +4,29 @@ use strict;
 use vars qw($VERSION);
 
 use Alzabo::Runtime;
+use Params::Validate qw( :all );
+Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
 use base qw(Alzabo::Column);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
+
+sub alias_clone
+{
+    my $self = shift;
+
+    my %p = validate( @_, { table => { isa => 'Alzabo::Runtime::Table' },
+			  } );
+
+    my $clone;
+
+    %$clone = %$self;
+    $clone->{table} = $p{table};
+
+    bless $clone, ref $self;
+
+    return $clone;
+}
 
 1;
 

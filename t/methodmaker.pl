@@ -17,7 +17,7 @@ require 'base.pl';
 my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
 die $@ if $@;
 
-eval "use Test::More ( tests => 76 )";
+eval "use Test::More ( tests => 79 )";
 die $@ if $@;
 
 my $t = $tests->[0];
@@ -98,16 +98,18 @@ foreach my $t ($s->tables)
 {
     eval { $s->Location_t->insert( values => { location_id => 666,
 					       location => 'pre_die' } ) };
-    isa_ok( $@, 'Alzabo::Exception',
+    my $e = $@;
+    isa_ok( $e, 'Alzabo::Exception',
 	    "Exception thrown from pre_insert" );
-    is( $@->error, 'PRE INSERT TEST',
+    is( $e->error, 'PRE INSERT TEST',
 	"pre_insert error message should be PRE INSERT TEST" );
 
     eval { $s->Location_t->insert( values => { location_id => 666,
 					       location => 'post_die' } ) };
-    isa_ok( $@, 'Alzabo::Exception',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception',
 	    "Exception thrown by post_insert" );
-    is( $@->error, 'POST INSERT TEST',
+    is( $e->error, 'POST INSERT TEST',
 	"pre_insert error message should be POST INSERT TEST" );
 
     my $tweaked = $s->Location_t->insert( values => { location_id => 54321,
@@ -116,15 +118,17 @@ foreach my $t ($s->tables)
 	 "pre_insert should change the value of location to 'insert tweaked'" );
 
     eval { $tweaked->update( location => 'pre_die' ) };
-    isa_ok( $@, 'Alzabo::Exception',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception',
 	    "Exception thrown from pre_update" );
-    is( $@->error, 'PRE UPDATE TEST',
+    is( $e->error, 'PRE UPDATE TEST',
 	"pre_update error message should be PRE UPDATE TEST" );
 
     eval { $tweaked->update( location => 'post_die' ) };
-    isa_ok( $@, 'Alzabo::Exception',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception',
 	    "Exception thrown by post_update" );
-    is( $@->error, 'POST UPDATE TEST',
+    is( $e->error, 'POST UPDATE TEST',
 	"post_update error message should be POST UPDATE TEST" );
 
     $tweaked->update( location => 'update tweak me' );
@@ -132,23 +136,26 @@ foreach my $t ($s->tables)
 	 "pre_update should change the value of location to 'update tweaked'" );
 
     eval { $tweaked->select('pre_sel_die') };
-    isa_ok( $@, 'Alzabo::Exception',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception',
 	    "Exception thrown by pre_select" );
-    is( $@->error, 'PRE SELECT TEST',
+    is( $e->error, 'PRE SELECT TEST',
 	"pre_select error message should be PRE SELECT TEST" );
 
     $tweaked->update( location => 'post_sel_die' );
 
     eval { $tweaked->select('location') };
-    isa_ok( $@, 'Alzabo::Exception',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception',
 	    "Exception thrown by post_select" );
-    is( $@->error, 'POST SELECT TEST',
+    is( $e->error, 'POST SELECT TEST',
 	"post_select error message should be POST SELECT TEST" );
 
     eval { $tweaked->select_hash('location') };
-    isa_ok( $@, 'Alzabo::Exception',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception',
 	    "Exception thrown by post_select" );
-    is( $@->error, 'POST SELECT TEST',
+    is( $e->error, 'POST SELECT TEST',
 	"post_select error message should be POST SELECT TEST" );
 
     $tweaked->update( location => 'select tweak me' );
@@ -231,11 +238,13 @@ foreach my $t ($s->tables)
  	"Location name of potential object should be 'zzz'" );
 
     eval { $p_row->update( location => 'pre_die' ); };
-    isa_ok( $@, 'Alzabo::Exception',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception',
 	    "Exception thrown by pre_update" );
 
     eval { $p_row->update( location => 'post_die' ); };
-    isa_ok( $@, 'Alzabo::Exception',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception',
 	    "Exception thrown by post_update" );
 
     $p_row->update( location => 'update tweak me' );
@@ -243,7 +252,8 @@ foreach my $t ($s->tables)
 	 "pre_update should change the value of location to 'update tweaked'" );
 
     eval { $p_row->select('pre_sel_die') };
-    isa_ok( $@, 'Alzabo::Exception',
+    $e = $@;
+    isa_ok( $e, 'Alzabo::Exception',
 	    "Exception thrown by pre_select" );
 
     $p_row->update( location => 'select tweak me' );
@@ -257,6 +267,14 @@ foreach my $t ($s->tables)
     $p_row->make_live;
     is( $p_row->location_id, 999,
 	"Check that live row has same location id" );
+
+    my $alias = $s->Toilet_t->alias;
+
+    can_ok( $alias, 'toilet_id_c' );
+    is( $alias->toilet_id_c->name, $s->Toilet_t->toilet_id_c->name,
+	"Alias column has the same name as real table's column" );
+    is( $alias->toilet_id_c->table, $alias,
+	"The alias column's table should be the alias" );
 }
 
 sub make_schema

@@ -68,6 +68,7 @@ lib/Alzabo/ObjectCache/Sync/BerkeleyDB.pm
 lib/Alzabo/ObjectCache/Sync/DB_File.pm
 lib/Alzabo/ObjectCache/Sync/DBM.pm
 lib/Alzabo/ObjectCache/Sync/IPC.pm
+lib/Alzabo/ObjectCache/Sync/Mmap.pm
 lib/Alzabo/ObjectCache/Sync/Null.pm
 lib/Alzabo/ObjectCache/Sync/RDBMS.pm
 lib/Alzabo/ObjectCache/Sync/SDBM_File.pm

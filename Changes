@@ -1,3 +1,78 @@
+0.62
+
+ENHANCEMENTS:
+
+- Add support for IFNULL, NULLIF, and IF for MySQL.
+
+- Document that Alzabo supports COALESCE and NULLIF for Postgres.
+
+- Added Alzabo::ObjectCache::Sync::Mmap which uses Cache::Mmap.  This
+is just slightly slower than using SDBM_File.
+
+- New table alias feature for making queries that join against a table
+more than once.  An example:
+
+ my $foo_alias = $foo_tab->alias;
+
+ my $cursor = $schema->join( select => $foo_tab,
+                             tables => [ $foo_tab, $bar_tab, $foo_alias ],
+                             where  => [ [ $bar_tab->column('baz'), '=', 10 ],
+                                         [ $foo_alias->column('quux'), '=', 100 ] ],
+                             order_by => $foo_alias->column('briz') );
+
+In this query, we want to get all the entries in the foo table based
+on a join between foo and bar with certain conditions.  However, we
+want to order the results by a _different_ criteria than that used for
+the join.  This doesn't necessarily happen often, but when it does its
+nice to be able to do it.  In SQL, this query would look something
+like this:
+
+ SELECT foo.foo_id
+ FROM   foo, bar, foo as foo1
+ WHERE  foo.foo_id = bar.foo_id
+   AND  bar.foo_id = foo1.foo_id
+   AND  bar.baz = 10
+   AND  foo1.quux = 100
+ ORDER BY foo1.quux
+
+FEATURE REMOVAL:
+
+- It is no longer possible to pass sorting specifications ('ASC' or
+'DESC') as part of the group_by parameter.  This was only supported by
+MySQL and it was broken in MySQL until 3.23.47 anyway.  Its weird and
+non-standard.  Just use order_by instead.
+
+BUG FIXES:
+
+- If prefetch wasn't set, all the rows in the table were being
+pre-fetched.
+
+- The newest Test::More (0.40) uses eval{} inside its isa_ok()
+function.  The test suite was passing $@ directly into isa_ok() and it
+would then get reset by the eval{} in the isa_ok() function.  This has
+been fixed by copying $@ into another variable before passing it into
+isa_ok().  Apparently, Test::More 0.41 will fix this as well.
+
+- Make Alzabo::ObjectCache::Store::RDBMS and
+Alzabo::ObjectCache::Sync::RDBMS play nice with Postgres.  Pg aborts
+transactions when there are errors like an attempt to insert a
+duplicate inside a transaction.  These module would just try to insert
+potentially duplicate rows and ignore the error.  Now Pg is handled
+specially.
+
+- If you told the installer that you didn't want to run any tests with
+a live database, there would be errors when it tried to run
+03-runtime.t.  Now it just skips it.
+
+- Alzabo includes a script called 'pod_merge.pl' that is run before
+installing its modules.  This script merges POD from a parent class
+into a child class (like from Alzabo::Table into
+Alzabo::Create::Table) in order to get all the relevant documentation
+in one place.  The way the Makefile.PL ran this script was not working
+for some people, and in addition, did not end up putting the merged
+documentation into the generated man pages.  This release includes a
+patch from Ilya Martynov that fixes both of these problems.
+
 0.61
 
 ENHANCEMENTS:

@@ -5,7 +5,7 @@ BEGIN
     unless (defined $ENV{ALZABO_RDBMS_TESTS})
     {
 	print "1..0\n";
-#	exit;
+	exit;
     }
 }
 
@@ -49,13 +49,11 @@ my @cache = ( [
 		 lru_size => 2 },
 	       0,
 	      ],
-
-
 	      [
 	       { store => 'Alzabo::ObjectCache::Store::RDBMS',
 		 sync  => 'Alzabo::ObjectCache::Sync::RDBMS',
 		 ( map { 'store_' . $_ => $t[0]->{$_},
-			 'sync_' . $_  => $t[0]->{$_} }
+			     'sync_' . $_  => $t[0]->{$_} }
 		   keys %{ $t[0] } )
 	       },
 	       1,
@@ -75,6 +73,7 @@ $has{DB_File} = eval { require DB_File } && $DB_File::VERSION >= 1.76 && ! $@;
 $has{IPC} = eval { require IPC::Shareable } && $IPC::Shareable::VERSION >= 0.54 && ! $@;
 $has{BekeleyDB} = eval { require BerkeleyDB } && $BerkeleyDB::VERSION >= 0.15 && ! $@;
 $has{SDBM_File} = eval { require SDBM_File } && ! $@;
+$has{'Cache::Mmap'} = eval { require Cache::Mmap } && ! $@;
 
 if ($has{DB_File})
 {
@@ -135,6 +134,17 @@ if ($has{SDBM_FILE})
 		    ];
     $sync++;
 }
+if ($has{'Cache::Mmap'})
+{
+    unshift @cache, [ { store => 'Alzabo::ObjectCache::Store::Memory',
+			sync  => 'Alzabo::ObjectCache::Sync::Mmap',
+			sync_mmap_file => File::Spec->catfile( 't', 'objectcache', 'mmap' ),
+			clear_on_startup => 1,
+		      },
+		      1
+		    ];
+    $sync++;
+}
 foreach ( qw( BerkeleyDB SDBM_File DB_File IPC ) )
 {
     if ($has{$_})
@@ -151,7 +161,7 @@ foreach ( qw( BerkeleyDB SDBM_File DB_File IPC ) )
     }
 }
 
-my $TESTS_PER_RUN = 249;
+my $TESTS_PER_RUN = 262;
 my $SYNC_TESTS_PER_RUN = 20;
 
 #
@@ -238,6 +248,9 @@ foreach my $c (@cache)
 
     my $cs = Alzabo::Create::Schema->load_from_file( name => $test->{schema_name} );
     $cs->delete;
+
+    sleep 1 if $test->{rdbms} eq 'pg'; # avoid errors about DB being in use
+
     eval { $cs->drop(%$test); };
     warn $@ if $@;
     $cs->driver->disconnect;

@@ -26,14 +26,15 @@ eval_ok( sub { $new_s = Alzabo::Create::Schema->new( name => 'hello there',
 eval { Alzabo::Create::Schema->new( name => 'hello:there',
 				    rdbms => 'MySQL' ); };
 
-isa_ok( $@, 'Alzabo::Exception::RDBMSRules',
+my $e = $@;
+isa_ok( $e, 'Alzabo::Exception::RDBMSRules',
 	"Exceptiont thrown from attempt to create a MySQL schema named 'hello:there'" );
 
 my $s = eval { Alzabo::Create::Schema->load_from_file( name => 'foo_MySQL' ); };
 
 eval { $new_s->make_table( name => 'x' x 65 ) };
-
-isa_ok( $@, 'Alzabo::Exception::RDBMSRules',
+$e = $@;
+isa_ok( $e, 'Alzabo::Exception::RDBMSRules',
 	"Exception thrown from attempt to create a table in MySQL with a 65 character name" );
 
 $s->make_table( name => 'quux' );
@@ -52,12 +53,12 @@ eval { $t4->make_column( name => 'foo2',
 			 type => 'text',
 			 length => 1,
 		       ); };
-
-isa_ok( $@, 'Alzabo::Exception::RDBMSRules',
+$e = $@;
+isa_ok( $e, 'Alzabo::Exception::RDBMSRules',
 	"Exception thrown from attempt to make 'text' column with a length parameter" );
 
 eval { $t4->make_column( name => 'var_no_len',
 			 type => 'varchar' ) };
-
-isa_ok( $@, 'Alzabo::Exception::RDBMSRules',
+$e = $@;
+isa_ok( $e, 'Alzabo::Exception::RDBMSRules',
 	"Exception thrown from attempt to make 'varchar' column with no length parameter" );

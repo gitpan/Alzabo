@@ -178,15 +178,15 @@ object.
 Allows you to execute arbitrary column aggregate SQL functions such as
 C<AVG> or C<MAX> with a multi-table join.
 
-=for html link=L<More|Alzabo::Runtime::Schema/function/select>
+=for html link=L<More|Alzabo::Runtime::Schema/function and select>
 
 =item * table ($name)
 
 =for html type=object
 
 Returns an L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table> object.
-This is important because most the row fetching operations are part of
-that class.
+This is important because most of the row fetching operations are
+table object methods.
 
 =for html link=L<More|Alzabo::Runtime::Schema/table ($name)>
 
@@ -259,7 +259,17 @@ Retrieves all the rows in the table.
 Allows you to execute arbitrary column aggregate SQL functions such as
 C<AVG> or C<MAX>.
 
-=for html link=L<More|Alzabo::Runtime::Table/function/select>
+=for html link=L<More|Alzabo::Runtime::Table/function and select>
+
+=item * potential_row
+
+=for html type=object
+
+Make a new
+L<C<Alzabo::Runtime::PotentialRow>|Alzabo::Runtime::PotentialRow>
+object.
+
+=for html link=L<More|Alzabo::Runtime::Table/potential_row>
 
 =back
 

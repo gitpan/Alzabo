@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.46 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.49 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -173,13 +173,13 @@ sub join
     if (@select_tables == 1)
     {
 	return Alzabo::Runtime::RowCursor->new( statement => $statement,
-						table => $select_tables[0],
+						table => $select_tables[0]->real_table,
 						distinct => $p{distinct} );
     }
     else
     {
 	return Alzabo::Runtime::JoinCursor->new( statement => $statement,
-						 tables => \@select_tables,
+						 tables => [ map { $_->real_table } @select_tables ],
 						 distinct => $p{distinct} );
     }
 }
@@ -243,7 +243,7 @@ sub _outer_join
 
     return Alzabo::Runtime::OuterJoinCursor->new( type => $p{type},
 						  statement => $statement,
-						  tables => \@select );
+						  tables => [ map { $_->real_table } @select ] );
 }
 
 sub function
@@ -397,9 +397,9 @@ sub _join_two_tables
     Alzabo::Exception::Logic->throw( error => "The " . $table_1->name . " table has more than 1 foreign key to the " . $table_2->name . " table" )
 	if @fk > 1;
 
-    foreach my $cp ( $fk[0]->column_pairs )
+    foreach my $cp ( $fk[0]->column_pair_names )
     {
-	$sql->$op( $cp->[0], '=', $cp->[1] );
+	$sql->$op( $table_1->column( $cp->[0] ), '=', $table_2->column( $cp->[1] ) );
 	$op = 'and';
     }
 }
@@ -700,7 +700,7 @@ L<C<join>|Alzabo::Runtime::table/join> method but instead of returning
 a cursor, it returns a single array of row object.  These will be the
 rows representing the first ids that are returned by the database.
 
-=head2 function/select
+=head2 function and select
 
 These two methods differ only in their return values.
 
@@ -794,6 +794,43 @@ object containing the results of the query.
 
 =for pod_merge sqlmaker
 
+=head1 JOINING A TABLE MORE THAN ONCE
+
+It is possible to join to the same table more than once in a query.
+Table objects support a method called
+L<C<alias>|Alzabo::Runtime::Table/alias> that when called, returns an
+object that can be used in the same query as the original table
+object, but which will be treated as a separate table.  This is to
+allow starting with something like this:
+
+  SELECT ... FROM Foo AS F1, Foo as F2, Bar AS B ...
+
+The object returned from the table functions more or less exactly like
+a table object.  When using this table to set where clause or order by
+(or any other) conditions, it is important that the column objects for
+these conditions be retrieved from the alias object.
+
+For example:
+
+ my $foo_alias = $foo_tab->alias;
+
+ my $cursor = $schema->join( select => $foo_tab,
+                             tables => [ $foo_tab, $bar_tab, $foo_alias ],
+                             where  => [ [ $bar_tab->column('baz'), '=', 10 ],
+                                         [ $foo_alias->column('quux'), '=', 100 ] ],
+                             order_by => $foo_alias->column('briz') );
+
+If we were to use the C<$foo_tab> object to retrieve the 'quux' and
+'briz' columns then the join would simply not work as expected.
+
+It is also possible to use multiple aliases of the same table in a
+join, so that this:
+
+ my $foo_alias1 = $foo_tab->alas;
+ my $foo_alias2 = $foo_tab->alas;
+
+will work just fine.
+
 =head1 USER AND PASSWORD INFORMATION
 
 This information is never saved to disk.  This means that if you're
@@ -821,14 +858,13 @@ scheme, then code submissions are more than welcome.
 =head2 Refential Integrity
 
 If Alzabo is attempting to maintain referential integrity and you are
-not using either the L<C<Alzabo::ObjectCache>|Alzabo::ObjectCache> or
-L<C<Alzabo::ObjectCacheIPC>|Alzabo::ObjectCacheIPC> module, then
-situations can arise where objects you are holding onto in memory can
-get out of sync with the database and you will not know this.  If you
-are using one of the cache modules then attempts to access data from
-an expired or deleted object will throw an exception, allowing you to
-try again (if it is expired) or give up (if it is deleted).  Please
-see L<C<Alzabo::ObjectCache>|Alzabo::ObjectCache> for more details.
+not using caching, then situations can arise where objects you are
+holding onto in memory can get out of sync with the database and you
+will not know this.  If you are using one of the cache modules then
+attempts to access data from an expired or deleted object will throw
+an exception, allowing you to try again (if it is expired) or give up
+(if it is deleted).  Please see
+L<C<Alzabo::ObjectCache>|Alzabo::ObjectCache> for more details.
 
 =head1 AUTHOR
 

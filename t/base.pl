@@ -32,11 +32,16 @@ sub Test::More::eval_ok (&$)
     my ($code, $name) = @_;
 
     eval { $code->() };
-    if ($@)
+    if (my $e = $@)
     {
 	Test::More::ok( 0, $name );
-	$@ =~ s/\n/\n\#/g;
-	Test::Builder->new->diag("     got error: $@\n" );
+	Test::Builder->new->diag("     got error: $e\n" );
+	if ( $e->can('sql') )
+	{
+	    Test::Builder->new->diag( "           SQL: " . $e->sql . "\n" );
+	    my $b = join ' || ', $e->bind;
+	    Test::Builder->new->diag( "    Bound vals: $b\n" );
+	}
     }
     else
     {

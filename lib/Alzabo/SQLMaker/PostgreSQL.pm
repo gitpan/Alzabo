@@ -8,7 +8,7 @@ use Alzabo::Exceptions;
 use Alzabo::SQLMaker;
 use base qw(Alzabo::SQLMaker);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
 
 my $MADE_LITERALS;
 my %functions;
@@ -130,7 +130,7 @@ sub _make_literals
 	      [ DATE_PART => [1,1], [ 'datetime' ] ],
 	      [ EXTRACT => [0,1], [ 'datetime' ], '%s FROM %s' ],
 
-	      [ NULLIF => [0,0], [ 'misc' ] ],
+	      [ NULLIF => [0,0], [ 'control' ] ],
 	    )
     {
 	make_literal( literal => $_->[0],
@@ -158,8 +158,8 @@ sub _make_literals
     make_literal( literal => 'COALESCE',
 		  min => 2,
 		  max => undef,
-		  quote => [1,1,1],
-		  groups => [ 'misc' ],
+		  quote => [0,0,0],
+		  groups => [ 'control' ],
 		);
 
     make_literal( literal => 'OVERLAPS',
@@ -359,6 +359,13 @@ These are functions which return information about the MySQL server.
  CURRENT_USER
  SYSTEM_USER
  USER
+
+=head2 :control
+
+These are flow control functions:
+
+ NULLIF
+ COALESCE
 
 =head2 :misc
 

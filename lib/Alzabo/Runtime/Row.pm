@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.72 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.75 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -74,15 +74,15 @@ sub _init
     unless ( keys %{ $self->{data} } > keys %{ $self->{id} } )
     {
 	# Need to try to fetch something to confirm that this row exists!
-	my $sql = ( $self->table->schema->sqlmaker->
+	my $sql = ( $self->schema->sqlmaker->
 		    select( ($self->table->primary_key)[0] )->
 		    from( $self->table ) );
 
 	$self->_where($sql);
 
 	$self->_no_such_row_error
-	    unless defined $self->table->schema->driver->one_row( sql => $sql->sql,
-								  bind => $sql->bind );
+	    unless defined $self->schema->driver->one_row( sql => $sql->sql,
+							   bind => $sql->bind );
     }
 }
 
@@ -100,9 +100,9 @@ sub _get_data
 {
     my $self = shift;
 
-    my $driver = $self->table->schema->driver;
+    my $driver = $self->schema->driver;
 
-    my $sql = ( $self->table->schema->sqlmaker->
+    my $sql = ( $self->schema->sqlmaker->
 		select( $self->table->columns(@_) )->
 		from( $self->table ) );
     $self->_where($sql);
@@ -140,7 +140,7 @@ sub update
 
     $self->_no_such_row_error if $self->{deleted};
 
-    my $driver = $self->table->schema->driver;
+    my $driver = $self->schema->driver;
 
     my @fk; # this never gets populated unless referential integrity
             # checking is on
@@ -163,17 +163,18 @@ sub update
 	    delete $data{$k};
 	    next;
 	}
+
 	Alzabo::Exception::Params->throw( error => "Column " . $c->name . " cannot be null." )
 	    unless defined $data{$k} || $c->nullable || defined $c->default;
 
 	push @fk, $self->table->foreign_keys_by_column($c)
-	    if $self->table->schema->referential_integrity;
+	    if $self->schema->referential_integrity;
     }
 
     return unless keys %data;
 
     # If we have foreign keys we'd like all the fiddling to be atomic.
-    my $sql = ( $self->table->schema->sqlmaker->
+    my $sql = ( $self->schema->sqlmaker->
 		update( $self->table ) );
     $sql->set( map { $self->table->column($_), $data{$_} } keys %data );
 
@@ -212,16 +213,16 @@ sub delete
 {
     my $self = shift;
 
-    my $driver = $self->table->schema->driver;
+    my $driver = $self->schema->driver;
 
     my @fk; # this never populated unless referential integrity
             # checking is on
-    if ($self->table->schema->referential_integrity)
+    if ($self->schema->referential_integrity)
     {
 	@fk = $self->table->all_foreign_keys;
     }
 
-    my $sql = ( $self->table->schema->sqlmaker->
+    my $sql = ( $self->schema->sqlmaker->
 		delete->from( $self->table ) );
     $self->_where( $sql );
 
@@ -293,11 +294,11 @@ sub rows_by_foreign_key
     }
 
     push @{ $p{where} }, map { [ $_->[1], '=', $self->select( $_->[0]->name ) ] } $fk->column_pairs;
-    my $cursor = $fk->table_to->rows_where(%p);
 
     # if the relationship is not 1..n, then only one row can be
-    # returned (or referential integrity is hosed).
-    return $fk->is_one_to_many ? $cursor : ($cursor->all_rows)[0];
+    # returned (or referential integrity has been hosed in the
+    # database).
+    return $fk->is_one_to_many ? $fk->table_to->rows_where(%p) : $fk->table_to->one_row(%p);
 }
 
 # Class or object method
@@ -311,7 +312,7 @@ sub id
     {
 	unless ( exists $self->{id_string} )
 	{
-	    $self->{id_string} = join ';:;_;:;', ( $self->table->schema->name,
+	    $self->{id_string} = join ';:;_;:;', ( $self->schema->name,
 						   $self->table->name,
 						   map { $_, $self->{id}{$_} } sort keys %{ $self->{id} } );
 	}
