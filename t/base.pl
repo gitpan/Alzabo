@@ -19,15 +19,12 @@ foreach ( File::Spec->catdir( $cwd, 't', 'schemas' ),
 
 Alzabo::Config::root_dir( File::Spec->catdir( $cwd, 't' ) );
 
-BEGIN
-{
-    require Test::More;
-    push @Test::More::EXPORT, 'eval_ok';
+use Data::Dumper;
 
-    $^W = 0;
-}
+$Alzabo::Build::Tests = eval $ENV{ALZABO_TEST_CONFIG};
+die $@ if $@;
 
-sub Test::More::eval_ok (&$)
+sub main::eval_ok (&$)
 {
     my ($code, $name) = @_;
 
@@ -43,3 +40,4 @@ sub Test::More::eval_ok (&$)
     }
 }
 
+1;

@@ -3,17 +3,17 @@ package Alzabo::Driver::PostgreSQL;
 use strict;
 use vars qw($VERSION);
 
-use DBI;
+use Alzabo::Driver;
+
 use DBD::Pg;
+use DBI;
 
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
+$VERSION = 2.0;
 
 use base qw(Alzabo::Driver);
-
-1;
 
 sub new
 {
@@ -215,6 +215,8 @@ sub dbi_driver_name
 {
     return 'Pg';
 }
+
+1;
 
 __END__
 

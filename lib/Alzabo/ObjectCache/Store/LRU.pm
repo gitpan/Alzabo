@@ -4,7 +4,7 @@ use strict;
 
 use vars qw($SELF $VERSION @ISA);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
+$VERSION = 2.0;
 
 1;
 

@@ -13,7 +13,7 @@ use Time::HiRes qw(time);
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.97 $ =~ /(\d+)\.(\d+)/;
+$VERSION = 2.0;
 
 sub insert
 {

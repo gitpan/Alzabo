@@ -9,7 +9,7 @@ use base qw( Alzabo::ObjectCache::Sync );
 
 use Alzabo::Exceptions;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
+$VERSION = 2.0;
 
 1;
 

@@ -6,7 +6,8 @@ use Alzabo::Runtime;
 my $p;
 BEGIN
 {
-    use lib '.', './t';
+    use lib '.', File::Spec->catdir( File::Spec->curdir, 't' );
+
     require 'base.pl';
 
     if ($ENV{OBJECTCACHE_PARAMS} && (my $c_params = eval $ENV{OBJECTCACHE_PARAMS}))

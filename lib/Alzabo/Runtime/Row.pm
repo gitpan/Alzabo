@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.91 $ =~ /(\d+)\.(\d+)/;
+$VERSION = 2.0;
 
 1;
 

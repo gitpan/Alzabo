@@ -1,24 +1,25 @@
-BEGIN
-{
-    unless (defined $ENV{ALZABO_RDBMS_TESTS})
-    {
-	print "1..0\n";
-	exit;
-    }
-}
+use strict;
+
+use Test::More;
 
 use Alzabo::Create;
 use Alzabo::Runtime;
 
 require Alzabo::MethodMaker;
 
+use lib '.', File::Spec->catdir( File::Spec->curdir, 't' );
+
 require 'base.pl';
 
-my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
-die $@ if $@;
+unless ( @$Alzabo::Build::Tests )
+{
+    plan skip_all => 'no test config provided';
+    exit;
+}
 
-eval "use Test::More ( tests => 79 )";
-die $@ if $@;
+my $tests = $Alzabo::Build::Tests;
+
+plan tests => 80;
 
 my $t = $tests->[0];
 make_schema(%$t);
@@ -30,6 +31,9 @@ Alzabo::MethodMaker->import( schema => $t->{schema_name},
 			   );
 
 my $s = Alzabo::Runtime::Schema->load_from_file( name => $t->{schema_name} );
+
+eval { $s->docs_as_pod };
+ok( ! $@, 'docs_as_pod should not cause an exception' );
 
 foreach my $t ($s->tables)
 {

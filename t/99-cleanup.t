@@ -1,9 +1,13 @@
+use strict;
+
 use Alzabo::Create;
 use Cwd;
 use File::Path;
 use File::Spec;
 
-use lib '.', './t';
+use Test::More tests => 1;
+
+use lib '.', File::Spec->catdir( File::Spec->curdir, 't' );
 
 require 'base.pl';
 
@@ -16,15 +20,12 @@ my $dir = cwd;
 rmtree( File::Spec->catdir( $dir, 't', 'schemas' ), $Test::Harness::verbose );
 rmtree( File::Spec->catdir( $dir, 't', 'objectcache' ), $Test::Harness::verbose );
 
-print "1..1\n";
-print "ok 1\n";
+ok(1);
 
-exit unless defined $ENV{ALZABO_RDBMS_TESTS};
+exit unless @$Alzabo::Build::Tests;
 
-my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
-
-foreach (@$tests)
+foreach my $t ( @$Alzabo::Build::Tests )
 {
     no strict 'refs';
-    eval { &{ "$_->{rdbms}_clean_schema" }(%$_); };
+    eval { &{ "$t->{rdbms}_clean_schema" }(%$t); };
 }

@@ -6,7 +6,9 @@ use Alzabo::Config;
 use Cwd;
 use File::Spec;
 
-use lib '.', './t';
+use Test::More;
+
+use lib '.', File::Spec->catdir( File::Spec->curdir, 't' );
 
 require 'base.pl';
 
@@ -31,11 +33,11 @@ if ( eval { require DBD::Pg } && ! $@ )
 
 unless ($tests)
 {
-    print "1..0\n";
+    plan skip_all => 'no database drivers available';
     exit;
 }
 
-Test::More->import( tests => $tests );
+plan tests => $tests;
 
 foreach my $db (@db)
 {

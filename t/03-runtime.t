@@ -1,24 +1,21 @@
 use strict;
 
-BEGIN
-{
-    unless (defined $ENV{ALZABO_RDBMS_TESTS})
-    {
-	print "1..0\n";
-	exit;
-    }
-}
+use Test::More;
 
 use Alzabo::Create;
 use Alzabo::Config;
 
-use Data::Dumper;
-
 use File::Spec;
 
-use lib '.', './t';
+use lib '.', File::Spec->catdir( File::Spec->curdir, 't' );
 
 require 'base.pl';
+
+unless ( @$Alzabo::Build::Tests )
+{
+    plan skip_all => 'no test config provided';
+    exit;
+}
 
 require 'make_schemas.pl';
 require 'drop_schemas.pl';
@@ -26,10 +23,7 @@ require 'drop_schemas.pl';
 # squash dumb warnings
 $DB_File::VERSION = $IPC::Shareable::VERSION = $BerkeleyDB::VERSION = 0;
 
-$Data::Dumper::Indent = 0;
-
-my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
-die $@ if $@;
+my $tests = $Alzabo::Build::Tests;
 
 # re-order the tests to prevent test failures with multi-process tests
 # & Pg.

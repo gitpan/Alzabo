@@ -1,8 +1,10 @@
 package Alzabo::ObjectCache::Store::Memory;
 
+use strict;
+
 use vars qw($SELF $VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
+$VERSION = 2.0;
 
 1;
 

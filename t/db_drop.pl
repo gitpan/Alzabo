@@ -2,6 +2,8 @@ use Alzabo::Create;
 use Cwd;
 use File::Path;
 
+use Test::More tests => 1;
+
 use lib '.', './t';
 
 require 'base.pl';
@@ -10,17 +12,14 @@ require 'utils.pl';
 
 warn "\n# Cleaning up databases created during testing\n";
 
-print "1..1\n";
-print "ok 1\n";
+ok(1);
 
-exit unless defined $ENV{ALZABO_RDBMS_TESTS};
+exit unless @$Alzabo::Build::Tests;
 
-my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
-
-foreach (@$tests)
+foreach my $t ( @$Alzabo::Build::Tests )
 {
     no strict 'refs';
-    eval { &{ "$_->{rdbms}_clean_schema" }(%$_); };
+    eval { &{ "$t->{rdbms}_clean_schema" }(%$t); };
 }
 
 1;

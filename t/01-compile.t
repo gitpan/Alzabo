@@ -1,7 +1,8 @@
 use strict;
 
-# This is just to test whether this stuff compiles.
+use Test::More tests => 1;
 
+# This is just to test whether this stuff compiles.
 use Alzabo::Config;
 
 use Alzabo::ChangeTracker;
@@ -62,5 +63,4 @@ if ( eval { require DBD::Pg } && ! $@ )
 
 require Alzabo::MethodMaker;
 
-print "1..1\n";
-print "ok 1\n";
+ok(1);

@@ -1,4 +1,5 @@
 BUGS
+Build.PL
 Changes
 INSTALL
 LICENSE
@@ -10,9 +11,9 @@ TODO
 eg/alzabo_to_ascii
 eg/convert.pl
 eg/reverse_cardinality.pl
-install_helpers/install_extras.pl
+inc/Alzabo/Build.pm
+inc/Alzabo/Config.pm.tmpl
 install_helpers/pod_merge.pl
-install_helpers/prompts.pl
 interfaces/mason/add_column.mhtml
 interfaces/mason/add_index_1.mhtml
 interfaces/mason/add_index_2.mhtml
@@ -112,7 +113,6 @@ lib/Alzabo/SQLMaker/MySQL.pm
 lib/Alzabo/SQLMaker/PostgreSQL.pm
 lib/Alzabo/Schema.pm
 lib/Alzabo/Table.pm
-lib/PreInstall/Config.pm
 mason/common/exception
 mason/common/href
 mason/common/make_url

@@ -1,5 +1,7 @@
 use strict;
 
-use lib '.', './t';
+use File::Spec;
+
+use lib '.', File::Spec->catdir( File::Spec->curdir, 't' );
 
 require 'methodmaker.pl';

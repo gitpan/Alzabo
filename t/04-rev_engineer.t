@@ -2,28 +2,29 @@
 
 use strict;
 
+use Test::More;
+
 use Alzabo::Create;
 use Cwd;
 
-use lib '.', './t';
+use lib '.', File::Spec->catdir( File::Spec->curdir, 't' );
 
 require 'base.pl';
 
-unless (defined $ENV{ALZABO_RDBMS_TESTS})
+unless ( @$Alzabo::Build::Tests )
 {
-    print "1..0\n";
+    plan skip_all => 'no test config provided';
     exit;
 }
 
 require 'make_schemas.pl';
 
-my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
+my $tests = $Alzabo::Build::Tests;
 
 my $TESTS_PER_RUN = 2;
 my $test_count = $TESTS_PER_RUN * @$tests;
 
-eval "use Test::More ( tests => $test_count )";
-die $@ if $@;
+plan tests => $test_count;
 
 foreach my $test (@$tests)
 {

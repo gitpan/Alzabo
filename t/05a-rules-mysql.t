@@ -1,22 +1,23 @@
 use strict;
 
+use Test::More;
+
 BEGIN
 {
     unless ( eval { require DBD::mysql } && ! $@ )
     {
-	print "1..0\n";
+        plan skip_all => 'needs DBD::mysql';
 	exit;
     }
 }
 
 use Alzabo::Create;
 
-use lib '.', './t';
+use lib '.', File::Spec->catdir( File::Spec->curdir, 't' );
 
 require 'base.pl';
 
-eval "use Test::More ( tests => 6 )";
-die $@ if $@;
+plan tests => 6;
 
 my $new_s;
 eval_ok( sub { $new_s = Alzabo::Create::Schema->new( name => 'hello there',

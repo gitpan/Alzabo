@@ -9,7 +9,7 @@ use Alzabo::Runtime;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.67 $ =~ /(\d+)\.(\d+)/;
+$VERSION = 2.0;
 
 # types of methods that can be made - only ones that haven't been
 # deprecated
@@ -1332,6 +1332,38 @@ package Alzabo::Docs;
 sub group { shift->{group} }
 sub description { shift->{description} }
 
+# copied from Params::ValidatePP
+{
+    my %type_to_string =
+        ( Params::Validate::SCALAR()    => 'scalar',
+          Params::Validate::ARRAYREF()  => 'arrayref',
+          Params::Validate::HASHREF()   => 'hashref',
+          Params::Validate::CODEREF()   => 'coderef',
+          Params::Validate::GLOB()      => 'glob',
+          Params::Validate::GLOBREF()   => 'globref',
+          Params::Validate::SCALARREF() => 'scalarref',
+          Params::Validate::UNDEF()     => 'undef',
+          Params::Validate::OBJECT()    => 'object',
+        );
+
+    sub _typemask_to_strings
+    {
+        shift;
+	my $mask = shift;
+
+	my @types;
+	foreach ( Params::Validate::SCALAR, Params::Validate::ARRAYREF,
+                  Params::Validate::HASHREF, Params::Validate::CODEREF,
+                  Params::Validate::GLOB, Params::Validate::GLOBREF,
+                  Params::Validate::SCALARREF, Params::Validate::UNDEF,
+                  Params::Validate::OBJECT )
+	{
+	    push @types, $type_to_string{$_} if $mask & $_;
+	}
+	return @types ? @types : ('unknown');
+    }
+}
+
 package Alzabo::MethodDocs;
 
 use Params::Validate qw( validate SCALAR ARRAYREF HASHREF );
@@ -1376,7 +1408,7 @@ sub as_pod
 		{
 		    # hack!
 		    my $types =
-			join ', ', Params::Validate::_typemask_to_strings( $p->{type} );
+			join ', ', $self->_typemask_to_strings( $p->{type} );
 		    $params .= "($types)";
 		}
 		$params .= "\n\n";
@@ -1395,7 +1427,7 @@ sub as_pod
 		{
 		    # hack!
 		    my $types =
-			join ', ', Params::Validate::_typemask_to_strings( $p->{type} );
+			join ', ', $self->_typemask_to_strings( $p->{type} );
 		    $params .= "($types)";
 		}
 		$params .= "\n\n";
@@ -1419,6 +1451,7 @@ EOF
 
     return $pod;
 }
+
 
 package Alzabo::ClassDocs;
 

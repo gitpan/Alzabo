@@ -15,7 +15,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
+$VERSION = 2.0;
 
 #
 # Each pair represents a range of versions which are compatible with
@@ -204,7 +204,7 @@ Alzabo::BackCompat - Convert old data structures
 This module is used to magically convert schemas with an older data
 structure to the latest format.
 
-More details on how this works can be found in L<the Backwards
-Compatibility section|Alzabo/Backwards Compatibility>.
+More details on how this works can be found in L<Backwards
+Compatibility|Alzabo/Backwards Compatibility>.
 
 =cut

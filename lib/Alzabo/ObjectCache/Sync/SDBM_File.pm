@@ -12,7 +12,7 @@ use Alzabo::Exceptions;
 use Fcntl qw( :flock O_RDONLY O_RDWR O_CREAT );
 use SDBM_File;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
+$VERSION = 2.0;
 
 1;
 

@@ -1,29 +1,28 @@
 use strict;
 
-BEGIN
-{
-    unless (defined $ENV{ALZABO_RDBMS_TESTS})
-    {
-	print "1..0\n";
-	exit;
-    }
-}
+use Test::More;
 
 use Alzabo::Driver;
 
 use Cwd;
 use File::Spec;
 
-use lib '.', './t';
+use lib '.', File::Spec->catdir( File::Spec->curdir, 't' );
 
 require 'base.pl';
+
+unless ( @$Alzabo::Build::Tests )
+{
+    plan skip_all => 'no test config provided';
+    exit;
+}
 
 my @db;
 my $test_count = 1;
 
-my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
+my $tests = $Alzabo::Build::Tests;
 
-Test::More->import( tests => $test_count * @$tests );
+plan tests => $test_count * @$tests;
 
 my %rdbms = ( mysql => 'MySQL',
               pg    => 'PostgreSQL' );

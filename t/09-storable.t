@@ -1,27 +1,24 @@
 use strict;
 
-BEGIN
-{
-    unless (defined $ENV{ALZABO_RDBMS_TESTS})
-    {
-	print "1..0\n";
-	exit;
-    }
-}
+use Test::More;
 
 use Alzabo::Runtime;
 
-use lib '.', './t';
+use lib '.', File::Spec->catdir( File::Spec->curdir, 't' );
 
 require 'base.pl';
 
+unless ( @$Alzabo::Build::Tests )
+{
+    plan skip_all => 'no test config provided';
+    exit;
+}
+
 require 'make_schemas.pl';
 
-eval 'use Test::More ( tests => 9 )';
-die $@ if $@;
+plan tests => 9;
 
-my $tests = eval $ENV{ALZABO_RDBMS_TESTS};
-die $@ if $@;
+my $tests = $Alzabo::Build::Tests;
 
 my $t = pop @$tests;
 {

@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.84 $ =~ /(\d+)\.(\d+)/;
+$VERSION = 2.0;
 
 1;
 
@@ -837,7 +837,7 @@ See the L<documentation on group by clauses for the
 Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
 Parameters>.
 
-=item * having => same as "where"
+=item * having
 
 This parameter is specified in the same way as the "where" parameter.
 
