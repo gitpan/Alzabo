@@ -1,3 +1,8 @@
+0.32
+
+- Forget to include data browser files in MANIFEST.  Caused weirdness
+if you said you wanted it when asked during install.
+
 0.31
 
 Bug fixes only

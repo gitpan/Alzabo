@@ -1,0 +1,152 @@
+<center><h4>Filter</h4></center>
+<form action="browse_table<% Alzabo::Config::mason_extension() %>">
+<input type="hidden" name="schema" value="<% $s->name %>">
+<input type="hidden" name="table" value="<% $t->name %>">
+<input type="hidden" name="max_rows" value="<% $max_rows %>">
+<input type="hidden" name="user" value="<% $user %>">
+<input type="hidden" name="password" value="<% $password %>">
+<table align="center" width="90%">
+ <tr valign="top">
+  <td>
+   FROM:
+  </td>
+  <td>
+   <input name="filter_from" value="<% $filter_from %>" type="text" size="20">
+  </td>
+ </tr>
+ <tr valign="top">
+  <td>
+   WHERE:
+  </td>
+  <td>
+   <textarea name="filter_where" rows="5" cols="50"><% $filter_where %></textarea>
+  </td>
+ </tr>
+ <tr valign="top">
+  <td>
+   <input type="Submit" value="Submit">
+  </td>
+ </tr>
+</table>
+</form>
+
+<& .row_count, start_row => 0, max_rows  => 25, filter_from => $filter_from, filter_where => $filter_where, rows_fetched => $rows_fetched, row_count => $row_count, %ARGS &>
+<& .table_header &>
+<% $table_body %>
+<& .table_footer &>
+<& .row_count, start_row => 0, max_rows  => 25, filter_from => $filter_from, filter_where => $filter_where, rows_fetched => $rows_fetched, row_count => $row_count, %ARGS &>
+
+<%shared>
+my %args = $m->caller_args(0);
+my $s = $args{s};
+my $t = $args{t};
+my $start_row = $args{start_row} || 0;
+my $max_rows = $args{max_rows} || 25;
+my $filter_from = $args{filter_from};
+my $filter_where = $args{filter_where};
+my $user = $args{user};
+my $password = $args{password};
+
+my @cols = $t->columns;
+
+my @pk = map {$_->name} $t->primary_key;
+$t->set_prefetch(@cols);
+
+my $non_pk_cols = scalar @cols - scalar @pk;
+
+my $row_count;
+$row_count = $t->row_count;
+
+my $cursor;
+
+$cursor = $t->all_rows( limit => [ $max_rows, $start_row ] );
+
+my ( $rows_fetched, $rows_used );
+</%shared>
+<%init>
+my $table_body = $m->scomp('.table_body');
+</%init>
+<%def .row_count>
+<center>
+<h3>
+% if ($start_row > 0) {
+<& &Alzabo::Config::mason_url_path() . '/common/href', path => 'browse_table' . Alzabo::Config::mason_extension(),  text => '&lt;&lt', query => { schema => $s->name, table => $t->name, start_row => ( $start_row - $max_rows > 0 ? $start_row - $max_rows : 0 ), max_rows => $max_rows, filter_from => $filter_from, filter_where => $filter_where, user => $user, password => $password } &>
+% }
+Rows <% $rows_fetched ? $start_row + 1 : 0 %>-<% $start_row + $rows_used %> (out of <% $row_count %>)
+% if ($start_row + $max_rows < $row_count) {
+<& &Alzabo::Config::mason_url_path() . '/common/href', path => 'browse_table' . Alzabo::Config::mason_extension(), text => '&gt;&gt;', query => { schema => $s->name, table => $t->name, start_row => $start_row + $max_rows, max_rows => $max_rows, filter_from => $filter_from, filter_where => $filter_where, user => $user, password => $password } &>
+% }
+</h3></center>
+</%def>
+
+<%def .table_body>
+% $rows_fetched = $rows_used = 0;
+% while (my $row = $cursor->next_row) {
+%   $rows_fetched++;
+%   #next if $rows_fetched <= $start_row;
+%   #last if $rows_fetched > $max_rows + $start_row;
+%   $rows_used++;
+ <tr valign="middle">
+<form action="delete_row<% Alzabo::Config::mason_extension() %>">
+<input type="hidden" name="schema" value="<% $s->name %>">
+<input type="hidden" name="table" value="<% $t->name %>">
+<input type="hidden" name="id" value="<% $row->id %>">
+<input type="hidden" name="start_row" value="<% $start_row %>">
+<input type="hidden" name="max_rows" value="<% $max_rows %>">
+<input type="hidden" name="filter_from" value="<% $filter_from %>">
+<input type="hidden" name="filter_where" value="<% $filter_where %>">
+<input type="hidden" name="user" value="<% $user %>">
+<input type="hidden" name="password" value="<% $password %>">
+  <td>
+   <input type="submit" value="Delete" name="Delete">
+  </td>
+</form>
+<form action="change_row<% Alzabo::Config::mason_extension() %>">
+<input type="hidden" name="schema" value="<% $s->name %>">
+<input type="hidden" name="table" value="<% $t->name %>">
+<input type="hidden" name="id" value="<% $row->id %>">
+<input type="hidden" name="start_row" value="<% $start_row %>">
+<input type="hidden" name="max_rows" value="<% $max_rows %>">
+<input type="hidden" name="column_count" value="<% $non_pk_cols %>">
+<input type="hidden" name="filter_from" value="<% $filter_from %>">
+<input type="hidden" name="filter_where" value="<% $filter_where %>">
+<input type="hidden" name="user" value="<% $user %>">
+<input type="hidden" name="password" value="<% $password %>">
+%     my $x = 0;
+%     foreach my $c (@cols) {
+%     my $val = $row->select( $c->name );
+  <td align="left">
+%       if ( $c->is_primary_key ) {
+  <% $val %>
+%       } else {
+   <input type="hidden" name="column_names" value="<% $c->name %>">
+   <input type="textfield" size="10" name="column_vals" value="<% defined $val ? $val : '' %>">
+%         if ($c->nullable) {
+   Null? <input type="checkbox" name="column_null_<% $x %>" value="yes"<% ! defined $val ? ' checked' : '' %>>
+%         }
+%         $x++;
+%       }
+  </td>
+%     }
+%     if ($non_pk_cols > 0) {
+  <td>
+   <input type="submit" value="Change" name="Change">
+  </td>
+%     }
+</form>
+ </tr>
+% }
+</%def>
+<%def .table_header>
+<table width="100%" cellspacing="0" cellpadding="4" border="1">
+ <tr>
+  <td bgcolor="#dddddd">&nbsp;</td>
+% foreach my $c (@cols) {
+  <th align="left"><% $c->name %></th>
+% }
+  <td>&nbsp;</td>
+ </tr>
+</%def>
+<%def .table_footer>
+</table>
+</%def>

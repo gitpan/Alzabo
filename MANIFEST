@@ -110,6 +110,14 @@ interfaces/mason/view_schema.mhtml
 interfaces/mason/view_schema_sql.mhtml
 interfaces/mason/view_table.mhtml
 
+utilities/data_browser/autohandler
+utilities/data_browser/browse_schema.mhtml
+utilities/data_browser/browse_table.mhtml
+utilities/data_browser/change_row.mhtml
+utilities/data_browser/delete_row.mhtml
+utilities/data_browser/index.mhtml
+utilities/data_browser/schema_menubar
+
 mason/common/exception
 mason/common/href
 mason/common/make_url

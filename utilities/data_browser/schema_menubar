@@ -1,0 +1,32 @@
+<%init>
+my ($s, $user, $password) = @_;
+
+
+my @t;
+my @temp = $s->tables;
+while (my @five = splice @temp, 0, 5)
+{
+    # Fill out the row of five if necessary
+    push @five, '' while scalar @five < 5;
+    push @t, [@five];
+}
+
+</%init>
+% if (@t) {
+ <tr>
+  <td colspan="5" align="center"><h5>Tables</h5>
+ </tr>
+%   foreach my $five (@t) {
+ <tr>
+%     foreach my $t (@$five) {
+  <td align="center">
+%       if ($t) {
+   <& &Alzabo::Config::mason_url_path() . '/common/href', text => $t->name, path => 'browse_table' . Alzabo::Config::mason_extension(), query => { schema => $s->name, table => $t->name, user => $user, password => $password } &>
+%       } else {
+   &nbsp;
+%       }
+  </td>
+%     }
+ </tr>
+%   }
+% }
