@@ -321,16 +321,23 @@ EOF
 
 	my $host = prompt( '  Host?' );
 
+	print <<"EOF";
+
+What port is the $name RDBMS located on.  Press enter to skip this.
+EOF
+
+	my $port = prompt( '  Port?' );
+
 	print <<'EOF';
 
-Please provide database name should be used for testing.  A
+Please provide a database name that can be used for testing.  A
 database/schema with this name will be created and dropped during the
 testing process.
 EOF
 
 	my $db_name = prompt( '  Database name?', "test_alzabo_$_" );
 
-	push @TESTS, { rdbms => $_, user => $user, password => $password, host => $host, schema_name => $db_name };
+	push @TESTS, { rdbms => $_, user => $user, password => $password, host => $host, port => $port, schema_name => $db_name };
     }
 }
 

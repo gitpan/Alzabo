@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.50 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.56 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -47,6 +47,13 @@ sub host
     return $self->{host};
 }
 
+sub port
+{
+    my $self = shift;
+
+    return $self->{port};
+}
+
 sub referential_integrity
 {
     my $self = shift;
@@ -75,6 +82,13 @@ sub set_host
     $self->{host} = shift;
 }
 
+sub set_port
+{
+    my $self = shift;
+
+    $self->{port} = shift;
+}
+
 sub set_referential_integrity
 {
     my $self = shift;
@@ -91,6 +105,7 @@ sub connect
     $p{user} = $self->user if defined $self->user;
     $p{password} = $self->password if defined $self->password;
     $p{host} = $self->host if defined $self->host;
+    $p{port} = $self->port if defined $self->port;
     $self->driver->connect( %p, @_ );
 }
 
@@ -103,7 +118,10 @@ sub one_row
 sub join
 {
     my $self = shift;
-    my %p = validate( @_, { tables => { type => ARRAYREF | OBJECT },
+    my %p = validate( @_, { join => { type => ARRAYREF | OBJECT,
+				      optional => 1 },
+			    tables => { type => ARRAYREF | OBJECT,
+					optional => 1 },
 			    select => { type => ARRAYREF | OBJECT,
 					optional => 1 },
 			    where => { type => ARRAYREF,
@@ -116,23 +134,29 @@ sub join
 					  optional => 1 },
 			  } );
 
-    $p{tables} = [ $p{tables} ] unless UNIVERSAL::isa($p{tables}, 'ARRAY');
+    $p{join} ||= delete $p{tables};
+    $p{join} = [ $p{join} ] unless UNIVERSAL::isa($p{join}, 'ARRAY');
 
     my @tables;
 
-    if ( UNIVERSAL::isa( $p{tables}->[0], 'ARRAY' ) )
+    if ( UNIVERSAL::isa( $p{join}->[0], 'ARRAY' ) )
     {
 	# flattens the nested structure and produces a unique set of
 	# tables
 	@tables = values %{ { map { $_ => $_ }
-			      map { @$_ } @{ $p{tables} } } };
+			      grep { UNIVERSAL::isa( 'Alzabo::Table', $_ ) }
+			      map { @$_ } @{ $p{join} } } };
     }
     else
     {
-	@tables = @{ $p{tables} };
+	@tables = @{ $p{join} };
     }
 
-    my @select_tables = $p{select} ? ( UNIVERSAL::isa( $p{select}, 'ARRAY' ) ? @{ $p{select} } : $p{select} ) : @tables;
+    # We go in this order:  $p{select}, $p{distinct}, @tables
+    my @select_tables = ( $p{select} ?
+			  ( UNIVERSAL::isa( $p{select}, 'ARRAY' ) ?
+			    @{ $p{select} } : $p{select} ) :
+			  ( $p{distinct} ? $p{distinct} : @tables ) );
 
     my @select_cols;
     # If the table has a multi-column primary key we have to jump
@@ -155,11 +179,10 @@ sub join
     }
 
     my $sql = ( $self->sqlmaker->
-		select(@select_cols)->
-		from(@tables) );
+		select(@select_cols) );
 
     $self->_join_all_tables( sql => $sql,
-			     tables => $p{tables} );
+			     join => $p{join} );
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
 
@@ -182,68 +205,6 @@ sub join
 						 tables => [ map { $_->real_table } @select_tables ],
 						 distinct => $p{distinct} );
     }
-}
-
-sub left_outer_join
-{
-    shift->_outer_join( @_, type => 'left' );
-}
-
-sub right_outer_join
-{
-    shift->_outer_join( @_, type => 'right' );
-}
-
-sub full_outer_join
-{
-    shift->_outer_join( @_, type => 'full' );
-}
-
-sub _outer_join
-{
-    my $self = shift;
-
-    my %p = @_;
-
-    my @select = defined $p{tables}->[0] && UNIVERSAL::isa( $p{tables}->[0], 'ARRAY' ) ? @{ shift @{ $p{tables} } } : ( shift @{ $p{tables} }, pop @{ $p{tables} } );
-
-    # This gets flipped again later in the OuterJoinCursor object so
-    # the results make sense
-    @select = @select[1, 0] if $p{type} eq 'right';
-
-    # Tables for which we are not selecting but which are involved in
-    # the join
-    my %other_tables;
-    foreach ( defined $p{tables}->[0] && UNIVERSAL::isa( $p{tables}->[0], 'ARRAY' ) ? map { @$_ } @{ $p{tables} } : @{ $p{tables} } )
-    {
-	$other_tables{$_} = $_;
-    }
-    my @other_tables = values %other_tables;
-
-    my $join_method = $p{type} eq 'full' ? 'full_outer_join' : 'left_outer_join';
-
-    my $sql = ( $self->sqlmaker->
-		select( map {$_->primary_key} @select )->
-		$join_method( @select, @other_tables ) );
-
-    if (@other_tables)
-    {
-	$self->_join_all_tables( sql => $sql,
-				 tables => $p{tables} );
-    }
-
-    Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
-
-    Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} ) if exists $p{order_by};
-
-    $sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} ) if $p{limit};
-
-    my $statement = $self->driver->statement( sql => $sql->sql,
-					      bind => $sql->bind );
-
-    return Alzabo::Runtime::OuterJoinCursor->new( type => $p{type},
-						  statement => $statement,
-						  tables => [ map { $_->real_table } @select ] );
 }
 
 sub function
@@ -272,43 +233,47 @@ sub select
 sub _select_sql
 {
     my $self = shift;
-    my %p = validate( @_, { select => { type => SCALAR | ARRAYREF | OBJECT,
+    my %p = validate( @_, { join => { type => ARRAYREF | OBJECT,
+				      optional => 1 },
+			    tables => { type => ARRAYREF | OBJECT,
 					optional => 1 },
-			    tables => { type => ARRAYREF | OBJECT },
+			    select => { type => ARRAYREF | OBJECT,
+					optional => 1 },
 			    where => { type => ARRAYREF,
 				       optional => 1 },
-			    order_by => { type => ARRAYREF | HASHREF | OBJECT,
-					  optional => 1 },
 			    group_by => { type => ARRAYREF | HASHREF | OBJECT,
+					  optional => 1 },
+			    order_by => { type => ARRAYREF | HASHREF | OBJECT,
 					  optional => 1 },
 			    limit => { type => SCALAR | ARRAYREF,
 				       optional => 1 },
 			  } );
 
-    $p{tables} = [ $p{tables} ] unless UNIVERSAL::isa( $p{tables}, 'ARRAY' );
+    $p{join} ||= delete $p{tables};
+    $p{join} = [ $p{join} ] unless UNIVERSAL::isa($p{join}, 'ARRAY');
 
     my @tables;
 
-    if ( UNIVERSAL::isa( $p{tables}->[0], 'ARRAY' ) )
+    if ( UNIVERSAL::isa( $p{join}->[0], 'ARRAY' ) )
     {
 	# flattens the nested structure and produces a unique set of
 	# tables
 	@tables = values %{ { map { $_ => $_ }
-			      map { @$_ } @{ $p{tables} } } };
+			      grep { UNIVERSAL::isa( 'Alzabo::Table', $_ ) }
+			      map { @$_ } @{ $p{join} } } };
     }
     else
     {
-	@tables = @{ $p{tables} };
+	@tables = @{ $p{join} };
     }
 
     my @funcs = UNIVERSAL::isa( $p{select}, 'ARRAY' ) ? @{ $p{select} } : $p{select};
 
     my $sql = ( $self->sqlmaker->
-		select(@funcs)->
-		from(@tables) );
+		select(@funcs) );
 
     $self->_join_all_tables( sql => $sql,
-			     tables => $p{tables} );
+			     join => $p{join} );
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
 
@@ -324,35 +289,64 @@ sub _select_sql
 sub _join_all_tables
 {
     my $self = shift;
-    my %p = @_;
+    my %p = validate( @_, { join => { type => ARRAYREF },
+			    sql  => { isa => 'Alzabo::SQLMaker' } } );
+
+    my @from;
+    my @joins;
 
     # A structure like:
     #
     # [ [ $t_1 => $t_2 ],
-    #   [ $t_1 => $t_3 ],
-    #   [ $t_3 => $t_4 ] ]
+    #   [ $t_1 => $t_3, $fk ],
+    #   [ left_outer_join => $t_3 => $t_4 ] ]
     #
-    if ( UNIVERSAL::isa( $p{tables}->[0], 'ARRAY' ) )
+    if ( UNIVERSAL::isa( $p{join}->[0], 'ARRAY' ) )
     {
 	my %map;
 	my %tables;
 
-	foreach ( @{ $p{tables} } )
+	foreach my $set ( @{ $p{join} } )
 	{
-	    Alzabo::Exception::Params->throw( error => 'The table map must contain only two tables per array refernce' )
-		if @$_ > 2;
+	    # we take some care not to change the contents of $set,
+	    # because the caller may reuse the variable being
+	    # referenced, and changes here could break that.
 
-	    $self->_join_two_tables( @$_, $p{sql} );
+	    # XXX - improve
+	    Alzabo::Exception::Params->throw( error => 'The table map must contain only two tables per array refernce' )
+		if @$set > 4;
+
+	    my @tables;
+	    my $fk;
+	    if ( ! ref $set->[0] )
+	    {
+		$set->[0] =~ /^(right|left|full)_outer_join$/i
+		    or Alzabo::Exception::Params->throw( error => "Invalid join type; $set->[0]" );
+
+	        @tables = @$set[1,2];
+	        $fk = $set->[3];
+
+		push @from, [ $1, @tables, $fk ];
+	    }
+	    else
+	    {
+		@tables = @$set[0,1];
+	        $fk = $set->[2];
+
+		push @from, grep { ! exists $tables{ $_->name } } @tables;
+		push @joins, [ @tables, $fk ];
+	    }
 
 	    # Track the tables we've seen
-	    @tables{ $_->[0]->name, $_->[1]->name } = (1, 1);
+	    @tables{ $tables[0]->name, $tables[1]->name } = (1, 1);
 
 	    # Track their relationships
-	    push @{ $map{ $_->[0]->name } }, $_->[1]->name;
-	    push @{ $map{ $_->[1]->name } }, $_->[0]->name;
+	    push @{ $map{ $tables[0]->name } }, $tables[1]->name;
+	    push @{ $map{ $tables[1]->name } }, $tables[0]->name;
 	}
 
-	my $key = $p{tables}->[0]->[0]->name;
+        # just get one key to start with
+	my ($key) = (each %tables)[0];
 	delete $tables{$key};
 	my @t = @{ delete $map{$key} };
 	while (my $t = shift @t)
@@ -370,34 +364,49 @@ sub _join_all_tables
     #
     else
     {
-	for (my $x = 0; $x < @{ $p{tables} } - 1; $x++)
+	for (my $x = 0; $x < @{ $p{join} } - 1; $x++)
 	{
-	    my $cur_t = $p{tables}->[$x];
-	    my $next_t = $p{tables}->[$x + 1];
-
-	    $self->_join_two_tables( $cur_t, $next_t, $p{sql} );
+	    push @joins, [ $p{join}->[$x], $p{join}->[$x + 1], undef ];
 	}
+
+	@from = @{ $p{join} };
+    }
+
+    $p{sql}->from(@from);
+
+    foreach my $join (@joins)
+    {
+	$self->_join_two_tables( @$join, $p{sql} );
     }
 }
 
 sub _join_two_tables
 {
     my $self = shift;
-    my ($table_1, $table_2, $sql) = @_;
+    my ($table_1, $table_2, $fk, $sql) = @_;
+
     my $op =  $sql->last_op eq 'and' || $sql->last_op eq 'condition' ? 'and' : 'where';
 
-    Alzabo::Exception::Logic->throw( error => "Table " . $table_1->name . " doesn't exist in schema" )
-	unless $self->{tables}->EXISTS( $table_1->name );
+    if ($fk)
+    {
+	Alzabo::Exception::Params->throw( error => "The foreign key given to join together " . $table_1->name . " and " . $table_2->name . " does not represent a relationship between those two tables" )
+	    unless ( ( $fk->table_from eq $table_1 || $fk->table_to eq $table_1 ) &&
+		     ( $fk->table_from eq $table_2 || $fk->table_to eq $table_2 ) );
+    }
+    else
+    {
+	my @fk = $table_1->foreign_keys_by_table($table_2);
 
-    my @fk = $table_1->foreign_keys_by_table($table_2);
+	Alzabo::Exception::Logic->throw( error => "The " . $table_1->name . " table has no foreign keys to the " . $table_2->name . " table" )
+	    unless @fk;
 
-    Alzabo::Exception::Logic->throw( error => "The " . $table_1->name . " table has no foreign keys to the " . $table_2->name . " table" )
-	unless @fk;
+	Alzabo::Exception::Logic->throw( error => "The " . $table_1->name . " table has more than 1 foreign key to the " . $table_2->name . " table" )
+	    if @fk > 1;
 
-    Alzabo::Exception::Logic->throw( error => "The " . $table_1->name . " table has more than 1 foreign key to the " . $table_2->name . " table" )
-	if @fk > 1;
+	$fk = $fk[0];
+    }
 
-    foreach my $cp ( $fk[0]->column_pair_names )
+    foreach my $cp ( $fk->column_pair_names )
     {
 	$sql->$op( $table_1->column( $cp->[0] ), '=', $table_2->column( $cp->[1] ) );
 	$op = 'and';
@@ -481,9 +490,19 @@ Set the password to use when connecting to the database.
 
 The host used by the schema when connecting to the database.
 
+=head2 port
+
+=head3 Returns
+
+The port used by the schema when connecting to the database.
+
 =head2 set_host ($host)
 
 Set the host to use when connecting to the database.
+
+=head2 set_port ($port)
+
+Set the port to use when connecting to the database.
 
 =head2 referential_integrity
 
@@ -508,8 +527,8 @@ Defaults to false.
 
 Calls the L<C<Alzabo::Driver-E<gt>connect>|Alzabo::Driver/connect>
 method for the driver owned by the schema.  The username, password,
-and host set for the schema will be passed to the driver, as will any
-additional parameters given to this method.  See the
+host, and port set for the schema will be passed to the driver, as
+will any additional parameters given to this method.  See the
 L<C<Alzabo::Driver-E<gt>connect>|Alzabo::Driver/connect> method for
 more details.
 
@@ -527,11 +546,13 @@ information.
 
 =over 4
 
-=item * tables => <see below>
+=item * join => <see below>
 
 This parameter can either be a simple array reference of tables or a
 reference to an array containing more arrays, each of which contain
-two tables.
+two tables, plus an optional modifier specifying a type of join for
+those two tables, like 'left_outer_join', and an optional foreign key
+object which will be used to join the two tables.
 
 If a simple array reference is given, then the order of these tables
 is significant when there are more than 2 tables.  Alzabo expects to
@@ -539,7 +560,7 @@ find relationships between tables 1 & 2, 2 & 3, 3 & 4, etc.
 
 For example, given:
 
-  tables => [ $table_A, $table_B, $table_C ]
+  join => [ $table_A, $table_B, $table_C ]
 
 Alzabo would expect that table A has a relationship to table B, which
 in turn has a relationship to table C.
@@ -548,29 +569,48 @@ If you need to specify a more complicated set of relationships, this
 can be done with a slightly more complicated data structure, which
 looks like this:
 
-  tables => [ [ $table_A, $table_B ],
-              [ $table_A, $table_C ],
-              [ $table_C, $table_D ],
-              [ $table_C, $table_E ] ]
+  join => [ [ $table_A, $table_B ],
+            [ $table_A, $table_C ],
+            [ $table_C, $table_D ],
+            [ $table_C, $table_E ] ]
 
-This is fairly self explanatory in that each pair of tables describes
-a pair of tables between which Alzabo should expect to find a
-relationship.  This allows for the construction of arbitrarily complex
-join clauses.
+This is fairly self explanatory in that Alzabo should expect Alzabo
+should expect to find a relationship between each specified pair.
+This allows for the construction of arbitrarily complex join clauses.
 
-If the latter method of specifying tables is used and no C<select>
-parameter is provided, then order of the rows returned from calling
-C<next> on the cursor is not guaranteed.  In other words, the array
-that the cursor returns will contain a row from each table involved in
-the join, but the which row belongs to which table cannot be
-determined except by examining each row in turn.  The order will be
+For even more complex needs, there are more options:
+
+  join => [ [ left_outer_join => $table_A, $table_B ],
+            [ $table_A, $table_C, $foreign_key ],
+            [ right_outer_join => $table_C, $table_D, $foreign_key ] ]
+
+It should be noted that if you want to join two tables that have more
+than one foreign key between them, you B<must> provide a foreign key
+object when using them as part of your query.
+
+The way an outer join is interpreted is that this:
+
+  [ left_outer_join => $table_A, $table_B ]
+
+is interepreted to mean
+
+  SELECT ... FROM table_A LEFT OUTER JOIN table_B ON ...
+
+Table order is relevant for right and left outer joins, obviously.
+
+If the more complex method of specifying tables is used and no
+C<select> parameter is provided, then the order of the rows returned
+from calling C<next> on the cursor is not guaranteed.  In other words,
+the array that the cursor returns will contain a row from each table
+involved in the join, but the which row belongs to which table cannot
+be determined except by examining each row in turn.  The order will be
 the same every time C<next> is called, however.
 
 =item * select => C<Alzabo::Runtime::Table> object or objects (optional)
 
 This parameter specifies from which tables you would like rows
-returned.  If this parameter is not given, then the tables parameter
-will be used instead.
+returned.  If this parameter is not given, then the distinct or join
+parameter will be used instead, in that order.
 
 This can be either a single table or an array reference of table
 objects.
@@ -636,63 +676,6 @@ an L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object.
 
 L<C<Alzabo::Exception::Logic>|Alzabo::Exceptions>
 
-=head2 left_outer_join
-
-=head2 right_outer_join
-
-Joins are done by taking the tables provided, in order, and finding a
-relation between them, excluding the last table given.  If any given
-table pair has more than one relation, then this method will fail.
-The relations, along with the values given in the optional where
-clause will then be used to generate the necessary SQL.  See
-L<C<Alzabo::Runtime::OuterJoinCursor>|Alzabo::Runtime::OuterJoinCursor>
-for more information.
-
-=head3 Parameters
-
-=over 4
-
-=item * tables
-
-See the L<documentation on the table parameter for the join
-method|Alzabo::Runtime::Schema/join E<lt>see belowE<gt>>.
-
-If you pass a simple array reference of tables for this parameter,
-then the outer join is done between the first and last table given.
-
-If you pass a reference to an array of array references, then the
-outer join will be between the first pair of tables.
-
-=item * where
-
-See the L<documentation on where clauses for the
-Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
-Parameters>.
-
-=item * order_by
-
-See the L<documentation on order by clauses for the
-Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
-Parameters>.
-
-=item * limit
-
-See the L<documentation on limit clauses for the
-Alzabo::Runtime::Table class|Alzabo::Runtime::Table/Common
-Parameters>.
-
-=back
-
-=head3 Returns
-
-An
-L<C<Alzabo::Runtime::OuterJoinCursor>|Alzabo::Runtime::OuterJoinCursor>
-object.  representing the results of the join.
-
-=head3 Throws
-
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
-
 =head2 one_row
 
 This method takes the exact same parameters as the
@@ -715,9 +698,9 @@ either SQL functions or column objects.  For example:
 
   $schema->function( select => [ $table->column('name'), LENGTH( $table->column('name') ) ] );
 
-=item * tables
+=item * join
 
-See the L<documentation on the tables parameter for the join
+See the L<documentation on the join parameter for the join
 method|Alzabo::Runtime::Schema/join E<lt>see belowE<gt>>.
 
 =item * where
@@ -746,7 +729,7 @@ Parameters>.
 
 =back
 
-This method is used to call arbitrary SQL functions such as 'AVG' or
+These methods is used to call arbitrary SQL functions such as 'AVG' or
 'MAX'.  The function (or functions) should be the return values from
 the functions exported by the SQLMaker subclass that you are using.
 Please see L<Using SQL functions|Alzabo/Using SQL functions> for more
@@ -815,7 +798,7 @@ For example:
  my $foo_alias = $foo_tab->alias;
 
  my $cursor = $schema->join( select => $foo_tab,
-                             tables => [ $foo_tab, $bar_tab, $foo_alias ],
+                             join   => [ $foo_tab, $bar_tab, $foo_alias ],
                              where  => [ [ $bar_tab->column('baz'), '=', 10 ],
                                          [ $foo_alias->column('quux'), '=', 100 ] ],
                              order_by => $foo_alias->column('briz') );

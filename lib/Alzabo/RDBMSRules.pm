@@ -9,7 +9,7 @@ use Class::Factory::Util;
 use Params::Validate qw( validate validate_pos );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.39 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.40 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -384,9 +384,10 @@ sub table_sql_diff
     }
 
     my $pk_changed;
-    foreach my $old_pk ($p{old}->primary_key)
+    foreach my $old_pk ( $p{old}->primary_key )
     {
-	unless ( eval { $p{new}->column_is_primary_key($old_pk) } )
+	my $new_col = eval { $p{new}->column( $old_pk->name ) };
+	unless ( $new_col && $new_col->is_primary_key )
 	{
 	    push @sql, $self->alter_primary_key_sql( new => $p{new},
 						     old => $p{old} );
@@ -397,9 +398,10 @@ sub table_sql_diff
 
     unless ($pk_changed)
     {
-	foreach my $new_pk ($p{new}->primary_key)
+	foreach my $new_pk ( $p{new}->primary_key )
 	{
-	    unless ( eval { $p{old}->column_is_primary_key($new_pk) } )
+	    my $old_col = eval { $p{old}->column( $new_pk->name ) };
+	    unless ( $old_col && $old_col->is_primary_key )
 	    {
 		push @sql, $self->alter_primary_key_sql( new => $p{new},
 							 old => $p{old} );

@@ -17,7 +17,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 use Storable ();
 use Tie::IxHash ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.40 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.41 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -49,6 +49,8 @@ sub _load_from_file
     my $rdbms = join '', <$fh>;
     close $fh
 	or Alzabo::Exception::System->throw( error => "Unable to close $rdbms_file: $!" );
+
+    $rdbms =~ s/\s//g;
 
     $schema->{driver} = Alzabo::Driver->new( rdbms => $rdbms,
 					     schema => $schema );

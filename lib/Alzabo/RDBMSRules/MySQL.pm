@@ -7,9 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.59 $ =~ /(\d+)\.(\d+)/;
-
-1;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.60 $ =~ /(\d+)\.(\d+)/;
 
 sub new
 {
@@ -623,6 +621,7 @@ my %ignored_defaults = ( DATETIME => '0000-00-00 00:00:00',
 			 TEXT => '',
 			 LONGTEXT => '',
 		       );
+
 sub reverse_engineer
 {
     my $self = shift;
@@ -724,6 +723,8 @@ sub rules_id
 {
     return 'MySQL';
 }
+
+1;
 
 __END__
 

@@ -34,7 +34,7 @@ my $t = pop @$tests;
 
 my $s = Alzabo::Runtime::Schema->load_from_file( name => $t->{schema_name} );
 
-foreach ( qw( user password host ) )
+foreach ( qw( user password host port ) )
 {
     my $m = "set_$_";
     $s->$m( $t->{$_} );

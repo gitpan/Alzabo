@@ -3,7 +3,7 @@ package Alzabo::Exceptions;
 use strict;
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
 
 my %e;
 
@@ -23,6 +23,11 @@ BEGIN
 	   'Alzabo::Exception::Cache::Expired' =>
 	   { description => 'An operation was attempted on a row that is expired in the cache.',
 	     isa => 'Alzabo::Exception::Cache' },
+
+	   'Alzabo::Exception::Driver' =>
+	   { description => 'An attempt to eval a string failed',
+	     fields => [ 'sql', 'bind' ],
+	     isa => 'Alzabo::Exception' },
 
 	   'Alzabo::Exception::Eval' =>
 	   { description => 'An attempt to eval a string failed',
@@ -73,55 +78,7 @@ BEGIN
 
 use Exception::Class (%e);
 
-if ($ENV{ALZABO_DEBUG})
-{
-    Exception::Class::Base->Trace(1);
-}
-
-package Alzabo::Exception::Driver;
-
-use strict;
-use vars qw($VERSION);
-
-use Exception::Class;
-
-use base qw( Exception::Class::Base );
-
-$VERSION = '0.1';
-
-sub new
-{
-    my $proto = shift;
-    my $class = ref $proto || $proto;
-    my %p = @_;
-
-    my $self = $class->SUPER::new(%p);
-
-    $self->{sql} = $p{sql},
-    $self->{bind} = $p{bind} || [];
-
-    return $self;
-}
-
-sub description
-{
-    return 'an error related to database communications through DBI';
-}
-
-sub sql
-{
-    my $self = shift;
-
-    return $self->{sql};
-}
-
-sub bind
-{
-    my $self = shift;
-
-    return @{ $self->{bind} };
-}
-
+Alzabo::Exception->Trace(1);
 
 1;
 

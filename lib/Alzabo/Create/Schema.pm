@@ -21,7 +21,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.76 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.78 $ =~ /(\d+)\.(\d+)/;
 
 1;
 

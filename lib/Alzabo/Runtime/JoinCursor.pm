@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
 
 sub new
 {
@@ -50,6 +50,13 @@ sub next
 	{
 	    my @pk = $t->primary_key;
 	    my @pk_vals = splice @data, 0, scalar @pk;
+
+	    unless ( grep { defined } @pk_vals )
+	    {
+		push @rows, undef;
+		next;
+	    }
+
 	    my %hash = map { $pk[$_]->name => $pk_vals[$_] } 0..$#pk_vals;
 
 	    if ( $self->{distinct} && $self->{distinct} eq $t )
@@ -62,8 +69,8 @@ sub next
 
 	    my $row = eval { $t->row_by_pk( @_,
 					    pk => \%hash,
-					    no_cache => $self->{no_cache}
-					  ); };
+					    no_cache => $self->{no_cache},
+					  ) };
 	    if ($@)
 	    {
 		if ( $@->isa('Alzabo::Exception::NoSuchRow') )
@@ -88,7 +95,6 @@ sub next
 
     return @rows;
 }
-*next_rows = \&next;
 
 sub all_rows
 {

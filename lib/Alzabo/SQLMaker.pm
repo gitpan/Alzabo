@@ -9,7 +9,7 @@ use Class::Factory::Util;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.39 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -236,20 +236,37 @@ sub from
 
     $self->_assert_last_op( qw( select delete function ) );
 
-    validate_pos( @_, ( { can => 'alias_name' } ) x @_ );
+    my $spec = $self->{last_op} eq 'select' ? { type => OBJECT | ARRAYREF } : { can => 'alias_name' };
+    validate_pos( @_, ( $spec ) x @_ );
 
     $self->{sql} .= ' FROM ';
 
     if ( $self->{last_op} eq 'delete' )
     {
 	$self->{sql} .= join ', ', map { $_->name } @_;
+	$self->{tables} = { map { $_ => 1 } @_ };
     }
     else
     {
-	$self->{sql} .= join ', ', map { $_->name . ' AS ' . $_->alias_name } @_;
-    }
+	$self->{tables} = {};
 
-    $self->{tables} = { map { $_ => 1 } @_ };
+	foreach my $elt (@_)
+	{
+	    if ( UNIVERSAL::isa( $elt, 'ARRAY' ) )
+	    {
+		$self->_outer_join(@$elt);
+
+		@{ $self->{tables} }{ $elt->[1], $elt->[2] } = (1, 1);
+	    }
+	    else
+	    {
+		$self->{sql} .= ', ' unless $elt eq $_[0];
+		$self->{sql} .= $elt->name . ' AS ' . $elt->alias_name;
+
+		$self->{tables}{$elt} = 1;
+	    }
+	}
+    }
 
     if ($self->{type} eq 'select')
     {
@@ -270,41 +287,37 @@ sub from
     return $self;
 }
 
-sub left_outer_join
-{
-    shift->_outer_join( @_, 'left' );
-}
-
 sub _outer_join
 {
     my $self = shift;
 
     my $tables = @_ - 1;
-    validate_pos( @_, ( { can => 'alias_name' } ) x $tables, { type => SCALAR } );
+    validate_pos( @_, { type => SCALAR }, ( { can => 'alias_name' } ) x 2, { type => UNDEF | OBJECT, optional => 1 } );
 
-    my $type = uc pop @_;
-    my @tables  = @_;
+    my $type = uc shift;
 
-    my $join_from = shift @tables;
-    my $join_on = shift @tables;
+    my $join_from = shift;
+    my $join_on = shift;
+    my $fk = shift;
 
-    my @fk = $join_from->foreign_keys_by_table($join_on);
+    unless ($fk)
+    {
+	my @fk = $join_from->foreign_keys_by_table($join_on);
 
-    Alzabo::Exception::Params->throw( error => "The " . $join_from->name . " table has no foreign keys to the " . $join_on->name . " table" )
-	unless @fk;
+	Alzabo::Exception::Params->throw( error => "The " . $join_from->name . " table has no foreign keys to the " . $join_on->name . " table" )
+	    unless @fk;
 
-    Alzabo::Exception::Params->throw( error => "The " . $join_from->name . " table has more than 1 foreign key to the " . $join_on->name . " table" )
-	if @fk > 1;
+	Alzabo::Exception::Params->throw( error => "The " . $join_from->name . " table has more than 1 foreign key to the " . $join_on->name . " table" )
+	    if @fk > 1;
 
-    $self->{sql} .= ' FROM ';
+	$fk = $fk[0];
+    }
 
-    $self->{sql} .= join ', ', map { $_->name . ' AS ' . $_->alias_name } @tables, $join_from;
+    $self->{sql} .= $join_from->alias_name;
 
     $self->{sql} .= " $type OUTER JOIN ". $join_on->alias_name . ' ON ';
 
-    $self->{sql} .= join ' AND ', map { $_->[0]->table->alias_name . '.' . $_->[0]->name . ' = ' . $_->[1]->table->alias_name . '.' . $_->[1]->name } $fk[0]->column_pairs;
-
-    $self->{last_op} = 'outer_join';
+    $self->{sql} .= join ' AND ', map { $_->[0]->table->alias_name . '.' . $_->[0]->name . ' = ' . $_->[1]->table->alias_name . '.' . $_->[1]->name } $fk->column_pairs;
 
     return $self;
 }
@@ -313,7 +326,7 @@ sub where
 {
     my $self = shift;
 
-    $self->_assert_last_op( qw( from outer_join set ) );
+    $self->_assert_last_op( qw( from set ) );
 
     $self->{sql} .= ' WHERE ';
 
@@ -439,9 +452,9 @@ sub condition
 	return;
     }
 
-    if ( $comp eq 'IN' )
+    if ( $comp eq 'IN' || $comp eq 'NOT IN' )
     {
-	$self->{sql} .= ' IN (';
+	$self->{sql} .= " $comp (";
 	$self->{sql} .= join ', ', map { ( UNIVERSAL::isa( $_, 'Alzabo::SQLMaker' ) ?
 					   '(' . $self->_subselect($_) . ')' :
 					   $self->_rhs($lhs, $_) ) } $rhs, @_;

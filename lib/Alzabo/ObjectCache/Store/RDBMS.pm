@@ -7,7 +7,7 @@ use vars qw($VERSION $SCHEMA %CONNECT_PARAMS);
 use Digest::MD5 ();
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
 
 sub import
 {
@@ -218,6 +218,7 @@ Alzabo::ObjectCache::Store::RDBMS - Cache objects in an RDBMS backend
 
   use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::RDBMS',
                            sync  => 'Alzabo::ObjectCache::Sync::Null',
+                           store_rdbms => 'MySQL',
                            store_schema_name => 'something',
                            store_user => 'foo' );
 

@@ -55,6 +55,7 @@ foreach my $t ($s->tables)
     $s->set_user($t->{user}) if $t->{user};
     $s->set_password($t->{password}) if $t->{password};
     $s->set_host($t->{host}) if $t->{host};
+    $s->set_port($t->{port}) if $t->{port};
     $s->set_referential_integrity(1);
     $s->connect;
 

@@ -9,7 +9,7 @@ use Alzabo::Runtime;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.49 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.51 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
@@ -33,7 +33,6 @@ my @options = qw( foreign_keys
 # deprecated options
 my @deprecated = qw( insert
                      update
-                     lookup_tables
                    );
 
 sub import
@@ -374,12 +373,6 @@ sub make_foreign_key_methods
 	    if ( $self->{opts}{linking_tables} )
 	    {
 		$self->make_linking_table_method($fk);
-	    }
-
-	    # deprecated
-	    if ( $self->{opts}{lookup_tables} )
-	    {
-		$self->make_lookup_table_method($fk);
 	    }
 	}
 
@@ -1234,6 +1227,14 @@ if you need to convert dates to and from a specific RDBMS format).
 
 All hooks are inside a transaction which is rolled back if any part of
 the process fails.
+
+It should be noted that Alzabo uses both the C<<
+Alzabo::Runtime::Row->select >> and C<< Alzabo::Runtime::Row->delete
+>> methods internally.  If their behavior is radically altered through
+the use of hooks, then some of Alzabo's functionality may be broken.
+
+Given this, it may be safer to create new methods to fetch and massage
+data rather than to create post-select hooks that alter data.
 
 Each of these hooks receives different parameters, documented below:
 

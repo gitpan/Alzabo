@@ -10,7 +10,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.56 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.58 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -242,7 +242,7 @@ sub schemas
 {
     my $self = shift;
 
-    return map { /dbi:\w+:(\w+)/i; defined $1 ? $1 : () } DBI->data_sources( $self->dbi_driver_name );
+    shift()->_virtual;
 }
 
 sub statement
@@ -829,7 +829,8 @@ The SQL statement in use at the time the error occurred, if any.
 
 =head3 Returns
 
-A list of the the bound parameters for the SQL statement, if any.
+A array reference contaning the bound parameters for the SQL
+statement, if any.
 
 =head1 SUBCLASSING Alzabo::Driver
 

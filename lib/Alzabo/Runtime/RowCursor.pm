@@ -12,7 +12,7 @@ use Time::HiRes qw(time);
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -105,7 +105,6 @@ sub next
 
     return $row;
 }
-*next_row = \&next;
 
 sub all_rows
 {

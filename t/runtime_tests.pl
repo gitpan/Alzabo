@@ -63,11 +63,15 @@ sub run_tests
     eval_ok( sub { $s->set_host('foo') },
 	     "Set host for schema to foo" );
 
-    $s->$_(undef) foreach qw( set_user set_password set_host );
+    eval_ok( sub { $s->set_port(1234) },
+	     "Set port for schema to 1234" );
+
+    $s->$_(undef) foreach qw( set_user set_password set_host set_port );
 
     $s->set_user($p{user}) if $p{user};
     $s->set_password($p{password}) if $p{password};
     $s->set_host($p{host}) if $p{host};
+    $s->set_host($p{port}) if $p{port};
     $s->set_referential_integrity(1);
     $s->connect;
 
@@ -288,7 +292,7 @@ sub run_tests
     is( $x, 2,
 	"Only 2 rows should be found after cursor reset" );
 
-    eval_ok( sub { $cursor = $s->join( tables   => [ $emp_t, $emp_proj_t, $proj_t ],
+    eval_ok( sub { $cursor = $s->join( join     => [ $emp_t, $emp_proj_t, $proj_t ],
 				       where    => [ $emp_t->column('employee_id'), '=', 1 ],
 				       order_by => $proj_t->column('project_id') ) },
 	     "Join employee, employee_project, and project tables where employee_id = 1" );
@@ -321,7 +325,7 @@ sub run_tests
 	eval_ok( sub { $p_alias = $proj_t->alias },
 		 "Create an alias object for the project table" );
 
-	eval_ok( sub { $cursor = $s->join( tables   => [ $e_alias, $emp_proj_t, $p_alias ],
+	eval_ok( sub { $cursor = $s->join( join     => [ $e_alias, $emp_proj_t, $p_alias ],
 					   where    => [ $e_alias->column('employee_id'), '=', 1 ],
 					   order_by => $p_alias->column('project_id') ) },
 		 "Join employee, employee_project, and project tables where employee_id = 1 using aliases" );
@@ -343,7 +347,7 @@ sub run_tests
 	my $p_alias = $proj_t->alias;
 
 	eval_ok( sub { $cursor = $s->join( select   => [ $p_alias, $proj_t ],
-					   tables   => [ $p_alias, $emp_proj_t, $proj_t ],
+					   join     => [ $p_alias, $emp_proj_t, $proj_t ],
 					   where    => [ [ $p_alias->column('project_id'), '=', 1 ],
 							 [ $proj_t->column('project_id'), '=', 1 ] ],
 					 ) },
@@ -376,7 +380,7 @@ sub run_tests
 	    "Third row is from project table" );
     }
 
-    $cursor = $s->join( tables   => [ $emp_t, $emp_proj_t, $proj_t ],
+    $cursor = $s->join( join     => [ $emp_t, $emp_proj_t, $proj_t ],
 			where    => [ $emp_t->column('employee_id'), '=', 1 ],
 			order_by => { columns => $proj_t->column('project_id'),
 				      sort => 'desc' } );
@@ -388,7 +392,7 @@ sub run_tests
     ok( $first_proj_id > $second_proj_id,
 	"Order by clause should cause project rows to come back in descending order of project id" );
 
-    $cursor = $s->join( tables   => [ $emp_t, $emp_proj_t, $proj_t ],
+    $cursor = $s->join( join     => [ $emp_t, $emp_proj_t, $proj_t ],
 			where    => [ $emp_t->column('employee_id'), '=', 1 ],
 			order_by => [ $proj_t->column('project_id'), 'desc' ] );
 
@@ -401,9 +405,9 @@ sub run_tests
 	"Order by clause (alternate form) should cause project rows to come back in descending order of project id" );
 
     eval_ok( sub { $cursor = $s->join( select => [ $emp_t, $emp_proj_t, $proj_t ],
-				       tables => [ [ $emp_t, $emp_proj_t ],
+				       join   => [ [ $emp_t, $emp_proj_t ],
 						   [ $emp_proj_t, $proj_t ] ],
-				       where =>  [ $emp_t->column('employee_id'), '=', 1 ] ) },
+				       where  => [ $emp_t->column('employee_id'), '=', 1 ] ) },
 	     "Join with table as tables parameter" );
 
     @rows = $cursor->next;
@@ -418,7 +422,7 @@ sub run_tests
 	"Third row is from project table" );
 
     eval { $s->join( select => [ $emp_t, $emp_proj_t, $proj_t ],
-		     tables => [ [ $emp_t, $emp_proj_t ],
+		     join   => [ [ $emp_t, $emp_proj_t ],
 				 [ $emp_proj_t, $proj_t ],
 				 [ $s->tables( 'outer_1', 'outer_2' ) ] ],
 		     where =>  [ $emp_t->column('employee_id'), '=', 1 ] ) };
@@ -427,8 +431,8 @@ sub run_tests
     isa_ok( $e, 'Alzabo::Exception::Logic',
 	    "Exception thrown from join with table map that does not connect" );
 
-    eval_ok( sub { @rows = $s->join( tables => $emp_t,
-				     where  => [ $emp_t->column('employee_id'), '=', 1 ] )->all_rows },
+    eval_ok( sub { @rows = $s->join( join  => $emp_t,
+				     where => [ $emp_t->column('employee_id'), '=', 1 ] )->all_rows },
 	     "Join with a single table" );
     is( @rows, 1,
 	"Only one row should be returned" );
@@ -456,8 +460,9 @@ sub run_tests
 
 	# doubled array reference is intentional
 	my $cursor;
-	eval_ok( sub { $cursor = $s->left_outer_join( tables =>
-						      [ [ $s->tables( 'outer_1', 'outer_2' ) ] ] ) },
+	eval_ok( sub { $cursor = $s->join( select => [ $s->tables( 'outer_1', 'outer_2' ) ],
+					   join =>
+					   [ [ left_outer_join => $s->tables( 'outer_1', 'outer_2' ) ] ] ) },
 		 "Do a left outer join" );
 
 	my @sets = $cursor->all_rows;
@@ -484,9 +489,41 @@ sub run_tests
 	ok( ! defined $sets[1]->[1],
 	    "The second row in the second set should not be defined" );
 
-	eval_ok( sub { $cursor = $s->right_outer_join( tables =>
-						       [ $s->tables( 'outer_1', 'outer_2' ) ] ) },
+	eval_ok( sub { $cursor = $s->join( select => [ $s->tables( 'outer_1', 'outer_2' ) ],
+					   join =>
+					   [ [ right_outer_join => $s->tables( 'outer_1', 'outer_2' ) ] ] ) },
 		 "Attempt a right outer join" );
+
+	@sets = $cursor->all_rows;
+
+	is( scalar @sets, 2,
+	    "Right outer join should return 2 sets of rows" );
+
+	# re-order so that the set with 2 valid rows is always first
+	unless ( defined $sets[0]->[0] )
+	{
+	    my $set = shift @sets;
+	    push @sets, $set;
+	}
+
+	is( $sets[0]->[0]->select('outer_1_name'), 'test1 (has matching join row)',
+	    "The first row in the first set should have the name 'test1 (has matching join row)'" );
+
+	is( $sets[0]->[1]->select('outer_2_name'), 'will match something',
+	    "The second row in the first set should have the name 'will match something'" );
+
+	ok( ! defined $sets[1]->[0],
+	    "The first row in the second set should not be defined" );
+
+	is( $sets[1]->[1]->select('outer_2_name'), 'will match nothing',
+	    "The second row in the second set should have the name 'test12 (has no matching join row)'" );
+
+	# do the same join, but with specified foreign key
+	my $fk = $s->table('outer_1')->foreign_keys_by_table( $s->table('outer_2') );
+	eval_ok( sub { $cursor = $s->join( select => [ $s->tables( 'outer_1', 'outer_2' ) ],
+					   join =>
+					   [ [ right_outer_join => $s->tables( 'outer_1', 'outer_2' ), $fk ] ] ) },
+		 "Attempt a right outer join, with explicit foreign key" );
 
 	@sets = $cursor->all_rows;
 
@@ -642,13 +679,6 @@ sub run_tests
 
     is( $count, 4,
 	"The count should be 4" );
-
-    # this is deprecated but test it til it goes away
-    eval_ok( sub { $count = $emp_t->func( func => 'COUNT', args => $emp_t->column('employee_id') ) },
-	     "Get row count via deprecated ->func method" );
-
-    is( $count, 4,
-	"It should return that there are 4 rows" );
 
     eval_ok( sub { $count = $emp_t->function( select => COUNT( $emp_t->column('employee_id') ) ) },
 	     "Get row count via spiffy new ->function method" );
@@ -1114,11 +1144,10 @@ sub run_tests
 					  department_id => $dep_id,
 					} );
 
-    eval_ok( sub { $cursor = $s->join( select => $dep_t,
-				       distinct => $dep_t,
-				       tables => [ $dep_t, $proj_t ],
-				       where => [ $proj_t->column('project_id'), 'in',
-						  map { $_->select('project_id') } $p1, $p2 ],
+    eval_ok( sub { $cursor = $s->join( distinct => $dep_t,
+				       join     => [ $dep_t, $proj_t ],
+				       where    => [ $proj_t->column('project_id'), 'in',
+						     map { $_->select('project_id') } $p1, $p2 ],
 				     ) },
 	     "Do a join with distinct parameter set" );
 

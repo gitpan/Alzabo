@@ -9,7 +9,7 @@ use base qw(Alzabo::ObjectCache::Sync);
 
 use Digest::MD5 ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
 
 sub import
 {
@@ -186,6 +186,7 @@ Alzabo::ObjectCache::Sync::RDBMS - Uses an RDBM backend to sync object caches
 
   use Alzabo::ObjectCache( store => 'Alzabo::ObjectCache::Store::Memory',
                            sync  => 'Alzabo::ObjectCache::Sync::RDBMS',
+                           sync_rdbms => 'MySQL',
                            sync_schema_name => 'something',
                            sync_user => 'foo' );
 

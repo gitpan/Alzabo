@@ -15,7 +15,7 @@ use vars qw($VERSION);
 
 use 5.005;
 
-$VERSION = '0.63';
+$VERSION = '0.64';
 
 1;
 
@@ -117,10 +117,6 @@ cursor object that returns only a single row.
 
 L<The Alzabo::Runtime::JoinCursor docs|Alzabo::Runtime::JoinCursor> -
 A cursor object that returns multiple rows at once.
-
-L<The Alzabo::Runtime::OuterJoinCursor
-docs|Alzabo::Runtime::OuterJoinCursor> - Returns multiple rows/undefs
-at once.
 
 L<The Alzabo::MethodMaker docs|Alzabo::MethodMaker> - One of the most
 useful parts of Alzabo.  This module can be used to auto-generate

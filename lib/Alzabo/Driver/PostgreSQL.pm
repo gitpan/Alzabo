@@ -8,7 +8,7 @@ use DBD::Pg;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -31,6 +31,13 @@ sub connect
 
     $self->disconnect if $self->{dbh};
     $self->{dbh} = $self->_make_dbh( %p, name => $self->{schema}->name );
+}
+
+sub schemas
+{
+    my $self = shift;
+
+    return map { /dbi:\w+:dbname=(\w+)/i; defined $1 ? $1 : () } DBI->data_sources( $self->dbi_driver_name );
 }
 
 sub create_database

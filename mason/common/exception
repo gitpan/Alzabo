@@ -57,7 +57,7 @@
    Bind values:
   </td>
   <td bgcolor="#eeffff">
-%     if (my @b = $exc->bind) {
+%     if (my @b = @{ $exc->bind }) {
    <ul>
 %       foreach my $b (@b) {
     <li><% $b %>

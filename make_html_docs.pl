@@ -186,7 +186,6 @@ my @order = ( qw( Alzabo
 		  Alzabo::Runtime::RowCursor
 		  Alzabo::Runtime::Cursor
 		  Alzabo::Runtime::JoinCursor
-		  Alzabo::Runtime::OuterJoinCursor
 		  Alzabo::Runtime::PotentialRow
 		  Alzabo::MethodMaker
                   Alzabo::Runtime::ForeignKey

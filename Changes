@@ -1,3 +1,62 @@
+0.64
+
+ENHANCEMENTS:
+
+- Added potentially useful script, alzabo_to_ascii, in eg/ dir.
+
+- Ask for port when setting up tests.
+
+- Turn on stacktraces for all Alzabo::Exception objects.
+
+- Removed the deprecated "lookup_tables" option from
+Alzabo::MethodMaker.
+
+- Removed the deprecated next_row methods from the various cursor
+classes.
+
+- Removed the deprecated Alzabo::Runtime::Table->func method.
+
+- Major changes to how joins are done.  It is now possible to mix
+together various sorts of outer joins in a single query.  In addition,
+it is now possible to specify a foreign key that should be used when
+joining two tables.
+
+- The "tables" parameter has been renamed as "join".
+
+- The Alzabo::Create::Schema->right_outer_join and
+Alzabo::Create::Schema->left_outer_join methods have been removed.
+Use the ->join method instead, which can now be used to do outer joins
+as well, via:
+
+  $schema->join( join => [ left_outer_join => $foo, $bar ], ... )
+
+- The functionality of Alzabo::Runtime::OuterJoinCursor has been
+merged into Alzabo::Runtime::JoinCursor.
+
+- Alzabo::Exception::Driver->bind now returns an array reference, not
+an array.
+
+BUG FIXES:
+
+- Fix failure to load schema objects from file when $\ is set to
+something like "\n".  Reported by Brad Bowman.
+
+- Fixed Postgres reverse engineering to work with slightly changed
+system tables in 7.2.
+
+- Fix handling of table alterations for postgres.  Temp tables were
+being created but not dropped and the data saved in the temp table was
+not being restored to the real table.  Also, Alzabo was trying to
+create sequences again when altering tables Based mostly on a patch
+from Daniel Gaspani.
+
+- Fix handling of primary key changes for Postgres (I'm still not sure
+it's entirely correct).
+
+- Fix detection of primary key changes for schema diffs.
+
+- Handle NOT IN for where conditions.
+
 0.63
 
 ENHANCEMENTS:

@@ -2,14 +2,6 @@ Short term:
 
 - Expand regression tests for core API - SQLMaker, RDBMSRules.
 
-- Make it possible to do multiple outer joins in a single query.
-  restructure join methods to be more flexible.  Something like:
-
-   $schema->join( join => [ [ $table1, $table2 ],
-                            [ $table2, $table3, $foreign_key ] ],
-                  left_outer => [ $table4, $table1 ],
-                  right_outer => [ $table5, $table4, $foreign_key ] );
-
 - Give the options to save objects to disk in something a bit more
   robust than a serialized object form.  Eventually, Alzabo will spit
   out some sort of XML.

@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.24 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -268,6 +268,11 @@ sub table_sql
     my $self = shift;
     my $table = shift;
 
+    my $create_sequence = shift;
+
+    # Create table sequence by default
+    $create_sequence = 1 unless defined $create_sequence;
+
     my $sql = "CREATE TABLE " . $table->name . " (\n  ";
 
     $sql .= join ",\n  ", map { $self->column_sql($_) } $table->columns;
@@ -289,7 +294,10 @@ sub table_sql
 
     foreach my $c ( $table->columns )
     {
-	push @sql, $self->_sequence_sql($c) if $c->sequenced;
+	if ($create_sequence)
+	{
+	    push @sql, $self->_sequence_sql($c) if $c->sequenced;
+	}
     }
 
     $self->{sql_made}{table_sql}{ $table->name } = 1;
@@ -394,8 +402,10 @@ sub drop_column_sql
 
     return ( $self->_temp_table_sql( $p{new_table} ),
 	     $self->drop_table_sql( $p{old}->table, 1 ),
-	     $self->table_sql( $p{new_table} ),
+	     # the 0 param indicates that we should not create sequences
+	     $self->table_sql( $p{new_table}, 0 ),
 	     $self->_restore_table_data_sql( $p{new_table} ),
+	     $self->_drop_temp_table( $p{new_table} ),
 	   );
 }
 
@@ -420,11 +430,23 @@ sub _restore_table_data_sql
 
     my $temp_name = "TEMP" . $table->name;
 
-    my $sql = "SELECT ";
+    my $sql = 'INSERT INTO ' . $table->name . '(';
     $sql .= join ', ', map { $_->name } $table->columns;
-    $sql .= "\n INTO " . $table->name . " FROM $temp_name";
+    $sql .= " ) \n  SELECT ";
+    $sql .= join ', ', map { $_->name } $table->columns;
+    $sql .= " FROM $temp_name";
 
     return $sql;
+}
+
+sub _drop_temp_table
+{
+    my $self = shift;
+    my $table = shift;
+
+    my $temp_name = "TEMP" . $table->name;
+
+    return "DROP TABLE $temp_name";
 }
 
 sub drop_foreign_key_sql
@@ -453,7 +475,7 @@ sub column_sql_add
 	my $def = ( $col->is_character ?
 		    do { my $d = $col->default; $d =~ s/"/""/g; qq|'$d'| } :
 		    $col->default );
-	$default = ( 'DEFAULT $def' );
+	$default = ( "DEFAULT $def" );
 
 	push @sql, ( 'ALTER TABLE ' . $col->table->name . ' ALTER COLUMN ' . $col->name . " SET $default" );
     }
@@ -489,7 +511,7 @@ sub alter_primary_key_sql
 
     if ( $p{new}->primary_key )
     {
-	push @sql, ( 'CREATE INDEX ' . $p{new}->name . '_pkey (' .
+	push @sql, ( 'CREATE UNIQUE INDEX ' . $p{new}->name . '_pkey ON ' . $p{new}->name . ' (' .
 		     ( join ', ', map { $_->name } $p{new}->primary_key ) . ')' );
     }
 
@@ -512,7 +534,7 @@ sub reverse_engineer
 				      bind => lc $table );
 
 	my $sql = <<'EOF';
-SELECT a.oid, a.attname, a.attnotnull, t.typname, a.attnum, a.atthasdef, a.atttypmod
+SELECT a.attname, a.attnotnull, t.typname, a.attnum, a.atthasdef, a.atttypmod
 FROM pg_attribute a, pg_type t
 WHERE a.attrelid = ?
 AND a.atttypid = t.oid
@@ -525,16 +547,16 @@ EOF
 	{
 	    my %p;
 	    # has default
-	    if ( $row->[5] )
+	    if ( $row->[4] )
 	    {
 		$p{default} =
 		    $driver->one_row( sql => 'SELECT adsrc FROM pg_attrdef WHERE adrelid = ? AND adnum = ?',
-				      bind => [ $t_oid, $row->[4] ] );
+				      bind => [ $t_oid, $row->[3] ] );
 		# strip quotes Postgres added
 		for ($p{default}) { s/^'//; s/'$//; }
 	    }
 
-	    $p{type} = $row->[3];
+	    $p{type} = $row->[2];
 
 	    if ( $p{type} =~ /char/i )
 	    {
@@ -544,20 +566,20 @@ EOF
 		# Its provided as VARHDRSZ in postgres.h but I can't
 		# really get at it.  On my linux machine this is 4.  A
 		# better way of doing this would be welcome.
-		$p{length} = $row->[6] - 4;
+		$p{length} = $row->[5] - 4;
 	    }
 	    if ( lc $p{type} eq 'numeric' )
 	    {
 		# see comment above.
-		my $num = $row->[6] - 4;
+		my $num = $row->[5] - 4;
 		$p{length} = ($num >> 16) & 0xffff;
 		$p{precision} = $num & 0xffff;
 	    }
 
 	    $p{type} = 'char' if lc $p{type} eq 'bpchar';
 
-	    $t->make_column( name => $row->[1],
-			     nullable => ! $row->[2],
+	    $t->make_column( name => $row->[0],
+			     nullable => ! $row->[1],
 			     %p
 			   );
 	}
