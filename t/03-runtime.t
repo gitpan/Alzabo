@@ -114,7 +114,11 @@ foreach ( qw( BerkeleyDB SDBM_File DB_File IPC ) )
 
 my $TESTS_PER_RUN = 75;
 my $SYNC_TESTS_PER_RUN = 18;
-my $test_count = ( ( $TESTS_PER_RUN * (@$tests + $#cache) ) +
+
+# foreach test in @$tests, it'll be run once.  For each set of modules
+# in @cache it'll be run once but there is an overlap because the
+# first test is the one used for the cache tests.
+my $test_count = ( ( $TESTS_PER_RUN * (@$tests + @cache - 1) ) +
 		   ( $SYNC_TESTS_PER_RUN * $sync ) );
 
 my %SINGLE_RDBMS_TESTS = ( mysql => 10,
@@ -132,15 +136,17 @@ foreach my $db ( qw( mysql pg oracle sybase ) )
 my $test = shift @t;
 my $last_test_num;
 
-foreach (keys %SINGLE_RDBMS_TESTS)
+foreach my $rdbms (keys %SINGLE_RDBMS_TESTS)
 {
-    if ( $test->{rdbms} eq $_ )
+    next unless grep { $_->{rdbms} eq $rdbms } $test, @$tests;
+
+    if ( $test->{rdbms} eq $rdbms )
     {
-	$test_count += $SINGLE_RDBMS_TESTS{$_} * @cache;
+	$test_count += $SINGLE_RDBMS_TESTS{$rdbms} * @cache;
     }
     else
     {
-	$test_count += $SINGLE_RDBMS_TESTS{$_};
+	$test_count += $SINGLE_RDBMS_TESTS{$rdbms};
     }
 }
 

@@ -111,6 +111,7 @@ sub verbatim
     my $self = shift;
     my ($text, $line, $para) = @_;
 
+    $self->{_html} .= "<pre>$text</pre>";
 }
 
 sub textblock
@@ -496,7 +497,7 @@ sub module_description
 
 sub make_quickref
 {
-    my $from = "$from/Alzabo/QuickRef.pod";
+    my $from = "$temp/Alzabo/QuickRef.pod";
     my $to = "$to/Alzabo/QuickRef.html";
 
     my $p = QuickRef::Parser->new;

@@ -98,7 +98,7 @@ Directories which cannot be read will not be included in the list.
 
 Alzabo::Exception::System
 
-=head2 mason_web_dir
+=head2 mason_web_dir ($web_dir)
 
 If a value is passed to this method then the Mason component directory
 is temporarily changed.  This change lasts as long as your application

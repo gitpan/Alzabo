@@ -1,3 +1,12 @@
+0.48
+
+BUG FIXES:
+
+- I was missing yet another file from the MANIFEST.  Thanks to Barry
+Hoggard for helping me out with this.
+
+- Fix a bug in the test number for 03-runtime.t.
+
 0.47
 
 ENHANCEMENTS:
