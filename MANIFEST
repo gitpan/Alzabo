@@ -78,6 +78,7 @@ t/01-compile.t
 t/02-create.t
 t/03-runtime.t
 t/04-rev_engineer.t
+t/04-db_drop.t
 t/05a-rules-mysql.t
 t/06-db_drop.t
 t/07-methodmaker.t
@@ -104,6 +105,7 @@ interfaces/mason/delete_column.mhtml
 interfaces/mason/delete_foreign_key.mhtml
 interfaces/mason/delete_index.mhtml
 interfaces/mason/delete_schema.mhtml
+interfaces/mason/delete_schema_confirm.mhtml
 interfaces/mason/delete_table.mhtml
 interfaces/mason/execute_sql.mhtml
 interfaces/mason/index.mhtml
@@ -112,12 +114,16 @@ interfaces/mason/move_table.mhtml
 interfaces/mason/new_schema.mhtml
 interfaces/mason/reverse_engineer.mhtml
 interfaces/mason/schema_menubar
+interfaces/mason/syshandler
 interfaces/mason/table_menubar
 interfaces/mason/change_schema_instantiation.mhtml
 interfaces/mason/view_column.mhtml
 interfaces/mason/view_schema.mhtml
 interfaces/mason/view_schema_sql.mhtml
 interfaces/mason/view_table.mhtml
+
+interfaces/mason/styles_ie.css
+interfaces/mason/styles_ns.css
 
 utilities/data_browser/autohandler
 utilities/data_browser/browse_schema.mhtml

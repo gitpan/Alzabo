@@ -1,0 +1,7 @@
+<& $m->fetch_next, %ARGS &>
+<%init>
+use Alzabo::Create;
+</%init>
+<%flags>
+inherit => undef
+</%flags>

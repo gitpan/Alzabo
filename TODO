@@ -1,7 +1,5 @@
 Short term:
 
-- Support transactions under MySQL.
-
 - Support 'feature probing' via the rules for user interface and to
   determine whether to try to do things (like use transactions).  This
   is a broad idea and includes things such as returning a list of

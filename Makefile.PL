@@ -383,3 +383,14 @@ sub libscan
 
     return $file =~ /\.pl$|\.old$|PreInstall/ ? 0 : $self->SUPER::libscan($file);
 }
+
+sub dist_core
+{
+    my $self = shift;
+
+    my $dist_core = $self->SUPER::dist_core(@_);
+
+    $dist_core =~ s/dist : (\$\(DIST_DEFAULT\))/dist :  $1 distcheck/;
+
+    return $dist_core;
+}

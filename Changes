@@ -1,3 +1,15 @@
+0.49
+
+BUG FIXES:
+
+- Found out even more missing files from the MANIFEST (all related to
+the schema creation interface).  Fortunately, I just discovered Perl's
+"make distcheck" so this shouldn't happen in the future.
+
+- One link each in the schema creator and data browser were using a
+hard-coded .mhtml extension instead of calling
+Alzabo::Config::mason_extension().  Reported by Barry Hoggard.
+
 0.48
 
 BUG FIXES:
