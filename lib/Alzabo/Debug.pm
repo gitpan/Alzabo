@@ -8,6 +8,7 @@ BEGIN
         ( SQL => 0,
           TRACE => 0,
           METHODMAKER => 0,
+	  REVERSE_ENGINEER => 0,
         );
 
     if ( $ENV{ALZABO_DEBUG} )
@@ -83,6 +84,11 @@ A stack trace will be generated any time SQL is generated.
 
 The C<Alzabo::MethodMaker> module will generate output describing the
 methods it is creating.
+
+=item * REVERSE_ENGINEER
+
+The modules involved in reverse-engineering will generate output
+describing what it finds during reverse-engineering.
 
 =item * ALL
 

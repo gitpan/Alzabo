@@ -15,10 +15,10 @@ my %opts;
 GetOptions( \%opts, 'dist' );
 
 {
-    my ( $config, $prereq );
+    my ( $config, $prereq, $tests );
     unless ( $opts{dist} )
     {
-        ( $config, $prereq ) = config();
+        ( $config, $prereq, $tests ) = config();
         write_config_module($config);
     }
     else
@@ -32,10 +32,16 @@ GetOptions( \%opts, 'dist' );
                             license => 'perl',
                             %$prereq,
                             args => $config,
+                            sign => 1,
                           );
 
-    $build->add_to_cleanup( File::Spec->catfile( 'lib', 'Alzabo', 'Config.pm' ) );
     $build->create_build_script;
+
+    $build->notes( test_config => $tests );
+
+    $build->add_to_cleanup( File::Spec->catdir( 't', 'schemas' ),
+                            File::Spec->catfile( 'lib', 'Alzabo', 'Config.pm' ),
+                          );
 }
 
 sub config
@@ -70,15 +76,11 @@ EOF
 
     $config{root_dir} = root_dir();
 
-    my ( $prereq, $tests, $tools ) = features();
-
-    %config = ( %config, %$tools );
+    my ( $prereq, $tests ) = features();
 
     my $test_config = test_config($tests);
 
-    $config{tests} = $test_config;
-
-    return \%config, $prereq;
+    return \%config, $prereq, $test_config;
 }
 
 sub root_dir
@@ -127,7 +129,7 @@ sub features
     # These are always needed
     my %prereq = default_prereq();
 
-    my ( %tests, %tools );
+    my ( %tests );
 
     # extra prereqs for certain features
     my @features =
@@ -146,27 +148,6 @@ sub features
 #             requires => { 'DBD::Oracle' => 0 },
 #             test   => 'oracle',
 #           },
-
-          { phrase => 'to use IPC for cache syncing',
-            requires => { 'IPC::Shareable' => 0.54 },
-          },
-
-          { phrase => 'to use DB_File 1.x for cache syncing',
-            requires => { 'DB_File' => 1.76 },
-          },
-
-          { phrase => 'to use BerkeleyDB for caching',
-            requires => { 'BerkeleyDB' => 0.15 },
-          },
-
-          { phrase => 'to use SDBM_File for cache syncing',
-            requires => { 'SDBM_File' => 0 },
-          },
-
-          { phrase => 'to use Cache::Mmap for cache syncing',
-            requires => { 'Cache::Mmap' => 0.04 },
-          },
-
         );
 
     print <<'EOF';
@@ -179,14 +160,6 @@ EOF
 
     foreach my $feature (@features)
     {
-        if ( exists $feature->{only_if} )
-        {
-            if ( $feature->{only_if}{tool} )
-            {
-                next unless $tools{ $feature->{only_if}{tool} };
-            }
-        }
-
 	print "\n";
 
 	my $has = 1;
@@ -227,11 +200,10 @@ EOF
             }
 
 	    $tests{ $feature->{test} } = 1 if exists $feature->{test};
-	    $tools{ $feature->{tool} } = 1 if exists $feature->{tool};
 	}
     }
 
-    return \%prereq, \%tests, \%tools;
+    return \%prereq, \%tests;
 }
 
 sub default_prereq
@@ -247,6 +219,7 @@ sub default_prereq
             'Test::Simple' => 0.47,
             'Test::Harness' => 1.26,
             'Class::Factory::Util' => 1.3,
+            perl => 5.006,
           },
           recommends => {},
           build_requires => { 'Pod::Man' => 1.14 },

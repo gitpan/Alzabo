@@ -9,7 +9,6 @@ use Alzabo::Runtime::ColumnDefinition;
 use Alzabo::Runtime::ForeignKey;
 use Alzabo::Runtime::Index;
 use Alzabo::Runtime::JoinCursor;
-use Alzabo::Runtime::PotentialRow;
 use Alzabo::Runtime::Row;
 use Alzabo::Runtime::RowCursor;
 use Alzabo::Runtime::Schema;

@@ -1,0 +1,23 @@
+#!/usr/bin/perl -w
+
+use strict;
+
+use Alzabo::Create;
+
+my ($re, $schema) = @ARGV;
+
+my $s = Alzabo::Create::Schema->load_from_file( name => $schema );
+
+print "\n";
+
+$re = qr/$re/;
+foreach my $t ( $s->tables )
+{
+    foreach my $c ( $t->columns )
+    {
+        print $t->name . ' . ' . $c->name . "\n"
+            if $c->name =~ /$re/;
+    }
+}
+
+print "\n";

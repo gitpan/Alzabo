@@ -1,3 +1,121 @@
+0.79_01
+
+ENHANCEMENTS:
+
+- Distribution is now signed with Module::Signature.
+
+- Lots of refactoring of the row object internals to simplify the
+code.  Implemented by Ilya Martynov.
+
+- The testing code has been cleaned up quite a bit, and all of the
+utility functions used in the tests have been consolidated in
+t/lib/Alzabo/Test/Utils.pm.
+
+- Added intermediate table and row classes for MethodMaker created
+classes, to provide a central point for adding new methods to table
+and row objects.  Based on a patch from Ken Williams.
+
+- Support for "self-linking" tables in Alzabo::MethodMaker, a linking
+table which connects a table to itself in an n..n relationship.
+Implemented by Ken Williams.
+
+- Added rdbms_version method to driver classes.  Implemented by Ken
+Williams.
+
+- Added Alzabo::Create::Schema->is_saved() method.
+
+- Foreign keys are now reverse engineered for Postgres 7.3+.
+Implemented by Ken Williams.
+
+- Don't try to include dropped columns when reverse engineering
+Postgres 7.3+.  Implemented by Ken Williams.
+
+- Do a better job of detecting SERIAL type columns when reverse
+engineering Postgres schemas.  Based on a patch from Ken Williams.
+
+- Treat Postgres data types SERIAL4, SERIAL8, BIGSERIAL, and BIGINT as
+valid types.  Implemented by Josh Jore.
+
+- NotNullable exception now include the table and schema name.  Based
+on a patch from Ken Williams.
+
+- Primary keys are updateable.
+
+- Debugging output from Alzabo::MethodMaker is clearer about what
+methods are being made.  Implemented by Ken Williams.
+
+- Alzabo::MethodMaker will now create foreign key methods when two
+tables have multiple relationships, as long as the name generation
+callback returns different names for each of them.  Implemented by Ken
+Williams.
+
+- A join parameter can now specify an outer join with a single array
+reference, such as:
+
+ [ left_outer_join => $table_A, $table_B ]
+
+Previously, this could only be done as a double array reference, like:
+
+ [ [ left_outer_join => $table_A, $table_B ] ]
+
+- Various doc fixes and rewriting, most notably in Alzabo.pm.
+
+BUG FIXES:
+
+- A join using multiple aliased tables would fail with an error
+message like "Cannot use column (Foo.bar_id) in select unless its
+table is included in the FROM clause".
+
+- Remove the long-ago deprecated next_row() and next_rows() methods.
+
+- Postgres 7.3 allows identifiers to be up to 63 characters.  This
+broke the code that handled sequenced columns for Postgres.  Patch by
+Josh Jore.
+
+- If you tried to create a relationship between two tables, and the
+"table_to" table already had a column of the same name as the
+"column_from" column, then Alzabo died with an error.  Reported by
+Ping Liang.
+
+- If you had previously installed Alzabo, and then provided a new
+Alzabo root directory or a new directory for the Mason components,
+this was not respected during the installation process.
+
+- Alzabo's referential integrity checks will no longer complain if you
+attempt to set a foreign key column to NULL.  Previously it would
+throw an exception if the column was part of the dependent table in a
+foreign key relationship.  Now, it just assumes you really meant to
+allow the column to be NULLable.
+
+- The schema class's load_from_file() method now blesses the loaded
+schema into the calling class.  So if you use MethodMaker to generate
+classes, and then call My::Schema->load_from_file, it should always
+return an object blessed into the My::Schema class.  Reported by Ken
+Williams.
+
+- When checking for the MySQL variable sql_mode, the value may be
+simply '' as opposed to 0.  Patch by Andrew Baumhauer.
+
+
+BACKWARDS INCOMPATIBILITIES:
+
+- Alzabo now requires at least Perl 5.6.0 (5.6.1+ recommended).
+
+- The old caching system has been removed, as it had way too much
+overhead.  There is a new, much simpler caching system provided by the
+Alzabo::UniqueRowCache module.
+
+- The Alzabo::Runtime::Table->row_by_pk() method no longer dies if it
+cannot find a matching row.  Instead it simply returns false.
+
+- Some deprecated MethodMaker options were removed: insert, update,
+lookup_table
+
+- The Alzabo::Runtime::Row->delete() method now works for potential
+rows.
+
+---------------------------------------------------------------------------
+
 0.73  October 5, 2003
 
 BACKWARDS INCOMPATIBILITIES:
@@ -24,6 +142,7 @@ names when reverse engineering Postgres schemas.
 
 - Reverse engineering of indexes for MySQL 4.0+ was broken.
 
+---------------------------------------------------------------------------
 
 0.72  April 12, 2003
 
@@ -40,6 +159,7 @@ BUG FIXES:
 when used with a recent version of Params::Validate.  Reported by Ken
 Williams.
 
+---------------------------------------------------------------------------
 
 0.71  April 6, 2003
 
@@ -97,7 +217,7 @@ details.
 BUG FIXES:
 
 - Fixed Alzabo::Table->primary_key, which would die when no primary
-key existed and it was called in an scalar context.  In an array
+key existed and it was called in a scalar context.  In an array
 context, all the columns in the table were returned.  Reported by Eric
 Prestemon.
 
@@ -110,9 +230,9 @@ used with MySQL's InnoDB tables.
 - In the schema creator, the link to the graph page, and the link _on_
 the graph page to the image, were both broken.
 
-- Alzabo was allowing you to rename a column to a name of an existing
-column in a table.  Similarly, a table could be renamed to the same
-name as an existing table.  Doing this could trash a schema.
+- Alzabo was allowing you to rename a column to the name of an
+existing column in a table.  Similarly, a table could be renamed to
+the same name as an existing table.  Doing this could trash a schema.
 
 - Alzabo::Runtime::Table->one_row would return undef if no row was
 found, which in a list context evaluated to a true value.
@@ -967,7 +1087,7 @@ of an object for their delete_from_cache method.
 
 ---------------------------------------------------------------------------
 
-0.56 Oct 10, 2001
+0.56
 
 Had to become 0.57 cause I was too hasty in uploading to CPAN.  Doh!
 

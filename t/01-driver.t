@@ -1,39 +1,46 @@
+#!/usr/bin/perl -w
+
 use strict;
+
+use File::Spec;
+
+use lib '.', File::Spec->catdir( File::Spec->curdir, 't', 'lib' );
+
+use Alzabo::Test::Utils;
 
 use Test::More;
 
+
 use Alzabo::Driver;
 
-use Cwd;
-use File::Spec;
 
-use lib '.', File::Spec->catdir( File::Spec->curdir, 't' );
+my @rdbms_names = Alzabo::Test::Utils->rdbms_names;
 
-require 'base.pl';
-
-unless ( @$Alzabo::Build::Tests )
+unless (@rdbms_names)
 {
     plan skip_all => 'no test config provided';
     exit;
 }
 
-my @db;
-my $test_count = 1;
 
-my $tests = $Alzabo::Build::Tests;
+my $tests_per_run = 1;
 
-plan tests => $test_count * @$tests;
+plan tests => $tests_per_run * @rdbms_names;
+
 
 my %rdbms = ( mysql => 'MySQL',
               pg    => 'PostgreSQL' );
 
-foreach my $test (@$tests)
+foreach my $rdbms (@rdbms_names)
 {
-    my $driver = Alzabo::Driver->new( rdbms => $rdbms{ $test->{rdbms} } );
+    my $config = Alzabo::Test::Utils->test_config_for($rdbms);
+
+    my $driver = Alzabo::Driver->new( rdbms => $rdbms{ $config->{rdbms} } );
 
     my @p = ( 'user', 'password', 'host', 'port' );
 
-    my %connect = map { $_ => $test->{$_} } grep { exists $test->{$_} } @p;
+    my %connect = map { $_ => $config->{$_} } grep { exists $rdbms{$_} } @p;
+
     eval_ok( sub { $driver->schemas(%connect) },
-             "Schema method for $rdbms{ $test->{rdbms} }" );
+             "Schema method for $rdbms{ $config->{rdbms} }" );
 }

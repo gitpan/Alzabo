@@ -7,7 +7,7 @@ use Alzabo::Exceptions;
 
 use Class::Factory::Util;
 use DBI;
-use Params::Validate qw( :all );
+use Params::Validate qw( validate validate_pos UNDEF SCALAR ARRAYREF );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
 $VERSION = 2.0;
@@ -336,6 +336,11 @@ sub handle
     return $self->{dbh};
 }
 
+sub rdbms_version
+{
+    shift()->_virtual;
+}
+
 sub connect
 {
     shift()->_virtual;
@@ -449,7 +454,7 @@ use Alzabo::Exceptions;
 
 use DBI;
 
-use Params::Validate qw( :all );
+use Params::Validate qw( validate UNDEF SCALAR ARRAYREF );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
 $VERSION = '0.1';
@@ -803,6 +808,14 @@ methods.
 =head3 Throws
 
 L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
+
+
+=head2 rdbms_version
+
+=head3 Returns
+
+The version string of the database backend currently in use.
+
 
 =head1 Alzabo::DriverStatement
 

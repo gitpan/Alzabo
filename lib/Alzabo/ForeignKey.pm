@@ -97,6 +97,28 @@ sub to_is_dependent
     return shift->{to_is_dependent};
 }
 
+sub is_same_relationship
+{
+    my ($self, $other) = @_;
+    return ($self->id eq $other->id
+	    or
+	    $self->id eq $other->reverse->id);
+}
+
+sub reverse
+{
+    my $self = shift;
+
+    return bless { table_from        => $self->table_to,
+                   table_to          => $self->table_from,
+                   columns_from      => [ $self->columns_to ],
+                   columns_to        => [ $self->columns_from ],
+                   from_is_dependent => $self->to_is_dependent,
+                   to_is_dependent   => $self->from_is_dependent,
+                   cardinality       => [ reverse @{ $self->{cardinality} } ],
+		 }, ref $self;
+}
+
 sub id
 {
     my $self = shift;
@@ -199,6 +221,14 @@ table to the other.
 
 A boolean value indicating what kind of relationship the object
 represents.
+
+=head2 is_same_relationship_as ($fk)
+
+=head3
+
+Given a foreign key object, this returns true if the two objects
+represent the same relationship.  However, the two objects may
+represent the same relationship from different table's points of view.
 
 =head2 comment
 

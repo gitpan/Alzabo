@@ -4,9 +4,11 @@ use strict;
 use vars qw($VERSION);
 
 use Alzabo::Create;
+use Alzabo::Exceptions ( abbr => 'params_exception' );
 
 use Params::Validate qw( :all );
-Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+Params::Validate::validation_options
+    ( on_fail => sub { params_exception join '', @_ } );
 
 use base qw(Alzabo::Column);
 
@@ -30,27 +32,27 @@ sub _init
 {
     my $self = shift;
 
-    validate( @_, { table => { isa => 'Alzabo::Table' },
-		    name  => { type => SCALAR },
-		    null  => { optional => 1 },
-		    nullable => { optional => 1 },
-		    type  => { type => SCALAR,
-			       optional => 1 },
-		    attributes => { type => ARRAYREF,
-				    optional => 1 },
-		    default    => { type => UNDEF | SCALAR,
-				    optional => 1 },
-		    sequenced  => { optional => 1 },
-		    length => { type => UNDEF | SCALAR,
-				optional => 1 },
-		    precision  => { type => UNDEF | SCALAR,
-				    optional => 1 },
-		    definition => { isa => 'Alzabo::Create::ColumnDefinition',
-				    optional => 1 },
-		    comment => { type => UNDEF | SCALAR,
-				 default => '' },
+    my %p =
+        validate( @_, { table => { isa => 'Alzabo::Table' },
+                        name  => { type => SCALAR },
+                        null  => { optional => 1 },
+                        nullable => { optional => 1 },
+                        type  => { type => SCALAR,
+                                   optional => 1 },
+                        attributes => { type => ARRAYREF,
+                                        optional => 1 },
+                        default    => { type => UNDEF | SCALAR,
+                                        optional => 1 },
+                        sequenced  => { optional => 1 },
+                        length => { type => UNDEF | SCALAR,
+                                    optional => 1 },
+                        precision  => { type => UNDEF | SCALAR,
+                                        optional => 1 },
+                        definition => { isa => 'Alzabo::Create::ColumnDefinition',
+                                        optional => 1 },
+                        comment => { type => UNDEF | SCALAR,
+                                     default => '' },
 		  } );
-    my %p = @_;
 
     $self->set_table( $p{table} );
 
@@ -64,9 +66,12 @@ sub _init
     }
     else
     {
-	$self->set_definition( Alzabo::Create::ColumnDefinition->new( owner => $self,
-								      type => $p{type},
-								    ) );
+	$self->set_definition
+            ( Alzabo::Create::ColumnDefinition->new
+                  ( owner => $self,
+                    type => $p{type},
+                  )
+            );
     }
 
     my %attr;
@@ -98,9 +103,8 @@ sub set_name
     validate_pos( @_, { type => SCALAR } );
     my $name = shift;
 
-    Alzabo::Exception::Params->throw
-        ( error => "Column $name already exists in table" )
-            if $self->table->has_column($name);
+    params_exception "Column $name already exists in table"
+        if $self->table->has_column($name);
 
     my $old_name = $self->{name};
     $self->{name} = $name;
@@ -112,14 +116,8 @@ sub set_name
     if ($@)
     {
 	$self->{name} = $old_name;
-	if ( UNIVERSAL::can( $@, 'rethrow' ) )
-	{
-	    $@->rethrow;
-	}
-	else
-	{
-	    Alzabo::Exception->throw( error => $@ );
-	}
+
+        rethrow_exception($@);
     }
 
     $self->table->register_column_name_change( column => $self,
@@ -134,10 +132,10 @@ sub set_nullable
     validate_pos( @_, { type => SCALAR } );
     my $n = shift;
 
-    Alzabo::Exception::Params->throw( error => "Invalid value for nullable attribute: $n" )
+    params_exception "Invalid value for nullable attribute: $n"
 	unless $n eq '1' || $n eq '0';
 
-    Alzabo::Exception::Params->throw( error => "Primary key column cannot be nullable" )
+    params_exception "Primary key column cannot be nullable"
 	if $n eq '1' && $self->is_primary_key;
 
     $self->{nullable} = $n;
@@ -195,7 +193,7 @@ sub delete_attribute
     validate_pos( @_, { type => SCALAR } );
     my $attr = shift;
 
-    Alzabo::Exception::Params->throw( error => "Column " . $self->name . " doesn't have attribute $attr" )
+    params_exception "Column " . $self->name . " doesn't have attribute $attr"
 	unless exists $self->{attributes}{$attr};
 
     delete $self->{attributes}{$attr};
@@ -257,7 +255,7 @@ sub set_sequenced
     validate_pos( @_, { type => SCALAR } );
     my $s = shift;
 
-    Alzabo::Exception::Params->throw( error => "Invalid value for sequenced attribute: $s" )
+    params_exception "Invalid value for sequenced attribute: $s"
 	unless $s eq '1' || $s eq '0';
 
     $self->table->schema->rules->validate_sequenced_attribute($self)

@@ -1,8 +1,30 @@
-package Alzabo::Runtime::PotentialRow;
+package Alzabo::Runtime::RowState::Deleted;
 
-use base qw(Alzabo::Runtime::Row);
+use strict;
 
-die "Placeholder for docs";
+use Alzabo::Runtime;
+
+use Params::Validate qw( :all );
+Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
+BEGIN
+{
+    no strict 'refs';
+    foreach my $meth ( qw( select select_hash refresh update delete id_as_string ) )
+    {
+        *{__PACKAGE__ . "::$meth"} =
+            sub { $_[1]->_no_such_row_error };
+    }
+}
+
+sub is_potential { 0 }
+
+sub is_live { 0 }
+
+sub is_deleted { 1 }
+
+
+1;
 
 __END__
 
@@ -90,7 +112,7 @@ references to the real object (which is a good thing).
 
 This method can take any parameters that can be passed to the
 L<C<Alzabo::Runtime::Table-E<gt>insert>|Alzabo::Runtime::Table/insert>
-method.
+method, such as C<no_cache>.
 
 Any columns already set will be passed to the C<insert> method,
 including primary key values.  However, these will be overriddenn, on

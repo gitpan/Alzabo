@@ -1,21 +1,251 @@
+package Alzabo::Test::Utils;
+
 use strict;
 
 use Alzabo::Config;
-use Alzabo::Create;
+use Cwd ();
+use File::Path ();
+use File::Spec;
 
-use lib '.', './t';
+use Module::Build;
 
-require 'base.pl';
 
-sub mysql_make_schema
+# This should always happen whenever the module is loaded
+
+__PACKAGE__->create_test_schema_dir;
+
+
+# Used in a number of test files
+
+sub main::eval_ok (&$)
 {
+    my ( $code, $name ) = @_;
+
+    eval { $code->() };
+    if ( my $e = $@ )
+    {
+	Test::More::ok( 0, $name );
+	Test::More::diag("     got error: $e\n" );
+    }
+    else
+    {
+	Test::More::ok( 1, $name );
+    }
+}
+
+sub create_test_schema_dir
+{
+    my $class = shift;
+
+    my $schema_dir = $class->_schema_dir;
+
+    unless ( -d $schema_dir )
+    {
+        mkdir $schema_dir, 0755
+            or die "Can't make dir $schema_dir for testing: $!\n";
+    }
+}
+
+sub _schema_dir
+{
+    my $class = shift;
+
+    return File::Spec->catdir( $class->_root_dir, 'schemas' );
+}
+
+sub _root_dir
+{
+    my $cwd = Cwd::cwd();
+
+    my $root_dir = File::Spec->catdir( $cwd, 't' );
+
+    Alzabo::Config::root_dir($root_dir);
+
+    return $root_dir;
+}
+
+sub rdbms_names
+{
+    my $class = shift;
+
+    my %c = $class->test_config;
+
+    return keys %c;
+}
+
+sub rdbms_count
+{
+    my $class = shift;
+
+    return scalar $class->rdbms_names;
+}
+
+sub test_config
+{
+    my $build = Module::Build->current;
+
+    my $tests = $build->notes('test_config');
+
+    return map { $_->{rdbms} => $_ } @$tests;
+}
+
+sub mysql_test_config
+{
+    my $class = shift;
+
+    my %t = $class->test_config;
+
+    return $t{mysql};
+}
+
+sub pg_test_config
+{
+    my $class = shift;
+
+    my %t = $class->test_config;
+
+    return $t{pg};
+}
+
+sub test_config_for
+{
+    my $class = shift;
+    my $rdbms = shift;
+
+    my $meth = "${rdbms}_test_config";
+
+    return $class->$meth();
+}
+
+sub connect_params_for
+{
+    my $class = shift;
+
+    my $config = $class->test_config_for( shift );
+
+    return ( map { defined $config->{$_}
+                   ? ( $_ => $config->{$_} )
+                   : () }
+             qw( user password host port )
+           );
+}
+
+sub cleanup
+{
+    my $class = shift;
+
+    $class->remove_schema_dir;
+
+    $class->remove_all_schemas;
+}
+
+sub remove_schema_dir
+{
+    my $class = shift;
+
+    my $dir = $class->_schema_dir;
+
+    Test::More::diag( "Removing test schema directory: $dir" );
+
+    File::Path::rmtree( $dir, $Test::Harness::verbose, 0 );
+}
+
+sub remove_all_schemas
+{
+    my $class = shift;
+
+    $class->remove_schema($_) foreach 'mysql', 'pg';
+}
+
+sub remove_schema
+{
+    my $class = shift;
+    my $rdbms = shift;
+
+    my $meth = "remove_${rdbms}_schema";
+
+    $class->$meth();
+}
+
+sub remove_mysql_schema
+{
+    my $class = shift;
+
+    my $config = $class->mysql_test_config();
+
+    return unless keys %$config;
+
+    Test::More::diag( "Removing MySQL database $config->{schema_name}" );
+
+    my $s = $class->_load_or_create( name => $config->{schema_name},
+                                     rdbms => 'MySQL' );
+
+    delete @{ $config }{ 'schema_name', 'rdbms' };
+
+    eval { $s->drop(%$config) };
+
+    $s->delete if $s->is_saved;
+}
+
+sub remove_pg_schema
+{
+    my $class = shift;
+
+    my $config = $class->pg_test_config();
+
+    return unless keys %$config;
+
+    Test::More::diag( "Removing PostgreSQL database $config->{schema_name}" );
+
+    my $s = $class->_load_or_create( name => $config->{schema_name},
+                                     rdbms => 'PostgreSQL' );
+
+    delete @{ $config }{ 'schema_name', 'rdbms' };
+
+    eval { $s->drop(%$config) };
+
+    $s->delete if $s->is_saved;
+}
+
+sub _load_or_create
+{
+    my $class = shift;
     my %p = @_;
-    my $s = Alzabo::Create::Schema->new( name => $p{schema_name},
+
+    require Alzabo::Create::Schema;
+
+    my $s;
+
+    $s = eval { Alzabo::Create::Schema->load_from_file( name => $p{name} ) };
+
+    return $s if $s;
+
+    return Alzabo::Create::Schema->new(%p);
+}
+
+sub make_schema
+{
+    my $class = shift;
+    my $rdbms = shift;
+
+    my $meth = "make_${rdbms}_schema";
+
+    return $class->$meth();
+}
+
+sub make_mysql_schema
+{
+    my $class = shift;
+
+    my $config = $class->mysql_test_config;
+
+    my $s = Alzabo::Create::Schema->new( name => $config->{schema_name},
 					 rdbms => 'MySQL',
 				       );
 
     $s->make_table( name => 'employee' );
     my $emp_t = $s->table('employee');
+
     $emp_t->make_column( name => 'employee_id',
 			 type => 'int',
 			 sequenced => 1,
@@ -41,7 +271,7 @@ sub mysql_make_schema
 			 type => 'integer',
 			 nullable => 1,
 		       );
-    # only here to test that making an enum works
+    # only here to test that making an enum works - not used in tests
     $emp_t->make_column( name => 'test_enum',
 			 type => "enum('foo','bar')",
 			 nullable => 1 );
@@ -166,8 +396,12 @@ sub mysql_make_schema
 			  to_is_dependent => 0,
 			);
 
-    delete @p{'rdbms', 'schema_name'};
-    $s->create(%p);
+    my $u = $s->make_table( name => 'user' );
+    $u->make_column( name => 'user_id', type => 'integer', primary_key => 1 );
+
+    delete @{ $config }{'rdbms', 'schema_name'};
+
+    $s->create(%$config);
 
     $s->save_to_file;
 
@@ -178,55 +412,65 @@ sub mysql_make_schema
 
 # make sure to use native types or Postgres converts them and then the
 # reverse engineering tests fail.
-sub pg_make_schema
+sub make_pg_schema
 {
-    my $pid;
+    my $class = shift;
 
-    my %p = @_;
-    my $s = Alzabo::Create::Schema->new( name => $p{schema_name},
+    my $config = $class->pg_test_config;
+
+    my $s = Alzabo::Create::Schema->new( name => $config->{schema_name},
 					 rdbms => 'PostgreSQL',
 				       );
 
     $s->make_table( name => 'employee' );
     my $emp_t = $s->table('employee');
+
     $emp_t->make_column( name => 'employee_id',
 			 type => 'serial',
 			 sequenced => 1,
 			 primary_key => 1,
 		       );
+
     $emp_t->make_column( name => 'name',
 			 type => 'varchar',
 			 length => 200,
 		       );
+
     $emp_t->make_column( name => 'smell',
 			 type => 'varchar',
 			 length => 200,
 			 nullable => 1,
 			 default => 'grotesque',
 		       );
+
     $emp_t->make_column( name => 'cash',
 			 type => 'numeric',
 			 length => 6,
 			 precision => 2,
 			 nullable => 1,
 		       );
+
     $emp_t->make_column( name => 'tstamp',
 			 type => 'integer',
 			 nullable => 1,
 		       );
+
     $emp_t->make_index( columns => [ { column => $emp_t->column('name') } ] );
 
     $s->make_table( name => 'department');
     my $dep_t = $s->table('department');
+
     $dep_t->make_column( name => 'department_id',
 			 type => 'int4',
 			 sequenced => 1,
 			 primary_key => 1,
 		       );
+
     $dep_t->make_column( name => 'name',
 			 type => 'varchar',
 			 length => 200,
 		       );
+
     $dep_t->make_column( name => 'manager_id',
 			 type => 'int4',
 			 nullable => 1,
@@ -240,6 +484,7 @@ sub pg_make_schema
 			  from_is_dependent => 0,
 			  to_is_dependent => 0,
 			);
+
     $s->add_relationship( table_from => $emp_t,
 			  table_to => $dep_t,
 			  cardinality => ['n', 1],
@@ -248,16 +493,19 @@ sub pg_make_schema
 			);
 
     $s->make_table( name => 'project' );
+
     my $proj_t = $s->table('project');
     $proj_t->make_column( name => 'project_id',
 			  type => 'int4',
 			  sequenced => 1,
 			  primary_key => 1,
 			);
+
     $proj_t->make_column( name => 'name',
 			  type => 'varchar',
 			  length => 200,
 			);
+
     $proj_t->make_column( name => 'blobby',
 			  type => 'text',
                           nullable => 1,
@@ -286,6 +534,7 @@ sub pg_make_schema
 			     type => 'varchar',
 			     length => 20,
 			     primary_key => 1 );
+
     $char_pk_t->make_column( name => 'fixed_char',
 			     type => 'char',
 			     nullable => 1,
@@ -297,10 +546,12 @@ sub pg_make_schema
 			     sequenced => 1,
 			     primary_key => 1,
 			   );
+
     $outer_1_t->make_column( name => 'outer_1_name',
 			     type => 'varchar',
 			     length => 40,
 			   );
+
     $outer_1_t->make_column( name => 'outer_2_key',
 			     type => 'int',
 			     nullable => 1,
@@ -312,10 +563,12 @@ sub pg_make_schema
 			     sequenced => 1,
 			     primary_key => 1,
 			   );
+
     $outer_2_t->make_column( name => 'outer_2_name',
 			     type => 'varchar',
 			     length => 40,
 			   );
+
     $outer_2_t->make_column( name => 'outer_2_key',
 			     type => 'int',
 			     nullable => 1,
@@ -335,24 +588,32 @@ sub pg_make_schema
 			 type => 'integer',
 			 primary_key => 1 );
 
-    my $name = $p{schema_name};
-    delete @p{'rdbms', 'schema_name'};
+    my $name = $config->{schema_name};
 
-    # scary hack that seems to mostly fix "database is in use" errors
-    if ( $pid = fork )
-    {
-	wait;
-	return Alzabo::Create::Schema->load_from_file( name => $name );
-    }
-    else
-    {
-	Test::Builder->no_ending(1);
+    delete @{ $config }{'rdbms', 'schema_name'};
 
-	$s->create(%p);
-	$s->save_to_file;
+    $s->create(%$config);
 
-	exit;
-    }
+    $s->save_to_file;
+
+    $s->driver->disconnect;
+
+    return $s;
 }
 
+
 1;
+
+__END__
+
+=head1 DESCRIPTION
+
+Alzabo::Test::Utils - Utility module for Alzabo test suite
+
+=head1 SYNOPSIS
+
+  use Alzabo::Test::Utils;
+
+  Alzabo::Test::Utils->
+
+=cut

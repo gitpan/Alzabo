@@ -19,16 +19,6 @@ sub next
     shift->_virtual;
 }
 
-sub next_row
-{
-    shift->_virtual;
-}
-
-sub next_rows
-{
-    shift->_virtual;
-}
-
 sub all_rows
 {
     shift->_virtual;
@@ -39,8 +29,9 @@ sub _virtual
     my $self = shift;
 
     my $sub = (caller(1))[3];
-    Alzabo::Exception::VirtualMethod->throw( error =>
-					     "$sub is a virtual method and must be subclassed in " . ref $self );
+    Alzabo::Exception::VirtualMethod->throw
+            ( error =>
+              "$sub is a virtual method and must be subclassed in " . ref $self );
 }
 
 sub reset
@@ -49,16 +40,8 @@ sub reset
 
     $self->{statement}->execute( $self->{statement}->bind );
 
-    $self->{errors} = [];
     $self->{seen} = {};
     $self->{count} = 0;
-}
-
-sub errors
-{
-    my $self = shift;
-
-    return @{ $self->{errors} };
 }
 
 sub count
@@ -101,21 +84,6 @@ Virtual method.
 
 Virtual method.
 
-=head2 errors
-
-If the last C<next> call encountered a situation where the SQL query
-returned primary keys not actually in the target table, then the
-exception objects are stored in the cursor.  This method can be used
-to retrieve these objects.  This allows you to ignore these errors if
-you so desire without having to do explicit exception handling.  For
-more information on what you can do with this method see L<the
-HANDLING ERRORS section|"HANDLING ERRORS">.
-
-=head3 Returns
-
-A list of L<C<Alzabo::Exception::NoSuchRow>|Alzabo::Exceptions>
-objects.
-
 =head2 reset
 
 Resets the cursor so that the next C<next> call will return the first
@@ -133,93 +101,6 @@ The number of rows returned by the cursor so far.
 
 The next row or rows in a hash, where the hash key is the table name
 and the hash value is the row object.
-
-=head1 HANDLING ERRORS
-
-Let's assume a database in with following tables:
-
- TABLE NAME: movie
-
- movie_id          int
- title             varchar(50)
-
- TABLE NAME: movie_alias
-
- alias_id           int
- movie_id           int
- alias              varchar(50)
-
-Now, let's assume you have a schema object C<$schema> and you execute
-the following code:
-
- my $cursor =
-     $schema->join
-         ( tables =>
-           [ $schema->tables( 'movie', 'movie_alias' ) ],
-           select => $schema->table('movie'),
-           where  =>
-           [ $schema->table('movie_alias')->column('alias'), 'like', 'Foo%' ] );
-
-The cursor returned is relying on the movie_id column in the
-movie_alias table.  It's possible that there are values in this column
-that are not actually in the movie table but the cursor object will
-ignore the exceptions caused by these bad ids.  The C<next> method
-will not return a false value until its underlying DBI statement
-handle stops returning data.  The reasoning behind this is that
-otherwise there would be no way to distinguish between: A) a false
-value caused by there being no more data coming back from the query on
-the movie_alias table and B) a false value caused by there being no
-row in the movie column matching a given movie_id value.
-
-It is certainly possible that there are situations when you don't care
-about referential integrity and you want to simply get all the rows
-you can.  In other cases, you will want to handle errors.  I would
-have used exceptions for this purpose except the following code would
-then not function properly.
-
- while ( my $row = eval { $cursor->next } )
- {
-     do_something if $@;  # or alternately just ignore $@
-
-     ... do something with $row ...
- }
-
-The reason is that throwing an exception in the eval block would cause
-the eval to return an undef.  This means that the 'do_something if
-$@;' clause would _never_ get executed.  In that case, you couldn't
-ignore the exception if you wanted to because it interrupts the
-C<while> loop.  The workaround would be:
-
- do
- {
-     my $row = eval { $cursor->next };
-     # either do something with $@ or ignore it.
- } while ( $row || ( $@ && $@->isa('Alzabo::Exception::NoSuchRow') );
-
-However, this is not an idiom I particularly want to encourage, as it
-is counter-intuitive.
-
-So, while throwing an exception may be the most 'correct' way to do
-it, I've instead created the L<C<errors>|errors> method.
-
-This means that the idiom for checking errors from the C<next> method
-is as follows:
-
- while ( my $row = $cursor->next )
- {
-     do_something if $cursor->errors;
-
-     ... do something with $row ...
- }
-
-The advantage here is that ignoring the exception is easy.  If you
-want to check them then just remember that the L<C<errors>|errors>
-method will return a list of
-L<C<Alzabo::Exception::NoSuchRow>|Alzabo::Exceptions> objects that
-occurred during the previous C<next> call.
-
-Also note that other types of exceptions are rethrown from the C<next>
-method.
 
 =head1 RATIONALE FOR CURSORS
 

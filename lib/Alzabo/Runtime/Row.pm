@@ -3,286 +3,72 @@ package Alzabo::Runtime::Row;
 use strict;
 use vars qw($VERSION);
 
-use Alzabo::Runtime;
+use Alzabo;
 
-use Params::Validate qw( :all );
-Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+use Alzabo::Exceptions ( abbr => [ qw( logic_exception no_such_row_exception
+                                       params_exception storable_exception ) ] );
+
+use Alzabo::Runtime;
+use Alzabo::Runtime::RowState::Deleted;
+use Alzabo::Runtime::RowState::Live;
+use Alzabo::Runtime::RowState::Potential;
+
+use Params::Validate qw( validate UNDEF SCALAR HASHREF );
+Params::Validate::validation_options
+    ( on_fail => sub { params_exception join '', @_ } );
 
 use Storable ();
 
 $VERSION = 2.0;
 
-1;
+BEGIN
+{
+    no strict 'refs';
+    foreach my $meth ( qw( select select_hash update refresh delete
+                           id_as_string is_live is_deleted ) )
+    {
+        *{ __PACKAGE__ . "::$meth" } =
+            sub { my $s = shift;
+                  $s->{state}->$meth( $s, @_ ) };
+    }
+}
 
 sub new
 {
     my $proto = shift;
     my $class = ref $proto || $proto;
 
-    my %p = validate( @_, { table => { isa => 'Alzabo::Runtime::Table' },
-			    pk => { type => SCALAR | HASHREF,
-				    optional => 1 },
-			    prefetch => { type => UNDEF | HASHREF,
-					  optional => 1 },
-			    time => { type => UNDEF | SCALAR,
-				      optional => 1 },
-			    no_cache => { optional => 1 },
-			    insert => { optional => 1 },
-			    potential_row => { isa => 'Alzabo::Runtime::PotentialRow',
-					       optional => 1 },
-			  } );
+    my %p =
+        validate( @_,
+                  { table => { isa => 'Alzabo::Runtime::Table' },
+                    pk    => { type => SCALAR | HASHREF,
+                               optional => 1,
+                             },
+                    prefetch => { type => UNDEF | HASHREF,
+                                  optional => 1,
+                                },
+                    state => { type => SCALAR,
+                               default => 'Alzabo::Runtime::RowState::Live',
+                             },
+                    potential_row => { isa => 'Alzabo::Runtime::Row',
+                                       optional => 1,
+                                     },
+                    values => { type => HASHREF,
+                                default => {},
+                              }
+                  }
+                );
 
-    unless ( ref $p{prefetch} && %{ $p{prefetch} } && $p{time} )
-    {
-	delete @p{ 'prefetch', 'time' };
-    }
+    my $self = $p{potential_row} ? $p{potential_row} : {};
 
-    my $self;
-    if ( $Alzabo::ObjectCache::VERSION && ! $p{no_cache} )
-    {
-	$self = Alzabo::Runtime::CachedRow->retrieve(%p);
-	return $self if exists $self->{data};
-    }
-    elsif( $p{potential_row} )
-    {
-	$self = bless $p{potential_row}, $class;
-    }
-    else
-    {
-	$self = bless {}, $class;
-    }
+    bless $self, $class;
 
     $self->{table} = $p{table};
+    $self->{state} = $p{state};
 
-    $self->{id} = $self->_make_id_hash(%p);
-
-    $self->_init(%p);
+    $self->{state}->_init($self, @_) or return;
 
     return $self;
-}
-
-sub _init
-{
-    my $self = shift;
-    my %p = @_;
-
-    while ( my ($k, $v) = each %{ $self->{id} } )
-    {
-	$self->{data}{$k} = $v;
-    }
-
-    unless ( keys %{ $self->{data} } > keys %{ $self->{id} } )
-    {
-	# Need to try to fetch something to confirm that this row exists!
-	my $sql = ( $self->schema->sqlmaker->
-		    select( ($self->table->primary_key)[0] )->
-		    from( $self->table ) );
-
-	$self->_where($sql);
-
-        $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
-        print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
-
-	$self->_no_such_row_error
-	    unless defined $self->schema->driver->one_row( sql => $sql->sql,
-							   bind => $sql->bind );
-    }
-}
-
-sub _make_id_hash
-{
-    my $self = shift;
-    my %p = @_;
-
-    return $p{pk} if ref $p{pk};
-
-    return { (scalar $p{table}->primary_key)->name => $p{pk} };
-}
-
-sub _get_data
-{
-    my $self = shift;
-
-    my $sql = ( $self->schema->sqlmaker->
-		select( $self->table->columns(@_) )->
-		from( $self->table ) );
-    $self->_where($sql);
-
-    $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
-    print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
-
-    my @row = $self->schema->driver->one_row( sql => $sql->sql,
-					      bind => $sql->bind )
-	or $self->_no_such_row_error;
-
-    my %data;
-    @data{@_} = @row;
-
-    return %data;
-}
-
-sub select
-{
-    my $self = shift;
-
-    my @cols = @_ ? @_ : map { $_->name } $self->table->columns;
-    my %data = $self->_get_data(@cols);
-
-    return wantarray ? @data{@cols} : $data{ $cols[0] };
-}
-
-sub select_hash
-{
-    my $self = shift;
-
-    my @cols = @_ ? @_ : map { $_->name } $self->table->columns;
-
-    return $self->_get_data(@cols);
-}
-
-sub update
-{
-    my $self = shift;
-    my %data = @_;
-
-    $self->_no_such_row_error if $self->{deleted};
-
-    my $schema = $self->schema;
-
-    my @fk; # this never gets populated unless referential integrity
-            # checking is on
-    foreach my $k (keys %data)
-    {
-	# This will throw an exception if the column doesn't exist.
-	my $c = $self->table->column($k);
-
-	Alzabo::Exception::Params->throw( error => 'Cannot change the value of primary key columns.  Delete the row object and create a new one instead.' )
-	    if $c->is_primary_key;
-
-	# Only make the change if the two values are different.  The
-	# convolutions are necessary to avoid a warning.
-        if ( exists $self->{data}{$k} &&
-             ( ( ! defined $data{$k} && ! defined $self->{data}{$k} ) ||
-               ( defined $data{$k} &&
-                 defined $self->{data}{$k} &&
-                 ( $data{$k} eq $self->{data}{$k} )
-               )
-             )
-           )
-        {
-	    delete $data{$k};
-	    next;
-	}
-
-	Alzabo::Exception::NotNullable->throw
-            ( error => $c->name . " column in " . $self->table->name . " table cannot be null.",
-              column_name => $c->name,
-            )
-                unless defined $data{$k} || $c->nullable || defined $c->default;
-
-	push @fk, $self->table->foreign_keys_by_column($c)
-	    if $self->schema->referential_integrity;
-    }
-
-    return unless keys %data;
-
-    # If we have foreign keys we'd like all the fiddling to be atomic.
-    my $sql = ( $self->schema->sqlmaker->
-		update( $self->table ) );
-    $sql->set( map { $self->table->column($_), $data{$_} } keys %data );
-
-    $self->_where($sql);
-
-    $schema->begin_work if @fk;
-
-    eval
-    {
-	foreach my $fk (@fk)
-	{
-	    $fk->register_update( map { $_->name => $data{ $_->name } } $fk->columns_from );
-	}
-
-        $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
-        print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
-
-	$schema->driver->do( sql => $sql->sql,
-			     bind => $sql->bind );
-
-	$schema->commit if @fk;
-    };
-    if (my $e = $@)
-    {
-	eval { $schema->rollback };
-
-	if ( UNIVERSAL::can( $e, 'rethrow' ) )
-	{
-	    $e->rethrow;
-	}
-	else
-	{
-	    Alzabo::Exception->throw( error => $e );
-	}
-    }
-}
-
-sub delete
-{
-    my $self = shift;
-
-    my $schema = $self->schema;
-
-    my @fk; # this never populated unless referential integrity
-            # checking is on
-    if ($schema->referential_integrity)
-    {
-	@fk = $self->table->all_foreign_keys;
-    }
-
-    my $sql = ( $self->schema->sqlmaker->
-		delete->from( $self->table ) );
-    $self->_where( $sql );
-
-    $schema->begin_work if @fk;
-    eval
-    {
-	foreach my $fk (@fk)
-	{
-	    $fk->register_delete($self);
-	}
-
-        $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
-        print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
-
-	$schema->driver->do( sql => $sql->sql,
-			     bind => $sql->bind );
-
-	$schema->commit if @fk;
-    };
-    if (my $e = $@)
-    {
-	eval { $schema->rollback };
-	if ( UNIVERSAL::can( $e, 'rethrow' ) )
-	{
-	    $e->rethrow;
-	}
-	else
-	{
-	    Alzabo::Exception->throw( error => $e );
-	}
-    }
-
-    $self->{deleted} = 1;
-}
-
-sub _where
-{
-    my $self = shift;
-    my $sql = shift;
-
-    my ($pk1, @pk) = $self->table->primary_key;
-
-    $sql->where( $pk1, '=', $self->{id}{ $pk1->name } );
-    $sql->and( $_, '=', $self->{id}{ $_->name } ) foreach @pk;
 }
 
 sub table
@@ -298,6 +84,8 @@ sub schema
 
     return $self->table->schema;
 }
+
+sub set_state { $_[0]->{state} = $_[1] };
 
 sub rows_by_foreign_key
 {
@@ -321,40 +109,67 @@ sub rows_by_foreign_key
     return $fk->is_one_to_many ? $fk->table_to->rows_where(%p) : $fk->table_to->one_row(%p);
 }
 
-# Class or object method
-sub id_as_string
+# class method
+sub id_as_string_ext
+{
+    my $class = shift;
+    my %p = @_;
+    my $id_hash = $class->_make_id_hash(%p);
+
+    local $^W; # weirdly, enough there are code paths that can
+    # lead here that'd lead to $id_hash having some
+    # values that are undef
+    return join ';:;_;:;', ( $p{table}->schema->name,
+                             $p{table}->name,
+                             map { $_, $id_hash->{$_} } sort keys %$id_hash );
+}
+
+sub _make_id_hash
 {
     my $self = shift;
     my %p = @_;
 
-    my $id_string;
-    if (ref $self)
-    {
-	unless ( exists $self->{id_string} )
-	{
-	    $self->{id_string} =
-                join ';:;_;:;', ( $self->schema->name,
-                                  $self->table->name,
-                                  map { $_, $self->{id}{$_} } sort keys %{ $self->{id} } );
-	}
-	$id_string = $self->{id_string};
-    }
-    else
-    {
-	my $id_hash = $self->_make_id_hash(%p);
+    return $p{pk} if ref $p{pk};
 
-	{
-	    local $^W; # weirdly, enough there are code paths that can
-                       # lead here that'd lead to $id_hash having some
-                       # values that are undef
-	    $id_string =
-                join ';:;_;:;', ( $p{table}->schema->name,
-                                  $p{table}->name,
-                                  map { $_, $id_hash->{$_} } sort keys %$id_hash );
-	}
+    return { ($p{table}->primary_key)[0]->name => $p{pk} };
+}
+
+sub _update_pk_hash
+{
+    my $self = shift;
+
+    my @pk = keys %{ $self->{pk} };
+
+    @{ $self->{pk} }{ @pk } = @{ $self->{data} }{ @pk };
+
+    delete $self->{id_string};
+}
+
+sub make_live
+{
+    my $self = shift;
+
+    logic_exception "Can only call make_live on potential rows"
+	unless $self->{state}->is_potential;
+
+    my %p = @_;
+
+    my %values;
+    foreach ( $self->table->columns )
+    {
+	next unless exists $p{values}->{ $_->name } || exists $self->{data}->{ $_->name };
+	$values{ $_->name } = ( exists $p{values}->{ $_->name } ?
+				$p{values}->{ $_->name } :
+				$self->{data}->{ $_->name } );
     }
 
-    return $id_string;
+    my $table = $self->table;
+    delete @{ $self }{keys %$self}; # clear out everything
+
+    $table->insert( @_,
+		    potential_row => $self,
+		    %values ? ( values => \%values ) : (),
+		  );
 }
 
 sub _no_such_row_error
@@ -363,17 +178,16 @@ sub _no_such_row_error
 
     my $err = 'Unable to find a row in ' . $self->table->name . ' where ';
     my @vals;
-    while ( my ($k, $v) = each %{ $self->{id} } )
+    while ( my( $k, $v ) = each %{ $self->{pk} } )
     {
 	$v = '<NULL>' unless defined $v;
 	my $val = "$k = $v";
 	push @vals, $val;
     }
     $err .= join ', ', @vals;
-    Alzabo::Exception::NoSuchRow->throw( error => $err );
-}
 
-sub is_live { 1 }
+    no_such_row_exception $err;
+}
 
 sub STORABLE_freeze
 {
@@ -383,46 +197,43 @@ sub STORABLE_freeze
     my %data = %$self;
 
     my $table = delete $data{table};
-    my $cache = delete $data{cache};
 
     $data{schema} = $table->schema->name;
     $data{table_name} = $table->name;
 
-    $data{sync_time} = $self->{sync_time} = $cache->sync_time($self) if $cache;
-
     my $ser = eval { Storable::nfreeze(\%data) };
 
-    Alzabo::Exception::Storable->throw( error => $@ ) if $@;
+    storable_exception $@ if $@;
 
     return $ser;
 }
 
 sub STORABLE_thaw
 {
-    my $self = shift;
-    my $cloning = shift;
-    my $ser = shift;
+    my ( $self, $cloning, $ser ) = @_;
 
     my $data = eval { Storable::thaw($ser) };
 
-    Alzabo::Exception::Storable->throw( error => $@ ) if $@;
+    storable_exception $@ if $@;
 
     %$self = %$data;
 
     my $s = Alzabo::Runtime::Schema->load_from_file( name => delete $self->{schema} );
     $self->{table} = $s->table( delete $self->{table_name} );
 
-    if ( $Alzabo::ObjectCache::VERSION && $self->can('cache_id') )
+    # If the caching system is loaded we want to return the existing
+    # reference, not a copy.
+    #
+    # Requires a patched Storable (at least for now)
+    if ( Alzabo::Runtime::UniqueRowCache->can('row_in_cache') )
     {
-        # look for cached version first and return it
-
-	$self->{cache} = Alzabo::ObjectCache->new;
-	$self->{cache}->store_object( $self, delete $self->{sync_time} );
-
-        # check cache here?
+	if ( my $row =
+	     Alzabo::Runtime::UniqueRowCache->row_in_cache
+	         ( $self->table->name, $self->id_as_string ) )
+	{
+            $_[0] = $row;
+	}
     }
-
-    return $self;
 }
 
 BEGIN
@@ -444,6 +255,9 @@ EOF
     }
 }
 
+
+1;
+
 __END__
 
 =head1 NAME
@@ -462,12 +276,6 @@ L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table> object to retrieve
 rows.  The L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table> object
 can return either single rows or L<row
 cursors|Alzabo::Runtime::RowCursor>.
-
-=head1 CACHING
-
-If you load the L<C<Alzabo::ObjectCache>|Alzabo::ObjectCache> module
-before loading this one, then row objects will be cached, as will
-database accesses.
 
 =head1 METHODS
 
@@ -500,7 +308,7 @@ and the object to represent these new values.
 
 =head2 delete
 
-Deletes the row from the RDBMS and the cache, if it exists.
+Deletes the row from the RDBMS.
 
 =head2 id_as_string
 
@@ -545,8 +353,7 @@ matching row, then a row object is returned, otherwise it returns a
 cursor.
 
 All other parameters given will be passed directly to the
-L<C<new>|new> method (such as the C<no_cache>
-parameter).
+L<C<new>|new> method.
 
 =head2 new
 
@@ -558,9 +365,7 @@ parameter).
 
 =item * pk => (see below)
 
-=item * no_cache => 0 or 1
-
-The C<id> parameter may be one of two things.  If the table has only a
+The C<pk> parameter may be one of two things.  If the table has only a
 single column primary key, it can be a simple scalar with the value of
 that primary key for this row.
 
@@ -572,21 +377,10 @@ reference containing column names and values such as:
 
 =back
 
-Setting the C<no_cache> parameter to true causes this particular row
-object to not interact with the cache at all.  This can be useful if
-you know you will be creating a very large number of row objects all
-at once that you have no intention of re-using.
-
-If your cache class synchronizes itself across multiple processes
-does), then it is highly recommended that you not do any operations
-that change data in the database (delete or update) with objects that
-were created with this parameter as it will probably cause problems.
-
 =head3 Returns
 
-A new C<Alzabo::Runtime::Row> object.  It will attempt to retrieve the
-row from the cache first unless the C<no_cache> parameter is true.  If
-no object matches these values then an exception will be thrown.
+A new C<Alzabo::Runtime::Row> object.  If no object matches these
+values then an exception will be thrown.
 
 =head3 Throws
 

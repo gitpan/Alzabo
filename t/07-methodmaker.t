@@ -1,39 +1,57 @@
+#!/usr/bin/perl -w
+
 use strict;
+
+use File::Spec;
+
+use lib '.', File::Spec->catdir( File::Spec->curdir, 't', 'lib' );
+
+use Alzabo::Test::Utils;
 
 use Test::More;
 
-use Alzabo::Create;
-use Alzabo::Runtime;
 
-require Alzabo::MethodMaker;
+my @rdbms_names = Alzabo::Test::Utils->rdbms_names;
 
-use lib '.', File::Spec->catdir( File::Spec->curdir, 't' );
-
-require 'base.pl';
-
-unless ( @$Alzabo::Build::Tests )
+unless (@rdbms_names)
 {
     plan skip_all => 'no test config provided';
     exit;
 }
 
-my $tests = $Alzabo::Build::Tests;
+plan tests => 106;
 
-plan tests => 80;
 
-my $t = $tests->[0];
-make_schema(%$t);
+Alzabo::Test::Utils->remove_all_schemas;
 
-Alzabo::MethodMaker->import( schema => $t->{schema_name},
+
+use Alzabo::Create::Schema;
+use Alzabo::Runtime::Schema;
+require Alzabo::MethodMaker;
+
+
+# doesn't matter which RDBMS is used
+my $rdbms = $rdbms_names[0];
+
+my $config = Alzabo::Test::Utils->test_config_for($rdbms);
+
+
+# these tests use a different schema than the other live DB tests
+make_methodmaker_schema(%$config);
+
+
+Alzabo::MethodMaker->import( schema => $config->{schema_name},
 			     all => 1,
 			     class_root => 'Alzabo::MM::Test',
 			     name_maker => \&namer,
 			   );
 
-my $s = Alzabo::Runtime::Schema->load_from_file( name => $t->{schema_name} );
+my $s = Alzabo::Runtime::Schema->load_from_file( name => $config->{schema_name} );
+
 
 eval { $s->docs_as_pod };
 ok( ! $@, 'docs_as_pod should not cause an exception' );
+
 
 foreach my $t ($s->tables)
 {
@@ -55,13 +73,18 @@ foreach my $t ($s->tables)
     }
 }
 
+ok( Alzabo::MM::Test::Row::Toilet->can('NotLinkings'),
+    "Toilet should method to fetch NotLinking rows" );
+
+ok( Alzabo::MM::Test::Row::Location->can('NotLinkings'),
+    "Location should method to fetch NotLinking rows" );
+
+isa_ok( $s->Toilet_t, 'Alzabo::MM::Test::Table' );
+
 {
-    $s->set_user($t->{user}) if $t->{user};
-    $s->set_password($t->{password}) if $t->{password};
-    $s->set_host($t->{host}) if $t->{host};
-    $s->set_port($t->{port}) if $t->{port};
+    $s->connect( Alzabo::Test::Utils->connect_params_for($rdbms) );
+
     $s->set_referential_integrity(1);
-    $s->connect;
 
     # needed for Pg!
     $s->set_quote_identifiers(1);
@@ -69,6 +92,9 @@ foreach my $t ($s->tables)
     my $char = 'a';
     my $loc1 = $s->Location_t->insert( values => { location_id => 1,
 						   location => $a++ } );
+
+    isa_ok( $loc1, 'Alzabo::MM::Test::Row' );
+
     $s->Location_t->insert( values => { location_id => 2,
 					location => $a++,
 					parent_location_id => 1 } );
@@ -225,17 +251,12 @@ foreach my $t ($s->tables)
     is( $tl[1]->toilet_id, 1,
 	"Second row's toilet id should 1" );
 
-    my $expect = $Alzabo::ObjectCache::VERSION ? 'Alzabo::MM::Test::CachedRow::Toilet' : 'Alzabo::MM::Test::UncachedRow::Toilet';
     my $row = $s->Toilet_t->row_by_pk( pk => 1 );
-    isa_ok( $row, $expect,
-	    "The Toilet object" );
-
-    $row = $s->Toilet_t->row_by_pk( pk => 1, no_cache => 1 );
-    isa_ok( $row, 'Alzabo::MM::Test::UncachedRow::Toilet',
+    isa_ok( $row, 'Alzabo::MM::Test::Row::Toilet',
 	    "The Toilet object" );
 
     my $p_row = $s->Location_t->potential_row;
-    isa_ok( $p_row, 'Alzabo::MM::Test::PotentialRow::Location',
+    isa_ok( $p_row, 'Alzabo::MM::Test::Row::Location',
 	    "Potential row object" );
 
     $p_row->location( 'zzz' );
@@ -283,16 +304,74 @@ foreach my $t ($s->tables)
 	"Alias column has the same name as real table's column" );
     is( $alias->toilet_id_c->table, $alias,
 	"The alias column's table should be the alias" );
+
+    # self-linking
+    {
+        $s->Toilet_t->insert( values =>
+                              { toilet_id => $_,
+                                toilet_type_id => 1,
+                              } ) for ( 100 .. 110 );
+
+        $s->ToiletToilet_t->insert( values =>
+                                    { toilet_id => 100,
+                                      toilet_id_2 => 106,
+                                    } );
+
+        $s->ToiletToilet_t->insert( values =>
+                                    { toilet_id => 100,
+                                      toilet_id_2 => 107,
+                                    } );
+
+        $s->ToiletToilet_t->insert( values =>
+                                    { toilet_id => 101,
+                                      toilet_id_2 => 106,
+                                    } );
+
+        $s->ToiletToilet_t->insert( values =>
+                                    { toilet_id => 102,
+                                      toilet_id_2 => 107,
+                                    } );
+
+        {
+            my $t100 = $s->Toilet_t->row_by_pk( pk => 100 );
+
+            my @child_ids = sort map { $_->toilet_id } $t100->child_toilets->all_rows;
+
+            is( @child_ids, 2, 'there should be two children' );
+            is( $child_ids[0], 106, 'first child is 106' );
+            is( $child_ids[1], 107, 'second child is 107' );
+        }
+
+        {
+            my $t106 = $s->Toilet_t->row_by_pk( pk => 106 );
+
+            my @parent_ids = sort map { $_->toilet_id } $t106->parent_toilets->all_rows;
+
+            is( @parent_ids, 2, 'there should be two parents' );
+            is( $parent_ids[0], 100, 'first parent is 100' );
+            is( $parent_ids[1], 101, 'second parent is 101' );
+        }
+
+        {
+            my $t107 = $s->Toilet_t->row_by_pk( pk => 107 );
+
+            my @parent_ids = sort map { $_->toilet_id } $t107->parent_toilets->all_rows;
+
+            is( @parent_ids, 2, 'there should be two parents' );
+            is( $parent_ids[0], 100, 'first parent is 100' );
+            is( $parent_ids[1], 102, 'second parent is 102' );
+        }
+    }
 }
 
-sub make_schema
+sub make_methodmaker_schema
 {
+    my %p = @_;
+
     my %r = ( mysql => 'MySQL',
 	      pg => 'PostgreSQL',
-	      oracle => 'Oracle',
-	      sybase => 'Sybase',
 	    );
-    my %p = @_;
+
     my $s = Alzabo::Create::Schema->new( name => $p{schema_name},
 					 rdbms => $r{ delete $p{rdbms} },
 				       );
@@ -326,6 +405,43 @@ sub make_schema
     $s->add_relation( table_from => $toi,
 		      table_to => $loc,
 		      cardinality => [ 'n', 'n' ],
+		      from_is_dependent => 0,
+		      to_is_dependent => 0,
+		    );
+
+    # not a linking table (for MethodMaker), because it will have an
+    # extra column
+    $s->add_relation( table_from => $loc,
+		      table_to => $toi,
+		      cardinality => [ 'n', 'n' ],
+		      from_is_dependent => 0,
+		      to_is_dependent => 0,
+		    );
+
+    $s->table('LocationToilet')->set_name('NotLinking');
+    $s->table('NotLinking')->make_column( name => 'extra_column',
+                                          type => 'int' );
+
+
+    my $toi_toi = $s->make_table( name => 'ToiletToilet' );
+
+    $toi_toi->make_column( name => 'toilet_id',
+                           type => 'int',
+                           primary_key => 1 );
+    $toi_toi->make_column( name => 'toilet_id_2',
+                           type => 'int',
+                           primary_key => 1 );
+
+    # linking table between Toilet & Toiler (self-linking)
+    $s->add_relation( columns_from => $toi->column('toilet_id'),
+		      columns_to   => $toi_toi->column('toilet_id'),
+		      cardinality  => [ '1', 'n' ],
+		      from_is_dependent => 0,
+		      to_is_dependent => 0,
+		    );
+    $s->add_relation( columns_from => $toi->column('toilet_id'),
+		      columns_to   => $toi_toi->column('toilet_id_2'),
+		      cardinality  => [ '1', 'n' ],
 		      from_is_dependent => 0,
 		      to_is_dependent => 0,
 		    );
@@ -370,16 +486,35 @@ sub namer
 	my $name = $p{foreign_key}->table_to->name;
 	if ($p{plural})
 	{
-	    return my_PL( $name );
+            my $name = my_PL( $name );
+
+	    return if $name eq 'ToiletToilets';
+
+            return $name;
 	}
 	else
 	{
+            return
+                if $name eq 'Toilet' && $p{foreign_key}->table_from->name eq 'ToiletToilet';
+
 	    return $name;
 	}
     }
 
     if ( $p{type} eq 'linking_table' )
     {
+        if ( $p{foreign_key}->table_from eq $p{foreign_key_2}->table_to )
+        {
+            if ( ($p{foreign_key}->columns_to)[0]->name eq 'toilet_id' )
+            {
+                return 'child_toilets';
+            }
+            else
+            {
+                return 'parent_toilets';
+            }
+        }
+
 	my $method = $p{foreign_key}->table_to->name;
 	my $tname = $p{foreign_key}->table_from->name;
 	$method =~ s/^$tname\_?//;
@@ -388,8 +523,12 @@ sub namer
 	return my_PL($method);
     }
 
-    return $p{column}->name
-	if $p{type} eq 'lookup_columns';
+    if ( $p{type} eq 'lookup_columns' )
+    {
+        return if $p{column}->table->name eq 'Toilet' && $p{column}->name eq 'toilet_type_id';
+
+        return $p{column}->name;
+    }
 
     return $p{column}->name if $p{type} eq 'lookup_columns';
 

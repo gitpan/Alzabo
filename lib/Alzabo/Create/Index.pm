@@ -4,9 +4,11 @@ use strict;
 use vars qw($VERSION);
 
 use Alzabo::Create;
+use Alzabo::Exceptions ( abbr => 'params_exception' );
 
 use Params::Validate qw( :all );
-Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+Params::Validate::validation_options
+    ( on_fail => sub { params_exception join '', @_ } );
 
 use base qw(Alzabo::Index);
 
@@ -56,7 +58,7 @@ sub add_column
 
     my $new_name = $p{column}->name;
 
-    Alzabo::Exception::Params->throw( "Column $new_name already exists in index." )
+    params_exception "Column $new_name already exists in index."
 	if $self->{columns}->EXISTS($new_name);
 
     $self->{columns}->STORE( $new_name, \%p );
@@ -66,14 +68,8 @@ sub add_column
     if ($@)
     {
 	$self->{columns}->DELETE($new_name);
-	if ( UNIVERSAL::can( $@, 'rethrow' ) )
-	{
-	    $@->rethrow;
-	}
-	else
-	{
-	    Alzabo::Exception->throw( error => $@ );
-	}
+
+        rethrow_exception($@);
     }
 }
 
@@ -84,7 +80,7 @@ sub delete_column
     validate_pos( @_, { isa => 'Alzabo::Create::Column' } );
     my $c = shift;
 
-    Alzabo::Exception::Params->throw( error => "Column " . $c->name . " is not part of index." )
+    params_exception "Column " . $c->name . " is not part of index."
 	unless $self->{columns}->EXISTS( $c->name );
 
     $self->{columns}->DELETE( $c->name );
@@ -98,7 +94,7 @@ sub set_prefix
 		    prefix => { type => SCALAR } } );
     my %p = @_;
 
-    Alzabo::Exception::Params->throw( error => "Column " . $p{column}->name . " is not part of index." )
+    params_exception "Column " . $p{column}->name . " is not part of index."
 	unless $self->{columns}->EXISTS( $p{column}->name );
 
     my $col = $self->{columns}->FETCH( $p{column}->name );
@@ -118,14 +114,7 @@ sub set_prefix
 	    delete $col->{prefix};
 	}
 
-	if ( UNIVERSAL::can( $@, 'rethrow' ) )
-	{
-	    $@->rethrow;
-	}
-	else
-	{
-	    Alzabo::Exception->throw( error => $@ );
-	}
+        rethrow_exception($@);
     }
 }
 

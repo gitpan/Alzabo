@@ -71,7 +71,7 @@ sub merge
     open TO, ">$t_out" or die "Can't write to '$t_out': $!";
     print TO $to or die "Can't write to '$t_out': $!";
     close TO or die "Can't write to '$t_out': $!";
-    chmod 0444, $t_out or die "Can't chmod '$t_out' to 444: $!";
+    chmod 0644, $t_out or die "Can't chmod '$t_out' to 444: $!";
 
     for ( $file, $t_out ) { s,^.*(?=Alzabo),,; s/\.pm$//; s,[\\/],::,g; }
 

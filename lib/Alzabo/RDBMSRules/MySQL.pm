@@ -802,7 +802,8 @@ sub reverse_engineer
 	    }
 
 	    my %p;
-	    if ($type !~ /ENUM|SET/i && $type =~ /(\w+)\((\d+)(?:\s*,\s*(\d+))?\)$/)
+	    if ( $type !~ /ENUM|SET/i
+		 && $type =~ /(\w+)\((\d+)(?:\s*,\s*(\d+))?\)$/ )
 	    {
 		$type = uc $1;
 		$type = 'INTEGER' if $type eq 'INT';
@@ -835,9 +836,9 @@ sub reverse_engineer
 				     sequenced => $seq,
 				     default => $default,
 				     attributes => \@a,
+				     primary_key => $row->[3] eq 'PRI',
 				     %p,
 				   );
-	    $t->add_primary_key($c) if $row->[3] eq 'PRI';
 	}
 
 	my %i;

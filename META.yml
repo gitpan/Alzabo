@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name: Alzabo
-version: 0.73
+version: 0.79_01
 license: perl
 distribution_type: module
 requires:
@@ -13,6 +13,7 @@ requires:
   Test::Simple: 0.47
   Tie::IxHash: 0
   Time::HiRes: 0
+  perl: 5.006
 recommends:
   DBD::Pg: 1.13
   DBD::mysql: 2.1017
@@ -22,7 +23,7 @@ conflicts: {}
 provides:
   Alzabo:
     file: lib/Alzabo.pm
-    version: 0.73
+    version: 0.79_01
   Alzabo::BackCompat:
     file: lib/Alzabo/BackCompat.pm
     version: 2
@@ -97,51 +98,6 @@ provides:
   Alzabo::MethodMaker:
     file: lib/Alzabo/MethodMaker.pm
     version: 2
-  Alzabo::ObjectCache:
-    file: lib/Alzabo/ObjectCache.pm
-    version: 2
-  Alzabo::ObjectCache::Store::BerkeleyDB:
-    file: lib/Alzabo/ObjectCache/Store/BerkeleyDB.pm
-    version: 2
-  Alzabo::ObjectCache::Store::LRU:
-    file: lib/Alzabo/ObjectCache/Store/LRU.pm
-    version: 2
-  Alzabo::ObjectCache::Store::Memory:
-    file: lib/Alzabo/ObjectCache/Store/Memory.pm
-    version: 2
-  Alzabo::ObjectCache::Store::Null:
-    file: lib/Alzabo/ObjectCache/Store/Null.pm
-    version: 2
-  Alzabo::ObjectCache::Store::RDBMS:
-    file: lib/Alzabo/ObjectCache/Store/RDBMS.pm
-    version: 2
-  Alzabo::ObjectCache::Sync:
-    file: lib/Alzabo/ObjectCache/Sync.pm
-    version: 2
-  Alzabo::ObjectCache::Sync::BerkeleyDB:
-    file: lib/Alzabo/ObjectCache/Sync/BerkeleyDB.pm
-    version: 2
-  Alzabo::ObjectCache::Sync::DBM:
-    file: lib/Alzabo/ObjectCache/Sync/DBM.pm
-    version: 2
-  Alzabo::ObjectCache::Sync::DB_File:
-    file: lib/Alzabo/ObjectCache/Sync/DB_File.pm
-    version: 2
-  Alzabo::ObjectCache::Sync::IPC:
-    file: lib/Alzabo/ObjectCache/Sync/IPC.pm
-    version: 2
-  Alzabo::ObjectCache::Sync::Mmap:
-    file: lib/Alzabo/ObjectCache/Sync/Mmap.pm
-    version: 2
-  Alzabo::ObjectCache::Sync::Null:
-    file: lib/Alzabo/ObjectCache/Sync/Null.pm
-    version: ' 1.07'
-  Alzabo::ObjectCache::Sync::RDBMS:
-    file: lib/Alzabo/ObjectCache/Sync/RDBMS.pm
-    version: 2
-  Alzabo::ObjectCache::Sync::SDBM_File:
-    file: lib/Alzabo/ObjectCache/Sync/SDBM_File.pm
-    version: 2
   Alzabo::RDBMSRules:
     file: lib/Alzabo/RDBMSRules.pm
     version: 2
@@ -153,9 +109,6 @@ provides:
     version: 2
   Alzabo::Runtime:
     file: lib/Alzabo/Runtime.pm
-    version: 2
-  Alzabo::Runtime::CachedRow:
-    file: lib/Alzabo/Runtime/CachedRow.pm
     version: 2
   Alzabo::Runtime::Column:
     file: lib/Alzabo/Runtime/Column.pm
@@ -177,19 +130,28 @@ provides:
     version: 2
   Alzabo::Runtime::PotentialRow:
     file: lib/Alzabo/Runtime/PotentialRow.pm
-    version: ' 1.11'
   Alzabo::Runtime::Row:
     file: lib/Alzabo/Runtime/Row.pm
     version: 2
   Alzabo::Runtime::RowCursor:
     file: lib/Alzabo/Runtime/RowCursor.pm
     version: 2
+  Alzabo::Runtime::RowState::Deleted:
+    file: lib/Alzabo/Runtime/RowState/Deleted.pm
+  Alzabo::Runtime::RowState::InCache:
+    file: lib/Alzabo/Runtime/RowState/InCache.pm
+  Alzabo::Runtime::RowState::Live:
+    file: lib/Alzabo/Runtime/RowState/Live.pm
+  Alzabo::Runtime::RowState::Potential:
+    file: lib/Alzabo/Runtime/RowState/Potential.pm
   Alzabo::Runtime::Schema:
     file: lib/Alzabo/Runtime/Schema.pm
     version: 2
   Alzabo::Runtime::Table:
     file: lib/Alzabo/Runtime/Table.pm
     version: 2
+  Alzabo::Runtime::UniqueRowCache:
+    file: lib/Alzabo/Runtime/UniqueRowCache.pm
   Alzabo::SQLMaker:
     file: lib/Alzabo/SQLMaker.pm
     version: 2

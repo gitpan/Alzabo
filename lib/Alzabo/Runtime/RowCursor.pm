@@ -3,12 +3,11 @@ package Alzabo::Runtime::RowCursor;
 use strict;
 use vars qw($VERSION);
 
+use Alzabo::Exceptions;
 use Alzabo::Runtime;
 
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
-
-use Time::HiRes qw(time);
 
 use base qw( Alzabo::Runtime::Cursor );
 
@@ -23,13 +22,10 @@ sub new
 
     my %p = validate( @_, { statement => { isa => 'Alzabo::DriverStatement' },
 			    table => { isa => 'Alzabo::Runtime::Table' },
-			    no_cache => { optional => 1 },
 			  } );
 
     my $self = bless { %p,
-		       time => sprintf( '%11.23f', time ),
 		       seen => {},
-		       errors => [],
 		       count => 0,
 		     }, $class;
 
@@ -51,10 +47,8 @@ sub next
     # 1 but no such row actually exists then we want to skip this.
     #
     # If they really want to know we do save the exception.
-    until (defined $row)
+    until ( defined $row )
     {
-	$self->{errors} = [];
-
 	my @row = $self->{statement}->next;
 
 	last unless @row && grep { defined } @row;
@@ -69,35 +63,16 @@ sub next
 	    @prefetch{@pre} = @row[$#pk + 1 .. $#row];
 	}
 
-	$row = eval { $self->{table}->row_by_pk( @_,
-						 pk => \%hash,
-						 prefetch => \%prefetch,
-						 time => $self->{time},
-						 %{ $self->{row_params} },
-					       ); };
-	if ($@)
-	{
-	    if ( $@->isa('Alzabo::Exception::NoSuchRow') )
-	    {
-		push @{ $self->{errors} },  $@;
-	    }
-	    else
-	    {
-		if ( UNIVERSAL::can( $@, 'rethrow' ) )
-		{
-		    $@->rethrow;
-		}
-		else
-		{
-		    Alzabo::Exception->throw( error => $@ );
-		}
-	    }
-	}
+	$row = $self->{table}->row_by_pk( @_,
+                                          pk => \%hash,
+                                          prefetch => \%prefetch,
+                                          %{ $self->{row_params} },
+                                        );
     }
 
+    return unless $row;
     $self->{count}++;
 
-    return unless $row;
     return $row;
 }
 
@@ -106,14 +81,11 @@ sub all_rows
     my $self = shift;
 
     my @rows;
-    my @errors;
     while ( my $row = $self->next )
     {
 	push @rows, $row;
-	push @errors, $self->errors if $self->errors;
     }
 
-    $self->{errors} = \@errors;
 
     $self->{count} = scalar @rows;
 
@@ -167,23 +139,14 @@ L<C<Alzabo::Runtime::Cursor>|Alzabo::Runtime::Cursor>
 =head2 next
 
 Returns the next L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>
-object or undef if no more are available.  This behavior can mask
-errors in your database's referential integrity.  For more information
-on how to deal with this see L<the HANDLING ERRORS section in
-Alzabo::Runtime::Cursor|Alzabo::Runtime::Cursor/HANDLING ERRORS>.
+object or undef if no more are available.
 
 =head2 all_rows
 
 Returns all the rows available from the current point onwards.  This
 means that if there are five rows that will be returned when the
 object is created and you call C<next> twice, calling all_rows
-after it will only return three.  Calling the L<C<errors>|errors>
-method after this will return all errors trapped during the fetching
-of these rows.
-
-=head2 errors
-
-See L<C<Alzabo::Runtime::Cursor>|Alzabo::Runtime::Cursor>.
+after it will only return three.
 
 =head2 reset
 
@@ -200,8 +163,8 @@ The number of rows returned by the cursor so far.
 
 =head3 Returns
 
-The next row or rows in a hash, where the hash key is the table name
-and the hash value is the row object.
+The next row in a hash, where the hash key is the table name and the
+hash value is the row object.
 
 =head1 AUTHOR
 

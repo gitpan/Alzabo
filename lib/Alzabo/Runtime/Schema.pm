@@ -3,10 +3,11 @@ package Alzabo::Runtime::Schema;
 use strict;
 use vars qw($VERSION);
 
+use Alzabo::Exceptions ( abbr => [ qw( logic_exception params_exception ) ] );
 use Alzabo::Runtime;
 
 use Params::Validate qw( :all );
-Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+Params::Validate::validation_options( on_fail => sub { params_exception join '', @_ } );
 
 use base qw(Alzabo::Schema);
 
@@ -149,7 +150,6 @@ sub join
 				       optional => 1 },
 			    distinct => { type => ARRAYREF | OBJECT,
 					  optional => 1 },
-                            no_cache => { default => 0 },
 			  } );
 
     $p{join} ||= delete $p{tables};
@@ -167,7 +167,7 @@ sub join
     }
     else
     {
-	@tables = @{ $p{join} };
+	@tables = grep { UNIVERSAL::isa($_, 'Alzabo::Table') } @{ $p{join} };
     }
 
     if ( $p{distinct} )
@@ -242,7 +242,6 @@ sub join
 	return Alzabo::Runtime::RowCursor->new
 	           ( statement => $statement,
 		     table => $select_tables[0]->real_table,
-                     no_cache => $p{no_cache},
                    );
     }
     else
@@ -250,7 +249,6 @@ sub join
 	return Alzabo::Runtime::JoinCursor->new
 	           ( statement => $statement,
 		     tables => [ map { $_->real_table } @select_tables ],
-                     no_cache => $p{no_cache},
                    );
     }
 }
@@ -329,7 +327,7 @@ sub _select_sql
     }
     else
     {
-	@tables = @{ $p{join} };
+	@tables = grep { UNIVERSAL::isa( 'Alzabo::Table', $_ ) } @{ $p{join} };
     }
 
     my @funcs = UNIVERSAL::isa( $p{select}, 'ARRAY' ) ? @{ $p{select} } : $p{select};
@@ -366,6 +364,9 @@ sub _join_all_tables
     my @from;
     my @joins;
 
+    # outer join given as only join
+    $p{join} = [ $p{join} ] unless ref $p{join}->[0];
+
     # A structure like:
     #
     # [ [ $t_1 => $t_2 ],
@@ -385,16 +386,15 @@ sub _join_all_tables
 	    # referenced, and changes here could break that.
 
 	    # XXX - improve
-	    Alzabo::Exception::Params->throw
-                ( error => 'The table map must contain only two tables per array reference' )
+            params_exception
+                'The table map must contain only two tables per array reference'
                     if @$set > 5;
 
 	    my @tables;
 	    if ( ! ref $set->[0] )
 	    {
 		$set->[0] =~ /^(right|left|full)_outer_join$/i
-		    or Alzabo::Exception::Params->throw
-                        ( error => "Invalid join type; $set->[0]" );
+		    or params_exception "Invalid join type; $set->[0]";
 
 	        @tables = @$set[1,2];
 
@@ -404,16 +404,16 @@ sub _join_all_tables
 	    {
                 @tables = @$set[0,1];
 
-		push @from, grep { ! exists $tables{ $_->name } } @tables;
+		push @from, grep { ! exists $tables{ $_->alias_name } } @tables;
 		push @joins, [ @tables, $set->[2] ];
 	    }
 
 	    # Track the tables we've seen
-	    @tables{ $tables[0]->name, $tables[1]->name } = (1, 1);
+	    @tables{ $tables[0]->alias_name, $tables[1]->alias_name } = (1, 1);
 
 	    # Track their relationships
-	    push @{ $map{ $tables[0]->name } }, $tables[1]->name;
-	    push @{ $map{ $tables[1]->name } }, $tables[0]->name;
+	    push @{ $map{ $tables[0]->alias_name } }, $tables[1]->alias_name;
+	    push @{ $map{ $tables[1]->alias_name } }, $tables[0]->alias_name;
 	}
 
         # just get one key to start with
@@ -426,8 +426,9 @@ sub _join_all_tables
 	    push @t, @{ delete $map{$t} } if $map{$t};
 	}
 
-	Alzabo::Exception::Logic->throw( error => "The specified table parameter does not connect all the tables involved in the join" )
-	    if keys %tables;
+	logic_exception
+            "The specified table parameter does not connect all the tables involved in the join"
+                if keys %tables;
     }
     # A structure like:
     #
@@ -464,19 +465,37 @@ sub _join_two_tables
 
     if ($fk)
     {
-	Alzabo::Exception::Params->throw( error => "The foreign key given to join together " . $table_1->name . " and " . $table_2->name . " does not represent a relationship between those two tables" )
-	    unless ( ( $fk->table_from eq $table_1 || $fk->table_to eq $table_1 ) &&
-		     ( $fk->table_from eq $table_2 || $fk->table_to eq $table_2 ) );
+        unless ( $fk->table_from eq $table_1 && $fk->table_to eq $table_2 )
+        {
+            if ( $fk->table_from eq $table_2 && $fk->table_to eq $table_1 )
+            {
+                $fk = $fk->reverse;
+            }
+            else
+            {
+                params_exception
+                    ( "The foreign key given to join together " .
+                      $table_1->alias_name .
+                      " and " . $table_2->alias_name .
+                      " does not represent a relationship between those two tables" );
+            }
+        }
     }
     else
     {
 	my @fk = $table_1->foreign_keys_by_table($table_2);
 
-	Alzabo::Exception::Logic->throw( error => "The " . $table_1->name . " table has no foreign keys to the " . $table_2->name . " table" )
-	    unless @fk;
+	logic_exception
+            ( "The " . $table_1->name .
+              " table has no foreign keys to the " .
+              $table_2->name . " table" )
+                unless @fk;
 
-	Alzabo::Exception::Logic->throw( error => "The " . $table_1->name . " table has more than 1 foreign key to the " . $table_2->name . " table" )
-	    if @fk > 1;
+	logic_exception
+            ( "The " . $table_1->name .
+              " table has more than 1 foreign key to the " .
+              $table_2->name . " table" )
+                if @fk > 1;
 
 	$fk = $fk[0];
     }
@@ -502,14 +521,14 @@ sub prefetch_all
 {
     my $self = shift;
 
-    $_->set_prefetch( $_->columns) for $self->tables;
+    $_->set_prefetch( $_->columns ) for $self->tables;
 }
 
 sub prefetch_all_but_blobs
 {
     my $self = shift;
 
-    $_->set_prefetch( grep { ! $_->is_blob } $_->columns) for $self->tables;
+    $_->set_prefetch( grep { ! $_->is_blob } $_->columns ) for $self->tables;
 }
 
 __END__
@@ -529,6 +548,9 @@ Alzabo::Runtime::Schema - Schema objects
   $schema->connect;
 
 =head1 DESCRIPTION
+
+Objects in this class represent schemas, and can be used to retrieve
+data from that schema.
 
 This object can only be loaded from a file.  The file is created
 whenever a corresponding Alzabo::Create::Schema object is saved.
@@ -675,7 +697,9 @@ For example, given:
   join => [ $table_A, $table_B, $table_C ]
 
 Alzabo would expect that table A has a relationship to table B, which
-in turn has a relationship to table C.
+in turn has a relationship to table C.  If you simply provide a simple
+array reference, you cannot include any outer joins, and every element
+of the array reference must be a table object.
 
 If you need to specify a more complicated set of relationships, this
 can be done with a slightly more complicated data structure, which
@@ -686,9 +710,9 @@ looks like this:
             [ $table_C, $table_D ],
             [ $table_C, $table_E ] ]
 
-This is fairly self explanatory in that Alzabo should expect Alzabo
-should expect to find a relationship between each specified pair.
-This allows for the construction of arbitrarily complex join clauses.
+This is fairly self explanatory in.  Alzabo will expect to find a
+relationship between each specified pair.  This allows for the
+construction of arbitrarily complex join clauses.
 
 For even more complex needs, there are more options:
 
@@ -946,8 +970,8 @@ If we were to use the C<$foo_tab> object to retrieve the 'quux' and
 It is also possible to use multiple aliases of the same table in a
 join, so that this:
 
- my $foo_alias1 = $foo_tab->alas;
- my $foo_alias2 = $foo_tab->alas;
+ my $foo_alias1 = $foo_tab->alias;
+ my $foo_alias2 = $foo_tab->alias;
 
 will work just fine.
 
@@ -972,19 +996,6 @@ easy to configure and use, and cross-platform compatible.  Rather, I
 think it is best to let each user decide on a security practice with
 which they feel comfortable.  If anybody does come up with such a
 scheme, then code submissions are more than welcome.
-
-=head1 CAVEATS
-
-=head2 Refential Integrity
-
-If Alzabo is attempting to maintain referential integrity and you are
-not using caching, then situations can arise where objects you are
-holding onto in memory can get out of sync with the database and you
-will not know this.  If you are using one of the cache modules then
-attempts to access data from an expired or deleted object will throw
-an exception, allowing you to try again (if it is expired) or give up
-(if it is deleted).  Please see
-L<C<Alzabo::ObjectCache>|Alzabo::ObjectCache> for more details.
 
 =head1 AUTHOR
 

@@ -18,33 +18,6 @@ backend's schema, check out the L<C<<
 Alzabo::Create::Schema->sync_backend
 >>|Alzabo::Create::Schema/sync_backend> method.
 
-=head2 How can I make Alzabo's RDBMS-OO mapping functionality run faster?
-
-You may choose to set the environment variable C<NO_VALIDATE> to a
-true value before starting your app.  This will turn off parameter
-validation.  This can lead to a 10-20% speedup in my experience.  Of
-course, this may also hide bugs in your application.  This is best
-only used for a well tested application that is being used in
-production.
-
-If your application does not consist almost exclusively of inserts,
-updates, or deletes, then it would probably benefit from caching, but
-only with certain syncing modules.  If you are in a single process
-environment, then use the Alzabo::ObjectCache::Store::Memory and
-Alzabo::ObjectCache::Sync::Null modules.  If you are in a
-multi-process environment, use the Alzabo::ObjectCache::Store::Memory
-and Alzabo::ObjectCache::Sync::BerkeleyDB modules.  If installing a
-newer version of the Berkeley DB library is too much of a hassle, use
-the Alzabo::ObjectCache::Sync::SDBM_File module.
-
-As a corollary, both the Alzabo::ObjectCache::Sync::DB_File and
-Alzabo::ObjectCache::Sync::IPC will actually B<slow down> your
-application, even though they are using caching.  The only reason to
-use them is if you need the additional cross-process data integrity
-provided by the syncing mechanism.  If you need this, using either the
-Alzabo::ObjectCache::Sync::BerkeleyDB or
-Alzabo::ObjectCache::Sync::SDBM_File module is strongly reocmmended.
-
 =head2 How can I make a local copy of the documentation as HTML?
 
 Alzabo comes with a script called C<make_html_docs.pl>.  It takes
@@ -62,60 +35,19 @@ If you were in the root of the source directory you might run this as:
 The script will create an index.html file as well as turning the
 documentation into HTML.
 
-=head2 Does Alzabo support large objects with Postgres?
-
-No, it does not.  The large object system in Postgres is a godawful
-piece of crap.  Fortunately, you can now upgrade to Postgres 7.1 and
-your rows can be as big as you want.
-
 =head2 How can I optimize memory usage under mod_perl?
 
-This has two facets.  First, to optimize memory usage with Alzabo's
-schema creator, simply preload all modules that it uses in the parent
-server.
-
-These are:
-
-=over 4
-
-=item * Alzabo::Create
-
-=item * Apache::Constants
-
-=item * Graphviz
-
-This module is optional so don't worry if you don't have it.
-
-=item * HTTP::BrowserDetect
-
-=item * URI
-
-=item * URI::Escape
-
-=back
-
-If you want to optimize memory usage for Alzabo when using it as an
-RDBMS-OO mapper, you should simply preload the Alzabo::Runtime module
-(which loads all the other modules it needs).
+You should simply preload the Alzabo::Runtime module (which loads all
+the other modules it needs).
 
 In addition, if you are using Alzabo::MethodMaker, make sure it runs
-in the parent.  This module can create a lot of methods on the fly.
-Each new method eats up some memory.
+in the parent.  This module can create a lot of methods on the fly and
+each method eats up some memory.
 
 Finally, you can preload one or more schema objects.  The easiest way
 to do this is to simply pass its name to Alzabo::Runtime when you use
 it, like this:
 
   use Alzabo::Runtime qw( schema1 schema2 );
-
-Also, if you are using caching, the
-C<Alzabo::ObjectCache::Store::Memory> module will store an unlimited
-number of objects.  Pass in the 'lru_size' parameter to
-L<C<Alzabo::ObjectCache>|Alzabo::ObjectCache/LRU STORAGE> to limit the
-size of the cache.  You may also want to simply set the maximum
-requests for each Apache child to a lower number.  Or you could call
-the C<< Alzabo::ObjectCache->clear >> method from time to time.  Or
-you could also simply use a different storage module that doesn't use
-a lot of memory, like C<Alzabo::ObjectCache::Store::BerkeleyDB>.
 
 =cut

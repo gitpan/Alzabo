@@ -10,74 +10,94 @@ my %e;
 BEGIN
 {
     %e = ( 'Alzabo::Exception' =>
-	   { description => 'Generic exception within the Alzabo API.  Should only be used as a base class.' },
-
-	   'Alzabo::Exception::Cache' =>
-	   { description => 'An operation was attempted on a row that is either deleted or expired in the cache.',
-	     isa => 'Alzabo::Exception' },
-
-	   'Alzabo::Exception::Cache::Deleted' =>
-	   { description => 'An operation was attempted on a row that is deleted in the cache.',
-	     isa => 'Alzabo::Exception::Cache' },
-
-	   'Alzabo::Exception::Cache::Expired' =>
-	   { description => 'An operation was attempted on a row that is expired in the cache.',
-	     isa => 'Alzabo::Exception::Cache' },
+	   { description =>
+	     'Generic exception within the Alzabo API.  Should only be used as a base class.',
+	     alias => 'exception',
+	   },
 
 	   'Alzabo::Exception::Driver' =>
 	   { description => 'An attempt to eval a string failed',
 	     fields => [ 'sql', 'bind' ],
-	     isa => 'Alzabo::Exception' },
+	     isa => 'Alzabo::Exception',
+	     alias => 'driver_exception',
+	   },
 
 	   'Alzabo::Exception::Eval' =>
 	   { description => 'An attempt to eval a string failed',
-	     isa => 'Alzabo::Exception::Cache' },
+	     isa => 'Alzabo::Exception',
+	     alias => 'eval_exception',
+	   },
 
 	   'Alzabo::Exception::Logic' =>
-	   { description => 'An internal logic error occurred (presumably, Alzabo was asked to do something that cannot be done)',
-	     isa => 'Alzabo::Exception' },
+	   { description =>
+	     'An internal logic error occurred (presumably, Alzabo was asked to do something that cannot be done)',
+	     isa => 'Alzabo::Exception',
+	     alias => 'logic_exception',
+	   },
 
 	   'Alzabo::Exception::NoSuchRow' =>
 	   { description => 'An attempt to fetch data from the database for a primary key that did not exist in the specified table',
-	     isa => 'Alzabo::Exception' },
+	     isa => 'Alzabo::Exception',
+	     alias => 'no_such_row_exception',
+	   },
 
 	   'Alzabo::Exception::Params' =>
 	   { description => 'An exception generated when there is an error in the parameters passed in a method of function call',
-	     isa => 'Alzabo::Exception' },
+	     isa => 'Alzabo::Exception',
+             alias => 'params_exception',
+           },
 
 	   'Alzabo::Exception::NotNullable' =>
 	   { description => 'An exception generated when there is an attempt is made to set a non-nullable column to NULL',
 	     isa => 'Alzabo::Exception::Params',
-             fields => [ 'column_name' ],
+             fields => [ 'column_name', 'table_name', 'schema_name' ],
+             alias => 'not_nullable_exception',
            },
 
 	   'Alzabo::Exception::Panic' =>
 	   { description => 'An exception generated when something totally unexpected happens',
-	     isa => 'Alzabo::Exception' },
+	     isa => 'Alzabo::Exception',
+	     alias => 'panic_exception',
+	   },
 
 	   'Alzabo::Exception::RDBMSRules' =>
 	   { description => 'An RDBMS rule check failed',
-	     isa => 'Alzabo::Exception' },
+	     isa => 'Alzabo::Exception',
+	     alias => 'rdbms_rules_exception',
+	   },
 
 	   'Alzabo::Exception::ReferentialIntegrity' =>
-	   { description => 'An operation was attempted that would violate referential integrity',
-	     isa => 'Alzabo::Exception' },
+	   { description =>
+	     'An operation was attempted that would violate referential integrity',
+	     isa => 'Alzabo::Exception',
+	     alias => 'referential_integrity_exception',
+	   },
 
 	   'Alzabo::Exception::SQL' =>
-	   { description => 'An exception generated when there a logical error in a set of operation on an Alzabo::SQLMaker object',
-	     isa => 'Alzabo::Exception' },
+	   { description =>
+	     'An exception generated when there a logical error in a set of operation on an Alzabo::SQLMaker object',
+	     isa => 'Alzabo::Exception',
+	     alias => 'sql_exception',
+	   },
 
 	   'Alzabo::Exception::Storable' =>
 	   { description => 'An attempt to call a function from the Storable module failed',
-	     isa => 'Alzabo::Exception' },
+	     isa => 'Alzabo::Exception',
+	     alias => 'storable_exception',
+	   },
 
 	   'Alzabo::Exception::System' =>
 	   { description => 'An attempt to interact with the system failed',
-	     isa => 'Alzabo::Exception' },
+	     isa => 'Alzabo::Exception',
+             alias => 'system_exception',
+           },
 
 	   'Alzabo::Exception::VirtualMethod' =>
-	   { description => 'Indicates that the method called must be subclassed in the appropriate class',
-	     isa => 'Alzabo::Exception' },
+	   { description =>
+	     'Indicates that the method called must be subclassed in the appropriate class',
+	     isa => 'Alzabo::Exception',
+	     alias => 'virtual_method_exception',
+	   },
 
 	 );
 }
@@ -85,6 +105,69 @@ BEGIN
 use Exception::Class (%e);
 
 Alzabo::Exception->Trace(1);
+
+sub import
+{
+    my ($class, %args) = @_;
+
+    my $caller = caller;
+    if ( $args{abbr} )
+    {
+	foreach my $name ( ref $args{abbr} ? @{ $args{abbr} } : $args{abbr} )
+	{
+	    no strict 'refs';
+	    die "Unknown exception abbreviation '$name'" unless defined &{$name};
+	    *{"${caller}::$name"} = \&{$name};
+	}
+    }
+    {
+	no strict 'refs';
+	*{"${caller}::isa_alzabo_exception"} = \&isa_alzabo_exception;
+	*{"${caller}::rethrow_exception"} = \&rethrow_exception;
+    }
+}
+
+
+sub isa_alzabo_exception
+{
+    my ($err, $name) = @_;
+    return unless defined $err;
+
+    if ($name)
+    {
+	my $class = "Alzabo::Exception::$name";
+
+	{
+            no strict 'refs';
+            die "no such exception class $class"
+                unless defined(${"${class}::VERSION"});
+        }
+
+	return UNIVERSAL::isa($err, "Alzabo::Exception::$name");
+    }
+    else
+    {
+	return UNIVERSAL::isa($err, "Alzabo::Exception");
+    }
+}
+
+sub rethrow_exception
+{
+    my $err = shift;
+
+    return unless $err;
+
+    if ( UNIVERSAL::can( $err, 'rethrow' ) )
+    {
+	$err->rethrow;
+    }
+    elsif ( ref $err )
+    {
+        die $err;
+    }
+    Alzabo::Exception->throw( error => $err );
+}
+
 
 package Alzabo::Exception;
 
@@ -202,23 +285,6 @@ This is the base class for all exceptions generated within Alzabo (all
 exceptions should return true for C<$@-E<gt>isa('Alzabo::Exception')>
 except those that are generated via internal Perl errors).
 
-=item * Alzabo::Exception::Cache
-
-Base class for cache-related exceptions.
-
-=item * Alzabo::Exception::Cache::Deleted
-
-An attempt was made to operate on a row that had been deleted in the
-cache.  In this case there is no point in attempting further
-operations on the row, as it is no longer in the database.
-
-=item * Alzabo::Exception::Cache::Expired
-
-An attempt was made to operate on a row that had been expired in the
-cache.  The row will refresh itself before returning this exception so
-it may be desirable to attempt the operation that caused this error
-again.
-
 =item * Alzabo::Exception::Driver
 
 An error occured while accessing a database.  See
@@ -237,6 +303,12 @@ rows for a table without a primary key.
 
 An attempt was made to fetch data from the database with a primary key
 that does not actually exist in the specified table.
+
+=item * Alzabo::Exception::NotNullable
+
+An attempt was made to set a non-nullable column to C<NULL>.  The
+C<column_name>, C<table_name>, and C<schema_name> fields can be used
+to identify the exact column.
 
 =item * Alzabo::Exception::Panic
 

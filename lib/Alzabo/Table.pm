@@ -57,23 +57,8 @@ sub columns
 {
     my $self = shift;
 
-    if (@_)
-    {
-        my @idx = $self->{columns}->Indices(@_);
-
-        # if only some of the keys are in the Tie::IxHash object, then
-        # @idx may contain undef for some values.
-        if ( ( grep { defined } @idx ) == @_ )
-        {
-            return $self->{columns}->Values(@idx);
-        }
-        else
-        {
-            # just to find the missing one(s)
-            $self->column($_) foreach @_;
-        }
-    }
-
+    return $self->column(@_) if @_ ==1 ;
+    return map { $self->column($_) } @_ if @_ > 1;
     return $self->{columns}->Values;
 }
 
@@ -272,9 +257,11 @@ given.
 
 =head3 Returns
 
-A list of L<C<Alzabo::Column>|Alzabo::Column> objects that match the
-list of names given.  If no list is provided, then it returns all
-column objects for the table.
+If no arguments are given, returns a list of all
+L<C<Alzabo::Column>|Alzabo::Column> objects in the schema, or in a
+scalar context the number of such tables.  If one or more arguments
+are given, returns a list of table objects with those names, in the
+same order given.
 
 =head2 has_column ($name)
 

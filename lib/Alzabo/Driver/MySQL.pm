@@ -36,12 +36,12 @@ sub connect
                                      name => $self->{schema}->name
                                    );
 
-    my @vars = $self->rows(sql=>'SHOW VARIABLES');
-    foreach (@vars)
+    foreach ( $self->rows( sql => 'SHOW VARIABLES' ) )
     {
 	if ( $_->[0] eq 'sql_mode' )
 	{
-	    $self->{mysql_ansi_mode} = $_->[1] & 4;
+	    # some versions of mysql may return '' for sql_mode
+	    $self->{mysql_ansi_mode} = ( $_->[1] ? $_->[1] : 0 ) & 4;
 	    last;
 	}
     }
@@ -68,13 +68,7 @@ sub supports_referential_integrity
 {
     my $self = shift;
 
-    $self->_check_dbh;
-
-    my $version = $self->{dbh}{mysql_serverinfo};
-
-    $version =~ s/\D//;
-
-    my ($maj, $min, $p) = split /\./, $version;
+    my ($maj, $min, $p) = $self->_version_components;
 
     if ( $maj == 3 )
     {

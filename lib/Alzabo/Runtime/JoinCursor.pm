@@ -3,6 +3,7 @@ package Alzabo::Runtime::JoinCursor;
 use strict;
 use vars qw($VERSION);
 
+use Alzabo::Exceptions;
 use Alzabo::Runtime;
 
 use Params::Validate qw( :all );
@@ -19,13 +20,10 @@ sub new
 
     my %p = validate( @_, { statement => { isa => 'Alzabo::DriverStatement' },
 			    tables => { type => ARRAYREF },
-			    no_cache => { optional => 1 },
 			  } );
 
     my $self = bless { %p,
-		       time => sprintf( '%11.23f', time ),
 		       seen => {},
-		       errors => [],
 		       count => 0,
 		     }, $class;
 
@@ -37,8 +35,6 @@ sub next
     my $self = shift;
 
     my @rows;
-
-    $self->{errors} = [];
 
     my @data = $self->{statement}->next;
 
@@ -82,30 +78,11 @@ sub next
             }
         }
 
-        my $row = eval { $t->row_by_pk( pk => \%pk,
-                                        prefetch => \%prefetch,
-                                        time => $self->{time},
-                                        no_cache => $self->{no_cache},
-                                        @_,
-                                      ) };
-        if ($@)
-        {
-            if ( $@->isa('Alzabo::Exception::NoSuchRow') )
-            {
-                push @{ $self->{errors} },  $@;
-            }
-            else
-            {
-                if ( UNIVERSAL::can( $@, 'rethrow' ) )
-                {
-                    $@->rethrow;
-                }
-                else
-                {
-                    Alzabo::Exception->throw( error => $@ );
-                }
-            }
-        }
+        my $row = $t->row_by_pk( pk => \%pk,
+                                 prefetch => \%prefetch,
+                                 @_,
+                               );
+
         push @rows, $row;
     }
 
@@ -119,14 +96,10 @@ sub all_rows
     my $self = shift;
 
     my @all;
-    my @errors;
     while ( my @rows = $self->next )
     {
 	push @all, [@rows];
-	push @errors, $self->errors if $self->errors;
     }
-
-    $self->{errors} = \@errors;
 
     $self->{count} = scalar @all;
 
@@ -159,8 +132,9 @@ Alzabo::Runtime::JoinCursor - Cursor that returns arrays of C<Alzabo::Runtime::R
 Objects in this class are used to return arrays Alzabo::Runtime::Row
 objects when requested.  The cursor does not preload objects but
 rather creates them on demand, which is much more efficient.  For more
-details on the rational please see L<the HANDLING ERRORS section in
-Alzabo::Runtime::Cursor|Alzabo::Runtime::Cursor/HANDLING ERRORS>.
+details on the rational please see L<the RATIONALE FOR CURSORS section
+in Alzabo::Runtime::Cursor|Alzabo::Runtime::Cursor/RATIONALE FOR
+CURSORS>.
 
 =head1 INHERITS FROM
 
@@ -187,30 +161,22 @@ L<C<Alzabo::Runtime::Cursor>|Alzabo::Runtime::Cursor>
 The next array of L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>
 objects or an empty list if no more are available.
 
-This behavior can mask errors in your database's referential
-integrity.  For more information on how to deal with this see L<the
-HANDLING ERRORS section in
-Alzabo::Runtime::Cursor|Alzabo::Runtime::Cursor/HANDLING ERRORS>.
+If an individual row could not be fetched, then the array may contain
+some C<undef>s.  For outer joins, this is normal behavior, but for
+regular joins, this probably indicates a data error.
 
 =head2 all_rows
 
+This method fetches all the rows available from the current point
+onwards.  This means that if there are five set of rows that will be
+returned when the object is created and you call C<next> twice,
+calling C<all_rows> after it will only return three sets.
+
 =head3 Returns
 
-All the rows available from the current point onwards.  These are
-returned as an array of array references.  Each reference is to an
-array of L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects.
-
-This means that if there are five set of rows that will be returned
-when the object is created and you call C<next> twice, calling
-C<all_rows> after it will only return three sets.  Calling the
-C<errors> method after this will return all errors trapped during the
-fetching of these sets of rows.  The return value is an array of array
-references.  Each of these references represents a single set of rows
-as they would be returned from the C<next> method.
-
-=head2 errors
-
-See L<C<Alzabo::Runtime::Cursor>|Alzabo::Runtime::Cursor>.
+The return value is an array of array references.  Each of these
+references represents a single set of rows as they would be returned
+from the C<next> method.
 
 =head2 reset
 
@@ -227,8 +193,8 @@ The number of rowsets returned by the cursor so far.
 
 =head3 Returns
 
-The next row or rows in a hash, where the hash key is the table name
-and the hash value is the row object.  If a table has been included in
+The next rows in a hash, where the hash keys are the table names and
+the hash values are the row object.  If a table has been included in
 the join via an outer join, then it may not always be included in the
 hash.
 

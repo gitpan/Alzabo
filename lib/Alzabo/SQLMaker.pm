@@ -350,7 +350,7 @@ sub _outer_join
     my $join_from = shift;
     my $join_on = shift;
     my $fk;
-    $fk = shift if @_ && UNIVERSAL::isa( $_[0], 'Alzabo::ForeignKey' );
+    $fk = shift if $_[0] && UNIVERSAL::isa( $_[0], 'Alzabo::ForeignKey' );
     my $where = shift;
 
     unless ($fk)

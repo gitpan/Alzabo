@@ -1,61 +1,53 @@
+#!/usr/bin/perl -w
+
 use strict;
+
+use File::Spec;
+
+use lib '.', File::Spec->catdir( File::Spec->curdir, 't', 'lib' );
+
+use Alzabo::Test::Utils;
 
 use Test::More;
 
-use Alzabo::Create;
 
-use lib '.', File::Spec->catdir( File::Spec->curdir, 't' );
+my @rdbms_names = Alzabo::Test::Utils->rdbms_names;
 
-require 'base.pl';
-
-unless ( @$Alzabo::Build::Tests )
+unless (@rdbms_names)
 {
     plan skip_all => 'no test config provided';
     exit;
 }
 
-require 'make_schemas.pl';
+my $tests_per_run = 10;
 
-my $tests = $Alzabo::Build::Tests;
+plan tests => $tests_per_run * @rdbms_names;
 
-my $test_count = 0;
-foreach (@$tests)
+
+Alzabo::Test::Utils->remove_all_schemas;
+
+
+foreach my $rdbms (@rdbms_names)
 {
-    $test_count += 10;
-}
+    my $s = Alzabo::Test::Utils->make_schema($rdbms);
 
-plan tests => $test_count;
-
-foreach my $t (@$tests)
-{
-    {
-	no strict 'refs';
-	&{ "$t->{rdbms}_make_schema" }(%$t);
-    }
-
-    my $s = Alzabo::Create::Schema->load_from_file( name => $t->{schema_name} );
-
-    my %p = ( user => $t->{user},
-	      password => $t->{password},
-	      host => $t->{host},
-	      port => $t->{port},
-	    );
+    my %connect = Alzabo::Test::Utils->connect_params_for($rdbms);
 
     $s->table('employee')->delete_column( $s->table('employee')->column('name') );
 
-    eval_ok( sub { $s->create(%p) },
+    eval_ok( sub { $s->create(%connect) },
 	     "Create schema (via diff) with one column deleted" );
 
     $s->table('department')->make_column( name => 'foo',
 					  type => 'int',
 					  nullable => 1 );
 
-    eval_ok( sub { $s->create(%p) },
+    eval_ok( sub { $s->create(%connect) },
 	     "Create schema (via diff) with one column added" );
 
     $s->delete_table( $s->table('department') );
 
-    eval_ok( sub { $s->create(%p) },
+    eval_ok( sub { $s->create(%connect) },
 	     "Create schema (via diff) with one table deleted" );
 
     $s->make_table( name => 'cruft' );
@@ -64,14 +56,14 @@ foreach my $t (@$tests)
 				     primary_key => 1,
 				   );
 
-    eval_ok( sub { $s->create(%p) },
+    eval_ok( sub { $s->create(%connect) },
 	     "Create schema (via diff) with one table added" );
 
     my $idx = ($s->table('project')->indexes)[0];
 
     $s->table('project')->delete_index($idx);
 
-    eval_ok( sub { $s->create(%p) },
+    eval_ok( sub { $s->create(%connect) },
 	     "Create schema (via diff) with one index deleted" );
 
     $s->table('cruft')->make_column( name => 'cruftiness',
@@ -79,7 +71,7 @@ foreach my $t (@$tests)
 				     nullable => 1,
 				     default => 10 );
 
-    eval_ok( sub { $s->create(%p) },
+    eval_ok( sub { $s->create(%connect) },
 	     "Create schema (via diff) with one column (null and with a default) added" );
 
     my $dbh = $s->driver->handle;
@@ -89,7 +81,7 @@ foreach my $t (@$tests)
     $s->table('cruft')->column('cruftiness')->set_type('float');
     $s->table('cruft')->set_name('new_cruft');
 
-    eval_ok( sub { $s->create(%p) },
+    eval_ok( sub { $s->create(%connect) },
 	     "Create schema (via diff) with a table name change and column type change" );
 
     my ($val) =
@@ -99,10 +91,10 @@ foreach my $t (@$tests)
 
     $s->table('new_cruft')->column('cruft_id')->set_name('new_cruft_id');
 
-    eval_ok( sub { $s->create(%p) },
+    eval_ok( sub { $s->create(%connect) },
 	     "Create schema (via diff) with a column name change" );
 
-    my ($val) =
+    ($val) =
         $dbh->selectrow_array( 'SELECT cruftiness FROM new_cruft WHERE new_cruft_id = 2' );
     is( $val, 4,
         "Data should be preserved across column name change" );

@@ -1,23 +1,28 @@
+#!/usr/bin/perl -w
+
 use strict;
+
+use File::Spec;
+
+use lib '.', File::Spec->catdir( File::Spec->curdir, 't', 'lib' );
+
+use Alzabo::Test::Utils;
+
+use Test::More;
+
 
 use Alzabo::Create;
 use Alzabo::Config;
 
-use Cwd;
-use File::Spec;
-
-use Test::More;
-
-use lib '.', File::Spec->catdir( File::Spec->curdir, 't' );
-
-require 'base.pl';
 
 my @db;
 my $tests = 0;
-my $shared_tests = 146;
+
+my $shared_tests = 148;
 my $mysql_only_tests = 2;
 my $pg_only_tests = 1;
-if (eval { require DBD::mysql } && ! $@ )
+
+if ( eval { require DBD::mysql } && ! $@ )
 {
     push @db, 'MySQL';
     $tests += $shared_tests;
@@ -97,6 +102,10 @@ foreach my $db (@db)
     like( $@, qr/Table does not exist doesn't exist/,
           "Make sure tables method catches missing tables" );
 
+    eval { $s->table( 'does not exist' ) };
+    isa_ok( $@, 'Alzabo::Exception::Params',
+          "Make sure table() method catches missing tables" );
+
     eval { $t1->columns( 'foo_pk', 'does not exist' ) };
     like( $@, qr/Column does not exist doesn't exist/,
           "Make sure columns method catches missing columns" );
@@ -158,7 +167,7 @@ foreach my $db (@db)
     eval_ok( sub { $s->add_relationship( table_from => $t1,
 					 table_to   => $t2,
 					 cardinality => ['n', 'n'],
-					 from_is_dependent => 1,
+					 from_is_dependent => 0,
 					 to_is_dependent => 0,
 				       ) },
 	     "Add many to many relationship from 'footab' to 'bartab'" );
@@ -681,5 +690,33 @@ foreach my $db (@db)
         my @pk = $t->primary_key;
         is( scalar @pk, 0,
             "Return val from primary_key on a table without a primary key should be an empty list" );
+    }
+
+    {
+        my $t1 = $s->make_table( name => 'fk_table1' );
+        my $t2 = $s->make_table( name => 'fk_table2' );
+
+        $t1->make_column( name => 'fk_table1_pk',
+                          type => 'int',
+                          primary_key => 1,
+                        );
+
+        $t2->make_column( name => 'fk_table2_pk',
+                          type => 'int',
+                          primary_key => 1,
+                        );
+
+        $t2->make_column( name => 'fk_table1_pk',
+                          type => 'int',
+                        );
+
+        eval { $s->add_relationship( table_from => $t1,
+                                     table_to   => $t2,
+                                     cardinality => [ '1', 'n' ],
+                                     from_is_dependent => 0,
+                                     to_is_dependent => 1,
+                                   ) };
+        ok( ! $@,
+            "call add_relationship where column in table_to already exists" );
     }
 }

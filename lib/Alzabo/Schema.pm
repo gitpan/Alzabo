@@ -6,6 +6,7 @@ use vars qw($VERSION %CACHE);
 use Alzabo;
 use Alzabo::Config;
 use Alzabo::Driver;
+use Alzabo::Exceptions ( abbr => 'params_exception' );
 use Alzabo::RDBMSRules;
 use Alzabo::SQLMaker;
 
@@ -75,6 +76,10 @@ sub _load_from_file
     $rdbms =~ s/\s//g;
 
     ($rdbms) = $rdbms =~ /(\w+)/;
+
+    # This is important because if the user is using MethodMaker, they
+    # might be calling this as My::Schema->load_from_file ...
+    bless $schema, $class;
 
     $schema->{driver} = Alzabo::Driver->new( rdbms => $rdbms,
 					     schema => $schema );
@@ -154,38 +159,17 @@ sub table
     my $self = shift;
     my $name = shift;
 
-    if ( my $table = $self->{tables}->FETCH($name) )
-    {
-        return $table;
-    }
-    else
-    {
-        Alzabo::Exception::Params->throw
-            ( error => "Table $name doesn't exist in $self->{name}" );
-    }
+    return
+        $self->{tables}->FETCH($name) ||
+            params_exception "Table $name doesn't exist in $self->{name}";
 }
 
 sub tables
 {
     my $self = shift;
 
-    if (@_)
-    {
-        my @idx = $self->{tables}->Indices(@_);
-
-        # if only some of the keys are in the Tie::IxHash object, then
-        # @idx may contain undef for some values.
-        if ( ( grep { defined } @idx ) == @_ )
-        {
-            return $self->{tables}->Values(@idx);
-        }
-        else
-        {
-            # just to find the missing one(s)
-            $self->table($_) foreach @_;
-        }
-    }
-
+    return $self->table(@_) if @_ == 1;
+    return map { $self->table($_) } @_  if @_ > 1;
     return $self->{tables}->Values;
 }
 
@@ -272,20 +256,11 @@ Alzabo::Schema - Schema objects
 
 =head1 SYNOPSIS
 
-  use Alzabo::Schema;
-
-  my $schema = Alzabo::Schema->load_from_file( name => 'foo' );
-
-  foreach my $t ($schema->tables)
-  {
-     print $t->name;
-  }
+  use base qw(Alzabo::Schema);
 
 =head1 DESCRIPTION
 
-Objects in this class represent the entire schema, containing table
-objects, which in turn contain foreign key objects and column objects,
-which in turn contain column definition objects.
+This is the base class for schema objects..
 
 =head1 METHODS
 
@@ -310,9 +285,12 @@ L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head3 Returns
 
-A list of L<C<Alzabo::Table>|Alzabo::Table> object named in the list
-given.  If no list is provided, then it returns all table objects in
-the schema.
+If no arguments are given, returns a list of all
+L<C<Alzabo::Table>|Alzabo::Table> objects in the schema, or in a
+scalar context the number of such tables.  If one or more arguments
+are given, returns a list of table objects with those names, in the
+same order given (or the number of such tables in a scalar context,
+but this isn't terribly useful).
 
 =head3 Throws
 

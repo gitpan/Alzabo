@@ -4,9 +4,11 @@ use strict;
 use vars qw($VERSION);
 
 use Alzabo::Create;
+use Alzabo::Exceptions ( abbr => 'params_exception' );
 
 use Params::Validate qw( :all );
-Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+Params::Validate::validation_options
+    ( on_fail => sub { params_exception join '', @_ } );
 
 use Tie::IxHash;
 
@@ -53,9 +55,8 @@ sub set_name
     validate_pos( @_, { type => SCALAR } );
     my $name = shift;
 
-    Alzabo::Exception::Params->throw
-        ( error => "Table $name already exists in schema" )
-            if $self->schema->has_table($name);
+    params_exception "Table $name already exists in schema"
+        if $self->schema->has_table($name);
 
     my @i;
     if ($self->{indexes})
@@ -77,14 +78,8 @@ sub set_name
     if ($@)
     {
 	$self->{name} = $old_name;
-	if ( UNIVERSAL::can( $@, 'rethrow' ) )
-	{
-	    $@->rethrow;
-	}
-	else
-	{
-	    Alzabo::Exception->throw( error => $@ );
-	}
+
+        rethrow_exception($@);
     }
 
     if ( $old_name && eval { $self->schema->table($old_name) } )
@@ -133,7 +128,7 @@ sub add_column
 
     my $col = $p{column};
 
-    Alzabo::Exception::Params->throw( error => "Column " . $col->name . " already exists in " . $self->name )
+    params_exception "Column " . $col->name . " already exists in " . $self->name
 	if $self->{columns}->EXISTS( $col->name );
 
     $col->set_table($self) unless $col->table eq $self;
@@ -158,7 +153,7 @@ sub delete_column
     validate_pos( @_, { isa => 'Alzabo::Create::Column' } );
     my $col = shift;
 
-    Alzabo::Exception::Params->throw( error => "Column $col doesn't exist in $self->{name}" )
+    params_exception"Column $col doesn't exist in $self->{name}"
 	unless $self->{columns}->EXISTS( $col->name );
 
     $self->delete_primary_key($col) if $col->is_primary_key;
@@ -195,21 +190,22 @@ sub move_column
 
     if ( exists $p{before} && exists $p{after} )
     {
-	Alzabo::Exception::Params->throw( error => "move_column method cannot be called with both 'before' and 'after' parameters" );
+	params_exception
+            "move_column method cannot be called with both 'before' and 'after' parameters";
     }
 
     if ( exists $p{before} )
     {
-	Alzabo::Exception::Params->throw( error => "Column " . $p{before}->name . " doesn't exist in schema" )
+	params_exception "Column " . $p{before}->name . " doesn't exist in schema"
 	    unless $self->{columns}->EXISTS( $p{before}->name );
     }
     else
     {
-	Alzabo::Exception::Params->throw( error => "Column " . $p{after}->name . " doesn't exist in schema" )
+	params_exception "Column " . $p{after}->name . " doesn't exist in schema"
 	    unless $self->{columns}->EXISTS( $p{after}->name );
     }
 
-    Alzabo::Exception::Params->throw( error => "Column " . $p{column}->name . " doesn't exist in schema" )
+    params_exception "Column " . $p{column}->name . " doesn't exist in schema"
 	unless $self->{columns}->EXISTS( $p{column}->name );
 
     my @pk = $self->primary_key;
@@ -239,10 +235,10 @@ sub add_primary_key
     my $col = shift;
 
     my $name = $col->name;
-    Alzabo::Exception::Params->throw( error => "Column $name doesn't exist in $self->{name}" )
+    params_exception "Column $name doesn't exist in $self->{name}"
 	unless $self->{columns}->EXISTS($name);
 
-    Alzabo::Exception::Params->throw( error => "Column $name is already a primary key" )
+    params_exception "Column $name is already a primary key"
         if $col->is_primary_key;
 
     $self->schema->rules->validate_primary_key($col);
@@ -261,10 +257,10 @@ sub delete_primary_key
     my $col = shift;
 
     my $name = $col->name;
-    Alzabo::Exception::Params->throw( error => "Column $name doesn't exist in $self->{name}" )
+    params_exception "Column $name doesn't exist in $self->{name}"
 	unless $self->{columns}->EXISTS($name);
 
-    Alzabo::Exception::Params->throw( error => "Column $name is not a primary key" )
+    params_exception "Column $name is not a primary key"
         unless $col->is_primary_key;
 
     my $idx = $self->{columns}->Indices($name);
@@ -300,18 +296,21 @@ sub delete_foreign_key
 
     foreach my $c ( $fk->columns_from )
     {
-	Alzabo::Exception::Params->throw( error => "Column " . $c->name . " doesn't exist in $self->{name}" )
+	params_exception "Column " . $c->name . " doesn't exist in $self->{name}"
 	    unless $self->{columns}->EXISTS( $c->name );
     }
 
-    Alzabo::Exception::Params->throw( error => "No foreign keys to " . $fk->table_to->name . " exist in $self->{name}" )
-	unless exists $self->{fk}{ $fk->table_to->name };
+    params_exception
+        "No foreign keys to " . $fk->table_to->name . " exist in $self->{name}"
+            unless exists $self->{fk}{ $fk->table_to->name };
 
     my @new_fk;
     foreach my $c ( $fk->columns_from )
     {
-	Alzabo::Exception::Params->throw( error => "Column " . $c->name . " is not a foreign key to " . $fk->table_to->name . " in $self->{name}" )
-	    unless exists $self->{fk}{ $fk->table_to->name }{ $c->name };
+	params_exception
+            "Column " . $c->name . " is not a foreign key to " .
+            $fk->table_to->name . " in $self->{name}"
+                unless exists $self->{fk}{ $fk->table_to->name }{ $c->name };
 
 	foreach my $current_fk ( @{ $self->{fk}{ $fk->table_to->name }{ $c->name } } )
 	{
@@ -351,7 +350,7 @@ sub add_index
     my $i = shift;
 
     my $id = $i->id;
-    Alzabo::Exception::Params->throw( error => "Index already exists (id $id)." )
+    params_exception "Index already exists (id $id)."
 	if $self->{indexes}->EXISTS($id);
 
     $self->{indexes}->STORE( $id, $i );
@@ -366,7 +365,7 @@ sub delete_index
     validate_pos( @_, { isa => 'Alzabo::Create::Index' } );
     my $i = shift;
 
-    Alzabo::Exception::Params->throw( error => "Index does not exist." )
+    params_exception "Index does not exist."
 	unless $self->{indexes}->EXISTS( $i->id );
 
     $self->{indexes}->DELETE( $i->id );

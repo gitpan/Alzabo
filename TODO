@@ -10,24 +10,24 @@ Short term:
 - Add constraints to output SQL for Postgres and MySQL (InnoDB tables
   will actually use them).
 
-- Make sense of foreign key definitions in Postgres and for InnoDB
-  tables in MySQL.
+- Make sense of foreign key definitions for InnoDB tables in MySQL.
 
-- Table update & delete.  Need to store an additional "last
-  update/delete op" per table in cache sync to make this work.  Then
-  rows check row time and table time.
+- Table update & delete.
 
-- Make local $table->{prefetch} work (tied scalar).  I'm no longer
-  sure this is possible.  My most recent attempt caused inexplicable
-  test failures.
+- Prefetch by default (for all but blobs).
+
+- Add Alzabo::Runtime::Schema->clone method.
+
+- allow defaults to be marked as functions ( NOW() ) so they're not
+quoted in DDL SQL.
 
 Medium term:
 
-- Abort during Makefile.PL if supplied username/pw cannot connect to
-  DB (and try to test privs too).  Suggested by Robert Creager.
+- reconsider MethodMaker's pre/post hooks and try to re-implement in a
+  more flexible/sane manner.
 
-- Support transactions in the caching system.  this eventually means
-  real transactions at the middleware layer.  argh!
+- Abort during Build.PL if supplied username/pw cannot connect to DB
+  (and try to test privs too).  Suggested by Robert Creager.
 
 - Output Dia XML.
 
@@ -38,19 +38,11 @@ Medium term:
 - Add an Alzabo::Database class between the schema and table.  This
   will allow multiple databases in a schema (on multiple platforms
   ideally) and allow you to do joins between these databases.  This
-  probably raises all sorts of horrid caching and transactional issues
+  probably raises all sorts of horrid transactional issues
   I haven't yet thought of.
 
 - Attempt to guess relationships when reverse engineering a schema
   without foreign key information.
-
-- Rewrite data browser to not suck so much
-
-- Expand data browser to be configurable between sessions (for
-  example, to use textarea fields for certain things)
-
-- Help text for all interfaces (some of it should be shared since the
-  basic ideas are the same)
 
 - More drivers & rules (Oracle, Sybase, Interbase, Solid, and so on)
 

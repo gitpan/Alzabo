@@ -1,23 +1,9 @@
-The Exception::Class module that Alzabo uses does not like Perl 5.6.0
-(specifically, the Devel::StackTrace module used by Exception::Class
-doesn't).  This is due to bugs in Perl 5.6.0.  If you don't turn on
-debugging mode then this shouldn't be a problem.
+Alzabo requires Perl 5.6.1 or newer.  The installation process uses
+Module::Build 0.20 or greater.
 
 Installing Alzabo:
 
- perl Makefile.PL
+ perl Build.PL
  (answer the questions you're asked)
- make test
- make install
-
-To use the Mason based schema creator, you must load the
-Alzabo::Create modules.  To do this, add the following line to your
-startup.pl (or mason_handler.pl or whatever) file:
-
- use Alzabo::Create;
-
-Adding a PerlModule line in your httpd.conf or a <Perl> section that
-uses the module would work just as well.
-
-For the Mason based data browser, you'll also need to load the
-Alzabo::Runtime classes.
+ ./Build test
+ ./Build install

@@ -32,7 +32,8 @@ sub connect
 
     return if $self->{dbh} && $self->{dbh}->ping;
 
-    $self->disconnect if $self->{dbh};
+    # This database handle is stale or nonexistent, so we need to (re)connect
+    $self->disconnect;
     $self->{dbh} = $self->_make_dbh( %p, name => $self->{schema}->name );
 }
 
@@ -85,44 +86,38 @@ sub create_database
 {
     my $self = shift;
 
+    # Obviously we can't connect to the main database if it doesn't
+    # exist yet, but postgres doesn't let us be databaseless, so we
+    # connect to something else.  "template1" should always be there.
     my $dbh = $self->_make_dbh( @_, name => 'template1' );
 
     eval { $dbh->do( "CREATE DATABASE " . $self->{schema}->name ); };
 
     my $e = $@;
-    if ($e)
-    {
-	eval { $dbh->disconnect; };
-	Alzabo::Exception::Driver->throw( error => $e ) if $e;
-    }
-    else
-    {
-	eval { $dbh->disconnect; };
-	Alzabo::Exception::Driver->throw( error => $@ ) if $@;
-    }
+
+    eval { $dbh->disconnect; };
+
+    Alzabo::Exception::Driver->throw( error => $e ) if $e;
+    Alzabo::Exception::Driver->throw( error => $@ ) if $@;
 }
 
 sub drop_database
 {
     my $self = shift;
 
-    $self->{dbh}->disconnect if $self->{dbh};
+    # We can't drop the current database, so we have to connect to
+    # something else.  "template1" should always be there.
+    $self->disconnect;
 
     my $dbh = $self->_make_dbh( @_, name => 'template1' );
 
     eval { $dbh->do( "DROP DATABASE " . $self->{schema}->name ); };
-
     my $e = $@;
-    if ($e)
-    {
-	eval { $dbh->disconnect; };
-	Alzabo::Exception::Driver->throw( error => $e ) if $e;
-    }
-    else
-    {
-	eval { $dbh->disconnect; };
-	Alzabo::Exception::Driver->throw( error => $@ ) if $@;
-    }
+
+    eval { $dbh->disconnect; };
+
+    Alzabo::Exception::Driver->throw( error => $e ) if $e;
+    Alzabo::Exception::Driver->throw( error => $@ ) if $@;
 }
 
 sub _make_dbh
@@ -178,15 +173,17 @@ sub next_sequence_number
 
     $self->_check_dbh;
 
-    Alzabo::Exception::Params->throw( error => "This column (" . $col->name . ") is not sequenced" )
-	unless $col->sequenced;
+    Alzabo::Exception::Params->throw
+        ( error => "This column (" . $col->name . ") is not sequenced" )
+            unless $col->sequenced;
 
     my $seq_name;
 
     if ( $col->type eq 'SERIAL' )
     {
 	$seq_name = join '_', $col->table->name, $col->name;
-	$seq_name = substr($seq_name, 0, 27) if length $seq_name > 27;
+	my $maxlen = $self->identifier_length;
+	$seq_name = substr( $seq_name, 0, $maxlen - 4 ) if length $seq_name > ($maxlen - 4);
 
 	$seq_name .= '_seq';
     }
@@ -214,6 +211,27 @@ sub driver_id
 sub dbi_driver_name
 {
     return 'Pg';
+}
+
+sub rdbms_version
+{
+    my $self = shift;
+
+    my $version_string = $self->one_row( sql => 'SELECT version()' );
+    my ($version) = $version_string =~ /^PostgreSQL ([\d.]+)/
+	or die "Couldn't determine version number from version string '$version_string'";
+
+    return $version;
+}
+
+sub identifier_length
+{
+    my $self = shift;
+
+    return $self->{identifier_length} if $self->{identifier_length};
+
+    return
+	$self->{identifier_length} = $self->rdbms_version ge '7.3' ? 63 : 31;
 }
 
 1;
@@ -256,6 +274,10 @@ This method accepts the same parameters as the C<connect> method.
 =head2 get_last_id
 
 Returns the last id created for a sequenced column.
+
+=head2 identifier_length
+
+Returns the maximum identifier length allowed by the database.
 
 =head1 BUGS
 

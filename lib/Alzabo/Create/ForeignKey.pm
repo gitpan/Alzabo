@@ -4,9 +4,11 @@ use strict;
 use vars qw($VERSION);
 
 use Alzabo::Create;
+use Alzabo::Exceptions ( abbr => 'params_exception' );
 
 use Params::Validate qw( :all );
-Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+Params::Validate::validation_options
+    ( on_fail => sub { params_exception join '', @_ } );
 
 use base qw(Alzabo::ForeignKey);
 
@@ -52,8 +54,9 @@ sub set_columns_from
 
     if ( exists $self->{columns_to} )
     {
-	Alzabo::Exception::Params->throw( error => "The number of columns in each part of the relationship must be the same" )
-	    unless @{ $self->{columns_to} } == @$c;
+	params_exception
+            "The number of columns in each part of the relationship must be the same"
+                unless @{ $self->{columns_to} } == @$c;
     }
 
     $self->{columns_from} = $c;
@@ -68,8 +71,9 @@ sub set_columns_to
 
     if ( exists $self->{columns_from} )
     {
-	Alzabo::Exception::Params->throw( error => "The number of columns in each part of the relationship must be the same" )
-	    unless @{ $self->{columns_from} } == @$c;
+	params_exception
+            "The number of columns in each part of the relationship must be the same"
+                unless @{ $self->{columns_from} } == @$c;
     }
 
     $self->{columns_to} = $c;
@@ -81,16 +85,16 @@ sub set_cardinality
 
     my @card = @_;
 
-    Alzabo::Exception::Params->throw( error => "Incorrect number of elements for cardinality" )
+    params_exception "Incorrect number of elements for cardinality"
 	unless scalar @card == 2;
 
     foreach my $c ( @card )
     {
-	Alzabo::Exception::Params->throw( error => "Invalid cardinality piece: $c" )
+	params_exception "Invalid cardinality piece: $c"
 	    unless $c =~ /^[1n]$/i;
     }
 
-    Alzabo::Exception::Params->throw( error => "Invalid cardinality: $card[0]..$card[1]" )
+    params_exception "Invalid cardinality: $card[0]..$card[1]"
 	if $card[0] eq 'n' && $card[1] eq 'n';
 
     $self->{cardinality} = \@card;
@@ -194,6 +198,8 @@ single a column object or a reference to an array of column objects.
 =for pod_merge is_one_to_many
 
 =for pod_merge is_many_to_one
+
+=for pod_merge is_same_relationship_as ($fk)
 
 =head2 set_cardinality (\@cardinality) see above for details
 

@@ -119,7 +119,8 @@ EOF
     my $fh = do { local *FH; *FH };
     open $fh, "<$c_file"
 	or Alzabo::Exception::System->throw( error => "Unable to open $c_file: $!" );
-    my $raw = Storable::retrieve_fd($fh);
+    my $raw = Storable::fd_retrieve($fh)
+        or Alzabo::Exception::System->throw( error => "Can't read filehandle" );
     close $fh
 	or Alzabo::Exception::System->throw( error => "Unable to close $c_file: $!" );
 
@@ -132,7 +133,7 @@ EOF
     open $fh, ">$c_file"
 	or Alzabo::Exception::System->throw( error => "Unable to write to $c_file: $!" );
     Storable::nstore_fd( $raw, $fh )
-	    or Alzabo::Exception::System->throw( error => "Can't store to filehandle" );
+	or Alzabo::Exception::System->throw( error => "Can't store to filehandle" );
     close $fh
 	or Alzabo::Exception::System->throw( error => "Unable to close $c_file: $!" );
 

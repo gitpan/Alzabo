@@ -3,13 +3,14 @@ package Alzabo::Runtime::Table;
 use strict;
 use vars qw($VERSION);
 
+use Alzabo::Exceptions ( abbr => [ qw( logic_exception not_nullable_exception
+                                       params_exception ) ] );
 use Alzabo::Runtime;
 
 use Params::Validate qw( :all );
-Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+Params::Validate::validation_options( on_fail => sub { params_exception join '', @_ } );
 
 use Tie::IxHash;
-use Time::HiRes qw(time);
 
 use base qw(Alzabo::Table);
 
@@ -19,7 +20,7 @@ sub insert
 {
     my $self = shift;
 
-    Alzabo::Exception::Logic->throw( error => "Can't make rows for tables without a primary key" )
+    logic_exception "Can't make rows for tables without a primary key"
 	unless $self->primary_key;
 
     my %p = @_;
@@ -41,7 +42,9 @@ sub insert
 	    }
 	    else
 	    {
-		Alzabo::Exception::Params->throw( error => "No value provided for primary key (" . $pk->name . ") and no sequence is available." );
+		params_exception
+		    ( "No value provided for primary key (" .
+		      $pk->name . ") and no sequence is available." );
 	    }
 	}
     }
@@ -50,11 +53,16 @@ sub insert
     {
 	next if $c->is_primary_key;
 
-	Alzabo::Exception::NotNullable->throw
-            ( error => $c->name . " column in " . $self->name . " table cannot be null.",
-              column_name => $c->name,
-            )
-                unless defined $vals->{ $c->name } || $c->nullable || defined $c->default;
+
+	unless ( defined $vals->{ $c->name } || $c->nullable || defined $c->default )
+	{
+	    not_nullable_exception
+		( error => $c->name . " column in " . $self->name . " table cannot be null.",
+		  column_name => $c->name,
+		  table_name  => $c->table->name,
+		  schema_name => $c->table->schema->name,
+		);
+	}
 
 	delete $vals->{ $c->name }
 	    if ! defined $vals->{ $c->name } && defined $c->default;
@@ -83,8 +91,6 @@ sub insert
 	$self->schema->driver->do( sql => $sql->sql,
 				   bind => $sql->bind );
 
-	$p{time} = time;
-
 	foreach my $pk (@pk)
 	{
 	    $id{ $pk->name } = ( defined $vals->{ $pk->name } ?
@@ -99,66 +105,60 @@ sub insert
     if (my $e = $@)
     {
 	eval { $schema->rollback };
-	if ( UNIVERSAL::can( $e, 'rethrow' ) )
-	{
-	    $e->rethrow;
-	}
-	else
-	{
-	    Alzabo::Exception->throw( error => $e );
-	}
+
+	rethrow_exception $e;
     }
 
-    return $self->row_by_pk( pk => \%id, %p, insert => 1 );
+    return $self->row_by_pk( pk => \%id, %p );
 }
 
 sub row_by_pk
 {
     my $self = shift;
 
-    Alzabo::Exception::Logic->throw( error => "Can't make rows for tables without a primary key" )
+    logic_exception "Can't make rows for tables without a primary key"
 	unless $self->primary_key;
 
     my %p = @_;
 
-    my $row_class = delete $p{row_class} || 'Alzabo::Runtime::Row';
-
-    my $pk_val = delete $p{pk};
+    my $pk_val = $p{pk};
 
     my @pk = $self->primary_key;
 
-    Alzabo::Exception::Params->throw( error => 'Incorrect number of pk values provided.  ' . scalar @pk . ' are needed.')
-	if ref $pk_val && @pk != scalar keys %$pk_val;
+    params_exception
+	'Incorrect number of pk values provided.  ' . scalar @pk . ' are needed.'
+	    if ref $pk_val && @pk != scalar keys %$pk_val;
 
     if (@pk > 1)
     {
-	Alzabo::Exception::Params->throw( error => 'Primary key for ' . $self->name . ' is more than one column.  Please provide multiple key values as a hashref.' )
-	    unless ref $pk_val;
+	params_exception
+	    ( 'Primary key for ' . $self->name . ' is more than one column.' .
+	      '  Please provide multiple key values as a hashref.' )
+		unless ref $pk_val;
 
 	foreach my $pk (@pk)
 	{
-	    Alzabo::Exception::Params->throw( error => 'No value provided for primary key ' . $pk->name . '.' )
+	    params_exception 'No value provided for primary key ' . $pk->name . '.'
 		unless defined $pk_val->{ $pk->name };
 	}
     }
 
-    my $ignore = delete $p{ignore_nosuchrow};
-
-    my $row = eval { $row_class->new( %p,
-				      table => $self,
-				      pk => $pk_val ) };
-
-    if ( my $e = $@ )
-    {
-	unless ( $ignore && UNIVERSAL::isa( $e, 'Alzabo::Exception::NoSuchRow' ) )
-	{
-	    UNIVERSAL::can( $e, 'rethrow' ) ? $e->rethrow : die $e;
-	}
-    }
-
-    return unless $row;
-    return $row;
+    return $self->_make_row( %p,
+                             table => $self,
+                           );
 }
+
+sub _make_row
+{
+    my $self = shift;
+    my %p = @_;
+
+    my $class = $p{row_class} ? delete $p{row_class} : $self->_row_class;
+
+    return $class->new(%p);
+}
+
+sub _row_class { 'Alzabo::Runtime::Row' }
 
 sub row_by_id
 {
@@ -210,8 +210,6 @@ sub one_row
 						 bind => $sql->bind )
 	or return;
 
-    my $time = time;
-
     my @pk = $self->primary_key;
 
     my (%pk, %prefetch);
@@ -226,9 +224,6 @@ sub one_row
 
     return $self->row_by_pk( pk => \%pk,
 			     prefetch => \%prefetch,
-			     time => $time,
-			     no_cache => $p{no_cache},
-			     ignore_nosuchrow => 1,
 			   );
 }
 
@@ -247,6 +242,9 @@ sub all_rows
 sub _make_sql
 {
     my $self = shift;
+
+    logic_exception "Can't make rows for tables without a primary key"
+	unless $self->primary_key;
 
     my $sql = ( $self->schema->sqlmaker->
 		select( $self->primary_key,
@@ -281,17 +279,23 @@ sub _cursor_by_sql
 
     return Alzabo::Runtime::RowCursor->new( statement => $statement,
 					    table => $self,
-					    no_cache => $p{no_cache} );
+                                          );
 }
 
 sub potential_row
 {
     my $self = shift;
+    my %p = @_;
 
-    Alzabo::Exception::Logic->throw( error => "Can't make rows for tables without a primary key" )
+    logic_exception "Can't make rows for tables without a primary key"
 	unless $self->primary_key;
 
-    return Alzabo::Runtime::PotentialRow->new( @_, table => $self );
+    my $class = $p{row_class} ? delete $p{row_class} : $self->_row_class;
+
+    return $class->new( %p,
+                        state => 'Alzabo::Runtime::RowState::Potential',
+                        table => $self,
+                      );
 }
 
 sub row_count
@@ -374,8 +378,6 @@ sub set_prefetch
 {
     my $self = shift;
 
-    return unless $Alzabo::ObjectCache::VERSION;
-
     $self->{prefetch} = $self->_canonize_prefetch(@_);
 }
 
@@ -387,8 +389,8 @@ sub _canonize_prefetch
 
     foreach my $c (@_)
     {
-	Alzabo::Exception::Params->throw( error => "Column " . $c->name . " doesn't exist in $self->{name}" )
-	    unless $self->{columns}->EXISTS( $c->name );
+	params_exception "Column " . $c->name . " doesn't exist in $self->{name}"
+	    unless $self->has_column( $c->name );
     }
 
     return [ map { $_->name } grep { ! $_->is_primary_key } @_ ];
@@ -405,15 +407,13 @@ sub add_group
 {
     my $self = shift;
 
-    return unless $Alzabo::ObjectCache::VERSION;
-
     validate_pos( @_, ( { isa => 'Alzabo::Column' } ) x @_ );
 
     my @names = map { $_->name } @_;
     foreach my $col (@_)
     {
-	Alzabo::Exception::Params->throw( error => "Column " . $col->name . " doesn't exist in $self->{name}" )
-		unless $self->{columns}->EXISTS( $col->name );
+	params_exception "Column " . $col->name . " doesn't exist in $self->{name}"
+	    unless $self->has_column( $col->name );
 
 	next if $col->is_primary_key;
 	$self->{groups}{ $col->name } = \@names;
@@ -442,6 +442,9 @@ sub alias
     $clone->{real_table} = $self;
 
     $clone->{columns} = Tie::IxHash->new( map { $_->name => $_ } $self->columns );
+
+    # Force clone of primary key columns right away.
+    $clone->column($_) foreach map { $_->name } $self->primary_key;
 
     return $clone;
 }
@@ -563,8 +566,7 @@ parameter is optional.
 =back
 
 All other parameters given will be passed directly to the
-L<C<Alzabo::Runtime::Row-E<gt>new>|Alzabo::Runtime::Row/new> method
-(such as the C<no_cache> parameter).
+L<C<Alzabo::Runtime::Row-E<gt>new>|Alzabo::Runtime::Row/new> method.
 
 =head3 Returns
 
@@ -589,8 +591,7 @@ values when the primary key is more than one column.
 =back
 
 All other parameters given will be passed directly to the
-L<C<Alzabo::Runtime::Row-E<gt>new>|Alzabo::Runtime::Row/new>
-method (such as the C<no_cache> parameter).
+L<C<Alzabo::Runtime::Row-E<gt>new>|Alzabo::Runtime::Row/new> method.
 
 =head3 Returns
 
@@ -622,8 +623,7 @@ A string representation of a row's id (as returned by the
 L<C<Alzabo::Runtime::Row-E<gt>id>|Alzabo::Runtime::Row/id> method).
 
 All other parameters given will be passed directly to the
-L<C<Alzabo::Runtime::Row-E<gt>new>|Alzabo::Runtime::Row/new>
-method (such as the C<no_cache> parameter).
+L<C<Alzabo::Runtime::Row-E<gt>new>|Alzabo::Runtime::Row/new> method.
 
 =head3 Returns
 
@@ -646,10 +646,15 @@ containing a SQL operator such as C<'E<gt>'> or C<'='>.
 
 The parameter can also be an array of references to such arrays:
 
- [ [ C<Alzabo::Column> object or SQL function,
-     $comparison, $value or C<Alzabo::Column> object ],
-   [ C<Alzabo::Column> object or SQL function,
-     $comparison, $value or C<Alzabo::Column> object ] ]
+ [
+   [ Alzabo::Column object or SQL function,
+     $comparison,
+     $value or Alzabo::Column object ],
+   [ Alzabo::Column object or SQL function,
+     $comparison,
+     $value or Alzabo::Column object ],
+   ...
+ ]
 
 For more details on exactly what the possibilities are here, please
 see the L<documentation for Alzabo::SQLMaker|Alzabo::SQLMaker/"where (
@@ -756,8 +761,7 @@ values.  This does not handle any conditionals besides equality.
 =back
 
 All other parameters given will be passed directly to the
-L<C<Alzabo::Runtime::Row-E<gt>new>|Alzabo::Runtime::Row/new>
-method (such as the C<no_cache> parameter).
+L<C<Alzabo::Runtime::Row-E<gt>new>|Alzabo::Runtime::Row/new> method.
 
 Given these items this method generates SQL that will retrieve a set
 of primary keys for the table.
@@ -782,8 +786,7 @@ Simply returns all the rows in the table.
 =back
 
 All other parameters given will be passed directly to the
-L<C<Alzabo::Runtime::Row-E<gt>new>|Alzabo::Runtime::Row/new> method
-(such as the C<no_cache> parameter).
+L<C<Alzabo::Runtime::Row-E<gt>new>|Alzabo::Runtime::Row/new> method.
 
 =head3 Returns
 
@@ -954,8 +957,6 @@ lazy column loading without caching will simply slow things down>.
 By default, L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects
 only load data from the database as it is requested via the select
 method.  This is stored internally in the object after being fetched.
-If the object is expired in the cache, it will erase this information
-and fetch it from the database again as needed.
 
 This is good because it saves on memory and makes object creation
 quicker, but it is bad because you could potentially end up with one
@@ -969,9 +970,8 @@ for the table.
 The first method,
 L<C<set_prefetch>|Alzabo::Runtime::Table/set_prefetch (Alzabo::Column
 objects)>, allows you to specify a list of columns to be fetched
-immediately after object creation or after an object discovers it is
-expired in the cache.  These should be columns that you expect to use
-extremely frequently.
+immediately after object creation.  These should be columns that you
+expect to use extremely frequently.
 
 The second method, L<C<add_group>|Alzabo::Runtime::Table/add_group
 (Alzabo::Column objects)>, allows you to group columns together.  If
@@ -985,8 +985,7 @@ want certain data, but when you do you need several related pieces.
 
 Given a list of column objects, this makes sure that all
 L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects fetch this
-data as soon as they are created, as well as immediately after they
-know they have been expired in the cache.
+data as soon as they are created.
 
 This method is only effective when caching is turned on, as otherwise
 prefetched data may be stale and we would never know this.

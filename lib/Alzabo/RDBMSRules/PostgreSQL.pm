@@ -66,10 +66,16 @@ sub validate_column_type
     my $type = uc shift;
     my $table = shift;
 
-    return 'INT4' if $type eq 'SERIAL' && $table->primary_key_size > 1;
+    if ( $table->primary_key_size > 1 )
+    {
+	return 'INT4' if $type =~ /^SERIAL4?$/;
+	return 'INT8' if $type eq 'BIGSERIAL' or $type eq 'SERIAL8';
+    }
 
     my %simple_types = map { $_ => 1 } qw( ABSTIME
                                            BIT
+                                           BIGINT
+					   BIGSERIAL
 					   BOOL
 					   BOOLEAN
 					   BOX
@@ -97,6 +103,8 @@ sub validate_column_type
 					   OID
 					   RELTIME
 					   SERIAL
+					   SERIAL4
+					   SERIAL8
 					   TEXT
 					   TIME
 					   TIMESTAMP
@@ -106,6 +114,8 @@ sub validate_column_type
 					   VARCHAR );
 
     return 'INTEGER' if $type eq 'INT' || $type eq 'INT4';
+    return 'SERIAL' if $type eq 'SERIAL4';
+    return 'INT8' if $type eq 'BIGINT';
 
     return $type if $simple_types{$type};
 
@@ -157,11 +167,13 @@ sub validate_primary_key
     my $self = shift;
     my $col = shift;
 
-    my $serial_col = (grep { $_->type eq 'SERIAL' } $col->table->primary_key)[0];
+    my $serial_col = (grep { $_->type =~ /^(?:SERIAL(?:4|8)?|BIGSERIAL)$/ } $col->table->primary_key)[0];
     if ( defined $serial_col &&
 	 $serial_col->name ne $col->name )
     {
-	$serial_col->set_type('INT4');
+	$serial_col->set_type( $serial_col->type =~ /^SERIAL4?$/
+			       ? 'INT4'
+			       : 'INT8' );
     }
 }
 
@@ -170,8 +182,8 @@ sub validate_sequenced_attribute
     my $self = shift;
     my $col = shift;
 
-    Alzabo::Exception::RDBMSRules->throw( error => 'Non-integer columns cannot be sequenced' )
-	unless $col->is_integer;
+    Alzabo::Exception::RDBMSRules->throw( error => 'Non-number columns cannot be sequenced' )
+	unless $col->is_integer || $col->is_floating_point;
 }
 
 sub validate_index
@@ -200,7 +212,8 @@ sub type_is_integer
 			     SMALLINT|
 			     INTEGER|
 			     OID|
-			     SERIAL
+			     SERIAL(?:4|8)?|
+			     BIGSERIAL
 			    )
                           \z
                          /x;
@@ -384,7 +397,7 @@ sub _sequence_sql
     my $self = shift;
     my $col = shift;
 
-    return if $col->type eq 'SERIAL';
+    return if $col->type =~ /^(?:SERIAL(?:4|8)?|BIGSERIAL)$/;
 
     my $seq_name = $self->_sequence_name($col);
 
@@ -713,6 +726,9 @@ sub reverse_engineer
     {
         $table =~ s/^[^\.]+\.//;
 
+	print STDERR "Adding table $table to schema\n"
+	    if Alzabo::Debug::REVERSE_ENGINEER;
+
 	my $t = $schema->make_table( name => $table );
 
 	my $t_oid = $driver->one_row( sql => 'SELECT oid FROM pg_class WHERE relname = ?',
@@ -724,13 +740,20 @@ FROM pg_attribute a, pg_type t
 WHERE a.attrelid = ?
 AND a.atttypid = t.oid
 AND a.attnum > 0
-ORDER BY attnum
 EOF
+
+        $sql .= ' AND NOT a.attisdropped' if $driver->rdbms_version ge '7.3';
+
+        $sql .= ' ORDER BY attnum';
+
 
 	foreach my $row ( $driver->rows( sql => $sql,
 					 bind => $t_oid ) )
 	{
 	    my %p;
+
+	    $p{type} = $row->[2];
+
 	    # has default
 	    if ( $row->[4] )
 	    {
@@ -738,10 +761,14 @@ EOF
 		    $driver->one_row( sql => 'SELECT adsrc FROM pg_attrdef WHERE adrelid = ? AND adnum = ?',
 				      bind => [ $t_oid, $row->[3] ] );
 		# strip quotes Postgres added
-		for ($p{default}) { s/^'//; s/'$//; }
-	    }
+		$p{default} =~ s/^'|'$//g;
 
-	    $p{type} = $row->[2];
+                if ( $p{default} =~ /^nextval\(/ )
+                {
+                    $p{sequenced} = 1;
+                    $p{type} =~ s/int(?:eger)?/serial/;
+                }
+	    }
 
 	    if ( $p{type} =~ /char/i )
 	    {
@@ -762,6 +789,9 @@ EOF
 	    }
 
 	    $p{type} = 'char' if lc $p{type} eq 'bpchar';
+
+	    print STDERR "Adding $table column $row->[0] to schema\n"
+		if Alzabo::Debug::REVERSE_ENGINEER;
 
 	    $t->make_column( name => $row->[0],
 			     nullable => ! $row->[1],
@@ -784,6 +814,9 @@ EOF
 	foreach my $col ( $driver->column( sql => $sql,
 					   bind => $t_oid ) )
 	{
+	    print STDERR "Adding $table primary key $col to schema\n"
+		if Alzabo::Debug::REVERSE_ENGINEER;
+
 	    $t->add_primary_key( $t->column($col) );
 	}
 
@@ -813,6 +846,99 @@ EOF
 	    $t->make_index( columns => \@c,
 			    unique => $i{$oid}{unique} );
         }
+    }
+
+    # Foreign key info is available in PG 7.3.0 and higher (could fake
+    # it from pg_triggers with extensive gymnastics in version 7.0 and
+    # higher, but that's a little iffy)
+    $self->_foreign_keys_to_relationships($schema)
+        if $driver->rdbms_version ge '7.3';
+}
+
+sub _foreign_keys_to_relationships
+{
+    my ($self, $schema) = @_;
+    my $driver = $schema->driver;
+
+    my $constraint_sql = <<'EOF';
+SELECT conrelid, confrelid, conkey, confkey
+FROM pg_constraint
+WHERE contype = 'f'
+EOF
+
+    my $table_sql = <<'EOF';
+SELECT relname
+FROM pg_class
+WHERE oid = ?
+EOF
+
+    my $column_sql = <<'EOF';
+SELECT attname
+FROM pg_attribute
+WHERE attrelid = ?
+  AND attnum = ?
+EOF
+
+    my $unique_sql = <<'EOF';
+SELECT 1 FROM pg_constraint
+WHERE conrelid = ?
+  AND conkey = ?
+  AND ( contype = 'p' OR contype = 'u' )
+EOF
+
+    foreach my $row ( $driver->rows( sql => $constraint_sql ) )
+    {
+	my $from_table = $driver->one_row( sql => $table_sql,
+					   bind => $row->[0] );
+	my $to_table   = $driver->one_row( sql => $table_sql,
+					   bind => $row->[1] );
+
+	# If there's a unique constraint on the "from" columns, treat
+	# is as 1-to-1.  Otherwise treat it as n-to-1.
+	my $from_unique = $driver->one_row( sql => $unique_sql,
+					    bind => [$row->[0], $row->[2]] );
+
+	# Column numbers are given as strings like "{3,5}"
+	my @from_cols = $row->[2] =~ m/(\d+),?/g
+	    or die "Weird column specification $row->[2]";
+
+	my @to_cols   = $row->[3] =~ m/(\d+),?/g
+	    or die "Weird column specification $row->[3]";
+
+	# Convert column numbers to names
+	foreach (@from_cols)
+        {
+	    $_ = $driver->one_row( sql => $column_sql,
+				   bind => [$row->[0], $_] );
+	}
+	foreach (@to_cols)
+        {
+	    $_ = $driver->one_row( sql => $column_sql,
+				   bind => [$row->[1], $_] );
+	}
+
+	print STDERR "Adding $from_table foreign key to $to_table\n"
+	    if Alzabo::Debug::REVERSE_ENGINEER;
+
+	# Convert to Alzabo objects
+	$from_table = $schema->table($from_table);
+	$to_table   = $schema->table($to_table);
+	@from_cols = map { $from_table->column($_) } @from_cols;
+	@to_cols   = map {   $to_table->column($_) } @to_cols;
+
+        my $from_is_dependent =
+            ( grep { $_->nullable } @from_cols ) ? 0 : 1;
+        my $to_is_dependent =
+            ( grep { $_->nullable || $_->is_primary_key } @to_cols ) ? 0 : 1;
+
+	$schema->add_relationship( cardinality => [$from_unique ? '1' : 'n', '1'],
+                                   table_from => $from_table,
+                                   table_to   => $to_table,
+                                   columns_from => \@from_cols,
+                                   columns_to   => \@to_cols,
+                                   from_is_dependent => $from_is_dependent,
+                                   to_is_dependent => $to_is_dependent,
+				 );
     }
 }
 

@@ -1,6 +1,6 @@
 use strict;
 
-unless (eval "use Module::Build::Compat 0.02; 1" ) {
+unless (eval "use Module::Build 0.20; 1" ) {
     print "This module requires Module::Build to install itself.\n";
 
     require ExtUtils::MakeMaker;

@@ -42,17 +42,6 @@ sub _insert_or_update
 	# to insert things into the table.
 	next if $type eq 'insert' && $pair->[0]->is_primary_key;
 
-	# This code may be unreachable because this may always be
-	# caught in Alzabo::Runtime::Table::insert or
-	# Alzabo::Runtime::Row::update where it won't let you use null
-	# for a non-nullable column.  And in
-	# Alzabo::Create::Schema::add_relation we make sure that
-	# dependent columns are not nullable.
-	if ( ! defined $vals{ $pair->[0]->name } && $self->from_is_dependent )
-	{
-	    Alzabo::Exception::ReferentialIntegrity->throw( error => 'Referential integrity requires that this column (' . $self->table_from->name . '.' . $pair->[0]->name . ') not be null.' )
-	}
-
 	if ( $type eq 'update' || $pair->[1]->is_primary_key )
 	{
 	    $self->_check_existence( $pair->[1] => $vals{ $pair->[0]->name } )
@@ -103,8 +92,6 @@ sub register_delete
 
     while ( my $related_row = $cursor->next )
     {
-	($cursor->errors)[0]->rethrow if $cursor->errors;
-
 	# This is a class variable so that multiple foreign key
 	# objects don't try to delete the same rows
 	next if $DELETED{ $related_row->id_as_string };
@@ -171,6 +158,8 @@ C<Alzabo::ForeignKey>
 =for pod_merge is_one_to_many
 
 =for pod_merge is_many_to_one
+
+=for pod_merge is_same_relationship_as ($fk)
 
 =head2 register_insert ($new_value)
 

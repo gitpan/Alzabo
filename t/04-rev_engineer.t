@@ -1,50 +1,48 @@
-# This is just to test whether this stuff compiles.
+#!/usr/bin/perl -w
 
 use strict;
 
+use File::Spec;
+
+use lib '.', File::Spec->catdir( File::Spec->curdir, 't', 'lib' );
+
+use Alzabo::Test::Utils;
+
 use Test::More;
 
-use Alzabo::Create;
-use Cwd;
 
-use lib '.', File::Spec->catdir( File::Spec->curdir, 't' );
+my @rdbms_names = Alzabo::Test::Utils->rdbms_names;
 
-require 'base.pl';
-
-unless ( @$Alzabo::Build::Tests )
+unless (@rdbms_names)
 {
     plan skip_all => 'no test config provided';
     exit;
 }
 
-require 'make_schemas.pl';
 
-my $tests = $Alzabo::Build::Tests;
+my $tests_per_run = 2;
 
-my $TESTS_PER_RUN = 2;
-my $test_count = $TESTS_PER_RUN * @$tests;
+plan tests => $tests_per_run * @rdbms_names;
 
-plan tests => $test_count;
 
-foreach my $test (@$tests)
+Alzabo::Test::Utils->remove_all_schemas;
+
+
+foreach my $rdbms (@rdbms_names)
 {
-    print "Running $test->{rdbms} reverse engineering tests\n";
-    my $s1;
-    {
-	no strict 'refs';
-	$s1 = &{ "$test->{rdbms}_make_schema" }(%$test);
-    }
+    Test::More::diag( "Running $rdbms reverse engineering tests" );
 
-    my %p = ( name => $s1->name,
-	      rdbms => $s1->driver->driver_id,
-	      user => $test->{user},
-	      password => $test->{password},
-	      host => $test->{host},
-	      port => $test->{port},
-	    );
+    my $s1 = Alzabo::Test::Utils->make_schema($rdbms);
+
+    my $config = Alzabo::Test::Utils->test_config_for($rdbms);
+
+    delete $config->{schema_name};
+
+    $config->{name}  = $s1->name;
+    $config->{rdbms} = $s1->driver->driver_id;
 
     my $s2;
-    eval_ok( sub { $s2 = Alzabo::Create::Schema->reverse_engineer(%p) },,
+    eval_ok( sub { $s2 = Alzabo::Create::Schema->reverse_engineer(%$config) },
 	     "Reverse engineer the @{[$s1->name]} schema with @{[$s1->driver->driver_id]}" );
 
     if ( ref $s2 )

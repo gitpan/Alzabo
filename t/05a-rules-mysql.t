@@ -1,23 +1,27 @@
+#!/usr/bin/perl -w
+
 use strict;
+
+use File::Spec;
+
+use lib '.', File::Spec->catdir( File::Spec->curdir, 't', 'lib' );
+
+use Alzabo::Test::Utils;
 
 use Test::More;
 
-BEGIN
-{
-    unless ( eval { require DBD::mysql } && ! $@ )
-    {
-        plan skip_all => 'needs DBD::mysql';
-	exit;
-    }
-}
 
 use Alzabo::Create;
 
-use lib '.', File::Spec->catdir( File::Spec->curdir, 't' );
 
-require 'base.pl';
+unless ( eval { require DBD::mysql } && ! $@ )
+{
+    plan skip_all => 'needs DBD::mysql';
+    exit;
+}
 
 plan tests => 6;
+
 
 my $new_s;
 eval_ok( sub { $new_s = Alzabo::Create::Schema->new( name => 'hello there',

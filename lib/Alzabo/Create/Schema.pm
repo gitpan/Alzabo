@@ -7,6 +7,8 @@ use Alzabo::ChangeTracker;
 use Alzabo::Config;
 use Alzabo::Create;
 use Alzabo::Driver;
+use Alzabo::Exceptions
+    ( abbr => [ qw( params_exception system_exception ) ] );
 use Alzabo::RDBMSRules;
 use Alzabo::Runtime;
 use Alzabo::SQLMaker;
@@ -14,7 +16,8 @@ use Alzabo::SQLMaker;
 use File::Spec;
 
 use Params::Validate qw( :all );
-Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+Params::Validate::validation_options
+    ( on_fail => sub { params_exception join '', @_ } );
 
 use Storable ();
 use Tie::IxHash;
@@ -36,9 +39,9 @@ sub new
 
     my $self = bless {}, $class;
 
-    Alzabo::Exception::Params->throw( error => "Alzabo does not support the '$p{rdbms}' RDBMS" )
-	unless ( ( grep { $p{rdbms} eq $_ } Alzabo::Driver->available ) &&
-		 ( grep { $p{rdbms} eq $_ } Alzabo::RDBMSRules->available ) );
+    params_exception "Alzabo does not support the '$p{rdbms}' RDBMS"
+        unless ( ( grep { $p{rdbms} eq $_ } Alzabo::Driver->available ) &&
+                 ( grep { $p{rdbms} eq $_ } Alzabo::RDBMSRules->available ) );
 
     $self->{driver} = Alzabo::Driver->new( rdbms => $p{rdbms},
 					   schema => $self );
@@ -46,8 +49,8 @@ sub new
 
     $self->{sql} = Alzabo::SQLMaker->load( rdbms => $p{rdbms} );
 
-    Alzabo::Exception::Params->throw( error => "Alzabo::Create::Schema->new requires a name parameter\n" )
-	unless exists $p{name};
+    params_exception "Alzabo::Create::Schema->new requires a name parameter\n"
+        unless exists $p{name};
 
     $self->set_name($p{name});
 
@@ -101,14 +104,8 @@ sub set_name
     if ($@)
     {
 	$self->{name} = $old_name;
-	if ( UNIVERSAL::can( $@, 'rethrow' ) )
-	{
-	    $@->rethrow;
-	}
-	else
-	{
-	    Alzabo::Exception->throw( error => $@ );
-	}
+
+        rethrow_exception($@);
     }
 
     # Gotta clean up old files or we have a mess!
@@ -153,7 +150,7 @@ sub add_table
 
     my $table = $p{table};
 
-    Alzabo::Exception::Params->throw( error => "Table " . $table->name . " already exists in schema" )
+    params_exception "Table " . $table->name . " already exists in schema"
 	if $self->{tables}->EXISTS( $table->name );
 
     $self->{tables}->STORE( $table->name, $table );
@@ -176,7 +173,7 @@ sub delete_table
     validate_pos( @_, { isa => 'Alzabo::Create::Table' } );
     my $table = shift;
 
-    Alzabo::Exception::Params->throw( error => "Table " . $table->name ." doesn't exist in schema" )
+    params_exception "Table " . $table->name ." doesn't exist in schema"
 	unless $self->{tables}->EXISTS( $table->name );
 
     foreach my $fk ($table->all_foreign_keys)
@@ -203,21 +200,22 @@ sub move_table
 
     if ( exists $p{before} && exists $p{after} )
     {
-	Alzabo::Exception::Params->throw( error => "move_table method cannot be called with both 'before' and 'after' parameters" );
+	params_exception
+            "move_table method cannot be called with both 'before' and 'after' parameters";
     }
 
     if ( $p{before} )
     {
-	Alzabo::Exception::Params->throw( error => "Table " . $p{before}->name . " doesn't exist in schema" )
+	params_exception "Table " . $p{before}->name . " doesn't exist in schema"
 	    unless $self->{tables}->EXISTS( $p{before}->name );
     }
     else
     {
-	Alzabo::Exception::Params->throw( error => "Table " . $p{after}->name . " doesn't exist in schema" )
+	params_exception "Table " . $p{after}->name . " doesn't exist in schema"
 	    unless $self->{tables}->EXISTS( $p{after}->name );
     }
 
-    Alzabo::Exception::Params->throw( error => "Table " . $p{table}->name . " doesn't exist in schema" )
+    params_exception "Table " . $p{table}->name . " doesn't exist in schema"
 	unless $self->{tables}->EXISTS( $p{table}->name );
 
     $self->{tables}->DELETE( $p{table}->name );
@@ -243,7 +241,7 @@ sub register_table_name_change
 		    old_name => { type => SCALAR } } );
     my %p = @_;
 
-    Alzabo::Exception::Params->throw( error => "Table $p{old_name} doesn't exist in schema" )
+    params_exception "Table $p{old_name} doesn't exist in schema"
 	unless $self->{tables}->EXISTS( $p{old_name} );
 
     my $index = $self->{tables}->Indices( $p{old_name} );
@@ -267,29 +265,35 @@ sub add_relationship
 	return;
     }
 
-    Alzabo::Exception::Params->throw( error => "Must provide 'table_from' or 'columns_from' parameter" )
+    params_exception "Must provide 'table_from' or 'columns_from' parameter"
 	unless $p{table_from} || $p{columns_from};
 
-    Alzabo::Exception::Params->throw( error => "Must provide 'table_to' or 'columns_to' parameter" )
+    params_exception "Must provide 'table_to' or 'columns_to' parameter"
 	unless $p{table_to} || $p{columns_to};
 
-    $p{columns_from} = ( defined $p{columns_from} ? ( UNIVERSAL::isa( $p{columns_from}, 'ARRAY') ?
-						      $p{columns_from} :
-						      [ $p{columns_from} ] ) :
-			 undef );
+    $p{columns_from} =
+        ( defined $p{columns_from} ?
+          ( UNIVERSAL::isa( $p{columns_from}, 'ARRAY') ?
+            $p{columns_from} :
+            [ $p{columns_from} ] ) :
+          undef );
 
-    $p{columns_to} = ( defined $p{columns_to} ? ( UNIVERSAL::isa( $p{columns_to}, 'ARRAY') ?
-						  $p{columns_to} :
-						  [ $p{columns_to} ] ) :
-		       undef );
+    $p{columns_to} =
+        ( defined $p{columns_to} ?
+          ( UNIVERSAL::isa( $p{columns_to}, 'ARRAY') ?
+            $p{columns_to} :
+            [ $p{columns_to} ] ) :
+          undef );
 
     my $f_table = $p{table_from} || $p{columns_from}->[0]->table;
     my $t_table = $p{table_to} || $p{columns_to}->[0]->table;
 
     if ( $p{columns_from} && $p{columns_to} )
     {
-	Alzabo::Exception::Params->throw( error => "Cannot create a relationship with differing numbers of columns on either side of the relation" )
-	    unless @{ $p{columns_from} } == @{ $p{columns_to} };
+	params_exception
+            "Cannot create a relationship with differing numbers of columns " .
+            "on either side of the relation"
+                unless @{ $p{columns_from} } == @{ $p{columns_to} };
     }
 
     foreach ( [ columns_from => $f_table ], [ columns_to => $t_table ] )
@@ -297,8 +301,10 @@ sub add_relationship
 	my ($key, $table) = @$_;
 	if ( defined $p{$key} )
 	{
-	    Alzabo::Exception::Params->throw( error => "All the columns in a given side of the relationship must be from the same table" )
-		if grep { $_->table ne $table } @{ $p{$key} };
+	    params_exception
+                "All the columns in a given side of the relationship ".
+                "must be from the same table"
+                    if grep { $_->table ne $table } @{ $p{$key} };
 	}
     }
 
@@ -307,13 +313,18 @@ sub add_relationship
     my ($col_from, $col_to);
 
     # cardinality from -> to
-    my $cardinality = ( $p{cardinality}->[0] eq '1' && $p{cardinality}->[1] eq '1' ? '1_to_1' :
-			( $p{cardinality}->[0] eq '1' && $p{cardinality}->[1] eq 'n' ? '1_to_n' : 'n_to_1' ) );
+    my $cardinality =
+        ( $p{cardinality}->[0] eq '1' && $p{cardinality}->[1] eq '1' ?
+          '1_to_1' :
+          $p{cardinality}->[0] eq '1' && $p{cardinality}->[1] eq 'n' ?
+          '1_to_n' :
+          'n_to_1'
+        );
     my $method = "_create_${cardinality}_relationship";
 
     ($col_from, $col_to) = $self->$method( %p,
-					   table_from   => $f_table,
-					   table_to     => $t_table,
+					   table_from => $f_table,
+					   table_to   => $t_table,
 					 );
 
     eval
@@ -329,14 +340,8 @@ sub add_relationship
     if ($@)
     {
 	$tracker->backout;
-	if ( UNIVERSAL::can( $@, 'rethrow' ) )
-	{
-	    $@->rethrow;
-	}
-	else
-	{
-	    Alzabo::Exception->throw( error => $@ );
-	}
+
+        rethrow_exception($@);
     }
 
     my @fk;
@@ -351,21 +356,20 @@ sub add_relationship
     if ($@)
     {
 	$tracker->backout;
-	if ( UNIVERSAL::can( $@, 'rethrow' ) )
-	{
-	    $@->rethrow;
-	}
-	else
-	{
-	    Alzabo::Exception->throw( error => $@ );
-	}
+
+        rethrow_exception($@);
     }
 
     $tracker->add( sub { $f_table->delete_foreign_key($_) foreach @fk } );
 
     # cardinality to -> to
-    my $inverse_cardinality = ( $p{cardinality}->[1] eq '1' && $p{cardinality}->[0] eq '1' ? '1_to_1' :
-				( $p{cardinality}->[1] eq '1' && $p{cardinality}->[0] eq 'n' ? '1_to_n' : 'n_to_1' ) );
+    my $inverse_cardinality =
+        ( $p{cardinality}->[1] eq '1' && $p{cardinality}->[0] eq '1' ?
+          '1_to_1' :
+          $p{cardinality}->[1] eq '1' && $p{cardinality}->[0] eq 'n' ?
+          '1_to_n' :
+          'n_to_1'
+        );
     my $inverse_method = "_create_${inverse_cardinality}_relationship";
 
     ($col_from, $col_to) = $self->$method( table_from => $t_table,
@@ -400,14 +404,8 @@ sub add_relationship
     if ($@)
     {
 	$tracker->backout;
-	if ( UNIVERSAL::can( $@, 'rethrow' ) )
-	{
-	    $@->rethrow;
-	}
-	else
-	{
-	    Alzabo::Exception->throw( error => $@ );
-	}
+
+        rethrow_exception($@);
     }
 }
 # old name - deprecated
@@ -421,21 +419,21 @@ sub _check_add_relationship_args
     foreach my $t ( $p{table_from}, $p{table_to} )
     {
 	next unless defined $t;
-	Alzabo::Exception::Params->throw( error => "Table " . $t->name . " doesn't exist in schema" )
+	params_exception "Table " . $t->name . " doesn't exist in schema"
 	    unless $self->{tables}->EXISTS( $t->name );
     }
 
-    Alzabo::Exception::Params->throw( error => "Incorrect number of cardinality elements" )
+    params_exception "Incorrect number of cardinality elements"
 	unless scalar @{ $p{cardinality} } == 2;
 
     foreach my $c ( @{ $p{cardinality} } )
     {
-	Alzabo::Exception::Params->throw( error => "Invalid cardinality: $c" )
-		unless $c =~ /^[01n]$/i;
+	params_exception "Invalid cardinality: $c"
+            unless $c =~ /^[01n]$/i;
     }
 
     # No such thing as 1..0 or n..0
-    Alzabo::Exception::Params->throw( error => "Invalid cardinality: $p{cardinality}->[0]..$p{cardinality}->[1]" )
+    params_exception "Invalid cardinality: $p{cardinality}->[0]..$p{cardinality}->[1]"
 	if  $p{cardinality}->[1] eq '0';
 }
 
@@ -483,7 +481,7 @@ sub _create_1_to_1_relationship
     {
 	my @c = $t_table->primary_key;
 
-	Alzabo::Exception::Params->throw( error => $t_table->name . " has no primary key." )
+	params_exception $t_table->name . " has no primary key."
 	    unless @c;
 
 	$col_to = \@c;
@@ -531,7 +529,7 @@ sub _create_1_to_n_relationship
 	my @c = $f_table->primary_key;
 
 	# Is there a way to handle this properly?
-	Alzabo::Exception::Params->throw( error => $f_table->name . " has no primary key." )
+	params_exception $f_table->name . " has no primary key."
 	    unless @c;
 
 	$col_from = \@c;
@@ -568,7 +566,8 @@ sub _create_n_to_1_relationship
     # reverse everything ...
     ($p{table_from}, $p{table_to}) = ($p{table_to}, $p{table_from});
     ($p{columns_from}, $p{columns_to}) = ($p{columns_to}, $p{columns_from});
-    ($p{from_is_dependent}, $p{to_is_dependent}) = ($p{to_is_dependent}, $p{from_is_dependent});
+    ($p{from_is_dependent}, $p{to_is_dependent}) =
+        ($p{to_is_dependent}, $p{from_is_dependent});
 
     # pass it into the inverse method and then swap the return values.
     # Tada!
@@ -604,9 +603,11 @@ sub _add_foreign_key_column
 	# This will make the two column share a single definition
 	# object.
 	my $old_def = $p{table}->column( $p{column}->name )->definition;
-	$p{table}->column( $p{column}->name )->change_definition($p{column}->definition);
+	$p{table}->column( $p{column}->name )->set_definition($p{column}->definition);
 
-	$tracker->add( sub { $p{table}->column( $p{column}->name )->change_definition($old_def) } );
+	$tracker->add
+            ( sub { $p{table}->column
+                        ( $p{column}->name )->set_definition($old_def) } );
     }
     else
     {
@@ -642,7 +643,7 @@ sub _create_linking_table
     {
 	my @c = $t1->primary_key;
 
-	Alzabo::Exception::Params->throw( error => $t1->name . " has no primary key." )
+	params_exception $t1->name . " has no primary key."
 	    unless @c;
 
 	$t1_col = \@c;
@@ -657,7 +658,7 @@ sub _create_linking_table
     {
 	my @c = $t2->primary_key;
 
-	Alzabo::Exception::Params->throw( error => $t2->name . " has no primary key." )
+	params_exception $t2->name . " has no primary key."
 	    unless @c;
 
 	$t2_col = \@c;
@@ -719,14 +720,8 @@ sub _create_linking_table
     if ($@)
     {
 	$tracker->backout;
-	if ( UNIVERSAL::can( $@, 'rethrow' ) )
-	{
-	    $@->rethrow;
-	}
-	else
-	{
-	    Alzabo::Exception->throw( error => $@ );
-	}
+
+        rethrow_exception($@);
     }
 }
 
@@ -840,18 +835,34 @@ sub delete
 
     my $dh = do { local *DH; };
     opendir $dh, $schema_dir
-	or Alzabo::Exception::System->throw( error => "Unable to open $schema_dir directory: $!" );
+	or system_exception "Unable to open $schema_dir directory: $!";
+
     foreach my $f (readdir $dh)
     {
 	my $file = File::Spec->catfile( $schema_dir, $f );
 	next unless -f $file;
 
 	unlink $file
-	    or Alzabo::Exception::System->throw( error => "Unable to delete $file: $!" );
+	    or system_exception "Unable to delete $file: $!";
     }
-    closedir $dh or Alzabo::Exception::System->throw( error => "Unable to close $schema_dir: $!" );
+    closedir $dh
+        or system_exception "Unable to close $schema_dir: $!";
+
     rmdir $schema_dir
-	or Alzabo::Exception::System->throw( error => "Unable to delete $schema_dir: $!" );
+	or system_exception "Unable to delete $schema_dir: $!";
+}
+
+sub is_saved
+{
+    my $self = shift;
+
+    my %p = @_;
+
+    my $name = $p{name} || $self->name;
+
+    my $schema_dir = File::Spec->catdir( Alzabo::Config::schema_dir(), $name );
+
+    return -d $schema_dir;
 }
 
 sub save_to_file
@@ -862,49 +873,52 @@ sub save_to_file
     unless (-e $schema_dir)
     {
 	mkdir $schema_dir, 0775
-	    or Alzabo::Exception::System->throw( error => "Unable to make directory $schema_dir: $!" );
+	    or system_exception "Unable to make directory $schema_dir: $!";
     }
 
     my $create_save_name = $self->_base_filename( $self->{name} ) . '.create.alz';
 
     my $fh = do { local *FH; };
     open $fh, ">$create_save_name"
-	or Alzabo::Exception::System->throw( error => "Unable to write to $create_save_name: $!\n" );
+	or system_exception "Unable to write to $create_save_name: $!\n";
+
     my $driver = delete $self->{driver};
     Storable::nstore_fd( $self, $fh )
-	or Alzabo::Exception::System->throw( error => "Can't store to filehandle" );
+	or system_exception "Can't store to filehandle";
+
     $self->{driver} = $driver;
     close $fh
-	or Alzabo::Exception::System->throw( error => "Unable to close $create_save_name: $!" );
+	or system_exception "Unable to close $create_save_name: $!";
 
     my $rdbms_save_name = $self->_base_filename( $self->{name} ) . '.rdbms';
 
     open $fh, ">$rdbms_save_name"
-	or Alzabo::Exception::System->throw( error => "Unable to write to $rdbms_save_name: $!\n" );
+	or system_exception "Unable to write to $rdbms_save_name: $!\n";
+
     print $fh $self->{driver}->driver_id
-	or Alzabo::Exception::System->throw( error => "Can't write to $rdbms_save_name: $!" );
+	or system_exception "Can't write to $rdbms_save_name: $!";
     close $fh
-	or Alzabo::Exception::System->throw( error => "Unable to close $rdbms_save_name: $!" );
+	or system_exception "Unable to close $rdbms_save_name: $!";
 
     my $version_save_name = $self->_base_filename( $self->{name} ) . '.version';
 
     open $fh, ">$version_save_name"
-	or Alzabo::Exception::System->throw( error => "Unable to write to $version_save_name: $!\n" );
+	or system_exception "Unable to write to $version_save_name: $!\n";
     print $fh $Alzabo::VERSION
-	or Alzabo::Exception::System->throw( error => "Can't write to $version_save_name: $!" );
+	or system_exception "Can't write to $version_save_name: $!";
     close $fh
-	or Alzabo::Exception::System->throw( error => "Unable to close $version_save_name: $!" );
+	or system_exception "Unable to close $version_save_name: $!";
 
     my $rt = $self->_make_runtime_clone;
 
     my $runtime_save_name = $self->_base_filename( $self->{name} ) . '.runtime.alz';
 
     open $fh, ">$runtime_save_name"
-	or Alzabo::Exception::System->throw( error => "Unable to write to $runtime_save_name: $!\n" );
+	or system_exception "Unable to write to $runtime_save_name: $!\n";
     Storable::nstore_fd( $rt, $fh )
-	or Alzabo::Exception::System->throw( error => "Can't store to filehandle" );
+	or system_exception "Can't store to filehandle";
     close $fh
-	or Alzabo::Exception::System->throw( error => "Unable to close $runtime_save_name: $!" );
+	or system_exception "Unable to close $runtime_save_name: $!";
 
     $self->_save_to_cache;
 }
@@ -1013,6 +1027,37 @@ This class represents the whole schema.  It contains table objects,
 which in turn contain columns, indexes, etc.  It contains methods that
 act globally on the schema, including methods to save it to disk,
 create itself in an RDBMS, create relationships between tables, etc.
+
+=head2 Instantiation
+
+Every schema keeps track of whether it has been instantiated or not.
+A schema that is instantiated is one that exists in an RDBMS backend.
+This can be done explicitly by calling the schema's
+L<C<create()>|Alzabo::Create::Schema/create> method.  It is also
+implicitly set when a schema is created as the result of L<reverse
+engineering|Alzabo::Create::Schema/reverse_engineer>.
+
+The most important effect of instantiation is that once a schema is
+instantiated, the way it generates SQL for itself changes.  Before it
+is instantiated, if you ask it to generate SQL via L<the C<make_sql()>
+the method|Alzabo::Create::Schema/make_sql>, it will generate the set
+of SQL statements that are needed to create the schema from scratch.
+
+After is instantiated, the schema will instead generate the SQL
+necessary to convert the version in the RDBMS backend to match the
+object's current state.  This can be thought of as a SQL 'diff'.
+
+While this feature is quite useful, it can be confusing too.  The most
+surprising aspect of this is that if you create a schema via L<reverse
+engineering|Alzabo::Create::Schema/reverse_engineer> and then call
+L<the C<make_sql()> method|Alzabo::Create::Schema/make_sql>, you will
+not get any SQL.  This is because the schema knows that it is
+instantiated and it also knows that it is the same as the version in
+the RDBMS, so no SQL is necessary.
+
+You can use L<the C<set_instantiated()>
+method|Alzabo::Create::Schema/set_instantiated ($bool)> method to
+change whether or not the schem thinks it is instantiated.
 
 =head1 INHERITS FROM
 
@@ -1395,6 +1440,10 @@ A new Alzabo::Create::Schema object.
 =head2 save_to_file
 
 Saves the schema to a file on disk.
+
+=head2 is_saved
+
+Returns true if the schema has been saved to disk.
 
 =for pod_merge begin_work
 

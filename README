@@ -26,15 +26,15 @@ Install information is in the INSTALL file.
 
 REQUIREMENTS
 
-Alzabo passes all its test with aPerl 5.00503, 5.6.1 or, 5.8.0.  5.6.0
-is known to be buggy and not recommended.
+Alzabo passes all its test with Perl 5.6.1+.  5.6.0 is known to be
+buggy and not recommended.
 
-Alzabo currently supports MySQL (latest 3.23.x release is recommended)
-and Postgres (7.2.x is recommended).
+Alzabo currently supports MySQL (3.23.x or 4.0.x release is
+recommended) and Postgres (7.2.x or newer is recommended).
 
 Alzabo also requires a number of modules, and will prompt you to
 install them if necessary.  Of course, if you install Alzabo via the
-CPAN module this will be handled for you.
+CPAN or CPANPLUS shells this will be handled for you.
 
 SUPPORT
 
@@ -50,12 +50,12 @@ see your questions.
 REPORTING BUGS
 
 If you are getting some sort of error message, please set the
-environment variable ALZABO_DEBUG to 1 and then send the now very
+environment variable ALZABO_DEBUG to TRACE and then send the now very
 verbose error message to the mailing list.
 
 If you are experiencing test failures, please run the tests like this:
 
-        make test TEST_VERBOSE=1
+        ./Build test verbose=1
 
 and send the output along with the bug report.  Otherwise I'll just
 ask you to do this before I can do anything.
@@ -89,8 +89,10 @@ can just ignore them.
 CREDITS
 
 Ilya Martynov deserves special thanks for providing a _lot_ of patches
-(mostly catching my dumb mistakes) as well as many useful suggestions
-on new features, bug fixing, etc.
+as well as many useful suggestions on new features, bug fixing, etc.
+
+Ken Williams contributed a number of patches, many of which focused on
+improving Postgres support.
 
 Bob Gustafson has provided extensive assistance in testing and
 debugging.
@@ -118,7 +120,9 @@ Eric Hillman
 Barry Hoggard
 Sam Horrocks
 Aaron Johnson
+Josh Jore
 Dan Martinez
+William McKee
 Dana Powers
 Jared Rhine
 Ron Savage

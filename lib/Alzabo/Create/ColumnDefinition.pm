@@ -4,9 +4,11 @@ use strict;
 use vars qw($VERSION);
 
 use Alzabo::Create;
+use Alzabo::Exceptions ( abbr => 'params_exception' );
 
 use Params::Validate qw( :all );
-Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+Params::Validate::validation_options
+    ( on_fail => sub { params_exception join '', @_ } );
 
 use base qw(Alzabo::ColumnDefinition);
 
@@ -79,14 +81,8 @@ sub alter
 	$self->{type} = $old_type;
 	$self->{length} = $old_length;
 	$self->{precision} = $old_precision;
-	if ( UNIVERSAL::can( $@, 'rethrow' ) )
-	{
-	    $@->rethrow;
-	}
-	else
-	{
-	    Alzabo::Exception->throw( error => $@ );
-	}
+
+        rethrow_exception($@);
     }
 }
 
@@ -109,14 +105,8 @@ sub set_type
     if ($@)
     {
 	$self->{type} = $old_type;
-	if ( UNIVERSAL::can( $@, 'rethrow' ) )
-	{
-	    $@->rethrow;
-	}
-	else
-	{
-	    Alzabo::Exception->throw( error => $@ );
-	}
+
+        rethrow_exception($@);
     }
 }
 
@@ -142,16 +132,12 @@ sub set_length
     {
 	$self->{length} = $old_length;
 	$self->{precision} = $old_precision;
-	if ( UNIVERSAL::can( $@, 'rethrow' ) )
-	{
-	    $@->rethrow;
-	}
-	else
-	{
-	    Alzabo::Exception->throw( error => $@ );
-	}
+
+        rethrow_exception($@);
     }
 }
+
+1;
 
 __END__
 
