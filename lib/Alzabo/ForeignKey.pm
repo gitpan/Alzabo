@@ -5,7 +5,7 @@ use vars qw($VERSION);
 
 use Alzabo;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -45,25 +45,11 @@ sub column_pairs
 	     0..$#{ $self->{columns_from} } );
 }
 
-sub min_max_from
-{
-    my $self = shift;
-
-    return @{ $self->{min_max_from} };
-}
-
-sub min_max_to
-{
-    my $self = shift;
-
-    return @{ $self->{min_max_to} };
-}
-
 sub cardinality
 {
     my $self = shift;
 
-    return ( $self->{min_max_from}->[1], $self->{min_max_to}->[1] );
+    return @{ $self->{cardinality} };
 }
 
 sub is_one_to_one
@@ -90,21 +76,17 @@ sub is_many_to_one
 
     my @c = $self->cardinality;
 
-    return $c[0] eq 'n' && $c[1] eq 'n';
+    return $c[0] eq 'n' && $c[1] eq '1';
 }
 
 sub from_is_dependent
 {
-    my $self = shift;
-
-    return $self->{min_max_from}[0] eq '1';
+    return shift->{from_is_dependent};
 }
 
 sub to_is_dependent
 {
-    my $self = shift;
-
-    return $self->{min_max_to}[0] eq '1';
+    return shift->{to_is_dependent};
 }
 
 sub id
@@ -117,8 +99,9 @@ sub id
 			   $self->columns_from,
 			   $self->columns_to,
 			 ),
-			 $self->min_max_from,
-			 $self->min_max_to,
+			 $self->cardinality,
+			 $self->from_is_dependent,
+			 $self->to_is_dependent,
 		       );
 }
 
@@ -140,44 +123,18 @@ Alzabo::ForeignKey - Foreign key (relation) objects
 =head1 DESCRIPTION
 
 A foreign key is an object defined by several properties.  It
-represents a relationship from a column in one table to a column in
-another table.  This relationship can be described in this manner:
+represents a relationship from a column or columns in one table to a
+column or columns in another table.
 
-There is a relationship from column BAZ in table foo to column BOZ in
-table bar.  For every entry in column BAZ, there must X..Y
-corresponding entries in column BOZ.  For every entry in column BOZ,
-there must be Y..Z corresponding entries in column BAZ.  X, Y, and Z
-are 0, 1, or n, and must form one of these pairs: 0..1, 0..n, 1..1,
-1..n.
+This relationship is defined by its cardinality (one to one, one to
+many, or many to one) and its dependencies (whether or not table X is
+dependent on table Y, and vice versa).
 
-The properties that make up a foreign key are:
-
-=over 4
-
-=item * columns_from
-
-The column in the owning table that corresponds to some column in
-'table_to'.
-
-=item * columns_to
-
-The column to which there is a correspondence.
-
-=item * min_max(_to, _from)
-
-Legal values for this are 0..1, 0..n, 1..1, and 1..n (n..n
-relationships are handled specially).  For the above mentioned
-relationship from foo.baz to bar.boz, if the min_max_to were 0..1, we
-could say, "For every entry in foo.baz, there may be 0 or 1
-corresponding entries in bar.boz."  If the min_max_from value were
-1..n we would say that "for every entry in bar.boz, there must be 1 or
-more corresponding entries in foo.baz."
-
-=back
-
-Cardinality is generated from the two min_max values.  This is the max
-from to the max to.  If min_max_from was 0..1 and min_max_to was 1..n
-then the cardinality of the relationship would be 1..n.
+Many to many relationships are not allowed.  However, you may indicate
+such a relationship when using the
+L<Alzabo::Create::Schema-E<gt>add_relation
+method|Alzabo::Create::Schema/add_relation> method, and it will create
+the necessary intermediate linking table for you.
 
 =head1 METHODS
 
@@ -208,12 +165,10 @@ correspond in the tables being linked together.
 
 =head2 cardinality
 
-This will be either 1..1 or 1..n.
-
 =head3 Returns
 
 A two element array containing the two portions of the cardinality of
-the relationship.
+the relationship.  Each portion will be either '1' or 'n'.
 
 =head2 from_is_dependent
 

@@ -19,7 +19,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.63 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.64 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -251,7 +251,7 @@ sub add_relation
     $self->_check_add_relation_args(%p);
 
     # This requires an entirely new table.
-    if ($p{min_max_from}->[1] eq 'n' && $p{min_max_to}->[1] eq 'n')
+    unless ( grep { $_ ne 'n' } @{ $p{cardinality} } )
     {
 	$self->_create_linking_table(%p);
 	return;
@@ -296,30 +296,24 @@ sub add_relation
     # to.  As in table A/column B maps _to_ table X/column Y
     my ($col_from, $col_to);
 
-    my $method;
-    if ($p{min_max_from}->[1] ne 'n')
-    {
-	$method = '_create_to_1_relationship';
-    }
-    else
-    {
-	$method = '_create_to_n_relationship';
-    }
+    # cardinality from -> to
+    my $cardinality = ( $p{cardinality}->[0] eq '1' && $p{cardinality}->[1] eq '1' ? '1_to_1' :
+			( $p{cardinality}->[0] eq '1' && $p{cardinality}->[1] eq 'n' ? '1_to_n' : 'n_to_1' ) );
+    my $method = "_create_${cardinality}_relationship";
 
-    ($col_from, $col_to) = $self->$method( table_from   => $f_table,
+    ($col_from, $col_to) = $self->$method( %p,
+					   table_from   => $f_table,
 					   table_to     => $t_table,
-					   columns_from => $p{columns_from},
-					   columns_to   => $p{columns_to},
-					   min_max_from => $p{min_max_from},
-					   min_max_to   => $p{min_max_to},
 					 );
 
     eval
     {
 	$f_table->make_foreign_key( columns_from => $col_from,
 				    columns_to   => $col_to,
-				    min_max_from => $p{min_max_from},
-				    min_max_to   => $p{min_max_to} );
+				    cardinality  => $p{cardinality},
+				    from_is_dependent => $p{from_is_dependent},
+				    to_is_dependent   => $p{to_is_dependent},
+				  );
     };
     if ($@)
     {
@@ -344,29 +338,26 @@ sub add_relation
 
     $tracker->add( sub { $f_table->delete_foreign_key($_) foreach @fk } );
 
-    if ($p{min_max_to}->[1] ne 'n')
-    {
-	$method = '_create_to_1_relationship';
-    }
-    else
-    {
-	$method = '_create_to_n_relationship';
-    }
+    # cardinality to -> to
+    my $inverse_cardinality = ( $p{cardinality}->[1] eq '1' && $p{cardinality}->[0] eq '1' ? '1_to_1' :
+				( $p{cardinality}->[1] eq '1' && $p{cardinality}->[0] eq 'n' ? '1_to_n' : 'n_to_1' ) );
+    my $inverse_method = "_create_${inverse_cardinality}_relationship";
 
     ($col_from, $col_to) = $self->$method( table_from => $t_table,
 					   table_to   => $f_table,
 					   columns_from => $col_to,
 					   columns_to   => $col_from,
-					   min_max_from => $p{min_max_to},
-					   min_max_to   => $p{min_max_from},
+					   cardinality  => [ @{ $p{cardinality} }[1,0] ],
+					   from_is_dependent => $p{to_is_dependent},
+					   to_is_dependent   => $p{from_is_dependent},
 					 );
 
-    if ($p{min_max_from}->[0] eq '1')
+    if ($p{from_is_dependent})
     {
 	$_->nullable(0) foreach @{ $p{columns_from} };
     }
 
-    if ($p{min_max_to}->[0] eq '1')
+    if ($p{to_is_dependent})
     {
 	$_->nullable(0) foreach @{ $p{columns_to} };
     }
@@ -375,8 +366,10 @@ sub add_relation
     {
 	$t_table->make_foreign_key( columns_from => $col_from,
 				    columns_to   => $col_to,
-				    min_max_from => $p{min_max_to},
-				    min_max_to   => $p{min_max_from} );
+				    cardinality  => [ @{ $p{cardinality} }[1,0] ],
+				    from_is_dependent => $p{to_is_dependent},
+				    to_is_dependent   => $p{from_is_dependent},
+				  );
     };
     if ($@)
     {
@@ -397,27 +390,21 @@ sub _check_add_relation_args
 	    unless $self->{tables}->EXISTS( $t->name );
     }
 
-    foreach my $mm ( $p{min_max_from}, $p{min_max_to} )
-    {
-	Alzabo::Exception::Params->throw( error => "Incorrect number of min/max elements" )
-	    unless scalar @$mm == 2;
+    Alzabo::Exception::Params->throw( error => "Incorrect number of cardinality elements" )
+	unless scalar @{ $p{cardinality} } == 2;
 
-	foreach my $c ( @$mm )
-	{
-	    Alzabo::Exception::Params->throw( error => "Invalid min/max: $c" )
+    foreach my $c ( @{ $p{cardinality} } )
+    {
+	Alzabo::Exception::Params->throw( error => "Invalid cardinality: $c" )
 		unless $c =~ /^[01n]$/i;
-	}
     }
 
-    # No such thing as 1..0, n..0, or n..1!
-    foreach my $k ( qw( min_max_from min_max_to ) )
-    {
-	Alzabo::Exception::Params->throw( error => "Invalid min/max: $p{$k}->[0]..$p{$k}->[1]" )
-	    if  $p{$k}->[1] eq '0' || ( $p{$k}->[0] eq 'n' && $p{$k}->[1] ne 'n' );
-    }
+    # No such thing as 1..0 or n..0
+    Alzabo::Exception::Params->throw( error => "Invalid cardinality: $p{cardinality}->[0]..$p{cardinality}->[1]" )
+	if  $p{cardinality}->[1] eq '0';
 }
 
-sub _create_to_1_relationship
+sub _create_1_to_1_relationship
 {
     my $self = shift;
     my %p = @_;
@@ -431,12 +418,13 @@ sub _create_to_1_relationship
     # relation.
     my @order;
 
-    if ( $p{min_max_from}->[0] eq '1' ||
-	 ( $p{min_max_from}->[0] eq '0' &&
-	   $p{min_max_to}->[0] eq '0' ) )
+    # If the from table is dependent or neither one is or both are ...
+    if ( $p{from_is_dependent} ||
+	 $p{from_is_dependent} == $p{to_is_dependent} )
     {
 	@order = ( 'from', 'to' );
     }
+    # The to table is dependent
     else
     {
 	@order = ( 'to', 'from' );
@@ -490,7 +478,7 @@ sub _create_to_1_relationship
 # the 'to' side of the relationship.  This table only relates to one
 # row in the 'from' table, but a row in the 'from' table can relate to
 # 'n' rows in the 'to' table.
-sub _create_to_n_relationship
+sub _create_1_to_n_relationship
 {
     my $self = shift;
     my %p = @_;
@@ -535,6 +523,21 @@ sub _create_to_n_relationship
     }
 
     return ($col_from, $col_to);
+}
+
+sub _create_n_to_1_relationship
+{
+    my $self = shift;
+    my %p = @_;
+
+    # reverse everything ...
+    ($p{table_from}, $p{table_to}) = ($p{table_to}, $p{table_from});
+    ($p{columns_from}, $p{columns_to}) = ($p{columns_to}, $p{columns_from});
+    ($p{from_is_dependent}, $p{to_is_dependent}) = ($p{to_is_dependent}, $p{from_is_dependent});
+
+    # pass it into the inverse method and then swap the return values.
+    # Tada!
+    return ( $self->_create_1_to_n_relationship(%p) )[1,0];
 }
 
 # Given two tables and a column, it will add the column to the table
@@ -657,17 +660,21 @@ sub _create_linking_table
 
 	$self->add_relation( table_from => $t1,
 			     table_to   => $linking,
-			     min_max_from => [ $p{min_max_from}->[0], 'n' ],
-			     min_max_to   => [ '1', '1' ],
 			     columns_from => $t1_col,
-			     columns_to   => [ $linking->columns( map { $_->name } @$t1_col ) ] );
+			     columns_to   => [ $linking->columns( map { $_->name } @$t1_col ) ],
+			     cardinality  => [ '1', 'n' ],
+			     from_is_dependent => $p{from_is_dependent},
+			     to_is_dependent => 1,
+			   );
 
 	$self->add_relation( table_from => $t2,
 			     table_to   => $linking,
-			     min_max_from => [ $p{min_max_to}->[0], 'n' ],
-			     min_max_to   => [ '1', '1' ],
 			     columns_from => $t2_col,
-			     columns_to   => [ $linking->columns( map { $_->name } @$t2_col ) ] );
+			     columns_to   => [ $linking->columns( map { $_->name } @$t2_col ) ],
+			     cardinality  => [ '1', 'n' ],
+			     from_is_dependent => $p{to_is_dependent},
+			     to_is_dependent => 1,
+			   );
     };
 
     if ($@)
@@ -1078,12 +1085,12 @@ both tables.  If the C<columns_from> and C<columns_to> parameters are
 not specified then the schema object attempts to calculate the proper
 values for these attributes.
 
-This is determined as follows: If the min_max_from value is 1..1 or
-1..n, it assumes that the table specified as C<table_from> is dependent
-on the other table, and use the other table's primary key as the
-linking table.  If the C<min_max_from> and C<min_max_to> are both 0..(1
-or n) then it also assumes that the C<table_from> table is dependent.
-In all other cases, it uses the primary key from the C<table_from>.
+To do this, Alzabo attempts to determine the dependencies of the
+tables.  If you have specified a cardinality of 1..1, or n..1,n cases
+where both tables are independent, or where they are both dependent
+(which makes little sense but its your code so...) then the
+C<table_from> is treated as being the dependent table for the purposes
+of determining
 
 If no columns with the same names exist in the other table, then
 columns with that name will be created.  Otherwise, it changes the
@@ -1099,15 +1106,13 @@ in the C<columns_from> parameter is assumed to correspond to the first
 column in hte C<columns_to> parameter and so on.
 
 The number of columns given in C<columns_from> and C<columns_to> must
-be the same except when both C<min_max_...> parameters have are (0 or
-1)..n.
+be the same except when creating a many to many relationship.
 
-If both the C<min_max_from> and C<min_max_to> parameters are (0 or
-1)..n then a new table will be created to link the two tables
-together.  This table will contain the primary keys of both the tables
-passed into this function.  It will contain foreign keys to both of
-these tables as well and these tables will be linked to this new
-table.
+If the cardinality is many to many then a new table will be created to
+link the two tables together.  This table will contain the primary
+keys of both the tables passed into this function.  It will contain
+foreign keys to both of these tables as well and these tables will be
+linked to this new table.
 
 =head3 Parameters
 
@@ -1121,15 +1126,11 @@ table.
 
 =item * columns_to => C<Alzabo::Create::Column> object (optional if table_to is provided)
 
-=item * min_max_from => (see below)
+=item * cardinality => [1, 1], [1, 'n'], ['n', 1], or ['n', 'n']
 
-=item * min_max_to => (see below)
+=item * from_is_dependent => $boolean
 
-The two min_max attributes both take the same kind of argument, an
-array reference two scalars long.
-
-The first of these scalars can be the value '0' or '1' while the
-second can be '1' or 'n'.
+=item * to_is_dependent => $boolean
 
 =back
 

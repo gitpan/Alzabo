@@ -10,7 +10,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.47 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.48 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -338,6 +338,8 @@ sub finish_transaction
 {
     my $self = shift;
 
+    my $callee = (caller(1))[3];
+
     # More commits than begin_tran.  Not correct.
     if ( defined $self->{tran_count} )
     {
@@ -346,7 +348,7 @@ sub finish_transaction
     else
     {
 	my $callee = (caller(1))[3];
-	warn "$callee called commit without corresponding begin_tran call\n";
+	warn "$callee called finish_transaction without corresponding start_transaction call\n";
     }
 
     # Don't actually commit until we reach 'uber-commit'

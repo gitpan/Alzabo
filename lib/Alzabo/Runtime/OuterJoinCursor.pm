@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw( Alzabo::Runtime::JoinCursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -28,7 +28,7 @@ sub new
     return $self;
 }
 
-sub next_rows
+sub next
 {
     my $self = shift;
 
@@ -75,6 +75,7 @@ sub next_rows
 
     return $self->{type} eq 'right' ? @rows[1,0] : @rows;
 }
+*next_rows = \&next;
 
 __END__
 
@@ -86,7 +87,7 @@ Alzabo::Runtime::OuterJoinCursor - Cursor that returns arrays of C<Alzabo::Runti
 
   my $cursor = $schema->left_outer_join( tables => [ $foo, $bar ] );
 
-  while ( my @rows = $cursor->next_rows )
+  while ( my @rows = $cursor->next )
   {
       print $row[0]->select('foo'), "\n";
       print $row[1]->select('bar'), "\n" if defined $row[1];
@@ -102,7 +103,7 @@ of a row object for a that row, instead of a row object.
 
 L<C<Alzabo::Runtime::JoinCursor>|Alzabo::Runtime::JoinCursor>
 
-=head2 next_rows
+=head2 next
 
 =head3 Returns
 

@@ -6,7 +6,7 @@ use vars qw($SELF $VERSION %ARGS);
 # load this for use by Alzabo::Runtime::Row
 use Alzabo::Runtime::CachedRow;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -16,8 +16,8 @@ sub import
 
     %ARGS = @_;
 
-    $ARGS{store} ||= 'Alzabo::ObjectCache::MemoryStore';
-    $ARGS{sync}  ||= 'Alzabo::ObjectCache::NullSync';
+    $ARGS{store} ||= 'Alzabo::ObjectCache::Store::Memory';
+    $ARGS{sync}  ||= 'Alzabo::ObjectCache::Sync::Null';
 
     # Don't want to repeat myself.
     # Don't want to repeat myself.

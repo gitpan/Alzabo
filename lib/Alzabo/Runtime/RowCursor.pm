@@ -12,7 +12,7 @@ use Time::HiRes qw(time);
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -36,7 +36,7 @@ sub new
     return bless $self, $class;
 }
 
-sub next_row
+sub next
 {
     my $self = shift;
 
@@ -89,6 +89,7 @@ sub next_row
 
     return $row;
 }
+*next_row = \&next;
 
 sub all_rows
 {
@@ -96,7 +97,7 @@ sub all_rows
 
     my @rows;
     my @errors;
-    while ( my $row = $self->next_row )
+    while ( my $row = $self->next )
     {
 	push @rows, $row;
 	push @errors, $self->errors if $self->errors;
@@ -118,7 +119,7 @@ Alzabo::Runtime::RowCursor - Cursor that returns C<Alzabo::Runtime::Row> objects
 
   my $cursor = $schema->table('foo')->all_rows;
 
-  while ( my $row = $cursor->next_row )
+  while ( my $row = $cursor->next )
   {
       print $row->select('foo'), "\n";
   }
@@ -150,7 +151,7 @@ L<C<Alzabo::Runtime::Cursor>|Alzabo::Runtime::Cursor>
 
 =back
 
-=head2 next_row
+=head2 next
 
 Returns the next L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>
 object or undef if no more are available.  This behavior can mask
@@ -162,7 +163,7 @@ Alzabo::Runtime::Cursor|Alzabo::Runtime::Cursor/HANDLING ERRORS>.
 
 Returns all the rows available from the current point onwards.  This
 means that if there are five rows that will be returned when the
-object is created and you call C<next_row> twice, calling all_rows
+object is created and you call C<next> twice, calling all_rows
 after it will only return three.  Calling the L<C<errors>|errors>
 method after this will return all errors trapped during the fetching
 of these rows.
@@ -173,7 +174,7 @@ See L<C<Alzabo::Runtime::Cursor>|Alzabo::Runtime::Cursor>.
 
 =head2 reset
 
-Resets the cursor so that the next L<C<next_row>|next_row> call will
+Resets the cursor so that the next L<C<next>|next> call will
 return the first row of the set.
 
 =head1 AUTHOR

@@ -12,7 +12,7 @@ use Tie::IxHash;
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.39 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.40 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -223,7 +223,7 @@ sub add_primary_key
 
     $self->schema->rules->validate_primary_key($col);
 
-    $col->set_null(0);
+    $col->set_nullable(0);
 
     $self->{pk}->STORE( $name, $col );
 }

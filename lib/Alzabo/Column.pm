@@ -7,7 +7,7 @@ use Alzabo;
 
 use Tie::IxHash;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.23 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.24 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -25,7 +25,6 @@ sub name
     return $self->{name};
 }
 
-*null = \&nullable;
 sub nullable
 {
     my $self = shift;

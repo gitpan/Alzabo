@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::Column);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.31 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -111,7 +111,6 @@ sub set_name
 	if $old_name;
 }
 
-*set_null = \&set_nullable;
 sub set_nullable
 {
     my $self = shift;

@@ -7,7 +7,7 @@ use strict;
 use Alzabo::Exceptions;
 use Time::HiRes qw( time );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -36,8 +36,10 @@ sub register_store
     my $self = shift;
     my $obj = shift;
     my $id = $obj->id;
+    my $time = shift;
 
-    my $time = shift || time;
+    $time = sprintf('%11.23f', defined $time ? $time : time);
+
     $self->{obj_times}{$obj} = $time;
 
     return if
@@ -54,8 +56,6 @@ sub is_expired
     my $obj = shift;
     my $id = $obj->id;
 
-#    return unless exists $self->{obj_times}{$obj} || exists $self->{id_times}{$id};
-
     my $sync_time = $self->sync_time($id);
 
     return 1 if exists $self->{obj_times}{$obj} && $self->{obj_times}{$obj} < $sync_time;
@@ -63,6 +63,8 @@ sub is_expired
     return 1 if exists $self->{id_times}{$id} && $self->{id_times}{$id} < $sync_time;
 
     return 1 if $sync_time && ! ( exists $self->{id_times}{$id} || exists $self->{obj_times}{$obj} );
+
+    return 0;
 }
 
 sub register_refresh
@@ -73,7 +75,8 @@ sub register_refresh
 
     return unless exists $self->{obj_times}{$obj};
 
-    $self->{obj_times}{$obj} = time;
+    my $time = sprintf( '%11.23f', time );
+    $self->{obj_times}{$obj} = $time;
 }
 
 sub register_change
@@ -81,10 +84,12 @@ sub register_change
     my $self = shift;
     my $obj = shift;
     my $id = $obj->id;
+    my $time = shift;
 
     return unless exists $self->{id_times}{$id};
 
-    my $time = shift || time;
+    $time = sprintf('%11.23f', defined $time ? $time : time);
+
     $self->{id_times}{$id} = $self->{obj_times}{$obj} = $time;
     $self->update( $id => $time, 1 );
 }
@@ -115,8 +120,9 @@ sub is_deleted
 sub delete_from_cache
 {
     my $self = shift;
+    my $obj = shift;
 
-    delete $self->{obj_times}{ +shift };
+    delete $self->{obj_times}{$obj};
 }
 
 sub clear

@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw(Alzabo::ForeignKey);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -21,8 +21,10 @@ sub new
 
     validate( @_, { columns_from => { type => ARRAYREF | OBJECT },
 		    columns_to   => { type => ARRAYREF | OBJECT },
-		    min_max_from => { type => ARRAYREF },
-		    min_max_to   => { type => ARRAYREF } } );
+		    cardinality  => { type => ARRAYREF },
+		    from_is_dependent => { type => SCALAR },
+		    to_is_dependent   => { type => SCALAR },
+		  } );
     my %p = @_;
 
     my $self = bless {}, $class;
@@ -30,8 +32,9 @@ sub new
     $self->set_columns_from( $p{columns_from} );
     $self->set_columns_to( $p{columns_to} );
 
-    $self->set_min_max_from( $p{min_max_from} );
-    $self->set_min_max_to( $p{min_max_to} );
+    $self->set_cardinality( @{ $p{cardinality} } );
+    $self->set_from_is_dependent( $p{from_is_dependent} );
+    $self->set_to_is_dependent( $p{to_is_dependent} );
 
     return $self;
 }
@@ -68,45 +71,39 @@ sub set_columns_to
     $self->{columns_to} = $c;
 }
 
-sub set_min_max_from
+sub set_cardinality
 {
     my $self = shift;
 
-    validate_pos( @_, { type => ARRAYREF } );
-    my $mm = shift;
+    my @card = @_;
 
-    Alzabo::Exception::Params->throw( error => "Incorrect number of min/max elements" )
-	unless scalar @$mm == 2;
+    Alzabo::Exception::Params->throw( error => "Incorrect number of elements for cardinality" )
+	unless scalar @card == 2;
 
-    foreach my $c ( @$mm )
+    foreach my $c ( @card )
     {
-	Alzabo::Exception::Params->throw( error => "Invalid min/max: $c" )
-	    unless $c =~ /^[01n]$/i;
+	Alzabo::Exception::Params->throw( error => "Invalid cardinality piece: $c" )
+	    unless $c =~ /^[1n]$/i;
     }
 
-    Alzabo::Exception::Params->throw( error => "Invalid min/max: $mm->[0]..$mm->[1]" )
-	if $mm->[0] eq 'n' || $mm->[1] eq '0';
+    Alzabo::Exception::Params->throw( error => "Invalid cardinality: $card[0]..$card[1]" )
+	if $card[0] eq 'n' && $card[1] eq 'n';
 
-    $self->{min_max_from} = $mm;
+    $self->{cardinality} = \@card;
 }
 
-sub set_min_max_to
+sub set_from_is_dependent
 {
     my $self = shift;
 
-    validate_pos( @_, { type => ARRAYREF } );
-    my $mm = shift;
+    $self->{from_is_dependent} = shift;
+}
 
-    Alzabo::Exception::Params->throw( error => "Incorrect number of min/max elements" )
-	unless scalar @$mm == 2;
+sub set_to_is_dependent
+{
+    my $self = shift;
 
-    foreach my $c ( @$mm )
-    {
-	Alzabo::Exception::Params->throw( error => "Invalid min/max: $c" )
-	    unless $c =~ /^[01n]$/i;
-    }
-
-    $self->{min_max_to} = $mm;
+    $self->{to_is_dependent} = shift;
 }
 
 __END__
@@ -143,15 +140,11 @@ These two parameters may be either a single column or a reference to
 an array columns.  The number of columns in the two parameters must
 match.
 
-=item * min_max_from => see below
+=item * cardinality => [1, 1], [1, 'n'], or ['n', 1]
 
-=item * min_max_to => see below
+=item * from_is_dependent => $boolean
 
-The two min_max attributes both take the same kind of argument, an
-array reference two scalars long.
-
-The first of these scalars can be the value '0' or '1' while the
-second can be '1' or 'n'.
+=item * to_is_dependent => $boolean
 
 =back
 
@@ -192,18 +185,21 @@ single a column object or a reference to an array of column objects.
 
 =for pod_merge is_many_to_one
 
-=head2 set_min_max_from (\@min_max_value) see above for details
+=head2 set_cardinality (\@cardinality) see above for details
 
-Sets the min_max value of the relation of the 'from' table to the 'to'
-table.
+Sets the cardinality value of the relation.
 
-=head2 set_min_max_to (\@min_max_value) see above for details
+=head2 set_from_is_dependent ($boolean)
 
-Sets the min_max value of the relation of the 'to' table to the 'from'
-table.
+Indicates whether or not the first table in the relationship is
+dependent on the other (i.e. whether the 'from' table is dependent on
+the 'to' table).
 
-NOTE: All the 'min_max' stuff is going to go away in favor of
-using cardinality and dependency terms.
+=head2 set_to_is_dependent ($boolean)
+
+Indicates whether or not the second table in the relationship is
+dependent on the other (i.e. whether the 'to' table is dependent on
+the 'from' table).
 
 =head1 AUTHOR
 

@@ -20,12 +20,12 @@ Short term:
   I'm no longer sure this is possible.  My most recent attempt caused
   inexplicable test failures.
 
+- Make it possible to do multiple outer joins in a single query.
+
 - Give the options to save objects to disk in something a bit more
   robust than a serialized object form.  Barrie Slaymaker is working
   on a generic XML language for database schema modelling, to be
   called DBML.
-
-- Non-Mason interface(s) (curses, plain CGI)
 
 - Make caching system more atomic.  There may subtle race conditions
   in there that should be fixed (timestamps are generated more than
@@ -63,6 +63,8 @@ Medium term:
 
 - Overhaul foreign key objects so that one relation has one such
   object, shared by two tables.
+
+- Non-Mason interface(s) (curses, plain CGI)
 
 Long term:
 

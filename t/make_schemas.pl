@@ -72,13 +72,15 @@ sub mysql_make_schema
 		      table_to => $emp_t,
 		      columns_from => $dep_t->column('manager_id'),
 		      columns_to => $emp_t->column('employee_id'),
-		      min_max_from => [ '0', '1' ],
-		      min_max_to => [ '0', 'n' ],
+		      cardinality => [1, 1],
+		      from_is_dependent => 0,
+		      to_is_dependent => 0,
 		    );
     $s->add_relation( table_from => $emp_t,
 		      table_to => $dep_t,
-		      min_max_from => [ '1', '1' ],
-		      min_max_to => [ '0', 'n' ],
+		      cardinality => ['n', 1],
+		      from_is_dependent => 1,
+		      to_is_dependent => 0,
 		    );
 
     $s->make_table( name => 'project' );
@@ -96,16 +98,18 @@ sub mysql_make_schema
 					prefix => 20 } ] );
     $s->add_relation( table_from => $proj_t,
 		      table_to   => $dep_t,
-		      min_max_from => [ '1', '1' ],
-		      min_max_to => [ '0', 'n' ],
+		      cardinality => ['n', 1],
+		      from_is_dependent => 1,
+		      to_is_dependent => 0,
 		    );
 
     $emp_t->column('department_id')->set_name('dep_id');
 
     $s->add_relation( table_from => $emp_t,
 		      table_to   => $proj_t,
-		      min_max_from => [ '0', 'n' ],
-		      min_max_to   => [ '0', 'n' ],
+		      cardinality => ['n', 'n'],
+		      from_is_dependent => 0,
+		      to_is_dependent => 0,
 		    );
 
     my $char_pk_t = $s->make_table( name => 'char_pk' );
@@ -149,8 +153,9 @@ sub mysql_make_schema
 		      table_to   => $outer_2_t,
 		      columns_from => $outer_1_t->column('outer_2_key'),
 		      columns_to   => $outer_2_t->column('outer_2_key'),
-		      min_max_from => [ '0', '1' ],
-		      min_max_to   => [ '0', '1' ],
+		      cardinality => [1, 1],
+		      from_is_dependent => 0,
+		      to_is_dependent => 0,
 		    );
 
     $s->save_to_file;
@@ -221,13 +226,15 @@ sub pg_make_schema
 		      table_to => $emp_t,
 		      columns_from => $dep_t->column('manager_id'),
 		      columns_to => $emp_t->column('employee_id'),
-		      min_max_from => [ '0', '1' ],
-		      min_max_to => [ '0', 'n' ],
+		      cardinality => [ 1, 1 ],
+		      from_is_dependent => 0,
+		      to_is_dependent => 0,
 		    );
     $s->add_relation( table_from => $emp_t,
 		      table_to => $dep_t,
-		      min_max_from => [ '1', '1' ],
-		      min_max_to => [ '0', 'n' ],
+		      cardinality => ['n', 1],
+		      from_is_dependent => 1,
+		      to_is_dependent => 0,
 		    );
 
     $s->make_table( name => 'project' );
@@ -242,19 +249,22 @@ sub pg_make_schema
 			  length => 200,
 			);
 
-    $s->add_relation( table_from => $proj_t,
-		      table_to   => $dep_t,
-		      min_max_from => [ '1', '1' ],
-		      min_max_to => [ '0', 'n' ],
+    $s->add_relation( table_from => $emp_t,
+		      table_to   => $proj_t,
+		      cardinality => ['n', 'n'],
+		      from_is_dependent => 0,
+		      to_is_dependent => 0,
 		    );
+
     $proj_t->make_index( columns => [ { column => $proj_t->column('name') } ] );
 
     $emp_t->column('department_id')->set_name('dep_id');
 
-    $s->add_relation( table_from => $emp_t,
-		      table_to   => $proj_t,
-		      min_max_from => [ '0', 'n' ],
-		      min_max_to   => [ '0', 'n' ],
+    $s->add_relation( table_from => $proj_t,
+		      table_to   => $dep_t,
+		      cardinality => ['n', 1],
+		      from_is_dependent => 1,
+		      to_is_dependent => 0,
 		    );
 
     my $char_pk_t = $s->make_table( name => 'char_pk' );
@@ -301,8 +311,9 @@ sub pg_make_schema
 		      table_to   => $outer_2_t,
 		      columns_from => $outer_1_t->column('outer_2_key'),
 		      columns_to   => $outer_2_t->column('outer_2_key'),
-		      min_max_from => [ '0', '1' ],
-		      min_max_to   => [ '0', '1' ],
+		      cardinality => [1, 1],
+		      from_is_dependent => 0,
+		      to_is_dependent => 0,
 		    );
 
     $s->save_to_file;

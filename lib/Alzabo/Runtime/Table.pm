@@ -12,7 +12,7 @@ use Time::HiRes qw(time);
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.54 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.56 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -48,14 +48,14 @@ sub insert
     {
 	next if $c->is_primary_key;
 
-	Alzabo::Exception::Params->throw( error => "Column " . $c->name . " cannot be null." )
+	Alzabo::Exception::Params->throw( error => $c->name . " column in " . $self->name . " table cannot be null." )
 	    unless defined $vals->{ $c->name } || $c->nullable || defined $c->default;
 
 	delete $vals->{ $c->name }
 	    if ! defined $vals->{ $c->name } && defined $c->default;
     }
 
-    $driver->start_transaction;
+    my @fk = $self->all_foreign_keys;
 
     my $sql = ( $self->schema->sqlmaker->
 		insert->
@@ -63,15 +63,18 @@ sub insert
 		values( map { $self->column($_) => $vals->{$_} } sort keys %$vals ) );
 
     my %id;
+
+    $driver->start_transaction if @fk;
     eval
     {
-	foreach my $fk ( $self->all_foreign_keys )
+	foreach my $fk (@fk)
 	{
 	    $fk->register_insert( map { $_->name => $vals->{ $_->name } } $fk->columns_from );
 	}
 
 	$self->schema->driver->do( sql => $sql->sql,
 				   bind => $sql->bind );
+
 	$p{time} = time;
 
 	foreach my $pk (@pk)
@@ -80,15 +83,14 @@ sub insert
 				 $vals->{ $pk->name } :
 				 $driver->get_last_id($self) );
 	}
+
+	# must come after call to ->get_last_id for MySQL
+	$driver->finish_transaction if @fk;
     };
     if ($@)
     {
 	$driver->rollback;
 	$@->rethrow;
-    }
-    else
-    {
-	$driver->finish_transaction;
     }
 
     return $self->row_by_pk( pk => \%id, %p, insert => 1 );
@@ -101,7 +103,7 @@ sub row_by_pk
 
     my $row_class = delete $p{row_class} || 'Alzabo::Runtime::Row';
 
-    my $pk_val = exists $p{pk} ? delete $p{pk} : delete $p{id};
+    my $pk_val = delete $p{pk};
 
     my @pk = $self->primary_key;
 
@@ -122,7 +124,7 @@ sub row_by_pk
 
     return $row_class->new( %p,
 			    table => $self,
-			    id => $pk_val );
+			    pk => $pk_val );
 }
 
 sub row_by_id

@@ -7,7 +7,7 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::ForeignKey);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -47,6 +47,11 @@ sub register_update
 
     my $driver = $self->table_from->schema->driver;
 
+    my @where;
+    my @vals;
+
+    my $has_nulls = grep { ! defined } values %vals;
+
     foreach my $pair ( $self->column_pairs )
     {
 	if ( !defined $vals{ $pair->[0]->name } && $self->from_is_dependent )
@@ -57,20 +62,19 @@ sub register_update
 	$self->_check_existence( $pair->[1] => $vals{ $pair->[0]->name } )
 	    if defined $vals{ $pair->[0]->name };
 
-	# This should rarely be triggered.
-	unless ( ($self->min_max_to)[1] eq 'n' )
+	unless ( $self->is_many_to_one || $has_nulls )
 	{
-	    my $sql = ( $self->table->schema->sql->
-			count('*')->
-			from( $self->table_form )->
-			where( $pair->[0], '=', $vals{ $pair->[0]->name } )
-		      );
+	    push @where, [ $pair->[0], '=', $vals{ $pair->[0]->name } ];
+	    push @vals, $pair->[0]->name . ' = ' . $vals{ $pair->[0]->name };
+	}
+    }
 
-	    if ( $driver->one_row( sql => $sql->sql,
-				   bind => $sql->bind ) )
-	    {
-		Alzabo::Exception::ReferentialIntegrity->throw( error => "Value (" . $vals{ $pair->[0]->name } . ") already exists in table " . $self->table_from->name . '.' );
-	    }
+    unless ( $self->is_many_to_one || $has_nulls )
+    {
+	if ( $self->table_from->row_count( where => \@where ) )
+	{
+	    my $err = '(' . (join ', ', @vals) . ') already exists in the ' . $self->table_from->name . ' table';
+	    Alzabo::Exception::ReferentialIntegrity->throw( error => $err );
 	}
     }
 }

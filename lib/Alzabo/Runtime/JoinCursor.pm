@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -34,7 +34,7 @@ sub new
     return bless $self, $class;
 }
 
-sub next_rows
+sub next
 {
     my $self = shift;
 
@@ -73,6 +73,7 @@ sub next_rows
 
     return @rows;
 }
+*next_rows = \&next;
 
 sub all_rows
 {
@@ -80,7 +81,7 @@ sub all_rows
 
     my @all;
     my @errors;
-    while ( my @rows = $self->next_rows )
+    while ( my @rows = $self->next )
     {
 	push @all, [@rows];
 	push @errors, $self->errors if $self->errors;
@@ -103,7 +104,7 @@ Alzabo::Runtime::JoinCursor - Cursor that returns arrays of C<Alzabo::Runtime::R
   my $cursor = $schema->join( tables => [ $foo, $bar ],
                               where => [ $foo->column('foo_id') => 1 ] );
 
-  while ( my @rows = $cursor->next_rows )
+  while ( my @rows = $cursor->next )
   {
       print $row[0]->select('foo'), "\n";
       print $row[1]->select('bar'), "\n";
@@ -135,7 +136,7 @@ L<C<Alzabo::Runtime::Cursor>|Alzabo::Runtime::Cursor>
 
 =back
 
-=head2 next_rows
+=head2 next
 
 =head3 Returns
 
@@ -156,12 +157,12 @@ returned as an array of array references.  Each reference is to an
 array of L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects.
 
 This means that if there are five set of rows that will be returned
-when the object is created and you call C<next_rows> twice, calling
+when the object is created and you call C<next> twice, calling
 C<all_rows> after it will only return three sets.  Calling the
 C<errors> method after this will return all errors trapped during the
 fetching of these sets of rows.  The return value is an array of array
 references.  Each of these references represents a single set of rows
-as they would be returned from the C<next_rows> method.
+as they would be returned from the C<next> method.
 
 =head2 errors
 
@@ -169,7 +170,7 @@ See L<C<Alzabo::Runtime::Cursor>|Alzabo::Runtime::Cursor>.
 
 =head2 reset
 
-Resets the cursor so that the next L<C<next_rows>|next_rows> call will
+Resets the cursor so that the next L<C<next>|next> call will
 return the first row of the set.
 
 =head1 AUTHOR

@@ -111,7 +111,7 @@ if (defined $s)
 }
 </%init>
 <div align="center">
-<a href="index.<% Alzabo::Config::mason_extension() %>"><!--<img src="/alzabo/images/alzabo-logo.jpg" alt="return to index" border="0" width="75" height="50" hspacing="0" vspacing="0">-->Top level</a>
+<a href="index<% Alzabo::Config::mason_extension() %>"><!--<img src="/alzabo/images/alzabo-logo.jpg" alt="return to index" border="0" width="75" height="50" hspacing="0" vspacing="0">-->Top level</a>
 <hr width="25%" />
 % if (@t) {
   <span class="teal16bold"><% join ' : ', @t %></span>

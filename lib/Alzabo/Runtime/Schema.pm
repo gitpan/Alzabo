@@ -7,7 +7,7 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.30 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -96,17 +96,31 @@ sub join
     my $self = shift;
     my %p = @_;
 
-    my $select = $p{select} || $p{tables};
-    $select = [ $select ] unless UNIVERSAL::isa($select, 'ARRAY');
-
     $p{tables} = [ $p{tables} ] unless UNIVERSAL::isa($p{tables}, 'ARRAY');
+
+    my @tables;
+
+    if ( UNIVERSAL::isa( $p{tables}->[0], 'ARRAY' ) )
+    {
+	# flattens the nested structure and produces a unique set of
+	# tables
+	@tables = values %{ { map { $_ => $_ }
+			      map { @$_ } @{ $p{tables} } } };
+    }
+    else
+    {
+	@tables = @{ $p{tables} };
+    }
+
+    my $select = $p{select} || \@tables;
+    $select = [ $select ] unless UNIVERSAL::isa($select, 'ARRAY');
 
     my $sql = ( $self->sqlmaker->
 		select( map {$_->primary_key} @$select )->
-		from( @{ $p{tables} } ) );
+		from(@tables) );
 
-    $self->_join_tables( sql => $sql,
-			 tables => $p{tables} );
+    $self->_join_all_tables( sql => $sql,
+			     tables => $p{tables} );
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where}, 1 ) if exists $p{where};
 
@@ -152,23 +166,31 @@ sub _outer_join
 
     my %p = @_;
 
-    $p{tables} = [ $p{tables} ] unless UNIVERSAL::isa($p{tables}, 'ARRAY');
+    my @select = UNIVERSAL::isa( $p{tables}->[0], 'ARRAY' ) ? @{ shift @{ $p{tables} } } : ( shift @{ $p{tables} }, pop @{ $p{tables} } );
 
-    # Treat right outer join as left outer join and reverse later
-    @{ $p{tables} }[0,-1] = @{ $p{tables} }[-1,0] if $p{type} eq 'right';
+    # This gets flipped again later in the OuterJoinCursor object so
+    # the results make sense
+    @select = @select[1, 0] if $p{type} eq 'right';
 
-    my @select = @{ $p{tables} }[0, -1];
+    # Tables for which we are not selecting but which are involved in
+    # the join
+    my %other_tables;
+    foreach ( UNIVERSAL::isa( $p{tables}->[0], 'ARRAY' ) ? map { @$_ } @{ $p{tables} } : @{ $p{tables} } )
+    {
+	$other_tables{$_} = $_;
+    }
+    my @other_tables = values %other_tables;
 
     my $join_method = $p{type} eq 'full' ? 'full_outer_join' : 'left_outer_join';
 
     my $sql = ( $self->sqlmaker->
 		select( map {$_->primary_key} @select )->
-		$join_method( @{ $p{tables} } ) );
+		$join_method( @select, @other_tables ) );
 
-    if ( @{ $p{tables} } > 2 )
+    if (@other_tables)
     {
-	$self->_join_tables( sql => $sql,
-			     tables => [ @{ $p{tables} }[0, 2..$#{ $p{tables} }] ] );
+	$self->_join_all_tables( sql => $sql,
+				 tables => $p{tables} );
     }
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where}, 1 ) if exists $p{where};
@@ -185,33 +207,86 @@ sub _outer_join
 						  tables => \@select );
 }
 
-sub _join_tables
+sub _join_all_tables
 {
     my $self = shift;
     my %p = @_;
 
-    my $y = 0;
-    for (my $x = 0; $x < @{ $p{tables} } - 1; $x++)
+    # A structure like:
+    #
+    # [ [ $t_1 => $t_2 ],
+    #   [ $t_1 => $t_3 ],
+    #   [ $t_3 => $t_4 ] ]
+    #
+    if ( UNIVERSAL::isa( $p{tables}->[0], 'ARRAY' ) )
     {
-	my $cur_t = $p{tables}->[$x];
-	my $next_t = $p{tables}->[$x + 1];
+	my %map;
+	my %tables;
 
-	Alzabo::Exception::Params->throw( error => "Table " . $cur_t->name . " doesn't exist in schema" )
-		unless $self->{tables}->EXISTS( $cur_t->name );
-
-	my @fk = $cur_t->foreign_keys_by_table($next_t);
-
-	Alzabo::Exception::Params->throw( error => "The " . $cur_t->name . " table has no foreign keys to the " . $next_t->name . " table" )
-	    unless @fk;
-
-	Alzabo::Exception::Params->throw( error => "The " . $cur_t->name . " table has more than 1 foreign key to the " . $next_t->name . " table" )
-	    if @fk > 1;
-
-	foreach my $cp ( $fk[0]->column_pairs )
+	foreach ( @{ $p{tables} } )
 	{
-	    my $op = $y++ ? 'and' : 'where';
-	    $p{sql}->$op( $cp->[0], '=', $cp->[1] );
+	    Alzabo::Exception::Params->throw( error => 'The table map must contain only two tables per array refernce' )
+		if @$_ > 2;
+
+	    $self->_join_two_tables( @$_, $p{sql} );
+
+	    # Track the tables we've seen
+	    @tables{ $_->[0]->name, $_->[1]->name } = (1, 1);
+
+	    # Track their relationships
+	    push @{ $map{ $_->[0]->name } }, $_->[1]->name;
+	    push @{ $map{ $_->[1]->name } }, $_->[0]->name;
 	}
+
+	my $key = $p{tables}->[0]->[0]->name;
+	delete $tables{$key};
+	my @t = @{ delete $map{$key} };
+	while (my $t = shift @t)
+	{
+	    delete $tables{$t};
+	    push @t, @{ delete $map{$t} } if $map{$t};
+	}
+
+	Alzabo::Exception::Logic->throw( error => "The specified table parameter does not connect all the tables involved in the join" )
+	    if keys %tables;
+    }
+    # A structure like:
+    #
+    # [ $t_1 => $t_2 => $t_3 => $t_4 ]
+    #
+    else
+    {
+	for (my $x = 0; $x < @{ $p{tables} } - 1; $x++)
+	{
+	    my $cur_t = $p{tables}->[$x];
+	    my $next_t = $p{tables}->[$x + 1];
+
+	    $self->_join_two_tables( $cur_t, $next_t, $p{sql} );
+	}
+    }
+}
+
+sub _join_two_tables
+{
+    my $self = shift;
+    my ($table_1, $table_2, $sql) = @_;
+    my $op =  $sql->last_op eq 'and' || $sql->last_op eq 'condition' ? 'and' : 'where';
+
+    Alzabo::Exception::Logic->throw( error => "Table " . $table_1->name . " doesn't exist in schema" )
+	unless $self->{tables}->EXISTS( $table_1->name );
+
+    my @fk = $table_1->foreign_keys_by_table($table_2);
+
+    Alzabo::Exception::Logic->throw( error => "The " . $table_1->name . " table has no foreign keys to the " . $table_2->name . " table" )
+	unless @fk;
+
+    Alzabo::Exception::Logic->throw( error => "The " . $table_1->name . " table has more than 1 foreign key to the " . $table_2->name . " table" )
+	if @fk > 1;
+
+    foreach my $cp ( $fk[0]->column_pairs )
+    {
+	$sql->$op( $cp->[0], '=', $cp->[1] );
+	$op = 'and';
     }
 }
 
@@ -338,14 +413,44 @@ information.
 
 =over 4
 
-=item * tables => C<Alzabo::Runtime::Table> object or objects
+=item * tables => <see below>
 
-The tables being joined together.  The order of these tables is
-significant if there are more than 2 tables, as we expect to find
-relationships between tables 1 & 2, 2 & 3, 3 & 4, etc.
+This parameter can either be a simple array reference of tables or a
+reference to an array containing more arrays, each of which contain
+two tables.
 
-This can be either a single table or an array reference of table
-objects.
+If a simple array reference is given, then the order of these tables
+is significant when there are more than 2 tables.  Alzabo expects to
+find relationships between tables 1 & 2, 2 & 3, 3 & 4, etc.
+
+For example, given:
+
+  tables => [ $table_A, $table_B, $table_C ]
+
+Alzabo would expect that table A has a relationship to table B, which
+in turn has a relationship to table C.
+
+If you need to specify a more complicated set of relationships, this
+can be done with a slightly more complicated data structure, which
+looks like this:
+
+  tables => [ [ $table_A, $table_B ],
+              [ $table_A, $table_C ],
+              [ $table_C, $table_D ],
+              [ $table_C, $table_E ] ]
+
+This is fairly self explanatory in that each pair of tables describes
+a pair of tables between which Alzabo should expect to find a
+relationship.  This allows for the construction of arbitrarily complex
+join clauses.
+
+If the latter method of specifying tables is used and no C<select>
+parameter is provided, then order of the rows returned from calling
+C<next> on the cursor is not guaranteed.  In other words, the array
+that the cursor returns will contain a row from each table involved in
+the join, but the which row belongs to which table cannot be
+determined except by examining each row in turn.  The order will be
+the same every time C<next> is called, however.
 
 =item * select => C<Alzabo::Runtime::Table> object or objects (optional)
 
@@ -383,7 +488,7 @@ an L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object.
 
 =head3 Throws
 
-L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+L<C<Alzabo::Exception::Logic>|Alzabo::Exceptions>
 
 =head2 left_outer_join
 
@@ -401,20 +506,16 @@ information.
 
 =over 4
 
-=item * tables => C<Alzabo::Runtime::Table> object or objects
+=item * tables =>
 
-The tables being joined together.  The order of these tables is
-significant if there are more than 2 tables, as we expect to find
-relationships between tables 1 & 2, 2 & 3, 3 & 4, etc.  The first and
-last tables are the ones which are joined together using an outer
-join.
+See the L<documentation on the table parameter for the join
+method|Alzabo::Runtime::Schema/join E<lt>see belowE<gt>>.
 
-For example, given the tables 'foo', 'bar', 'baz', and 'quux', in that
-order, we could read this as follows.  Join 'foo', 'bar', and 'baz',
-then do a left join between 'foo' and 'quux'.
+If pass a simple array reference of tables for this parameter, then
+the outer join is done between the first and last table given.
 
-This can be either a single table or an array reference of table
-objects.
+If you pass a reference to an array of array references, then the
+outer join will be between the first pair of tables.
 
 =item * where
 

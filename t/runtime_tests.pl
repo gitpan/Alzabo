@@ -9,7 +9,7 @@ BEGIN
 {
     require 'base.pl';
 
-    if (my $c_params = eval $ENV{OBJECTCACHE_PARAMS})
+    if ($ENV{OBJECTCACHE_PARAMS} && (my $c_params = eval $ENV{OBJECTCACHE_PARAMS}))
     {
 	require Alzabo::ObjectCache;
 	Alzabo::ObjectCache->import( %$c_params );
@@ -93,10 +93,14 @@ sub run_tests
 
     my $borg_id = $dep{borg}->select('department_id');
     delete $dep{borg};
+
     eval { $dep{borg} = $dep_t->row_by_pk( pk => $borg_id ); };
 
-    ok( $dep{borg} && $dep{borg}->select('name') eq 'borging',
-	"Department's name should be 'borging' but it's '" . $dep{borg}->select('name') . "'" );
+    ok( $dep{borg},
+	"No borg department returned: $@\n" );
+
+    ok( $dep{borg}->select('name') eq 'borging',
+	"Department's name should be 'borging' but it's '" . eval { $dep{borg}->select('name') } . "'" );
 
     eval { $dep_t->insert( values => { name => 'will break',
 				       manager_id => 1 } ); };
@@ -131,7 +135,7 @@ sub run_tests
 				       cash => 20.2,
 				     } )->delete; };
     ok( ! $@,
-	"Inserting a non-nullable column with a default as NULL should not have produced an exception: $@" );
+	"Inserting a NULL into a non-nullable column that has a default should not have produced an exception: $@" );
 
     eval { $emp_t->insert( values => { name => 'YetAnotherTest',
 				       dep_id => undef,
@@ -173,7 +177,7 @@ sub run_tests
     my $cursor;
     my $x = 0;
     eval { $cursor = $emp_t->rows_where( where => [ $emp_t->column('employee_id'), '=', $emp2_id ] );
-	   while ( my $row = $cursor->next_row )
+	   while ( my $row = $cursor->next )
 	   {
 	       $x++;
 	       $emp{2} = $row;
@@ -204,7 +208,7 @@ sub run_tests
     $x = 0;
     my @emp_proj;
     eval { $cursor = $emp{bill}->rows_by_foreign_key( foreign_key => $fk );
-	   while ( my $row = $cursor->next_row )
+	   while ( my $row = $cursor->next )
 	   {
 	       $x++;
 	       push @emp_proj, $row;
@@ -218,7 +222,7 @@ sub run_tests
     my @rows;
 
     eval { $cursor = $emp_t->all_rows;
-	   $x++ while $cursor->next_row;
+	   $x++ while $cursor->next;
          };
 
     ok( ! $@ && ! $cursor->errors && $x == 2,
@@ -234,12 +238,35 @@ sub run_tests
     ok( ! $@,
 	"Join threw an exception: $@" );
 
-    @rows = $cursor->next_rows;
+    @rows = $cursor->next;
     ok( scalar @rows == 3 &&
 	$rows[0]->table->name eq 'employee' &&
 	$rows[1]->table->name eq 'employee_project' &&
 	$rows[2]->table->name eq 'project',
 	"Join cursor did not return rows in expected order or did not return 3 rows" );
+
+    $cursor = eval { $s->join( select => [ $emp_t, $emp_proj_t, $proj_t ],
+			       tables => [ [ $emp_t, $emp_proj_t ],
+					   [ $emp_proj_t, $proj_t ] ],
+			       where =>  [ $emp_t->column('employee_id'), '=', 1 ] ) };
+    ok( ! $@,
+	"Join threw an exception: $@" );
+
+    @rows = $cursor->next;
+    ok( scalar @rows == 3 &&
+	$rows[0]->table->name eq 'employee' &&
+	$rows[1]->table->name eq 'employee_project' &&
+	$rows[2]->table->name eq 'project',
+	"Join cursor did not return rows in expected order or did not return 3 rows" );
+
+    eval { $s->join( select => [ $emp_t, $emp_proj_t, $proj_t ],
+		     tables => [ [ $emp_t, $emp_proj_t ],
+				 [ $emp_proj_t, $proj_t ],
+				 [ $s->tables( 'outer_1', 'outer_2' ) ] ],
+		     where =>  [ $emp_t->column('employee_id'), '=', 1 ] ) };
+
+    ok( $@,
+	"Join with table map that does not connect all the tables did not throw an exception" );
 
     {
 
@@ -260,7 +287,8 @@ sub run_tests
 						  outer_2_key => undef },
 				      no_cache => 1 );
 
-	my $cursor = eval { $s->left_outer_join( tables => [ $s->tables( 'outer_1', 'outer_2' ) ] ) };
+	# doubled array reference is intentional
+	my $cursor = eval { $s->left_outer_join( tables => [ [ $s->tables( 'outer_1', 'outer_2' ) ] ] ) };
 
 	ok( ! $@,
 	    "Attempting to do an left outer join threw an exception: $@\n" );
@@ -289,12 +317,12 @@ sub run_tests
 	ok( ! defined $sets[1]->[1],
 	    "The second row in the second set is defined\n" );
 
-	my $cursor = eval { $s->right_outer_join( tables => [ $s->tables( 'outer_1', 'outer_2' ) ] ) };
+	$cursor = eval { $s->right_outer_join( tables => [ $s->tables( 'outer_1', 'outer_2' ) ] ) };
 
 	ok( ! $@,
 	    "Attempting to do an right outer join threw an exception: $@\n" );
 
-	my @sets = $cursor->all_rows;
+	@sets = $cursor->all_rows;
 
 	ok( @sets == 2,
 	    "Right outer join should return 2 sets of rows but returned @{[ scalar @sets ]} sets\n" );
@@ -450,7 +478,7 @@ sub run_tests
 
     my $val;
     eval { $char_row->select('char_col'); };
-    my $expect = $Alzabo::ObjectCache::VERSION ? 'Alzabo::Exception::Cache::Deleted' : 'Alzabo::Exception::NoSuchRow';
+    $expect = $Alzabo::ObjectCache::VERSION ? 'Alzabo::Exception::Cache::Deleted' : 'Alzabo::Exception::NoSuchRow';
     ok( $@ && $@->isa($expect),
 	"Attempt to select from deleted row should have thrown an $expect exception but threw: $@" );
 
@@ -462,7 +490,6 @@ sub run_tests
     ok( ! $@,
 	 "Attempt to fetch char_pk row where char => 'pk value' threw an exception: $@" );
 
-    my $val;
     eval { $val = $char_row->select('char_col'); };
     ok( ! $@,
 	 "Attempt to select from char_pk row threw an exception: $@" );
@@ -538,7 +565,7 @@ sub run_tests
 				dep_id => $dep_id,
 			      } );
 
-    my @emps = eval { $emp_t->rows_where( where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ] )->all_rows };
+    @emps = eval { $emp_t->rows_where( where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ] )->all_rows };
 
     ok( @emps == 4,
 	"There should be only 4 employees where the length of the smell column is 1 but there are", scalar @emps );
@@ -846,7 +873,7 @@ sub parent
 
     # This is basically a test that the ->clear method for the cache
     # actually worked.
-    my $rocko = $cursor->next_row;
+    my $rocko = $cursor->next;
     ok( $rocko->select('name') eq 'Rocko',
 	"The name of employee 1000 should now be 'Rocko' but it is " . $rocko->select('name') );
 

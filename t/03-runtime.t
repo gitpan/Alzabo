@@ -112,7 +112,8 @@ foreach ( qw( BerkeleyDB SDBM_File DB_File IPC ) )
     }
 }
 
-my $TESTS_PER_RUN = 91;
+
+my $TESTS_PER_RUN = 95;
 my $SYNC_TESTS_PER_RUN = 18;
 
 # foreach test in @$tests, it'll be run once.  For each set of modules

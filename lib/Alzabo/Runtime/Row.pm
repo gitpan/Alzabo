@@ -10,7 +10,7 @@ Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw
 
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.58 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.60 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -20,7 +20,7 @@ sub new
     my $class = ref $proto || $proto;
 
     validate( @_, { table => { isa => 'Alzabo::Runtime::Table' },
-		    id => { type => SCALAR | HASHREF,
+		    pk => { type => SCALAR | HASHREF,
 			    optional => 1 },
 		    prefetch => { type => UNDEF | HASHREF,
 				  optional => 1 },
@@ -89,9 +89,9 @@ sub _make_id_hash
     my $self = shift;
     my %p = @_;
 
-    return $p{id} if ref $p{id};
+    return $p{pk} if ref $p{pk};
 
-    return { ($p{table}->primary_key)[0]->name => $p{id} };
+    return { ($p{table}->primary_key)[0]->name => $p{pk} };
 }
 
 sub _get_data
@@ -119,6 +119,7 @@ sub _get_data
 sub select
 {
     my $self = shift;
+
     my @cols = @_;
 
     my %data = $self->_get_data(@cols);
@@ -142,7 +143,8 @@ sub update
 
     my $driver = $self->table->schema->driver;
 
-    my @fk;
+    my @fk; # this never gets populated unless referential integrity
+            # checking is on
     foreach my $k (keys %data)
     {
 	# This will throw an exception if the column doesn't exist.
@@ -172,35 +174,30 @@ sub update
     return unless keys %data;
 
     # If we have foreign keys we'd like all the fiddling to be atomic.
-    $driver->start_transaction;
-
     my $sql = ( $self->table->schema->sqlmaker->
 		update( $self->table ) );
     $sql->set( map { $self->table->column($_), $data{$_} } keys %data );
 
     $self->_where($sql);
 
+    $driver->start_transaction if @fk;
+
     eval
     {
+	foreach my $fk (@fk)
+	{
+	    $fk->register_update( map { $_->name => $data{ $_->name } } $fk->columns_from );
+	}
+
 	$driver->do( sql => $sql->sql,
 		     bind => $sql->bind );
 
-	if ($self->table->schema->referential_integrity)
-	{
-	    foreach my $fk (@fk)
-	    {
-		$fk->register_update( map { $_->name => $data{ $_->name } } $fk->columns_from );
-	    }
-	}
+	$driver->finish_transaction if @fk;
     };
     if ($@)
     {
 	$driver->rollback;
 	$@->rethrow;
-    }
-    else
-    {
-	$driver->finish_transaction;
     }
 }
 
@@ -210,40 +207,34 @@ sub delete
 
     my $driver = $self->table->schema->driver;
 
-    my @fk;
+    my @fk; # this never populated unless referential integrity
+            # checking is on
     if ($self->table->schema->referential_integrity)
     {
 	@fk = $self->table->all_foreign_keys;
-
-	$driver->start_transaction;
     }
 
     my $sql = ( $self->table->schema->sqlmaker->
 		delete->from( $self->table ) );
     $self->_where( $sql );
 
+    $driver->start_transaction if @fk;
     eval
     {
-	if ($self->table->schema->referential_integrity)
+	foreach my $fk (@fk)
 	{
-	    foreach my $fk (@fk)
-	    {
-		$fk->register_delete($self);
-	    }
+	    $fk->register_delete($self);
 	}
 
 	$driver->do( sql => $sql->sql,
 		     bind => $sql->bind );
 
+	$driver->finish_transaction if @fk;
     };
     if ($@)
     {
 	$driver->rollback;
 	$@->rethrow;
-    }
-    else
-    {
-	$driver->finish_transaction;
     }
 
     $self->{deleted} = 1;
@@ -270,6 +261,7 @@ sub table
 sub rows_by_foreign_key
 {
     my $self = shift;
+
     my %p = @_;
 
     my $fk = delete $p{foreign_key};
@@ -460,7 +452,7 @@ paremeter).
 
 =item * table => C<Alzabo::Runtime::Table> object
 
-=item * id => (see below)
+=item * pk => (see below)
 
 =item * no_cache => 0 or 1
 

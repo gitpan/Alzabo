@@ -55,7 +55,7 @@ sub dump_schema
 
     if ($V > 0.20)
     {
-	$rdbms = $s->driver->driver_id;
+	$rdbms = $s->rules->rules_id;
     }
     else
     {
@@ -77,6 +77,7 @@ sub dump_schema
     }
     if ($s->{original} && not $recursed)
     {
+	push @eval, "# Previous generation of schema\n";
 	dump_schema($s->{original}, 'original', 1);
 	push @eval, "\$$name\->{original} = \$original;\n";
     }
@@ -246,11 +247,24 @@ sub dump_foreign_key
 	push @eval, "\t$key => [ \$$name\->table('$table')->columns($columns) ],";
     }
 
-    foreach ( qw( min_max_from min_max_to ) )
+    my ($cardinality, $from_is_dependent, $to_is_dependent);
+    if ($V < 0.52)
     {
-	my $mm = join ', ', map { "'$_'" } $fk->$_();
-	push @eval, "\t$_ => [ $mm ],";
+	# reverses cardinality for older schemas
+	$cardinality = join ', ', map { $_ =~ /\D/ ? "'$_'" : $_ } ($fk->min_max_to)[1], ($fk->min_max_from)[1];
+	$from_is_dependent = ($fk->min_max_from)[0] ? 1 : 0;
+	$to_is_dependent = ($fk->min_max_to)[0] ? 1 : 0;
     }
+    else
+    {
+	$cardinality = join ', ', $fk->cardinality;
+	$from_is_dependent = $fk->from_is_dependent ? 1 : 0;
+	$to_is_dependent = $fk->to_is_dependent ? 1 : 0;
+    }
+
+    push @eval, "\tcardinality => [ $cardinality ],";
+    push @eval, "\tfrom_is_dependent => $from_is_dependent,";
+    push @eval, "\tto_is_dependent => $to_is_dependent,";
 
     push @eval, ");\n";
 
@@ -274,7 +288,7 @@ sub dump_column_ownership
 sub save_schema
 {
     my $s_name = shift;
-    my $file = prompt( "File to which schema should be written?", "$s_name.schema" );
+    my $file = prompt( "File to which schema should be written?", "${s_name}_schema.pl" );
 
     local *S;
     open S, ">$file" or die "Cannot open file '$file': $!\n";
@@ -284,11 +298,12 @@ sub save_schema
     print <<"EOF";
 The schema has been saved to $file.
 
-To use this file, you will first have to install the newer version of
-Alzabo.  Then you can simply run:
+To use this file, you will first have to install the version of Alzabo
+that includes this script.  Then you can simply run:
 
  $^X $file
 
 This will overwrite the existing files for the $s_name schema
+
 EOF
 }

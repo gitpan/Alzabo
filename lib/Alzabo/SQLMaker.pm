@@ -9,7 +9,7 @@ use Alzabo::Util;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -126,6 +126,11 @@ sub new
 		   bind => [],
 		   driver => $driver,
 		 }, $class;
+}
+
+sub last_op
+{
+    return shift->{last_op};
 }
 
 sub select
@@ -247,11 +252,6 @@ sub left_outer_join
     shift->_outer_join( @_, 'left' );
 }
 
-sub right_outer_join
-{
-    shift->_outer_join( @_, 'right' );
-}
-
 sub _outer_join
 {
     my $self = shift;
@@ -263,7 +263,7 @@ sub _outer_join
     my @tables  = @_;
 
     my $join_from = shift @tables;
-    my $join_on = pop @tables;
+    my $join_on = shift @tables;
 
     my @fk = $join_from->foreign_keys_by_table($join_on);
 

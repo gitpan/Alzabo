@@ -90,6 +90,7 @@ t/runtime_tests.pl
 t/utils.pl
 
 eg/convert.pl
+eg/reverse_cardinality.pl
 
 interfaces/mason/add_column.mhtml
 interfaces/mason/add_index_1.mhtml

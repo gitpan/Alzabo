@@ -155,8 +155,10 @@ foreach my $db (@db)
 
     eval { $s->add_relation( table_from => $t1,
 			     table_to   => $t2,
-			     min_max_from => ['1', 'n'],
-			     min_max_to   => ['0', 'n'] ) };
+			     cardinality => ['n', 'n'],
+			     from_is_dependent => 1,
+			     to_is_dependent => 0,
+			   ) };
     ok( ! $@,
 	"Unable to add a relation from footab to bartab: $@" );
 
@@ -245,8 +247,9 @@ foreach my $db (@db)
 
     eval { $s->add_relation( table_from => $t1,
 			     table_to => $t2,
-			     min_max_from => [ '0', '1' ],
-			     min_max_to => [ '0', 'n' ]
+			     cardinality => [ 'n', 1 ],
+			     from_is_dependent => 0,
+			     to_is_dependent => 0,
 			   ); };
     ok( ! $@,
 	"Unable to create relation from footab to bartab: $@" );
@@ -272,9 +275,10 @@ foreach my $db (@db)
 
     eval { $s->add_relation( table_from => $t1,
 			     table_to => $t2,
-			     min_max_from => [ '0', 'n' ],
-			     min_max_to => [ '0', '1' ]
-			   ); };
+			     cardinality => [ 1, 'n' ],
+			     from_is_dependent => 0,
+			     to_is_dependent => 0,
+			   ) };
     ok( ! $@,
 	"Unable to create second relation from footab to bartab: $@" );
 
@@ -304,9 +308,10 @@ foreach my $db (@db)
 
     eval { $s->add_relation( table_from => $t1,
 			     table_to => $t3,
-			     min_max_from => [ '0', 'n' ],
-			     min_max_to => [ '0', '1' ]
-			   ); };
+			     cardinality => [ 1, 'n' ],
+			     from_is_dependent => 0,
+			     to_is_dependent => 0,
+			   ) };
 
     ok( ! $@,
 	"Unable to create relation from footab to baztab: $@" );
@@ -376,9 +381,10 @@ foreach my $db (@db)
 
     eval { $s->add_relation( table_from => $tc,
 			     table_to   => $other,
-			     min_max_from => [ 0, 'n' ],
-			     min_max_to   => [ 0, 1 ],
-			   ); };
+			     cardinality => [ 1, 'n' ],
+			     from_is_dependent => 0,
+			     to_is_dependent => 0,
+			   ) };
 
     ok( ! $@,
 	"Unable to make a relation from two_col_pk to other: $@" );

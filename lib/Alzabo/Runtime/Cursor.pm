@@ -5,11 +5,16 @@ use vars qw($VERSION);
 
 use Alzabo::Runtime;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub new
+{
+    shift->_virtual;
+}
+
+sub next
 {
     shift->_virtual;
 }
@@ -80,13 +85,13 @@ Virtual method.
 
 =head2 errors
 
-If the last C<next_row> or C<next_rows> call encountered a situation
-where the SQL query returned primary keys not actually in the target
-table, then the exception objects are stored in the cursor.  This
-method can be used to retrieve these objects.  This allows you to
-ignore these errors if you so desire without having to do explicit
-exception handling.  For more information on what you can do with this
-method see L<the HANDLING ERRORS section|HANDLING ERRORS>.
+If the last C<next> call encountered a situation where the SQL query
+returned primary keys not actually in the target table, then the
+exception objects are stored in the cursor.  This method can be used
+to retrieve these objects.  This allows you to ignore these errors if
+you so desire without having to do explicit exception handling.  For
+more information on what you can do with this method see L<the
+HANDLING ERRORS section|HANDLING ERRORS>.
 
 =head3 Returns
 
@@ -95,8 +100,8 @@ objects.
 
 =head2 reset
 
-Resets the cursor so that the next C<next_row> or C<next_rows> call
-will return the first row of the set.
+Resets the cursor so that the next C<next> call will return the first
+row of the set.
 
 =head1 HANDLING ERRORS
 
@@ -123,14 +128,13 @@ the following code:
 The cursor returned is relying on the movie_id column in the
 movie_alias table.  It's possible that there are values in this column
 that are not actually in the movie table but the cursor object will
-ignore the exceptions caused by these bad ids.  The C<next_row> (or
-C<next_rows>) method will not return a false value until its
-underlying DBI statement handle stops returning data.  The reasoning
-behind this is that otherwise there would be no way to distinguish
-between: A) a false value caused by there being no more data coming
-back from the query on the movie_alias table and B) a false value
-caused by there being no row in the movie column matching a given
-movie_id value.
+ignore the exceptions caused by these bad ids.  The C<next> method
+will not return a false value until its underlying DBI statement
+handle stops returning data.  The reasoning behind this is that
+otherwise there would be no way to distinguish between: A) a false
+value caused by there being no more data coming back from the query on
+the movie_alias table and B) a false value caused by there being no
+row in the movie column matching a given movie_id value.
 
 It is certainly possible that there are situations when you don't care
 about referential integrity and you want to simply get all the rows
@@ -138,7 +142,7 @@ you can.  In other cases, you will want to handle errors.  I would
 have used exceptions for this purpose except the following code would
 then not function properly.
 
- while ( my $row = eval { $cursor->next_row } )
+ while ( my $row = eval { $cursor->next } )
  {
      do_something if $@;  # or alternately just ignore $@
 
@@ -153,7 +157,7 @@ C<while> loop.  The workaround would be:
 
  do
  {
-     my $row = eval { $cursor->next_row };
+     my $row = eval { $cursor->next };
      # either do something with $@ or ignore it.
  } while ( $row || ( $@ && $@->isa('Alzabo::Exception::NoSuchRow') );
 
@@ -163,10 +167,10 @@ is counter-intuitive.
 So, while throwing an exception may be the most 'correct' way to do
 it, I've instead created the L<C<errors>|errors> method.
 
-This means that the idiom for checking errors from the C<next_row> or
-C<next_rows> method is as follows:
+This means that the idiom for checking errors from the C<next> method
+is as follows:
 
- while ( my $row = $cursor->next_row )
+ while ( my $row = $cursor->next )
  {
      do_something if $cursor->errors;
 
@@ -177,10 +181,10 @@ The advantage here is that ignoring the exception is easy.  If you
 want to check them then just remember that the L<C<errors>|errors>
 method will return a list of
 L<C<Alzabo::Exception::NoSuchRow>|Alzabo::Exceptions> objects that
-occurred during the previous C<next_row> or C<next_rows> call.
+occurred during the previous C<next> call.
 
-Also note that other types of exceptions are rethrown from the
-C<next_row> and C<next_rows> method.
+Also note that other types of exceptions are rethrown from the C<next>
+method.
 
 =head1 RATIONALE FOR CURSORS
 

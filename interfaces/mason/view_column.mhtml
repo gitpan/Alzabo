@@ -71,11 +71,34 @@
      <td><input type="textfield" name="attributes" size="20"></td>
     </tr>
 
-    <tr>
+    <tr valign="top">
      <td>
-      Allow nulls: <input type="checkbox" name="nullable" value="1" <% $c->nullable ? 'checked="checked"' : '' %>><br>
-      Primary key: <input type="checkbox" name="primary_key" value="1" <% $c->is_primary_key ? 'checked="checked"' : '' %>><br>
-      Sequenced: <input type="checkbox" name="sequenced" value="1" <% $c->sequenced ? 'checked="checked"' : '' %>>
+      <table width="20%">
+       <tr valign="top">
+        <td>
+         Allow nulls:
+	</td>
+	<td>
+	 <input type="checkbox" name="nullable" value="1">
+	</td>
+       </tr>
+       <tr valign="top">
+        <td>
+         Primary key:
+	</td>
+	<td>
+	 <input type="checkbox" name="primary_key" value="1">
+	</td>
+       </tr>
+       <tr valign="top">
+        <td>
+	 Sequenced:
+	</td>
+	<td>
+	 <input type="checkbox" name="sequenced" value="1">
+	</td>
+       </tr>
+      </table>
      </td>
     </tr>
 

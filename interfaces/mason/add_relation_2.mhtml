@@ -41,8 +41,9 @@ eval
 		      table_to   => $t_to,
 		      columns_from => \@c_from,
 		      columns_to   => \@c_to,
-		      min_max_from => \@mm_from,
-		      min_max_to   => \@mm_to,
+		      cardinality  => [ $cardinality_from, $cardinality_to ],
+		      from_is_dependent => $from_is_dependent,
+		      to_is_dependent => $to_is_dependent,
 		    );
 
     $s->save_to_file;

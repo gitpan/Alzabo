@@ -142,11 +142,11 @@ foreach my $t ($s->tables)
 	$tl[1]->location_id == 100 && $tl[1]->toilet_id == 1,
 	"The toilet location rows should be 1/1 & 100/1 but they are not" );
 
-    my $row = $s->Toilet_t->row_by_pk( id => 1 );
+    my $row = $s->Toilet_t->row_by_pk( pk => 1 );
     ok( $row->isa('Alzabo::MM::Test::CachedRow::Toilet'),
 	"The Toilet object should be of the Alzabo::MM::Test::CachedRow::Toilet class but it is a @{[ref $row]}." );
 
-    $row = $s->Toilet_t->row_by_pk( id => 1, no_cache => 1 );
+    $row = $s->Toilet_t->row_by_pk( pk => 1, no_cache => 1 );
     ok( $row->isa('Alzabo::MM::Test::UncachedRow::Toilet'),
 	"The Toilet object should be of the Alzabo::MM::Test::UncachedRow::Toilet class but it is a @{[ref $row]}." );
 }
@@ -177,8 +177,9 @@ sub make_schema
     # self relation
     $s->add_relation( columns_from => $loc->column('parent_location_id'),
 		      columns_to => $loc->column('location_id'),
-		      min_max_from => [ 0, 1 ],
-		      min_max_to => [ 0, 'n' ],
+		      cardinality => [ 1, 'n' ],
+		      from_is_dependent => 0,
+		      to_is_dependent => 0,
 		    );
 
     my $toi = $s->make_table( name => 'Toilet' );
@@ -190,8 +191,9 @@ sub make_schema
     # linking table
     $s->add_relation( table_from => $toi,
 		      table_to => $loc,
-		      min_max_from => [ 0, 'n' ],
-		      min_max_to => [ 0, 'n' ],
+		      cardinality => [ 'n', 'n' ],
+		      from_is_dependent => 0,
+		      to_is_dependent => 0,
 		    );
 
     my $tt = $s->make_table( name => 'ToiletType' );
@@ -206,8 +208,9 @@ sub make_schema
     # lookup table
     $s->add_relation( table_from => $toi,
 		      table_to => $tt,
-		      min_max_from => [ 1, 1 ],
-		      min_max_to => [ 0, 'n' ],
+		      cardinality => [ 'n', 1 ],
+		      from_is_dependent => 0,
+		      to_is_dependent => 0,
 		    );
 
     $s->save_to_file;

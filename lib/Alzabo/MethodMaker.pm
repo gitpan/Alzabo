@@ -8,7 +8,7 @@ use Alzabo::Runtime::Schema;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.23 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.24 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
@@ -286,7 +286,7 @@ sub make_foreign_key_methods
 	if ( @fk == 2 && $fk[0]->table_from eq $fk[0]->table_to &&
 	     $fk[1]->table_from eq $fk[1]->table_to )
 	{
-	    unless ( ($fk[0]->min_max_from)[1] eq '1' && ($fk[0]->min_max_to)[1] eq '1' )
+	    unless ($fk[0]->is_one_to_one)
 	    {
 		$self->make_self_relation($fk[0]) if $self->{opts}{self_relations};
 	    }
@@ -316,7 +316,7 @@ sub make_foreign_key_methods
 	}
 
 	# Pluralize the name of the table the relationship is to.
-	if ( ($fk->min_max_from)[1] eq 'n' )
+	if ($fk->is_one_to_many)
 	{
 	    my $name = $self->{opts}{name_maker}->( type => 'foreign_key',
 						    foreign_key => $fk,
@@ -360,7 +360,7 @@ sub make_self_relation
     my $fk = shift;
 
     my (@pairs, @reverse_pairs);
-    if ( ($fk->min_max_from)[1] eq 'n' && ($fk->min_max_to)[1] eq '1' )
+    if ($fk->is_many_to_one)
     {
 	@pairs = map { [ $_->[0], $_->[1]->name ] } $fk->column_pairs;
 	@reverse_pairs = map { [ $_->[1], $_->[0]->name ] } $fk->column_pairs;
