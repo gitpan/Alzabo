@@ -39,24 +39,25 @@ foreach my $db ( qw( mysql pg oracle sybase ) )
     push @t, grep { $_->{rdbms} eq $db } @$tests;
 }
 
-my @cache = ( [
-	       { store => 'Alzabo::ObjectCache::Store::Memory',
-		 sync  => 'Alzabo::ObjectCache::Sync::Null' },
-	       0,
-	      ],
-	      [
-	       { store => 'Alzabo::ObjectCache::Store::Memory',
-		 sync  => 'Alzabo::ObjectCache::Sync::Null',
-		 lru_size => 2 },
-	       0,
-	      ],
-	      [
-	       # no caching at all
-	       { store => 0,
-		 sync  => 0 },
-	       0,
-	      ],
-	    );
+my @cache =
+    ( [
+       { store => 'Alzabo::ObjectCache::Store::Memory',
+	 sync  => 'Alzabo::ObjectCache::Sync::Null' },
+       0,
+      ],
+      [
+       { store => 'Alzabo::ObjectCache::Store::Memory',
+	 sync  => 'Alzabo::ObjectCache::Sync::Null',
+	 lru_size => 2 },
+       0,
+      ],
+      [
+       # no caching at all
+       { store => 0,
+	 sync  => 0 },
+       0,
+      ],
+    );
 
 my $sync = 0;
 

@@ -17,7 +17,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 use Storable ();
 use Tie::IxHash ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.43 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.46 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -176,36 +176,39 @@ sub tables
     return $self->{tables}->Values;
 }
 
-sub start_transaction
+sub begin_work
 {
-    shift->driver->start_transaction
+    shift->driver->begin_work;
 }
+*start_transaction = \&begin_work;
 
 sub rollback
 {
-    shift->driver->rollback
+    shift->driver->rollback;
+    Alzabo::ObjectCache->new->clear if $Alzabo::Object::VERSION;
 }
 
-sub finish_transaction
+sub commit
 {
-    shift->driver->finish_transaction
+    shift->driver->commit;
 }
+*finish_transaction = \&commit;
 
 sub run_in_transaction
 {
     my $self = shift;
     my $code = shift;
 
-    $self->start_transaction;
+    $self->begin_work;
 
-    my (@r, $r);
+    my @r;
     if (wantarray)
     {
 	@r = eval { $code->() };
     }
     else
     {
-	$r = eval { $code->() };
+	$r[0] = eval { $code->() };
     }
 
     if (my $e = $@)
@@ -221,9 +224,9 @@ sub run_in_transaction
 	}
     }
 
-    $self->finish_transaction;
+    $self->commit;
 
-    return wantarray ? @r : $r;
+    return wantarray ? @r : $r[0];
 }
 
 sub driver
@@ -308,7 +311,7 @@ L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 A true or false value depending on whether or not the table exists in
 the schema.
 
-=head2 start_transaction
+=head2 begin_work
 
 Starts a transaction.  Calls to this function may be nested and it
 will be handled properly.
@@ -317,11 +320,10 @@ will be handled properly.
 
 Rollback a transaction.
 
-=head2 finish_transaction
+=head2 commit
 
 Finishes a transaction with a commit.  If you make multiple calls to
-C<start_transaction>, make sure to call this method the same number of
-times.
+C<begin_work>, make sure to call this method the same number of times.
 
 =head2 run_in_transaction ( sub { code... } )
 

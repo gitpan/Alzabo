@@ -11,7 +11,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.39 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.43 $ =~ /(\d+)\.(\d+)/;
 
 use base qw(Alzabo::Driver);
 
@@ -34,6 +34,33 @@ sub connect
 
     $self->disconnect if $self->{dbh};
     $self->{dbh} = $self->_make_dbh(%p, name => $self->{schema}->name);
+
+    my @vars = $self->rows(sql=>'SHOW VARIABLES');
+    foreach (@vars)
+    {
+	if ( $_->[0] eq 'sql_mode' )
+	{
+	    $self->{mysql_ansi_mode} = $_->[1] & 4;
+	    last;
+	}
+    }
+}
+
+sub quote_identifier
+{
+    my $self = shift;
+    my @ids = @_;
+
+    my $quote = $self->{mysql_ansi_mode} ? '"' : '`';
+
+    foreach (@ids)
+    {
+	next unless defined;
+	s/$quote/$quote$quote/g;
+	$_ = "$quote$_$quote";
+    }
+
+    return join '.', @ids;
 }
 
 sub supports_referential_integrity
@@ -129,9 +156,9 @@ sub _make_dbh
     $dsn .= ";host=$p{host}" if $p{host};
     $dsn .= ";port=$p{port}" if $p{port};
 
-    foreach my $k (keys %p)
+    foreach my $k ( grep { /^mysql/ } keys %p )
     {
-	$dsn .= ";$k=$p{$k}" if $k =~ /^mysql/i;
+	$dsn .= ";$k=$p{$k}";
     }
 
     my $dbh;

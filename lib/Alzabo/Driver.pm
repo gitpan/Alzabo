@@ -10,7 +10,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.61 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.66 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -40,7 +40,7 @@ sub _check_dbh
     my $self = shift;
 
     my $sub = (caller(1))[3];
-    Alzabo::Driver::Exception->throw( error => "Cannot call $sub before calling connect." )
+    Alzabo::Exception::Driver->throw( error => "Cannot call $sub before calling connect." )
 	unless $self->{dbh};
 }
 
@@ -51,6 +51,15 @@ sub quote
     $self->_check_dbh;
 
     return $self->{dbh}->quote(@_);
+}
+
+sub quote_identifier
+{
+    my $self = shift;
+
+    $self->_check_dbh;
+
+    return $self->{dbh}->quote_identifier(@_);
 }
 
 sub rows
@@ -355,16 +364,17 @@ sub next_sequence_number
     shift()->_virtual;
 }
 
-sub start_transaction
+sub begin_work
 {
     my $self = shift;
 
     $self->_check_dbh;
 
     $self->{tran_count} = 0 unless defined $self->{tran_count};
-    $self->{tran_count}++;
 
-    $self->{dbh}->{AutoCommit} = 0;
+    $self->{dbh}->begin_work if $self->{dbh}->{AutoCommit};
+
+    $self->{tran_count}++;
 }
 
 sub rollback
@@ -382,7 +392,7 @@ sub rollback
     $self->{dbh}->{AutoCommit} = 1;
 }
 
-sub finish_transaction
+sub commit
 {
     my $self = shift;
 
@@ -397,8 +407,8 @@ sub finish_transaction
     }
     else
     {
-	my $callee = (caller(1))[3];
-	warn "$callee called finish_transaction without corresponding start_transaction call\n";
+	my $caller = (caller(1))[3];
+	warn "$caller called commit without corresponding begin_work call\n";
     }
 
     # Don't actually commit until we reach 'uber-commit'
@@ -966,7 +976,7 @@ number based on a column object.  For some databases (MySQL, for
 example), the appropriate value is C<undef>.  This is accounted for in
 Alzabo code that calls this method.
 
-=head2 start_transaction
+=head2 begin_work
 
 Notify Alzabo that you wish to start a transaction.
 
@@ -974,7 +984,7 @@ Notify Alzabo that you wish to start a transaction.
 
 Rolls back the current transaction.
 
-=head2 finish_transaction
+=head2 commit
 
 Notify Alzabo that you wish to finish a transaction.  This is
 basically the equivalent of calling commit.

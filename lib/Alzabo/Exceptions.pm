@@ -3,7 +3,7 @@ package Alzabo::Exceptions;
 use strict;
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
 
 my %e;
 
@@ -89,8 +89,11 @@ sub full_message
     my $msg = $self->error;
     $msg .= "\nSQL: " . $self->sql if $self->sql;
 
-    my @bind = map { defined $_ ? $_ : '<undef>' } @{ $self->bind };
-    $msg .= "\nBIND: @bind" if @bind;
+    if ( $self->bind )
+    {
+	my @bind = map { defined $_ ? $_ : '<undef>' } @{ $self->bind };
+	$msg .= "\nBIND: @bind" if @bind;
+    }
 
     return $msg;
 }

@@ -10,7 +10,7 @@ use base qw(Alzabo::RDBMSRules);
 use Params::Validate qw( validate_pos );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.29 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.33 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -147,7 +147,7 @@ sub validate_column_attribute
     $a =~ s/\A\s//;
     $a =~ s/\s\z//;
 
-    return if  $a =~ /\A(?:CHECK|CONSTRAINT|REFERENCES)/i;
+    return if  $a =~ /\A(?:UNIQUE\z|CHECK|CONSTRAINT|REFERENCES)/i;
 
     Alzabo::Exception::RDBMSRules->throw( error => "Only column constraints are supported as column attributes" )
 }
@@ -267,6 +267,8 @@ sub feature
     return $features{+shift};
 }
 
+sub quote_identifiers { 1 }
+
 sub schema_sql
 {
     my $self = shift;
@@ -314,7 +316,7 @@ sub table_sql
     # Create table sequence by default
     $create_sequence = 1 unless defined $create_sequence;
 
-    my $sql = "CREATE TABLE " . $table->name . " (\n  ";
+    my $sql = qq|CREATE TABLE "| . $table->name . qq|" (\n  |;
 
     $sql .= join ",\n  ", map { $self->column_sql($_) } $table->columns;
 
@@ -322,7 +324,7 @@ sub table_sql
     {
 	$sql .= ",\n";
 	$sql .= '  PRIMARY KEY (';
-	$sql .= join ', ', map {$_->name} @pk;
+	$sql .= join ', ', map { '"' . $_->name . '"' } @pk;
 	$sql .= ")\n";
     }
     $sql .= ")\n";
@@ -364,7 +366,8 @@ sub _sequence_name
     my $self = shift;
     my $col = shift;
 
-    return join '___', $col->table->name, $col->name;
+    my $name = join '___', $col->table->name, $col->name;
+    return qq|"$name"|;
 }
 
 sub column_sql
@@ -398,7 +401,7 @@ sub column_sql
 	@nullable = $col->nullable ? 'NULL' : 'NOT NULL';
     }
 
-    my $sql .= join '  ', ( $col->name,
+    my $sql .= join '  ', ( '"' . $col->name . '"',
 			    $type,
 			    @default,
 			    @nullable,
@@ -415,12 +418,12 @@ sub _add_foreign_key_sql
 
     return if grep { $_->is_primary_key } $fk->columns_from;
 
-    my $sql = 'ALTER TABLE ';
+    my $sql = 'ALTER TABLE "';
     $sql .= $fk->table_from->name;
-    $sql .= ' ADD CONSTRAINT ';
+    $sql .= '" ADD CONSTRAINT ';
     $sql .= $fk->id;
     $sql .= ' FOREIGN KEY ( ';
-    $sql .= join ', ', map { $_->name } $fk->columns_from;
+    $sql .= join ', ', map { '"' . $_->name . '"' } $fk->columns_from;
     $sql .= ' ) REFERENCES ';
     $sql .= $fk->table_to->name;
     $sql .= ' ON DELETE ';
@@ -483,11 +486,11 @@ sub drop_column_sql
     # times (which would be pointless)
     return () if $self->{sql_made}{table_sql}{ $p{new_table}->name };
 
-    return ( $self->_temp_table_sql( $p{new_table} ),
+    return ( $self->_temp_table_sql( $p{new_table}, $p{old}->table ),
 	     $self->drop_table_sql( $p{old}->table, 1 ),
 	     # the 0 param indicates that we should not create sequences
 	     $self->table_sql( $p{new_table}, 0 ),
-	     $self->_restore_table_data_sql( $p{new_table} ),
+	     $self->_restore_table_data_sql( $p{new_table}, $p{old}->table ),
 	     $self->_drop_temp_table( $p{new_table} ),
 	   );
 }
@@ -495,13 +498,14 @@ sub drop_column_sql
 sub _temp_table_sql
 {
     my $self = shift;
-    my $table = shift;
+    my $new_table = shift;
+    my $old_table = shift;
 
-    my $temp_name = "TEMP" . $table->name;
+    my $temp_name = "TEMP" . $new_table->name;
 
     my $sql = "SELECT ";
-    $sql .= join ', ', map { $_->name } $table->columns;
-    $sql .= "\n INTO TEMPORARY $temp_name FROM " . $table->name;
+    $sql .= join ', ', map { '"' . $_->name . '"' } $old_table->columns;
+    $sql .= qq|\n INTO TEMPORARY "$temp_name" FROM "| . $old_table->name . '"';
 
     return $sql;
 }
@@ -509,15 +513,17 @@ sub _temp_table_sql
 sub _restore_table_data_sql
 {
     my $self = shift;
-    my $table = shift;
+    my $new_table = shift;
+    my $old_table = shift;
 
-    my $temp_name = "TEMP" . $table->name;
+    my $temp_name = "TEMP" . $new_table->name;
 
-    my $sql = 'INSERT INTO ' . $table->name . '(';
-    $sql .= join ', ', map { $_->name } $table->columns;
+    my $sql = 'INSERT INTO "' . $new_table->name . '" (';
+    $sql .= join ', ', map { '"' . $_->name . '"' } $new_table->columns;
     $sql .= " ) \n  SELECT ";
-    $sql .= join ', ', map { $_->name } $table->columns;
-    $sql .= " FROM $temp_name";
+    $sql .= ( join ', ', map { '"' . $_->name . '"' }
+	      grep { $new_table->has_column( $_->name ) }  $old_table->columns );
+    $sql .= qq| FROM "$temp_name"|;
 
     return $sql;
 }
@@ -529,7 +535,7 @@ sub _drop_temp_table
 
     my $temp_name = "TEMP" . $table->name;
 
-    return "DROP TABLE $temp_name";
+    return qq|DROP TABLE "$temp_name"|;
 }
 
 sub drop_foreign_key_sql
@@ -542,7 +548,7 @@ sub drop_index_sql
     my $self = shift;
     my $index = shift;
 
-    return 'DROP INDEX ' . $index->id;
+    return 'DROP INDEX "' . $index->id . '"';
 }
 
 sub column_sql_add
@@ -550,11 +556,13 @@ sub column_sql_add
     my $self = shift;
     my $col = shift;
 
+    return () if $self->{sql_made}{table_sql}{ $col->table->name };
+
     # Skip default and not null while adding column
-    my @sql = 'ALTER TABLE ' . $col->table->name . ' ADD COLUMN ' . $self->column_sql($col, { skip_default => 1, skip_nullable => 1 });
+    my @sql = 'ALTER TABLE "' . $col->table->name . '" ADD COLUMN ' . $self->column_sql($col, { skip_default => 1, skip_nullable => 1 });
 
     # Add not null constraint if column is not nullable
-    push @sql, ( 'ALTER TABLE ' . $col->table->name . ' ADD CONSTRAINT ' . $col->table->name . '_' . $col->name . '_not_null CHECK ( ' . $col->name . ' IS NOT NULL )' )
+    push @sql, ( 'ALTER TABLE "' . $col->table->name . '" ADD CONSTRAINT "' . $col->table->name . '_' . $col->name . '_not_null" CHECK ( "' . $col->name . '" IS NOT NULL )' )
 	unless $col->nullable;
 
     my $default;
@@ -563,9 +571,11 @@ sub column_sql_add
   	my $def = ( $col->is_character ?
   		    do { my $d = $col->default; $d =~ s/"/""/g; qq|'$d'| } :
   		    $col->default );
-  	$default = ( "DEFAULT $def" );
+  	$default = "DEFAULT $def";
 
-  	push @sql, ( 'ALTER TABLE ' . $col->table->name . ' ALTER COLUMN ' . $col->name . " SET $default" );
+  	push @sql,
+	    ( 'ALTER TABLE "' . $col->table->name . '" ALTER COLUMN "' .
+	      $col->name . qq|" SET $default| );
     }
 
     return @sql;
@@ -595,12 +605,14 @@ sub alter_primary_key_sql
     my %p = @_;
 
     my @sql;
-    push @sql, 'DROP INDEX ' . $p{old}->name . '_pkey';
+    push @sql, 'DROP INDEX "' . $p{old}->name . '_pkey"';
 
     if ( $p{new}->primary_key )
     {
-	push @sql, ( 'CREATE UNIQUE INDEX ' . $p{new}->name . '_pkey ON ' . $p{new}->name . ' (' .
-		     ( join ', ', map { $_->name } $p{new}->primary_key ) . ')' );
+	push @sql, ( 'CREATE UNIQUE INDEX "' . $p{new}->name . '_pkey" ON "' .
+		     $p{new}->name . '" (' .
+		     ( join ', ',
+		       map { '"' . $_->name . '"' } $p{new}->primary_key ) . ')' );
     }
 
     return @sql;
@@ -619,7 +631,7 @@ sub reverse_engineer
 
 
 	my $t_oid = $driver->one_row( sql => 'SELECT oid FROM pg_class WHERE relname = ?',
-				      bind => lc $table );
+				      bind => $table );
 
 	my $sql = <<'EOF';
 SELECT a.attname, a.attnotnull, t.typname, a.attnum, a.atthasdef, a.atttypmod

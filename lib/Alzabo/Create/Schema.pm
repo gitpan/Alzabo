@@ -21,7 +21,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.81 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.83 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -1031,7 +1031,15 @@ A new C<Alzabo::Create::Schema> object.
 L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 L<C<Alzabo::Exception::System>|Alzabo::Exceptions>
 
-=head2 load_from_file($name)
+=head2 load_from_file
+
+=head3 Parameters
+
+=over 4
+
+=item * name => $schema_name
+
+=back
 
 Returns a schema object previously saved to disk.
 
@@ -1359,11 +1367,11 @@ A new Alzabo::Create::Schema object.
 
 Saves the schema to a file on disk.
 
-=for pod_merge start_transaction
+=for pod_merge begin_work
 
 =for pod_merge rollback
 
-=for pod_merge finish_transaction
+=for pod_merge commit
 
 =for pod_merge run_in_transaction ( sub { code... } )
 

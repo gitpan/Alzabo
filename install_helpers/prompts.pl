@@ -3,7 +3,8 @@ use strict;
 eval { require Alzabo::Config; };
 eval { require Alzabo; };
 
-if ( ! $@ && Alzabo::Config::available_schemas() && $Alzabo::VERSION < 0.55 )
+if ( ! $@ && defined Alzabo::Config::root_dir() &&
+     Alzabo::Config::available_schemas() && $Alzabo::VERSION < 0.55 )
 {
     print <<'EOF';
 
@@ -122,9 +123,9 @@ if ( keys %Alazabo::Config::CONFIG )
 write_config_module(%config);
 get_test_setup();
 
-if ( eval { require DBD::mysql } && $DBD::mysql::VERSION == 2.09 )
+if ( eval { require DBI } && $DBI::VERSION == 1.24 )
 {
-    warn "You appear to have DBD::mysql version 2.09 installed.  This version has a bug which causes major problems with Alzabo.  Please upgrade or downgrade.\n";
+    warn "You appear to have DBI version 1.24 installed.  This version has a bug which causes major problems with Alzabo.  Please upgrade or downgrade.\n";
 }
 
 %prereq = ( 'DBI' => 0,
@@ -133,8 +134,8 @@ if ( eval { require DBD::mysql } && $DBD::mysql::VERSION == 2.09 )
 	    'Exception::Class' => 0.97,
 	    'Time::HiRes' => 0,
 	    'Pod::Man' => 1.14,
-	    'Params::Validate' => 0.07,
-	    'Test::Simple' => 0.43,
+	    'Params::Validate' => 0.16,
+	    'Test::Simple' => 0.44,
 	    'Test::Harness' => 1.26,
 	    'Class::Factory::Util' => 1.2,
 	    %prereq );
@@ -231,7 +232,17 @@ sub write_config_module
     my $c = "(\n";
     foreach my $k (sort keys %config)
     {
-	$c .= "'$k' => '$config{$k}',\n";
+	my $val;
+	if ( length $config{$k} )
+	{
+	    $val = "'\Q$config{$k}\E'";
+	}
+	else
+	{
+	    $val = "undef";
+	}
+
+	$c .= "'$k' => $val,\n";
     }
     $c .= ")";
 

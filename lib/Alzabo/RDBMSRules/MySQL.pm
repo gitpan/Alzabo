@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.61 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.63 $ =~ /(\d+)\.(\d+)/;
 
 sub new
 {
@@ -665,7 +665,9 @@ sub alter_primary_key_sql
 
     foreach ($new->primary_key)
     {
-	if ( $_->sequenced && ! ( eval { $old->column( $_->name ) } && $old->column_is_primary_key( $_->name ) ) )
+	if ( $_->sequenced &&
+	     ! ( $old->has_column( $_->name ) &&
+		 $old->column( $_->name )->is_primary_key ) )
 	{
 	    my $sql = $self->column_sql($_);
 	    push @sql, 'ALTER TABLE ' . $new->name . ' CHANGE COLUMN ' . $_->name . ' ' . $sql;

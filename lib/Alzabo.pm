@@ -15,7 +15,7 @@ use vars qw($VERSION);
 
 use 5.005;
 
-$VERSION = '0.65';
+$VERSION = '0.66';
 
 1;
 
@@ -476,6 +476,18 @@ L<C<Alzabo::Runtime::Schema>|Alzabo::Runtime::Schema>.
   }
   $schema->create( user => 'user', password => 'password' );
   $schema->save_to_file;
+
+=head2 Transactions
+
+Alzabo uses transactions internally in order to guarantee consistency.
+Obviously, if you are using a database such as MySQL (without InnoDB)
+that does not support transactions, this is not possible.
+
+If you would like to use transactions explicitly in your code, please
+make sure to use the L<C<Alzabo::Schema>|Alzabo::Schema> class's
+L<C<begin_work>|Alzabo::Schema/begin_work>,
+L<C<commit>|Alzabo::Schema/commit>, and
+L<C<rollback>|Alzabo::Schema/rollback> methods.
 
 =head2 Backwards Compatibility
 

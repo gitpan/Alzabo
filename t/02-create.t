@@ -14,7 +14,7 @@ my @db;
 my $tests = 0;
 my $shared_tests = 135;
 my $mysql_only_tests = 2;
-my $pg_only_tests = 0;
+my $pg_only_tests = 1;
 if (eval { require DBD::mysql } && ! $@ )
 {
     push @db, 'MySQL';
@@ -513,6 +513,13 @@ foreach my $db (@db)
 	my $e = $@;
 	isa_ok( $e, 'Alzabo::Exception::RDBMSRules',
 		"Exception thrown from attempt to set a primary key column to the 'text' type" );
+    }
+
+    if ($db eq 'PostgreSQL')
+    {
+	eval { $t1->column('tbi')->set_attributes('unique') };
+	ok( ! $@,
+	    "Postgres should allow a column to have a UNIQUE attribute" );
     }
 
     $tbi->alter( type => 'varchar',

@@ -11,7 +11,7 @@ use base qw(Alzabo::SQLMaker);
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.23 $ =~ /(\d+)\.(\d+)/;
 
 my $MADE_FUNCTIONS;
 
@@ -292,6 +292,14 @@ sub _make_functions
 		       groups => $_->[2],
 		     );
     }
+
+    make_function( function => 'DISTINCT',
+		   min => 1,
+		   max => undef,
+		   quote => [0],
+		   groups => [ 'common' ],
+		   allows_alias => 0,
+		 );
 
     make_function( function => 'IN_BOOLEAN_MODE',
 		   is_modifier => 1,

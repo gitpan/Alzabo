@@ -9,7 +9,7 @@ use Class::Factory::Util;
 use Params::Validate qw( validate validate_pos );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.40 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -107,6 +107,8 @@ sub feature
     return 0;
 }
 
+sub quote_identifiers { 0 }
+
 sub schema_attributes
 {
     shift()->_virtual;
@@ -170,6 +172,7 @@ sub index_sql
     my $index = shift;
 
     my $index_name = $index->id;
+    $index_name = qq|"$index_name"| if $self->quote_identifiers;
 
     my $sql = 'CREATE';
     $sql .= ' UNIQUE' if $index->unique;
@@ -189,7 +192,10 @@ sub drop_table_sql
 {
     my $self = shift;
 
-    return 'DROP TABLE ' . shift->name;
+    my $name = shift->name;
+    $name = qq|"$name"| if $self->quote_identifiers;
+
+    return "DROP TABLE $name";
 }
 
 sub drop_column_sql
@@ -248,10 +254,74 @@ sub alter_primary_key_sql
     shift()->_virtual;
 }
 
+=pod
+
 sub reverse_engineer
 {
-    shift()->_virtual;
+    my $self = shift;
+    my $schema = shift;
+
+    my $dbh = $schema->driver->handle;
+
+    foreach my $table ( $dbh->tables )
+    {
+	my $t = $schema->make_table( name => $table );
+
+	$self->reverse_engineer_table($t);
+    }
 }
+
+sub reverse_engineer_table
+{
+    my $self = shift;
+    my $table = shift;
+
+    my $dbh = $table->schema->driver->handle;
+
+    my $sth = $dbh->column_info( undef, $table->schema->name, $table->name, undef );
+
+    while ( my $col_info = $sth->fetchrow_hashref )
+    {
+	use Data::Dumper; warn Dumper $col_info;
+	my %attr = ( name     => $col_info->{COLUMN_NAME},
+		     type     => $col_info->{TYPE_NAME},
+		     nullable => $col_info->{NULLABLE} ? 1 : 0,
+		   );
+
+	$attr{size} =
+	    $col_info->{COLUMN_SIZE} if $col_info->{COLUMN_SIZE};
+
+	$attr{precision} =
+	    $col_info->{DECIMAL_DIGITS} if $col_info->{DECIMAL_DIGITS};
+
+	$attr{default} =
+	    $col_info->{COLUMN_DEF} if defined $col_info->{COLUMN_DEF};
+
+	$attr{comment} =
+	    $col_info->{REMARKS} if defined $col_info->{REMARKS};
+
+	$table->make_column(%attr);
+    }
+
+    $self->reverse_engineer_table_primary_key($table);
+}
+
+sub reverse_engineer_table_primary_key
+{
+    my $self = shift;
+    my $table = shift;
+
+    my $dbh = $table->schema->driver->handle;
+
+    my $sth = $dbh->column_info( undef, $table->schema->name, $table->name );
+
+    while ( my $pk_info = $sth->fetchrow_hashref )
+    {
+	$table->add_primary_key( $table->column( $pk_info->{COLUMN_NAME} ) );
+    }
+}
+
+=cut
 
 sub rules_id
 {

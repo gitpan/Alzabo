@@ -7,7 +7,7 @@ use vars qw($VERSION $SCHEMA %CONNECT_PARAMS);
 use Digest::MD5 ();
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
 
 sub import
 {
@@ -122,6 +122,7 @@ sub new
     $SCHEMA->connect(%CONNECT_PARAMS);
 
     $self->{driver} = $SCHEMA->driver;
+    $self->{table}  = $self->{driver}->quote_identifier('AlzaboObjectCacheStore');
     $self->{is_pg}  = $self->{driver}->driver_id eq 'PostgreSQL';
 
     return $self;
@@ -131,7 +132,7 @@ sub clear
 {
     my $self = shift;
 
-    $self->{driver}->do( sql => 'DELETE FROM AlzaboObjectCacheStore' );
+    $self->{driver}->do( sql => "DELETE FROM $self->{table}" );
 }
 
 sub fetch_object
@@ -140,8 +141,9 @@ sub fetch_object
     my $id = Digest::MD5::md5_base64(shift);
 
     my $ser =
-	$self->{driver}->one_row( sql  => 'SELECT object_data FROM AlzaboObjectCacheStore WHERE object_id = ?',
-				  bind => $id );
+	$self->{driver}->one_row
+	    ( sql  => "SELECT object_data FROM $self->{table} WHERE object_id = ?",
+	      bind => $id );
 
     return unless $ser;
 
@@ -155,7 +157,7 @@ sub store_object
     my $self = shift;
     my $obj = shift;
 
-    my $id = Digest::MD5::md5_base64($obj->id_as_string);
+    my $id = Digest::MD5::md5_base64( $obj->id_as_string );
 
     my $ser = Storable::nfreeze($obj);
 
@@ -164,25 +166,27 @@ sub store_object
     # Must just try to insert, otherwise we have race conditions
     eval
     {
-	$self->{driver}->start_transaction;
+	$self->{driver}->begin_work;
 
 	# For Postgres, we don't want to try an insert that might fail
-	# because there's a duplicate key because that will abort any
+	# with a duplicate key error because that will abort any
 	# current transactions
 	if ( $self->{is_pg} )
 	{
-	    if ( $self->{driver}->one_row( sql => 'SELECT 1 FROM AlzaboObjectCacheStore WHERE object_id = ?',
-					   bind => $id ) )
+	    if ( $self->{driver}->one_row
+		     ( sql  => "SELECT 1 FROM $self->{table} WHERE object_id = ?",
+		       bind => $id ) )
 	    {
-		$self->{driver}->finish_transaction;
+		$self->{driver}->commit;
 		return; # exits eval {} block
 	    }
 	}
 
-	$self->{driver}->do( sql => 'INSERT INTO AlzaboObjectCacheStore (object_id, object_data) VALUES (?, ?)',
-			     bind => [ $id, $ser ] );
+	$self->{driver}->do
+	    ( sql  => "INSERT INTO $self->{table} (object_id, object_data) VALUES (?, ?)",
+	      bind => [ $id, $ser ] );
 
-	$self->{driver}->finish_transaction;
+	$self->{driver}->commit;
     };
 
     return unless $@;
@@ -191,8 +195,9 @@ sub store_object
     # not, we ignore the error and try again.  If the row gets deleted
     # between these two attempts we're kind of screwed.  Maybe we
     # should lock the table?  But that won't help speed.
-    $self->{driver}->do( sql => 'UPDATE AlzaboObjectCacheStore SET object_data = ? WHERE object_id = ?',
-			 bind => [ $ser, $id ] );
+    $self->{driver}->do
+	( sql  => "UPDATE $self->{table} SET object_data = ? WHERE object_id = ?",
+	  bind => [ $ser, $id ] );
 }
 
 sub delete_from_cache
@@ -200,8 +205,10 @@ sub delete_from_cache
     my $self = shift;
     my $id = Digest::MD5::md5_base64(shift);
 
-    $self->{driver}->do( sql => 'DELETE FROM AlzaboObjectCacheStore WHERE object_id = ?',
-			 bind => $id );
+    $self->{driver}->do
+	( sql  => "DELETE FROM $self->{table} WHERE object_id = ?",
+	  bind => $id );
+
 }
 
 

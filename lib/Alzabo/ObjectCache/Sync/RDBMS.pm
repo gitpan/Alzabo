@@ -9,7 +9,7 @@ use base qw(Alzabo::ObjectCache::Sync);
 
 use Digest::MD5 ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
 
 sub import
 {
@@ -116,6 +116,7 @@ sub _init
     $SCHEMA->connect(%CONNECT_PARAMS);
 
     $self->{driver} = $SCHEMA->driver;
+    $self->{table}  = $self->{driver}->quote_identifier('AlzaboObjectCacheSync');
     $self->{is_pg}  = $SCHEMA->driver->driver_id eq 'PostgreSQL';
 }
 
@@ -124,8 +125,9 @@ sub sync_time
     my $self = shift;
     my $id = Digest::MD5::md5_base64(shift);
 
-    return $self->{driver}->one_row( sql => 'SELECT sync_time FROM AlzaboObjectCacheSync WHERE object_id = ?',
-				     bind => $id );
+    return $self->{driver}->one_row
+	( sql  => "SELECT sync_time FROM $self->{table} WHERE object_id = ?",
+	  bind => $id );
 }
 
 sub update
@@ -142,8 +144,9 @@ sub update
     {
 	eval
 	{
-	    $self->{driver}->do( sql => 'UPDATE AlzaboObjectCacheSync SET sync_time = ? WHERE object_id = ?',
-				 bind => [ $time, $id ] );
+	    $self->{driver}->do
+		( sql  => "UPDATE $self->{table} SET sync_time = ? WHERE object_id = ?",
+		  bind => [ $time, $id ] );
 	};
 
 	# might as well leave if it works
@@ -154,25 +157,27 @@ sub update
     # the latest sync time to be in there anyway.
     eval
     {
-	$self->{driver}->start_transaction;
+	$self->{driver}->begin_work;
 
 	# For Postgres, we don't want to try an insert that might fail
 	# because there's a duplicate key because that will abort any
 	# current transactions
 	if ( $self->{is_pg} )
 	{
-	    if ( $self->{driver}->one_row( sql => 'SELECT 1 FROM AlzaboObjectCacheSync WHERE object_id = ?',
-					   bind => $id ) )
+	    if ( $self->{driver}->one_row
+		     ( sql  => "SELECT 1 FROM $self->{table} WHERE object_id = ?",
+		       bind => $id ) )
 	    {
-		$self->{driver}->finish_transaction;
+		$self->{driver}->commit;
 		return;
 	    }
 	}
 
-	$self->{driver}->do( sql => 'INSERT INTO AlzaboObjectCacheSync (object_id, sync_time) VALUES (?, ?)',
-			     bind => [ $id, $time ] );
+	$self->{driver}->do
+	    ( sql  => "INSERT INTO $self->{table} (object_id, sync_time) VALUES (?, ?)",
+	      bind => [ $id, $time ] );
 
-	$self->{driver}->finish_transaction;
+	$self->{driver}->commit;
     };
 }
 

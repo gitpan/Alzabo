@@ -74,7 +74,7 @@
 </form>
      </td>
     </tr>
-%       if ( length $fk->comment ) {
+%       if ( $fk->comment && length $fk->comment ) {
     <tr>
      <td colspan="4">
       <% $fk->comment | h %>

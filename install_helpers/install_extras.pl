@@ -27,10 +27,12 @@ GetOptions( \%opts,
 
 $opts{extension} ||= '';
 
-unless (-e $opts{root_dir} && -e "$opts{root_dir}/schemas")
+if( defined $opts{root_dir} )
 {
-    my $user = getpwuid($>);
-    warn <<'EOF';
+    unless (-e $opts{root_dir} && -e "$opts{root_dir}/schemas")
+    {
+	my $user = getpwuid($>);
+	warn <<'EOF';
 
 I am making some directories which Alzabo will use to store
 information such as schema objects.  This will be owned by the current
@@ -38,20 +40,21 @@ user ($user).  If you plan to run the schema creation interface as
 another user you may need to change the ownership and/or permissions
 of these directories.
 EOF
-}
+    }
 
+    unless (-e $opts{root_dir})
+    {
+	warn "\nMaking Alzabo root install directory $opts{root_dir}\n";
+	mkdir "$opts{root_dir}", 0755
+	    or die "can't make dir $opts{root_dir}: $!";
+    }
 
-unless (-e $opts{root_dir})
-{
-    warn "\nMaking Alzabo root install directory $opts{root_dir}\n";
-    mkdir "$opts{root_dir}", 0755
-	or die "can't make dir $opts{root_dir}: $!";
-}
-unless (-e "$opts{root_dir}/schemas")
-{
-    warn "Making Alzabo schema storage directory $opts{root_dir}/schemas\n";
-    mkdir "$opts{root_dir}/schemas", 0755
-	or die "can't make dir $opts{root_dir}: $!";
+    unless (-e "$opts{root_dir}/schemas")
+    {
+	warn "Making Alzabo schema storage directory $opts{root_dir}/schemas\n";
+	mkdir "$opts{root_dir}/schemas", 0755
+	    or die "can't make dir $opts{root_dir}: $!";
+    }
 }
 
 mason_schema() if $opts{install}{mason_schema};

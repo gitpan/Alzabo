@@ -13,7 +13,7 @@ use Time::HiRes qw(time);
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.79 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.83 $ =~ /(\d+)\.(\d+)/;
 
 sub insert
 {
@@ -28,7 +28,7 @@ sub insert
 
     my $vals = delete $p{values} || {};
 
-    my $driver = $self->schema->driver;
+    my $schema = $self->schema;
 
     my @pk = $self->primary_key;
     foreach my $pk (@pk)
@@ -37,7 +37,7 @@ sub insert
 	{
 	    if ($pk->sequenced)
 	    {
-		$vals->{ $pk->name } = $driver->next_sequence_number($pk);
+		$vals->{ $pk->name } = $schema->driver->next_sequence_number($pk);
 	    }
 	    else
 	    {
@@ -66,7 +66,7 @@ sub insert
 
     my %id;
 
-    $driver->start_transaction if @fk;
+    $schema->begin_work if @fk;
     eval
     {
 	foreach my $fk (@fk)
@@ -83,16 +83,16 @@ sub insert
 	{
 	    $id{ $pk->name } = ( defined $vals->{ $pk->name } ?
 				 $vals->{ $pk->name } :
-				 $driver->get_last_id($self) );
+				 $schema->driver->get_last_id($self) );
 	}
 
 	# must come after call to ->get_last_id for MySQL because the
 	# id will no longer be available after the transaction ends.
-	$driver->finish_transaction if @fk;
+	$schema->commit if @fk;
     };
     if (my $e = $@)
     {
-	eval { $driver->rollback };
+	eval { $schema->rollback };
 	if ( UNIVERSAL::can( $e, 'rethrow' ) )
 	{
 	    $e->rethrow;
@@ -146,7 +146,7 @@ sub row_by_pk
     {
 	unless ( $ignore && UNIVERSAL::isa( $e, 'Alzabo::Exception::NoSuchRow' ) )
 	{
-	    $e->rethrow if UNIVERSAL::can( $e, 'rethrow' );
+	    UNIVERSAL::can( $e, 'rethrow' ) ? $e->rethrow : die $e;
 	}
     }
 
@@ -232,7 +232,8 @@ sub _make_sql
     my $self = shift;
 
     my $sql = ( $self->schema->sqlmaker->
-		select( $self->primary_key, $self->prefetch ? $self->columns( $self->prefetch ) : () )->
+		select( $self->primary_key,
+			$self->prefetch ? $self->columns( $self->prefetch ) : () )->
 		from( $self ) );
 
     return $sql;
@@ -340,6 +341,9 @@ sub _select_sql
 sub set_prefetch
 {
     my $self = shift;
+
+    return unless $Alzabo::ObjectCache::VERSION;
+
     $self->{prefetch} = $self->_canonize_prefetch(@_);
 }
 

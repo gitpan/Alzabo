@@ -321,10 +321,15 @@ sub pg_make_schema
 		      to_is_dependent => 0,
 		    );
 
+    my $mixed = $s->make_table( name => 'MixEDCasE' );
+    $mixed->make_column( name => 'mixed_CASE_Pk',
+			 type => 'integer',
+			 primary_key => 1 );
+
     my $name = $p{schema_name};
     delete @p{'rdbms', 'schema_name'};
 
-    # scary hack that seems to fix "database is in use" errors
+    # scary hack that seems to mostly fix "database is in use" errors
     if ( $pid = fork )
     {
 	wait;

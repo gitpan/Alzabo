@@ -120,6 +120,9 @@ mason/widgets/edit_field_checkbox
 mason/widgets/edit_field_text_input
 mason/widgets/edit_field_textarea
 mason/widgets/fk_to_one_select
+mason/widgets/insert
+mason/widgets/insert_or_update
+mason/widgets/update
 t/00-cleanup.t
 t/01-compile.t
 t/02-create.t

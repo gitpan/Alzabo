@@ -9,7 +9,7 @@ use Alzabo::Runtime;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.55 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.59 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
@@ -70,9 +70,7 @@ sub new
 	}
     }
 
-    my $s = eval { Alzabo::Runtime::Schema->load_from_file( name => delete $p{schema} ); };
-    warn $@ if $@ && $DEBUG;
-    return if $@;
+    my $s = Alzabo::Runtime::Schema->load_from_file( name => delete $p{schema} );
 
     my $class_root;
     if ( $p{class_root} )
@@ -95,7 +93,10 @@ sub new
 
     $p{name_maker} = sub { $self->name(@_) } unless ref $p{name_maker};
 
-    $self = bless { opts => \%p, class_root => $class_root, schema => $s }, $class;
+    $self = bless { opts => \%p,
+		    class_root => $class_root,
+		    schema => $s,
+		  }, $class;
 
     return $self;
 }
@@ -120,8 +121,10 @@ sub make
 
 	bless $t, $self->{table_class};
 	$self->eval_table_class;
+	$self->{schema}->add_contained_class( table => $self->{table_class} );
 
 	$self->eval_row_class;
+	$t->add_contained_class( row => $self->{row_class} );
 
 	if ( $self->{opts}{tables} )
 	{
@@ -172,31 +175,12 @@ sub eval_schema_class
     eval <<"EOF";
 package $self->{schema_class};
 
-use base qw( Alzabo::Runtime::Schema );
+use base qw( Alzabo::Runtime::Schema Alzabo::DocumentationContainer );
 
 1;
 EOF
 
     Alzabo::Exception::Eval->throw( error => $@ ) if $@;
-}
-
-sub make_table_method
-{
-    my $self = shift;
-    my $t = shift;
-
-    my $name = $self->{opts}{name_maker}->( type => 'table',
-					    table => $t );
-    return unless $name;
-    return if $t->schema->can($name);
-
-    my $method = join '::', $self->{schema_class}, $name;
-
-    warn "Making table access method $method: returns table\n" if $DEBUG;
-    {
-	no strict 'refs';
-	*{$method} = sub { return $t; };
-    }
 }
 
 sub eval_table_class
@@ -206,7 +190,7 @@ sub eval_table_class
     eval <<"EOF";
 package $self->{table_class};
 
-use base qw( Alzabo::Runtime::Table );
+use base qw( Alzabo::Runtime::Table Alzabo::DocumentationContainer );
 
 sub row_by_pk
 {
@@ -239,6 +223,8 @@ sub eval_row_class
 
     eval <<"EOF";
 package $self->{row_class};
+
+use base qw( Alzabo::DocumentationContainer );
 
 sub new
 {
@@ -276,6 +262,32 @@ EOF
     Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 }
 
+sub make_table_method
+{
+    my $self = shift;
+    my $t = shift;
+
+    my $name = $self->{opts}{name_maker}->( type => 'table',
+					    table => $t );
+    return unless $name;
+    return if $t->schema->can($name);
+
+    my $method = join '::', $self->{schema_class}, $name;
+
+    warn "Making table access method $method: returns table\n" if $DEBUG;
+    {
+	no strict 'refs';
+	*{$method} = sub { return $t; };
+    }
+
+    $self->{schema_class}->add_method_docs
+	( Alzabo::MethodDocs->new
+	  ( name  => $name,
+	    group => 'Methods that return table objects',
+	    description => "returns the " . $t->name . " table object",
+	  ) );
+}
+
 sub load_class
 {
     my $self = shift;
@@ -305,8 +317,18 @@ sub make_table_column_methods
 	warn "Making column object $method: returns column object\n" if $DEBUG;
 	{
 	    no strict 'refs';
+	    # We can't just return $c because we may need to go
+	    # through the alias bits.  And we need to use $_[0] for
+	    # the same reason.
 	    *{$method} = sub { return $_[0]->column($col_name) };
 	}
+
+	$self->{table_class}->add_method_docs
+	    ( Alzabo::MethodDocs->new
+	      ( name  => $name,
+		group => 'Methods that return column objects',
+		description => "returns the " . $c->name . " column object",
+	      ) );
     }
 }
 
@@ -336,6 +358,15 @@ sub make_row_column_methods
 			       }
 			       return $self->select($col_name); };
 	}
+
+	$self->{row_class}->add_method_docs
+	    ( Alzabo::MethodDocs->new
+	      ( name  => $name,
+		group => 'Methods that update/return a column value',
+		spec  => [ { type => SCALAR } ],
+		description =>
+		"returns the value of the " . $c->name . " column for a row.  Given a value, it will also update the row first.",
+	      ) );
     }
 }
 
@@ -402,6 +433,15 @@ sub make_foreign_key_methods
 		    sub { my $self = shift;
 			  return $self->rows_by_foreign_key( foreign_key => $fk, @_ ); };
 	    }
+
+	    $self->{row_class}->add_method_docs
+		( Alzabo::MethodDocs->new
+		  ( name  => $name,
+		    group => 'Methods that return cursors for foreign keys',
+		    description =>
+		    "returns a cursor containing related rows from the " . $fk->table_to->name . " table",
+		    spec  => 'same as Alzabo::Runtime::Table->rows_where',
+		  ) );
 	}
 	# Singular method name
 	else
@@ -421,6 +461,15 @@ sub make_foreign_key_methods
 		    sub { my $self = shift;
 			  return $self->rows_by_foreign_key( foreign_key => $fk, @_ ); };
 	    }
+
+	    $self->{row_class}->add_method_docs
+		( Alzabo::MethodDocs->new
+		  ( name  => $name,
+		    group => 'Methods that return a single row for foreign keys',
+		    description =>
+		    "returns a single related row from the " . $fk->table_to->name . " table",
+		    spec  => 'same as Alzabo::Runtime::Table->one_row',
+		  ) );
 	}
     }
 }
@@ -451,7 +500,7 @@ sub make_self_relation
     {
 	my $parent = join '::', $self->{row_class}, $name;
 
-	warn "Making self-relation method $parent: returns single row\n" if $DEBUG;
+	warn "Making self-relationship method $parent: returns single row\n" if $DEBUG;
 	{
 	    no strict 'refs';
 	    *{$parent} =
@@ -459,6 +508,15 @@ sub make_self_relation
 		      my @where = map { [ $_->[0], '=', $self->select( $_->[1] ) ] } @pairs;
 		      return $table->one_row( where => \@where, @_ ) };
 	}
+
+	$self->{row_class}->add_method_docs
+	    ( Alzabo::MethodDocs->new
+	      ( name  => $name,
+		group => 'Methods that return a parent row',
+		description =>
+		"a single parent row from the same table",
+		spec  => 'same as Alzabo::Runtime::Table->one_row',
+	      ) );
     }
 
     $name = $self->{opts}{name_maker}->( type => 'self_relation',
@@ -478,6 +536,15 @@ sub make_self_relation
 		  return $table->rows_where( where => \@where,
 					     @_ ); };
     }
+
+    $self->{row_class}->add_method_docs
+	( Alzabo::MethodDocs->new
+	  ( name  => $name,
+	    group => 'Methods that return child rows',
+	    description =>
+	    "a row cursor of child rows from the same table",
+	    spec  => 'same as Alzabo::Runtime::Table->rows_where',
+	  ) );
 }
 
 sub make_linking_table_method
@@ -541,7 +608,14 @@ sub make_linking_table_method
 				   %p ); };
     }
 
-    return 1;
+    $self->{row_class}->add_method_docs
+	( Alzabo::MethodDocs->new
+	  ( name  => $name,
+	    group => 'Methods that follow a linking table',
+	    description =>
+	    "a row cursor of related rows from the " . $fk_2->table_to->name . " table",
+	    spec  => 'same as Alzabo::Runtime::Table->rows_where',
+	  ) );
 }
 
 sub make_lookup_columns_methods
@@ -571,6 +645,15 @@ sub make_lookup_columns_methods
 		sub { my $self = shift;
 		      return $self->rows_by_foreign_key( foreign_key => $fk, @_ )->select($col_name) };
 	}
+
+	$self->{row_class}->add_method_docs
+	    ( Alzabo::MethodDocs->new
+	      ( name  => $name,
+		group => 'Methods that follow a lookup table',
+		description =>
+		"returns the value of " . (join '.', $fk->table_to->name, $col_name) . " for the given row by following the foreign key relationship",
+		spec  => 'same as Alzabo::Runtime::Table->rows_where',
+	      ) );
     }
 }
 
@@ -628,6 +711,33 @@ $code
 EOF
 
     Alzabo::Exception::Eval->throw( error => $@ ) if $@;
+
+    my $hooks =
+	$self->_hooks_doc_string( $self->{table_class}, 'pre_insert', 'post_insert' );
+
+    $self->{table_class}->add_class_docs
+	( Alzabo::ClassDocs->new
+	  ( group => 'Hooks',
+	    description => "has $hooks",
+	  ) );
+}
+
+sub _hooks_doc_string
+{
+    my $self = shift;
+    my ($class, $hook1, $hook2) = @_;
+
+    my @hooks;
+    push @hooks, $hook1 if $self->{table_class}->can($hook1);
+
+    push @hooks, $hook2 if $self->{table_class}->can($hook2);
+
+    my $hooks = 'contains';
+    $hooks .= @hooks > 1 ? '' : ' a ';
+    $hooks .= join ' and ', @hooks;
+    $hooks .= @hooks > 1 ? 'hooks' : 'hook';
+
+    return $hooks;
 }
 
 sub make_update_hooks
@@ -639,7 +749,6 @@ sub make_update_hooks
     $code .= "            \$s->pre_update(\\\%p);\n" if $self->{row_class}->can('pre_update');
     $code .= "            \$s->Alzabo::Runtime::CachedRow::update(\%p);\n";
     $code .= "            \$s->post_update(\\\%p);\n" if $self->{row_class}->can('post_update');
-
     $code .= "        } );\n";
 
     eval <<"EOF";
@@ -693,6 +802,15 @@ $code
 EOF
 
     Alzabo::Exception::Eval->throw( error => $@ ) if $@;
+
+    my $hooks =
+	$self->_hooks_doc_string( $self->{row_class}, 'pre_update', 'post_update' );
+
+    $self->{row_class}->add_class_docs
+	( Alzabo::ClassDocs->new
+	  ( group => 'Hooks',
+	    description => "has $hooks",
+	  ) );
 }
 
 sub make_select_hooks
@@ -754,6 +872,15 @@ EOF
 	Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 
     }
+
+    my $hooks =
+	$self->_hooks_doc_string( $self->{row_class}, 'pre_select', 'post_select' );
+
+    $self->{row_class}->add_class_docs
+	( Alzabo::ClassDocs->new
+	  ( group => 'Hooks',
+	    description => "has $hooks",
+	  ) );
 }
 
 sub make_delete_hooks
@@ -800,6 +927,15 @@ $code
 EOF
 
     Alzabo::Exception::Eval->throw( error => $@ ) if $@;
+
+    my $hooks =
+	$self->_hooks_doc_string( $self->{row_class}, 'pre_delete', 'post_delete' );
+
+    $self->{row_class}->add_class_docs
+	( Alzabo::ClassDocs->new
+	  ( group => 'Hooks',
+	    description => "has $hooks",
+	  ) );
 }
 
 sub name
@@ -965,6 +1101,319 @@ EOF
 EOF
 
     Alzabo::Exception::Eval->throw( error => $@ ) if $@;
+}
+
+package Alzabo::DocumentationContainer;
+
+my %store;
+sub add_method_docs
+{
+    my $class = shift;
+
+    my $docs = shift;
+
+    my $store = $class->_get_store($class);
+
+    my $group = $docs->group;
+    my $name = $docs->name;
+
+    $store->{methods}{by_group}{$group} ||= Tie::IxHash->new;
+    $store->{methods}{by_group}{$group}->Push( $name => $docs );
+
+    $store->{methods}{by_name} ||= Tie::IxHash->new;
+    $store->{methods}{by_name}->Push( $name => $docs );
+}
+
+sub add_class_docs
+{
+    my $class = shift;
+
+    my $docs = shift;
+
+    my $store = $class->_get_store($class);
+
+    my $group = $docs->group;
+
+    $store->{class}{by_group}{$group} ||= [];
+    push @{ $store->{class}{by_group}{$group} }, $docs;
+}
+
+sub add_contained_class
+{
+    my $class = shift;
+
+    my ($type, $contained) = @_;
+
+    my $store = $class->_get_store($class);
+
+    push @{ $store->{contained_classes}{by_name} }, $contained;
+
+    push @{ $store->{contained_classes}{by_type}{$type} }, $contained;
+}
+
+sub _get_store
+{
+    my $class = shift;
+    $class = ref $class || $class;
+
+    $store{$class} ||= {};
+
+    return $store{$class};
+}
+
+sub method_names
+{
+    my $class = shift;
+
+    my $store = $class->_get_store($class);
+
+    return $store->{methods}{by_name}->Keys;
+}
+
+sub methods_by_name
+{
+    my $class = shift;
+
+    my $store = $class->_get_store($class);
+
+    return $store->{methods}{by_name}->Values;
+}
+
+sub method_groups
+{
+    my $class = shift;
+
+    my $store = $class->_get_store($class);
+
+    return keys %{ $store->{methods}{by_group} };
+}
+
+sub methods_by_group
+{
+    my $class = shift;
+
+    my $store = $class->_get_store($class);
+
+    my $group = shift;
+
+    return $store->{methods}{by_group}{$group}->Values
+	if exists $store->{methods}{by_group}{$group};
+}
+
+sub class_groups
+{
+    my $class = shift;
+
+    my $store = $class->_get_store($class);
+
+    return keys %{ $store->{class}{by_group} };
+}
+
+sub class_docs_by_group
+{
+    my $class = shift;
+
+    my $store = $class->_get_store($class);
+
+    my $group = shift;
+
+    return @{ $store->{class}{by_name}{$group} }
+	if exists $store->{class}{by_name}{$group};
+}
+
+sub class_docs
+{
+    my $class = shift;
+
+    my $store = $class->_get_store($class);
+
+    my $group = shift;
+
+    return map { @{ $store->{class}{by_group}{$_} } }
+	keys %{ $store->{class}{by_group} };
+}
+
+sub contained_classes
+{
+    my $class = shift;
+
+    my $store = $class->_get_store($class);
+
+    return @{ $store->{contained_classes}{by_name} }
+	if exists $store->{contained_classes}{by_name};
+
+    return;
+}
+
+sub method
+{
+    my $class = shift;
+
+    my $store = $class->_get_store($class);
+
+    my $name = shift;
+
+    return $store->{methods}{by_name}->FETCH($name)
+	if exists $store->{methods}{by_name};
+}
+
+sub docs_as_pod
+{
+    my $self = shift;
+    my $class = ref $self || $self;
+    my $contained = shift;
+
+    my $store = $class->_get_store($class);
+
+    my $pod;
+
+    $pod .= "=pod\n\n" unless $contained;
+
+    $pod .= "=head1 $class\n\n";
+
+    foreach my $class_doc ( $class->class_docs )
+    {
+	$pod .= $class_doc->as_pod;
+    }
+
+    foreach my $group ( $class->method_groups )
+    {
+	$pod .= "=head2 $group\n\n";
+
+	foreach my $method ( $class->methods_by_group($group) )
+	{
+	    $pod .= $method->as_pod;
+	}
+    }
+
+    $pod .= $_ foreach $self->contained_docs;
+
+    $pod .= "=cut\n\n" unless $contained;
+
+    return $pod;
+}
+
+sub contained_docs
+{
+    my $self = shift;
+
+    return map { $_->docs_as_pod } $self->contained_classes;
+}
+
+package Alzabo::Docs;
+
+sub group { shift->{group} }
+sub description { shift->{description} }
+
+package Alzabo::MethodDocs;
+
+use Params::Validate qw( validate SCALAR ARRAYREF HASHREF );
+
+use base qw(Alzabo::Docs);
+
+sub new
+{
+    my $class = shift;
+    my %p = validate( @_, { name    => { type => SCALAR },
+			    group   => { type => SCALAR },
+			    description => { type => SCALAR },
+			    spec    => { type => SCALAR | ARRAYREF | HASHREF,
+					 default => undef },
+			  } );
+
+    return bless \%p, $class;
+}
+
+sub name { shift->{name} }
+sub spec { shift->{spec} }
+
+sub as_pod
+{
+    my $self = shift;
+
+    my $desc = ucfirst $self->{description};
+
+    my $spec = $self->spec;
+
+    my $params;
+    if ( defined $spec )
+    {
+	if ( UNIVERSAL::isa( $spec, 'ARRAY' ) )
+	{
+	    $params = "=over 4\n\n";
+
+	    foreach my $p (@$spec)
+	    {
+		$params .= "=item * ";
+		if ( exists $p->{type} )
+		{
+		    # hack!
+		    my $types =
+			join ', ', Params::Validate::_typemask_to_strings( $p->{type} );
+		    $params .= "($types)";
+		}
+		$params .= "\n\n";
+	    }
+
+	    $params .= "=back\n\n";
+	}
+	elsif ( UNIVERSAL::isa( $spec, 'HASH' ) )
+	{
+	    $params = "=over 4\n\n";
+
+	    while ( my ($name, $p) = each %$spec )
+	    {
+		$params .= "=item * $name ";
+		if ( exists $p->{type} )
+		{
+		    # hack!
+		    my $types =
+			join ', ', Params::Validate::_typemask_to_strings( $p->{type} );
+		    $params .= "($types)";
+		}
+		$params .= "\n\n";
+	    }
+
+	    $params .= "=back\n\n";
+	}
+	else
+	{
+	    $params = "Parameters: $spec\n\n";
+	}
+    }
+
+    my $pod = <<"EOF";
+=head3 $self->{name}
+
+$desc
+
+EOF
+    $pod .= $params if $params;
+
+    return $pod;
+}
+
+package Alzabo::ClassDocs;
+
+use Params::Validate qw( validate SCALAR );
+
+use base qw(Alzabo::Docs);
+
+sub new
+{
+    my $class = shift;
+    my %p = validate( @_, { group   => { type => SCALAR },
+			    description => { type => SCALAR },
+			  } );
+
+    return bless \%p, $class;
+}
+
+sub as_pod
+{
+    my $self = shift;
+
+    return ucfirst "$self->{description}\n\n";
 }
 
 1;
@@ -1503,6 +1952,21 @@ Here is an example that covers all of the possible options:
 
      return Lingua::EN::Inflect::PL($name);
  }
+
+=head1 GENERATED DOCUMENTATION
+
+This module keeps track of methods that are generated and can in turn
+generate basic POD for those methods.
+
+Any schema that has had methods generated for it by
+Alzabo::MethodMaker will have an additional method, C<docs_as_pod>.
+This will return documentation for the schema object's methods, as
+well as any documentation available for objects that the schema
+contains, in this case tables.  The tables in turn return their own
+documentation plus that of their contained row classes.
+
+It is also possible to call the C<docs_as_pod> method on any generated
+table or row class individually.
 
 =head1 AUTHOR
 

@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.77 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.83 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -100,15 +100,13 @@ sub _get_data
 {
     my $self = shift;
 
-    my $driver = $self->schema->driver;
-
     my $sql = ( $self->schema->sqlmaker->
 		select( $self->table->columns(@_) )->
 		from( $self->table ) );
     $self->_where($sql);
 
-    my @row = $driver->one_row( sql => $sql->sql,
-				bind => $sql->bind )
+    my @row = $self->schema->driver->one_row( sql => $sql->sql,
+					      bind => $sql->bind )
 	or $self->_no_such_row_error;
 
     my %data;
@@ -143,7 +141,7 @@ sub update
 
     $self->_no_such_row_error if $self->{deleted};
 
-    my $driver = $self->schema->driver;
+    my $schema = $self->schema;
 
     my @fk; # this never gets populated unless referential integrity
             # checking is on
@@ -183,7 +181,7 @@ sub update
 
     $self->_where($sql);
 
-    $driver->start_transaction if @fk;
+    $schema->begin_work if @fk;
 
     eval
     {
@@ -192,14 +190,14 @@ sub update
 	    $fk->register_update( map { $_->name => $data{ $_->name } } $fk->columns_from );
 	}
 
-	$driver->do( sql => $sql->sql,
-		     bind => $sql->bind );
+	$schema->driver->do( sql => $sql->sql,
+			     bind => $sql->bind );
 
-	$driver->finish_transaction if @fk;
+	$schema->commit if @fk;
     };
     if (my $e = $@)
     {
-	eval { $driver->rollback };
+	eval { $schema->rollback };
 
 	if ( UNIVERSAL::can( $e, 'rethrow' ) )
 	{
@@ -216,11 +214,11 @@ sub delete
 {
     my $self = shift;
 
-    my $driver = $self->schema->driver;
+    my $schema = $self->schema;
 
     my @fk; # this never populated unless referential integrity
             # checking is on
-    if ($self->schema->referential_integrity)
+    if ($schema->referential_integrity)
     {
 	@fk = $self->table->all_foreign_keys;
     }
@@ -229,7 +227,7 @@ sub delete
 		delete->from( $self->table ) );
     $self->_where( $sql );
 
-    $driver->start_transaction if @fk;
+    $schema->begin_work if @fk;
     eval
     {
 	foreach my $fk (@fk)
@@ -237,14 +235,14 @@ sub delete
 	    $fk->register_delete($self);
 	}
 
-	$driver->do( sql => $sql->sql,
-		     bind => $sql->bind );
+	$schema->driver->do( sql => $sql->sql,
+			     bind => $sql->bind );
 
-	$driver->finish_transaction if @fk;
+	$schema->commit if @fk;
     };
     if (my $e = $@)
     {
-	eval { $driver->rollback };
+	eval { $schema->rollback };
 	if ( UNIVERSAL::can( $e, 'rethrow' ) )
 	{
 	    $e->rethrow;
@@ -296,7 +294,8 @@ sub rows_by_foreign_key
 	$p{where} = [ $p{where} ] unless UNIVERSAL::isa( $p{where}[0], 'ARRAY' );
     }
 
-    push @{ $p{where} }, map { [ $_->[1], '=', $self->select( $_->[0]->name ) ] } $fk->column_pairs;
+    push @{ $p{where} },
+	map { [ $_->[1], '=', $self->select( $_->[0]->name ) ] } $fk->column_pairs;
 
     # if the relationship is not 1..n, then only one row can be
     # returned (or referential integrity has been hosed in the
@@ -369,7 +368,7 @@ sub STORABLE_freeze
 
     $data{sync_time} = $self->{sync_time} = $cache->sync_time($self) if $cache;
 
-    my $ser = eval { Storable::nfreeze \%data };
+    my $ser = eval { Storable::nfreeze(\%data) };
 
     Alzabo::Exception::Storable->throw( error => $@ ) if $@;
 
@@ -394,7 +393,27 @@ sub STORABLE_thaw
     if ( $Alzabo::ObjectCache::VERSION && $self->can('cache_id') )
     {
 	$self->{cache} = Alzabo::ObjectCache->new;
-	$self->{cache}->store_object($self, delete $self->{sync_time} );
+	$self->{cache}->store_object( $self, delete $self->{sync_time} );
+    }
+
+    return $self;
+}
+
+BEGIN
+{
+    # dumb hack to fix bugs in Storable 2.00 - 2.03 w/ Perl < 5.8.0
+    #
+    # Basically, Storable somehow screws up the hooks business the
+    # _first_ time an object from a class with hooks is stored.  So
+    # we'll just _force_ it do it once right away.
+    if ( $Storable::VERSION >= 2 && $] < 5.008 )
+    {
+	eval <<'EOF';
+	{ package ___name; sub name { 'foo' } }
+	{ package ___table;  @table::ISA = '___name'; sub schema { bless {}, '___name' } }
+	my $row = bless { table => bless {}, '___table' }, __PACKAGE__;
+	Storable::thaw(Storable::nfreeze($row));
+EOF
     }
 }
 

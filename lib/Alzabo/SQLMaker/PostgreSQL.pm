@@ -8,7 +8,7 @@ use Alzabo::Exceptions;
 use Alzabo::SQLMaker;
 use base qw(Alzabo::SQLMaker);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
 
 my $MADE_FUNCTIONS;
 
@@ -175,6 +175,8 @@ sub _make_functions
 	      [ SUM  => [0], [ 'aggregate', 'common' ] ],
 	      [ STDDEV  => [0], [ 'aggregate' ] ],
 	      [ VARIANCE => [0], [ 'aggregate' ] ],
+
+	      [ DISTINCT => [0], [ 'common' ] ],
 	    )
     {
 	make_function( function => $_->[0],
@@ -378,6 +380,7 @@ These are functions from other groups that are most commonly used.
  MIN
  MAX
  SUM
+ DISTINCT
 
 =head1 AUTHOR
 

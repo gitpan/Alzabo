@@ -36,12 +36,6 @@ sub Test::More::eval_ok (&$)
     {
 	Test::More::ok( 0, $name );
 	Test::Builder->new->diag("     got error: $e\n" );
-	if ( $e->can('sql') )
-	{
-	    Test::Builder->new->diag( "           SQL: " . $e->sql . "\n" );
-	    my $b = join ' || ', $e->bind;
-	    Test::Builder->new->diag( "    Bound vals: $b\n" );
-	}
     }
     else
     {

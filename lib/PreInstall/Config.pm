@@ -19,12 +19,16 @@ sub root_dir
 
 sub schema_dir
 {
+    Alzabo::Exception->throw( error => "No Alzabo root directory defined" )
+	unless defined $CONFIG{root_dir};
+
     return File::Spec->catdir( $CONFIG{root_dir}, 'schemas' );
 }
 
 sub available_schemas
 {
     my $dirname = Alzabo::Config::schema_dir;
+
     local *DIR;
     opendir DIR, $dirname
         or Alzabo::Exception::System->throw( error =>  "can't open $dirname: $!\n" );
@@ -86,12 +90,16 @@ The root directory for your Alzabo installation.
 
 =head2 schema_dir
 
+If no root_dir is defined, this function throws an exception.
+
 =head3 Returns
 
 The directory under which Alzabo schema objects are stored in
 serialized form.
 
 =head2 available_schemas
+
+If no root_dir is defined, this function throws an exception.
 
 =head3 Returns
 

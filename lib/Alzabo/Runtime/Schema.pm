@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.63 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.64 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -768,11 +768,11 @@ join.
 
 =for pod_merge has_table
 
-=for pod_merge start_transaction
+=for pod_merge begin_work
 
 =for pod_merge rollback
 
-=for pod_merge finish_transaction
+=for pod_merge commit
 
 =for pod_merge run_in_transaction ( sub { code... } )
 

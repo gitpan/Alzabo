@@ -78,10 +78,11 @@ sub install
 
     my $extras = '';
     my @args;
-    push @args, "--root_dir=$main::config{root_dir}";
+    push @args, "--root_dir=$main::config{root_dir}" if $main::config{root_dir};
     push @args, '--install=mason_schema' if $main::extra{mason_schema};
     push @args, '--install=mason_browser' if $main::extra{mason_browser};
-    push @args, "--extension=$main::extra{mason_extension}";
+    push @args, "--extension=$main::extra{mason_extension}"
+	if $main::extra{mason_extension};
 
     my $pl_file = File::Spec->catfile( 'install_helpers', 'install_extras.pl' );
     $extras .= "\n\t\$(PERL) $pl_file @args";

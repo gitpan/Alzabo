@@ -27,8 +27,9 @@ BEGIN
     }
 }
 
-use Test::More qw(no_header);
 use Test::Builder;
+BEGIN { Test::Builder->new->no_header(1) }
+use Test::More;
 
 # we want to use Test::More but start at a number > 1
 my $test = Test::Builder->new;
@@ -813,12 +814,24 @@ sub run_tests
 
     $emp_t->set_prefetch( $emp_t->columns( qw( name smell ) ) );
     my @p = $emp_t->prefetch;
-    is( scalar @p, 2,
-	"Prefetch method should return 2 column names" );
-    is( scalar ( grep { $_ eq 'name' } @p ), 1,
-	"One column should be 'name'" );
-    is( scalar ( grep { $_ eq 'smell' } @p ), 1,
-	"And the other should be 'smell'" );
+
+    # without caching prefetch is a no-op
+    if ( $Alzabo::ObjectCache::VERSION )
+    {
+	is( scalar @p, 2,
+	    "Prefetch method should return 2 column names" );
+	is( scalar ( grep { $_ eq 'name' } @p ), 1,
+	    "One column should be 'name'" );
+	is( scalar ( grep { $_ eq 'smell' } @p ), 1,
+	    "And the other should be 'smell'" );
+    }
+    else
+    {
+	is( scalar @p, 0,
+	    "Prefetch method should return 0 column names without caching" );
+	ok(1);
+	ok(1);
+    }
 
     is( $emp_t->row_count, 4,
 	"employee table should have 4 rows" );
