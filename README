@@ -54,21 +54,9 @@ forewarned is forearmed (or something like that).
 - make_html_docs.pl and Pod::Html
 
 There are links in the pod for Alzabo/Runtime/Table.pm back to
-Alzabo.pm that Pod::Html fails to resolve.  This patch (against the
-version of Pod::Html that comes with Perl 5.6.1) fixes this, though it
-may break other things.
-
---- Html.pm.old	Mon Jul  2 11:52:46 2001
-+++ Html.pm	Mon Jul  2 11:52:54 2001
-@@ -1697,7 +1697,7 @@
-     $page=$page83 if (defined $pages{$page83});
-     if ($page eq "") {
- 	$link = "#" . htmlify( $section );
--    } elsif ( $page =~ /::/ ) {
-+    } elsif ( $page =~ /::|(?:^\w+$)/ ) {
- 	$page =~ s,::,/,g;
- 	# Search page cache for an entry keyed under the html page name,
- 	# then look to see what directory that page might be in.  NOTE:
+Alzabo.pm that Pod::Html fails to resolve.  This causes warnings when
+running make_html_docs.pl.  However, the generated HTML file is
+processed to correct these problems.
 
 CREDITS
 
@@ -86,5 +74,6 @@ Robert Goff
 Michael Graham
 Sam Horrocks
 Aaron Johnson
+Ilya Martynov
 Dana Powers
 Ron Savage

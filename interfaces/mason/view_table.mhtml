@@ -41,7 +41,7 @@
 <br>
 %         }
 %       }
-     - <% $fk->dependent ? '' : 'in' %>dependent
+     - <% $fk->from_is_dependent ? '' : 'in' %>dependent
      </td>
      <td align="center">
       <% join '..', $fk->cardinality %>

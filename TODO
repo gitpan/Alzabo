@@ -25,7 +25,7 @@ Short term:
   on a generic XML language for database schema modelling, to be
   called DBML.
 
-- Non-Mason interface (curses, plain CGI)
+- Non-Mason interface(s) (curses, plain CGI)
 
 - Make caching system more atomic.  There may subtle race conditions
   in there that should be fixed (timestamps are generated more than

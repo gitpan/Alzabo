@@ -13,7 +13,7 @@ use Alzabo::Config;
 
 use vars qw($VERSION);
 
-$VERSION = '0.50';
+$VERSION = '0.51';
 
 1;
 
@@ -212,8 +212,8 @@ beginning of such a script:
                                        length => 240,
                                        nullable => 0 );
 
-      $table->make_index( columns => [ column => $b_col,
-                                       prefix => 10 ] );
+      $table->make_index( columns => [ { column => $b_col,
+                                         prefix => 10 } ] );
 
       ...
 

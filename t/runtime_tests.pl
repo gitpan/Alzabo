@@ -70,6 +70,13 @@ sub run_tests
     $s->set_referential_integrity(1);
     $s->connect;
 
+    my $dbh = $s->driver->handle;
+    ok( $dbh eq $s->driver->{dbh},
+	"Object returned by Driver->handle method is not the driver's database handle" );
+
+    ok( eval { $s->driver->handle($dbh) },
+	"Unable to set Driver->handle" );
+
     my $emp_t = $s->table('employee');
     my $dep_t = $s->table('department');
     my $proj_t = $s->table('project');

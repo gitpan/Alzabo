@@ -1,3 +1,15 @@
+0.51
+
+BUG FIXES:
+
+- Accidentally broke foreign key display for schema creation
+interface in 0.50.
+
+ENHANCEMENTS:
+
+- Add ->handle method to Alzabo::Driver class, which lets you set and
+get the current database handle.  Suggested by Ilya Martynov.
+
 0.50
 
 ENHANCEMENTS:

@@ -10,7 +10,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.46 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.47 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -280,6 +280,19 @@ sub disconnect
     delete $self->{dbh};
 }
 
+sub handle
+{
+    my $self = shift;
+
+    if (@_)
+    {
+	validate_pos( @_, { isa => 'DBI' } );
+	$self->{dbh} = shift;
+    }
+
+    return $self->{dbh};
+}
+
 sub connect
 {
     shift()->_virtual;
@@ -433,8 +446,8 @@ sub execute
 	$self->{sth}->execute(@_);
     };
     Alzabo::Exception::Driver->throw( error => $@,
-			 sql => $self->{sql},
-			 bind => $self->{bind} ) if $@;
+				      sql => $self->{sql},
+				      bind => $self->{bind} ) if $@;
 }
 
 sub next_row
@@ -486,7 +499,9 @@ sub next_row_hash
 				      sql => $self->{sql},
 				      bind => $self->{bind} ) if $@;
 
-    return $active ? %hash : ();
+    return unless $active;
+
+    return %hash;
 }
 
 sub bind
@@ -573,6 +588,21 @@ details.
 =head3 Throws
 
 L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
+
+=head2 handle ($optional_dbh)
+
+=head3 Parameters
+
+This method takes one optional parameter, a connected DBI handle.  If
+this is given, then this handle is the new handle for the driver.
+
+=head3 Returns
+
+The active database handle.
+
+=head3 Throws
+
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head2 Data Retrieval methods
 
