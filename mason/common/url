@@ -1,4 +1,0 @@
-<%init>
-my $url = $m->comp( 'make_url', %ARGS );
-</%init>
-<% $url %>

@@ -33,7 +33,7 @@ foreach my $test (@$tests)
 
     my @p = ( 'user', 'password', 'host', 'port' );
 
-    my %connect = map { $_ => $test->{$_} } grep { exists $rdbms{$_} } @p;
+    my %connect = map { $_ => $test->{$_} } grep { exists $test->{$_} } @p;
     eval_ok( sub { $driver->schemas(%connect) },
              "Schema method for $rdbms{ $test->{rdbms} }" );
 }

@@ -37,8 +37,8 @@ sub new
     my $self = bless {}, $class;
 
     Alzabo::Exception::Params->throw( error => "Alzabo does not support the '$p{rdbms}' RDBMS" )
-	unless ( grep { $p{rdbms} eq $_ } Alzabo::Driver->available &&
-		 grep { $p{rdbms} eq $_ } Alzabo::RDBMSRules->available );
+	unless ( ( grep { $p{rdbms} eq $_ } Alzabo::Driver->available ) &&
+		 ( grep { $p{rdbms} eq $_ } Alzabo::RDBMSRules->available ) );
 
     $self->{driver} = Alzabo::Driver->new( rdbms => $p{rdbms},
 					   schema => $self );

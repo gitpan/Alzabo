@@ -16,7 +16,7 @@ use vars qw($VERSION);
 
 use 5.005;
 
-$VERSION = '0.72';
+$VERSION = '0.73';
 
 1;
 

@@ -711,8 +711,9 @@ sub reverse_engineer
 
     foreach my $table ( $driver->tables )
     {
-	my $t = $schema->make_table( name => $table );
+        $table =~ s/^[^\.]+\.//;
 
+	my $t = $schema->make_table( name => $table );
 
 	my $t_oid = $driver->one_row( sql => 'SELECT oid FROM pg_class WHERE relname = ?',
 				      bind => $table );

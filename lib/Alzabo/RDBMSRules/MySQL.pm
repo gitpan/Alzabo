@@ -770,7 +770,10 @@ sub reverse_engineer
 
     foreach my $table ( $driver->tables )
     {
-	my $t = $schema->make_table( name => $table );
+	( my $table_name = $table ) =~ s/^[`"]|[`"]$//g;
+
+	my $t = $schema->make_table( name => $table_name );
+
 	foreach my $row ( $driver->rows( sql => "DESCRIBE $table" ) )
 	{
             my ($type, @a);
@@ -846,7 +849,10 @@ sub reverse_engineer
 	    $i{ $row->[2] }{cols}[ $row->[3] - 1 ]{prefix} = $row->[7]
 		if defined $row->[7];
 	    $i{ $row->[2] }{unique} = $row->[1] ? 0 : 1;
-	    $i{ $row->[2] }{fulltext} = $row->[9] && $row->[9] =~ /fulltext/i ? 1 : 0;
+
+            my $type_i = $driver->major_version >= 4 ? 10 : 9;
+	    $i{ $row->[2] }{fulltext} =
+                $row->[$type_i] && $row->[$type_i] =~ /fulltext/i ? 1 : 0;
 	}
 
 	foreach my $index (keys %i)

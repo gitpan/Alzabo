@@ -167,24 +167,6 @@ sub features
             requires => { 'Cache::Mmap' => 0.04 },
           },
 
-          { phrase => 'to use the HTML::Mason based schema creation interface',
-            requires => { 'HTML::Mason' => 0.896,
-                          'HTTP::BrowserDetect' => 0,
-                        },
-            tool   => 'mason_schema',
-          },
-
-#           { phrase => 'to use the HTML::Mason based data browser',
-#             requires => { 'HTML::Mason' => 0.896,
-#                           'HTTP::BrowserDetect' => 0,
-#                         },
-#             tool   => 'mason_browser',
-#           },
-
-          { phrase => 'to view graphs of your schema in the schema creator',
-            recommends => { GraphViz => 1.4 },
-            only_if => { tool => 'mason_schema' },
-          },
         );
 
     print <<'EOF';
@@ -247,44 +229,6 @@ EOF
 	    $tests{ $feature->{test} } = 1 if exists $feature->{test};
 	    $tools{ $feature->{tool} } = 1 if exists $feature->{tool};
 	}
-    }
-
-    if ( $tools{mason_schema} || $tools{mason_browser} )
-    {
-	my $default = $Alzabo::Config::CONFIG{mason_web_dir};
-	$default =~ s,/alzabo\Z,, if $default;
-
-	do
-	{
-	    print "\n *** The directory you selected does not exist ***\n"
-		if defined $tools{mason_web_dir};
-
-	    print <<'EOF';
-
-Where would you like to install the mason components for this
-interface (this must be under your component root)?  NOTE: The
-installer will create an 'alzabo' subdirectory under the directory
-given.
-EOF
-
-	    $tools{mason_web_dir} =
-                Module::Build->prompt( '  Mason directory?', $default || '' );
-	} while ( ! -d $tools{mason_web_dir} );
-
-	$tools{mason_web_dir} = File::Spec->catdir( $tools{mason_web_dir}, 'alzabo' );
-
-	print <<'EOF';
-
-You can pick a custom file extension for the mason components.  Only
-components called as top level components will be given this
-extension.  Components intended only for use by other components have
-no extension at all
-EOF
-
-
-	$tools{mason_extension} =
-            Module::Build->prompt( '  Mason component file extension?',
-                                   $Alzabo::Config::CONFIG{mason_extension} || '.mhtml' );
     }
 
     return \%prereq, \%tests, \%tools;

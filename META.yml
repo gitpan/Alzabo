@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name: Alzabo
-version: 0.72
+version: 0.73
 license: perl
 distribution_type: module
 requires:
@@ -22,19 +22,13 @@ conflicts: {}
 provides:
   Alzabo:
     file: lib/Alzabo.pm
-    version: 0.72
+    version: 0.73
   Alzabo::BackCompat:
     file: lib/Alzabo/BackCompat.pm
     version: 2
-  Alzabo::Build:
-    file: inc/Alzabo/Build.pm
-    version: ~
   Alzabo::ChangeTracker:
     file: lib/Alzabo/ChangeTracker.pm
     version: 2
-  Alzabo::ClassDocs:
-    file: lib/Alzabo/MethodMaker.pm
-    version: ~
   Alzabo::Column:
     file: lib/Alzabo/Column.pm
     version: 2
@@ -64,13 +58,12 @@ provides:
     version: 2
   Alzabo::Debug:
     file: lib/Alzabo/Debug.pm
-    version: ~
   Alzabo::Docs:
     file: lib/Alzabo/MethodMaker.pm
-    version: '-1, set by base.pm'
+    version: 2
   Alzabo::DocumentationContainer:
     file: lib/Alzabo/MethodMaker.pm
-    version: ~
+    version: 2
   Alzabo::Driver:
     file: lib/Alzabo/Driver.pm
     version: 2
@@ -82,10 +75,13 @@ provides:
     version: 2
   Alzabo::DriverStatement:
     file: lib/Alzabo/Driver.pm
-    version: 0.1
+    version: 2
+  Alzabo::Exception:
+    file: lib/Alzabo/Exceptions.pm
+    version: 2
   Alzabo::Exception::Driver:
     file: lib/Alzabo/Exceptions.pm
-    version: 1.1
+    version: 2
   Alzabo::Exceptions:
     file: lib/Alzabo/Exceptions.pm
     version: 2
@@ -94,6 +90,9 @@ provides:
     version: 2
   Alzabo::Index:
     file: lib/Alzabo/Index.pm
+    version: 2
+  Alzabo::MethodDocs:
+    file: lib/Alzabo/MethodMaker.pm
     version: 2
   Alzabo::MethodMaker:
     file: lib/Alzabo/MethodMaker.pm
@@ -196,7 +195,7 @@ provides:
     version: 2
   Alzabo::SQLMaker::Function:
     file: lib/Alzabo/SQLMaker.pm
-    version: ~
+    version: 2
   Alzabo::SQLMaker::MySQL:
     file: lib/Alzabo/SQLMaker/MySQL.pm
     version: 2
@@ -209,4 +208,10 @@ provides:
   Alzabo::Table:
     file: lib/Alzabo/Table.pm
     version: 2
-generated_by: Module::Build version 0.18
+  ___name:
+    file: lib/Alzabo/Runtime/Row.pm
+    version: 2
+  ___table:
+    file: lib/Alzabo/Runtime/Row.pm
+    version: 2
+generated_by: Module::Build version 0.20_02

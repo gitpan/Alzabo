@@ -94,6 +94,26 @@ sub supports_referential_integrity
     }
 }
 
+sub _version_components
+{
+    my $self = shift;
+    return split /\./, $self->rdbms_version;
+}
+
+sub rdbms_version
+{
+    my $self = shift;
+
+    $self->_check_dbh;
+    my $version = $self->{dbh}{mysql_serverinfo};
+
+    $version =~ s/[^\d\.]//g;
+
+    return $version;
+}
+
+sub major_version { ($_[0]->_version_components)[0] }
+
 sub schemas
 {
     my $self = shift;

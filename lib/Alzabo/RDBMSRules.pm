@@ -563,7 +563,7 @@ sub table_sql_diff
         {
             my $old_col = eval { $p{old}->column( $new_pk->name ) };
 
-            next if $changed_name{ $new_pk->former_name };
+            next if $new_pk->former_name && $changed_name{ $new_pk->former_name };
 
             unless ( $old_col && $old_col->is_primary_key )
             {

@@ -1,3 +1,30 @@
+0.73  October 5, 2003
+
+BACKWARDS INCOMPATIBILITIES:
+
+- This release no longer includes the Mason schema creation GUI.  It
+can be installed separately via the Alzabo::GUI::Mason package.
+
+BUG FIXES:
+
+- Fixed a bug in Alzabo::Create::Schema that only seems to be
+triggered by newer Perls.  The symptom was an error like "Alzabo does
+not support the 'MySQL' RDBMS" when trying to create a new schema.
+
+- Fixed a warning in Alzabo::RDBMSRules.
+
+- The 01-driver.t test ignored any user-supplied RDBMS connection
+parameters.  Reported by Barry Hoggard.
+
+- Newer versions of MySQL may return quoted table names, which broke
+reverse engineering.
+
+- Added a quick and nasty hack to remove the schema name from table
+names when reverse engineering Postgres schemas.
+
+- Reverse engineering of indexes for MySQL 4.0+ was broken.
+
+
 0.72  April 12, 2003
 
 ENHANCEMENTS:
