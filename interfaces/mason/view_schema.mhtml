@@ -8,7 +8,7 @@
 </form>
   </td>
   <td>
-<form action="delete_schema<% Alzabo::Config::mason_extension() %>">
+<form action="delete_schema_confirm<% Alzabo::Config::mason_extension() %>">
  <input type="hidden" name="schema" value="<% $s->name %>">
  <input type="submit" value="Delete schema">
 </form>

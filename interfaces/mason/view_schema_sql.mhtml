@@ -30,6 +30,14 @@
   </td>
  </tr>
  <tr>
+  <td>
+   Port:
+  </td>
+  <td>
+   <input type="text" name="port">
+  </td>
+ </tr>
+ <tr>
   <td colspan="2">
    <input type="submit" value="Execute SQL">
   </td>

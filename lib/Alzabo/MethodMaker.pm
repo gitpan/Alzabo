@@ -8,7 +8,7 @@ use Alzabo::Runtime::Schema;
 use Params::Validate qw( :all );
 Params::Validate::set_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
@@ -185,10 +185,11 @@ sub eval_row_class
 {
     my $self = shift;
 
+    my $base_class = $Alzabo::Runtime::CachedRow::VERSION ? 'Alzabo::Runtime::CachedRow' : 'Alzabo::Runtime::Row';
     eval <<"EOF";
 package $self->{row_class};
 
-use base qw( Alzabo::Runtime::Row );
+use base qw( $base_class );
 
 1;
 EOF

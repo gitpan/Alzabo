@@ -1,3 +1,24 @@
+0.43
+
+Enhancements:
+
+- Allow passing of port when executing SQL from schema creator.
+
+- Confirm schema deletion in schema creator.
+
+Bug fixes:
+
+- Quick hack to fix a problem with Alzabo::MethodMaker when using
+caching.  However, this requires that the caching modules be loaded
+first, before Alzabo::MethodMaker.  A more palatable fix will be in a
+future release.
+
+- Fix a problem with prefetching rows that caused row objects to
+contain undefined values for certain columns.  This only happened if
+you were prefetching one column.
+
+- Fix another problem that left the schema creator still broken.
+
 0.42
 
 Bug fixes:

@@ -13,7 +13,7 @@ use Alzabo::Config;
 
 use vars qw($VERSION);
 
-$VERSION = '0.42';
+$VERSION = '0.43';
 
 1;
 

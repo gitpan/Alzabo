@@ -12,7 +12,7 @@ use Time::HiRes qw(time);
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.12 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -65,7 +65,7 @@ sub next_row
 	@hash{ map { $_->name } @pk } = @row[0..$#pk];
 
 	my %prefetch;
-	if ( (my @pre = $self->{table}->prefetch) && @row > $#pk )
+	if ( (my @pre = $self->{table}->prefetch) && @row > @pk )
 	{
 	    @prefetch{@pre} = @row[$#pk + 1 .. $#row];
 	}

@@ -10,6 +10,7 @@ $s
 $user => undef
 $password => undef
 $host => undef
+$port => undef
 </%args>
 
 <%init>
@@ -18,6 +19,7 @@ eval
     $s->create( user => $user,
 		password => $password,
 		host => $host,
+		port => $port,
 	      );
     $s->save_to_file;
 };
