@@ -5,9 +5,9 @@ use vars qw($VERSION);
 
 use Alzabo;
 
-use fields qw( owner type );
+#use fields qw( owner type length precision );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -16,6 +16,20 @@ sub type
     my Alzabo::ColumnDefinition $self = shift;
 
     return $self->{type};
+}
+
+sub length
+{
+    my Alzabo::ColumnDefinition $self = shift;
+
+    return $self->{length};
+}
+
+sub precision
+{
+    my Alzabo::ColumnDefinition $self = shift;
+
+    return $self->{precision};
 }
 
 sub owner
@@ -40,27 +54,39 @@ Alzabo::ColumnDefinition - Holds the type attribute for a column
 =head1 DESCRIPTION
 
 This object holds information on a column that might need to be shared
-with another column.  The idea is that if a column is a key in two or
-more tables, then some of the information related to that column
+with another column.  The concept is that if a column is a key in two
+or more tables, then some of the information related to that column
 should change automatically for all tables (and all columns) whenever
-it changes at all.  Right now this is only type ('VARCHAR', 'NUMBER',
-etc) information.  This object also has an 'owner', which is the
-column which created it.
+it is changed anywhere.  Right now this is only type ('VARCHAR',
+'NUMBER', etc) information.  This object also has an 'owner', which is
+the column which created it.
 
 =head1 METHODS
 
-=over 4
+=head2 type
 
-=item * type
+=head3 Returns
 
-Returns the object's type.
+The object's type as a string.
 
-=item * owner
+=head2 length
 
-Returns the Column object that owns this definitions (the object that
-created it).
+=head3 Returns
 
-=back
+The length attribute of the column, or undef if there is none.
+
+=head2 precision
+
+=head3 Returns
+
+The precision attribute of the column, or undef if there is none.
+
+=head2 owner
+
+=head3 Returns
+
+The L<C<Alzabo::Column>|Alzabo::Column> object that owns this
+definitions (the column that created it).
 
 =head1 AUTHOR
 

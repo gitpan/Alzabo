@@ -5,9 +5,9 @@ use vars qw($VERSION $CACHE_CLASS);
 
 use Alzabo::Runtime;
 
-use fields qw( id table data cache );
+#use fields qw( id table data cache );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.20 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.33 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -35,11 +35,7 @@ sub new
 	return $row if $row;
     }
 
-    my $self;
-    {
-	no strict 'refs';
-	$self = bless [ \%{"${class}::FIELDS"} ], $class;
-    }
+    my $self = bless {}, $class;
     $self->_init(@_);
 
     $self->{cache}->store_object($self)
@@ -62,20 +58,22 @@ sub _init
 	$self->{data}{$k} = $v;
     }
 
-    if (my @pre = $self->{table}->prefetch)
+    if (my @pre = $self->table->prefetch)
     {
 	$self->get_data(@pre);
     }
     else
     {
 	# Need to try to fetch something to confirm that this row exists!
-	my @pk = $self->{table}->primary_key;
-	my $sql = 'SELECT 1 FROM ' . $self->{table}->name . ' WHERE ';
-	$sql .= join ' AND ', map { $_->name . ' = ?' } @pk;
+	my $sql = ( $self->table->schema->sqlmaker->
+		    select( ($self->table->primary_key)[0] )->
+		    from( $self->table ) );
 
-	$self->_no_such_row_error unless
-	    $self->table->schema->driver->one_row( sql => $sql,
-						   bind => [ map { $self->{id}{ $_->name } } @pk ] );
+	$self->_where($sql);
+
+	$self->_no_such_row_error
+	    unless defined $self->table->schema->driver->one_row( sql => $sql->sql,
+								  bind => $sql->bind );
     }
 }
 
@@ -86,9 +84,9 @@ sub _make_id_hash
 
     return $p{id} if ref $p{id};
 
-    my ($pk) = exists $p{table} ? $p{table}->primary_key : $self->{table}->primary_key;
+    my ($pk) = exists $p{table} ? $p{table}->primary_key : $self->table->primary_key;
 
-    AlzaboException( error => "Can't make rows for tables without a primary key" )
+    Alzabo::Exception::Logic( error => "Can't make rows for tables without a primary key" )
 	unless $pk;
 
     return { $pk->name => $p{id} };
@@ -102,26 +100,27 @@ sub get_data
     my %select;
     foreach my $c (@cols)
     {
-	foreach my $s ( $self->{table}->group_by_column($c) )
+	foreach my $s ( $self->table->group_by_column($c) )
 	{
-	    $select{$s} = 1 if ! exists $self->{data}{$s};
+	    $select{$s} = 1 unless exists $self->{data}{$s};
 	}
     }
 
     my $driver = $self->table->schema->driver;
 
-    my @pk = $self->{table}->primary_key;
+    my ($pk1, @pk) = $self->table->primary_key;
 
-    my $sql = 'SELECT ';
-    $sql .= join ', ', keys %select;
-    $sql .= ' FROM ' . $self->{table}->name . ' WHERE ';
-    $sql .= join ' AND ', map { $_->name . ' = ?' } @pk;
+    my $sql = ( $self->table->schema->sqlmaker->
+		select( $self->table->columns( sort keys %select ) )->
+		from( $self->table ) );
+    $self->_where($sql);
 
-    my %hash = $driver->one_row_hash( sql => $sql,
-				      bind => [ map { $self->{id}{ $_->name } } @pk ] );
+    my @row = $driver->one_row( sql => $sql->sql,
+				bind => $sql->bind )
+	or $self->_no_such_row_error;
 
-    $self->_no_such_row_error
-	unless keys %hash;
+    my %hash;
+    @hash{ sort keys %select } = @row;
 
     $self->{cache}->register_refresh($self) if $self->{cache};
 
@@ -151,7 +150,7 @@ sub update
 
     if ($self->{cache})
     {
-	AlzaboCacheException->throw( error => "Cannot update expired object" )
+	Alzabo::Exception::Cache::Expired->throw( error => "Cannot update expired object" )
 	    unless $self->check_cache;
     }
 
@@ -161,10 +160,10 @@ sub update
     foreach my $k (keys %data)
     {
 	# This will throw an exception if the column doesn't exist.
-	my $c = $self->{table}->column($k);
+	my $c = $self->table->column($k);
 
-	AlzaboException->throw( error => 'Cannot change the value of primary key columns.  Delete the row object and create a new one instead.' )
-	    if $self->{table}->column_is_primary_key($c);
+	Alzabo::Exception::Params->throw( error => 'Cannot change the value of primary key columns.  Delete the row object and create a new one instead.' )
+	    if $c->is_primary_key;
 
 	# Only make the change if the two values are different.  The
 	# convolutions are necessary to avoid a warning.
@@ -178,10 +177,10 @@ sub update
 	    next;
 	}
 
-	AlzaboException->throw( error => "Column " . $c->name . " cannot be null." )
+	Alzabo::Exception::Params->throw( error => "Column " . $c->name . " cannot be null." )
 	    unless defined $data{$k} || $c->null;
 
-	push @fk, $self->{table}->foreign_keys_by_column($c)
+	push @fk, $self->table->foreign_keys_by_column($c)
 	    if $self->table->schema->referential_integrity;
     }
 
@@ -192,19 +191,16 @@ sub update
 				id => [ values %{ $self->{id} } ],
 				fk => \@fk ) if @fk && $self->table->schema->referential_integrity;
 
-    my @pk = $self->{table}->primary_key;
-    my $sql = 'UPDATE ' . $self->{table}->name;
-    $sql .= ' SET ';
-    $sql .= join ', ', map {"$_ = ?"} sort keys %data;
-    $sql .= ' WHERE ';
-    $sql .= join ' AND ', map {$_->name . ' = ?'} @pk;
+    my $sql = ( $self->table->schema->sqlmaker->
+		update( $self->table ) );
+    $sql->set( $self->table->column($_), $data{$_} ) foreach sort keys %data;
+
+    $self->_where($sql);
 
     eval
     {
-	my @bind = @data{ sort keys %data };
-	push @bind, map { $self->{id}{ $_->name } } @pk;
-	$driver->do( sql => $sql,
-		     bind => \@bind );
+	$driver->do( sql => $sql->sql,
+		     bind => $sql->bind );
 
 	if ($self->table->schema->referential_integrity)
 	{
@@ -239,7 +235,7 @@ sub delete
 
     if ($self->{cache})
     {
-	AlzaboCacheException->throw( 'Cannot delete an expired object' )
+	Alzabo::Exception::Cache::Expired->throw( 'Cannot delete an expired object' )
 	    unless $self->check_cache;
     }
 
@@ -248,22 +244,21 @@ sub delete
     my @fk;
     if ($self->table->schema->referential_integrity)
     {
-	@fk = $self->{table}->all_foreign_keys;
+	@fk = $self->table->all_foreign_keys;
 
 	$driver->start_transaction( table => $self->table,
 				    id => $self->id,
 				    fk => \@fk ) if @fk;
     }
 
-    my @pk = $self->{table}->primary_key;
-    my $sql = 'DELETE FROM ' . $self->{table}->name;
-    $sql .= ' WHERE ';
-    $sql .= join ' AND ', map {$_->name . ' = ?'} @pk;
+    my $sql = ( $self->table->schema->sqlmaker->
+		delete->from( $self->table ) );
+    $self->_where( $sql );
 
     eval
     {
-	$driver->do( sql => $sql,
-		     bind => [ map { $self->{id}{ $_->name } } @pk ] );
+	$driver->do( sql => $sql->sql,
+		     bind => $sql->bind );
 
 	if ($self->table->schema->referential_integrity)
 	{
@@ -288,11 +283,22 @@ sub delete
     $self->{cache}->register_delete($self) if $self->{cache};
 }
 
+sub _where
+{
+    my $self = shift;
+    my $sql = shift;
+
+    my ($pk1, @pk) = $self->table->primary_key;
+
+    $sql->where( $pk1, '=', $self->{id}{ $pk1->name } );
+    $sql->and( $_, '=', $self->{id}{ $_->name } ) foreach @pk;
+}
+
 sub check_cache
 {
     my Alzabo::Runtime::Row $self = shift;
 
-    AlzaboCacheException->throw( error => "Object has been deleted" )
+    Alzabo::Exception::Cache::Deleted->throw( error => "Object has been deleted" )
 	if $self->{cache}->is_deleted($self);
 
     if ( $self->{cache}->is_expired($self) )
@@ -304,8 +310,7 @@ sub check_cache
 	    $self->{data}{$k} = $v;
 	}
 
-	my @pre = $self->{table}->prefetch;
-	$self->get_data(@pre) if @pre;
+	$self->get_data( $self->table->prefetch ) if $self->table->prefetch;
 
 	return 0;
     }
@@ -325,12 +330,24 @@ sub rows_by_foreign_key
     my Alzabo::Runtime::Row $self = shift;
     my %p = @_;
 
-    my $fk = $p{foreign_key};
+    my $fk = delete $p{foreign_key};
 
-    my $where = $fk->column_to->name . ' = ?';
-    return $fk->table_to->rows_by_where_clause( where => $where,
-						bind => $self->select( $fk->column_from->name ),
-						%p );
+    my $fk_val = $self->select( $fk->column_from->name );
+
+    if ( $fk->column_to->is_primary_key && scalar $fk->table_to->primary_key == 1 )
+    {
+	return $fk->table_to->row_by_pk( pk => $fk_val, %p );
+    }
+    else
+    {
+	if ($p{where})
+	{
+	    $p{where} = [ $p{where} ] unless UNIVERSAL::isa( $p{where}[0], 'ARRAY' );
+	}
+
+	push @{ $p{where} }, [ $fk->column_to, '=', $fk_val ];
+	return $fk->table_to->rows_where(%p);
+    }
 }
 
 # Class or object method
@@ -339,7 +356,7 @@ sub id
     my Alzabo::Runtime::Row $self = shift;
     my %p = @_;
 
-    my $table = ref $self ? $self->{table} : $p{table};
+    my $table = ref $self ? $self->table : $p{table};
 
     if (ref $self)
     {
@@ -360,7 +377,7 @@ sub _no_such_row_error
 {
     my Alzabo::Runtime::Row $self = shift;
 
-    my $err = 'Unable to find a row in ' . $self->{table}->name . ' where ';
+    my $err = 'Unable to find a row in ' . $self->table->name . ' where ';
     my @vals;
     while ( my ($k, $v) = each %{ $self->{id} } )
     {
@@ -368,7 +385,7 @@ sub _no_such_row_error
 	push @vals, $val;
     }
     $err .= join ', ', @vals;
-    AlzaboNoSuchRowException->throw( error => $err );
+    Alzabo::Exception::NoSuchRow->throw( error => $err );
 }
 
 __END__
@@ -391,34 +408,38 @@ These objects represent actual rows from the database containing
 actual data.  They can be created via their new method or via an
 Alzabo::Runtime::Table object.
 
-=head1 Alzabo::Runtime::Row import METHOD
+=head1 import METHOD
 
 This method is called when you C<use> this class.  You can pass a
 string to the module via the C<use> function.  This string is assumed
 to be the name of a class which does caching and that has a specific
-interface that Alzabo::Runtime::Row expects (see the CACHING CLASSES
-section for more details).  The Alzabo::Runtime::Row class will
-attempt to load the class you have specified and will then use it for
-all future caching operations.
+interface that C<Alzabo::Runtime::Row> expects (see the CACHING
+CLASSES section for more details).  The C<Alzabo::Runtime::Row> class
+will attempt to load the class you have specified and will then use it
+for all future caching operations.
 
-The default is to use the Alzabo::ObjectCache class.  If you are
+The default is to use the
+L<C<Alzabo::ObjectCache>|Alzabo::ObjectCache> class.  If you are
 programming in a persistent environment it is highly recommended that
-you read L<Alzabo::ObjectCache/"CAVEATS"> for more information on how
-that class works.
+you read L<C<Alzabo::ObjectCache> CAVEATS
+section|Alzabo::ObjectCache/CAVEATS> for more information on how that
+class works.
 
 =head1 METHODS
 
-=item * new
+=head2 new
 
-Takes the following parameters:
+=head3 Parameters
 
-=item -- table => Alzabo::Runtime::Row object
+=over 4
 
-=item -- id => (see below)
+=item * table => C<Alzabo::Runtime::Table> object
 
-=item -- no_cache => 0 or 1
+=item * id => (see below)
 
-The 'id' parameter may be one of two things.  If the table has only a
+=item * no_cache => 0 or 1
+
+The C<id> parameter may be one of two things.  If the table has only a
 single column primary key, it can be a simple scalar with the value of
 that primary key for this row.
 
@@ -428,103 +449,81 @@ reference containing column names and values such as:
   { pk_column1 => 1,
     pk_column2 => 'foo' }
 
-Returns a new row object.  If you specified a caching class it will
-attempt to retrieve the row from the cache first unless the 'no_cache'
-parameter is true.  If no object matches these values then an
-exception _will_ be thrown.
+=back
 
-Setting the 'no_cache' parameter to true causes this particular row
-object to not interact with the caching class at all.  This can be
-useful if you know you will be creating a very large number of row
-objects all at once that you have no intention of re-using any time
-soon and your cache class uses an LRU type of cache or something
-similar.
+Setting the C<no_cache> parameter to true causes this particular row
+object to not interact with the cache at all.  This can be useful if
+you know you will be creating a very large number of row objects all
+at once that you have no intention of re-using.
 
 If your cache class attempts to synchronize itself across multiple
-processes, then it is highly recommended that you not do any
-operations that change data in the database with objects that were
-created with this parameter as it will probably cause a big nasty
-mess.  Don't say I didn't warn you.
+processes (such as L<C<Alzabo::ObjectCacheIPC>|Alzabo::ObjectCacheIPC>
+does), then it is highly recommended that you not do any operations
+that change data in the database (delete or update) with objects that
+were created with this parameter as it will probably cause problems.
 
-Exceptions:
+=head3 Returns
 
- AlzaboException - attempt to create a row for a table without a
- primary key.
- AlzaboNoSuchRowException - no row matched the primary key values
- given
+A new C<Alzabo::Runtiem::Row> object.  It will attempt to retrieve the
+row from the cache first unless the C<no_cache> parameter is true.  If
+no object matches these values then an exception will be thrown.
 
-item * get_data
+=head3 Throws
+
+L<C<Alzabo::Exception::NoSuchRow>|Alzabo::Exceptions>
+
+=head2 get_data
 
 Tells the row object to connect to the database and fetch the data for
 the row matching this row's primary key values.  If a cache class is
 specified it attempts to fetch the data from the cache first.
 
-Exceptions:
+=head2 select (@list_of_column_names)
 
- AlzaboNoSuchRowException - no row in the RDBMS matches this object's
- primary key value(s).
+=head3 Returns
 
-=item * select (@list_of_column_names)
-
-In list context, returns a list of values matching the specified
-columns.  In scalar context it returns only a single value (the first
+Returns a list of values matching the specified columns in a list
+context.  In scalar context it returns only a single value (the first
 column specified).
 
-Exceptions:
-
- AlzaboCacheException - the row this object represents has been
- deleted from the database.
-
-item * update (%hash_of_columns_and_values)
+=head2 update (%hash_of_columns_and_values)
 
 Given a hash of columns and values, attempts to update the database to
 and the object to represent these new values.
 
-Exceptions:
-
- AlzaboCacheException - the row this object represents has been
- deleted from the database.
- AlzaboCacheException - the row has expired in the cache (something
- else updated the object before you did).
- AlzaboException - attempt to change the value of a primary key
- column. Instead, delete the row object and create a new one.
- AlzaboException - attempt to set a column to NULL which cannot be NULL.
- AlzaboReferentialIntegrity - something you tried to do violates
- referential integrity.
-
-=item * delete
+=head2 delete
 
 Deletes the row from the RDBMS and the cache, if it exists.
 
-Exceptions:
-
- AlzaboCacheException - the row this object represents has been
- deleted from the database.
- AlzaboCacheException - the row has expired in the cache (something
- else updated the object before you did).
-
-=item * id
+=head2 id
 
 Returns the row's id value as a string.  This can be passed to the
-Alzabo::Runtime::Table C<row_by_id> method to recreate the row later.
+L<C<Alzabo::Runtime::Table-E<gt>row_by_id>|Alzabo::Runtime::Table/row_by_id>
+method to recreate the row later.
 
-=item * table
+=head2 table
 
-Returns the table object that this row belongs to.
+Returns the L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table> object
+that this row belongs to.
 
-=item * rows_by_foreign_key
+=head2 rows_by_foreign_key
 
-Takes the following parameters:
+=head3 Parameters
 
-=item -- foreign_key => Alzabo::ForeignKey object
+=over 4
+
+=item * foreign_key => C<Alzabo::Runtime::ForeignKey> object
+
+=back
 
 Given a foreign key object, this method returns a
-Alzabo::Runtime::RowCursor object for the rows in the table that the
-relationship is _to_, based on the value of the relevant column in the
-current row.
+L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object for
+the rows in the table that the relationship is _to_, based on the
+value of the relevant column in the current row.
 
 All other parameters given will be passed directly to the
-Alzabo::Runtime::Row C<new> method (such as the 'no_cache' paremeter).
+L<C<new>|new> method (such as the C<no_cache>
+paremeter).
 
 =head1 AUTHOR
 

@@ -4,7 +4,6 @@ $user => undef
 $password => undef
 $host => undef
 </%args>
-
 <%init>
 if ($user)
 {

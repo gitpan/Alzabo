@@ -7,7 +7,7 @@ use Alzabo::Create;
 
 use base qw(Alzabo::ForeignKey);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -17,14 +17,7 @@ sub new
     my $class = ref $proto || $proto;
     my %p = @_;
 
-    my $self;
-    {
-	no strict 'refs';
-	$self = bless [ \%{"${class}::FIELDS"} ], $class;
-    }
-
-    $self->set_table_from( $p{table_from} );
-    $self->set_table_to( $p{table_to} );
+    my $self = bless {}, $class;
 
     $self->set_column_from( $p{column_from} );
     $self->set_column_to( $p{column_to} );
@@ -33,20 +26,6 @@ sub new
     $self->set_min_max_to( $p{min_max_to} );
 
     return $self;
-}
-
-sub set_table_from
-{
-    my Alzabo::Create::ForeignKey $self = shift;
-
-    $self->{table_from} = shift;
-}
-
-sub set_table_to
-{
-    my Alzabo::Create::ForeignKey $self = shift;
-
-    $self->{table_to} = shift;
 }
 
 sub set_column_from
@@ -68,16 +47,16 @@ sub set_min_max_from
     my Alzabo::Create::ForeignKey $self = shift;
     my $mm = shift;
 
-    AlzaboException->throw( error => "Incorrect number of min/max elements" )
+    Alzabo::Exception::Params->throw( error => "Incorrect number of min/max elements" )
 	unless scalar @$mm == 2;
 
     foreach my $c ( @$mm )
     {
-	AlzaboException->throw( error => "Invalid min/max: $c" )
+	Alzabo::Exception::Params->throw( error => "Invalid min/max: $c" )
 	    unless $c =~ /^[01n]$/i;
     }
 
-    AlzaboException->throw( error => "Invalid min/max: $mm->[0]..$mm->[1]" )
+    Alzabo::Exception::Params->throw( error => "Invalid min/max: $mm->[0]..$mm->[1]" )
 	if $mm->[0] eq 'n' || $mm->[1] eq '0';
 
     $self->{min_max_from} = $mm;
@@ -88,12 +67,12 @@ sub set_min_max_to
     my Alzabo::Create::ForeignKey $self = shift;
     my $mm = shift;
 
-    AlzaboException->throw( error => "Incorrect number of min/max elements" )
+    Alzabo::Exception::Params->throw( error => "Incorrect number of min/max elements" )
 	unless scalar @$mm == 2;
 
     foreach my $c ( @$mm )
     {
-	AlzaboException->throw( error => "Invalid min/max: $c" )
+	Alzabo::Exception::Params->throw( error => "Invalid min/max: $c" )
 	    unless $c =~ /^[01n]$/i;
     }
 
@@ -110,31 +89,29 @@ Alzabo::Create::ForeignKey - Foreign key objects for schema creation.
 
   use Alzabo::Create::ForeignKey;
 
-=head1 DESCRIPTION
+=for pod_merge DESCRIPTION
 
-Holds information on one table's relationship to another.  It knows
-what columns the relationship belongs to and what the cardinality of
-the relationship is.
+=head1 INHERITS FROM
+
+C<Alzabo::ForeignKey>
+
+=for pod_merge merged
 
 =head1 METHODS
 
+=head2 new
+
+Parameters:
+
 =over 4
 
-=item * new
+=item * column_from => C<Alzabo::Create::Column> object
 
-Takes the following parameters:
+=item * column_to => C<Alzabo::Create::Column> object
 
-=item -- table_from => Alzabo::Create::Table object
+=item * min_max_from => see below
 
-=item -- table_to => Alzabo::Create::Table object
-
-=item -- column_from => Alzabo::Create::Column object
-
-=item -- column_to => Alzabo::Create::Column object
-
-=item -- min_max_from => see below
-
-=item -- min_max_to => see below
+=item * min_max_to => see below
 
 The two min_max attributes both take the same kind of argument, an
 array reference two scalars long.
@@ -142,55 +119,47 @@ array reference two scalars long.
 The first of these scalars can be the value '0' or '1' while the
 second can be '1' or 'n'.
 
-Returns a new Alzabo::Create::ForeignKey object.
+=back
 
-Exceptions:
+=head3 Returns
 
- AlzaboException - invalid min_max values
+A new L<C<Alzabo::Create::ForeignKey>|Alzabo::Create::ForeignKey>
+object.
 
-=item * set_table_from (Alzabo::Create::Table object)
+=for pod_merge table_from
 
-Set the table that the relation is from.
+=for pod_merge table_to
 
-=item * set_table_to (Alzabo::Create::Table object)
+=for pod_merge column_from
 
-Set the table that the relation is to.
+=for pod_merge column_to
 
-=item * set_column_from (Alzabo::Create::Column object)
+=head2 set_column_from (C<Alzabo::Create::Column> object)
 
 Set the column that the relation is from.
 
-=item * set_column_to (Alzabo::Create::Column object)
+=head2 set_column_to (C<Alzabo::Create::Column> object)
 
 Set the column that the relation is to.
 
-=item * set_min_max_from (\@min_max_value) see above for details
+=for pod_merge min_max_from
+
+=for pod_merge min_max_to
+
+=head2 set_min_max_from (\@min_max_value) see above for details
 
 Sets the min_max value of the relation of the 'from' table to the 'to'
 table.
 
-Exceptions:
-
- AlzaboException - invalid min_max values
-
-=item * set_min_max_to (\@min_max_value) see above for details
+=head2 set_min_max_to (\@min_max_value) see above for details
 
 Sets the min_max value of the relation of the 'to' table to the 'from'
 table.
 
-Exceptions:
-
- AlzaboException - invalid min_max values
-
-=back
+=for pod_merge cardinality
 
 =head1 AUTHOR
 
 Dave Rolsky, <autarch@urth.org>
-
-=head1 SEE ALSO
-
-See the Alzabo::ForeignKey documentation for more details on how
-relationships are defined in Alzabo.
 
 =cut

@@ -7,7 +7,7 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::Column);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -21,9 +21,15 @@ Alzabo::Runtime::Column - Column objects
 
   use Alzabo::Runtime::Column;
 
-=head1 DESCRIPTION
+=for pod_merge DESCRIPTION
 
-Right now this class is empty and is just a placeholder.
+=head1 INHERITS FROM
+
+C<Alzabo::Column>
+
+=for pod_merge merged
+
+=for pod_merge METHODS
 
 =head1 AUTHOR
 

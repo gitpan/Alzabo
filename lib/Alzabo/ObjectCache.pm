@@ -2,7 +2,7 @@ package Alzabo::ObjectCache;
 
 use vars qw($SELF $VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -101,7 +101,7 @@ __END__
 
 =head1 NAME
 
-Alzabo::ObjectCache - A simple cache for row objects.
+Alzabo::ObjectCache - A simple in-memory cache for row objects.
 
 =head1 SYNOPSIS
 
@@ -121,77 +121,79 @@ update will be seen in your code.
 
 Note that pretty much all the methods that take an object as an
 argument will silently do nothing if the object is not already in the
-cache.  The obvious exception is the C<store_object> method.
+cache.  The obvious exception is the
+L<C<store_object>|Alzabo::ObjectCache/store_object ($object)> method.
 
 Many of the methods in this class really don't do anything and are
-here merely to support the interface that Alzabo::Runtime::Row
-expects.
+here merely to support the interface that
+L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> expects.
 
-=over 4
+=head2 new
 
-=item * new
+=head3 Returns
 
-Takes the following parameters:
+A new C<Alzabo::ObjectCache> object.
 
-=item -- cache_size => $size
+=head2 fetch_object ($id)
 
-Maximum number of objects that can be cached at once.
+=head3 Returns
 
-Returns the caching object.
+The specified object if it is in the cache.  Otherwise it returns
+undef.
 
-=item * fetch_object ($id)
-
-Given an object id, returns the object if it is in the cache.
-Otherwise it returns undef.
-
-=item * store_object ($object)
+=head2 store_object ($object)
 
 Stores an object in the cache.  This will not overwrite an existing
 object in the cache.  To do that you must first call the
-C<delete_from_cache> method.
+L<C<delete_from_cache>|Alzabo::ObjectCache/delete_from_cache
+($object)> method.
 
-=item * is_expired ($object)
+=head2 is_expired ($object)
 
-Always returns false.
+Objects cached in this class are never expired.
 
-=item * is_deleted ($object)
+=head3 Returns
 
-Returns a boolean value indicating whether or not an object has been
-deleted from the cache.
+This always false for this class because there is no notion of
+expiration for this cache.
 
-=item * register_refresh ($object)
+=head2 is_deleted ($object)
 
-No op.
+=head3 Returns
 
-=item * register_change ($object)
+A boolean value indicating whether or not an object has been deleted
+from the cache.
 
-No op.
+=head2 register_refresh ($object)
 
-=item * register_delete ($object)
+This does nothing in this class.
+
+=head2 register_change ($object)
+
+This does nothing in this class.
+
+=head2 register_delete ($object)
 
 This tells the cache that the object has been removed from its
 external data source.  This causes the cache to remove the object
-internally.  Future calls to C<is_deleted> for this object will now
-return true.
+internally.  Future calls to
+L<C<is_deleted>|Alzabo::ObjectCache/is_deleted ($object)> for this
+object will now return true.
 
-=item * delete_from_cache ($object)
+=head2 delete_from_cache ($object)
 
 This method allows you to remove an object from the cache.  This does
 not register the object as deleted.  It is provided solely so that you
-can call C<store_object> after calling this method and have
-C<store_object> actually store the new object.
-
-=back
+can call L<C<store_object>|Alzabo::ObjectCache/store_object ($object)>
+after calling this method and have
+L<C<store_object>|Alzabo::ObjectCache/store_object ($object)> actually
+store the new object.
 
 =head1 CLASS METHOD
 
-=over 4
-
-=item * clear
+=head2 clear
 
 Call this method to completely clear the cache.
-
-=back
 
 =head1 CAVEATS
 
@@ -200,12 +202,12 @@ you are operating in a persistent environment such as mod_perl, these
 will have a tendency to eat up memory over time.
 
 In order to prevent processes from growing without stop, it is
-recommended that you call the C<clear> method at the entry point(s)
-for your persistent application.  This will flush the cache
+recommended that you call the L<C<clear>|clear> method at the entry
+point(s) for your persistent application.  This will flush the cache
 completely.  You can also call this method whenever you know you are
 done using any row objects you've created up to a certain point in
-your application.  However, if you plan on creating them later it
-would probably be a performance win to not do this.
+your application.  However, if you plan on creating them again later
+it would probably be a performance win to not do this.
 
 =head1 AUTHOR
 

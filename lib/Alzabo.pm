@@ -13,112 +13,207 @@ use Alzabo::Config;
 
 use vars qw($VERSION);
 
-$VERSION = '0.10';
+$VERSION = '0.20';
 
 1;
 
 __END__
 
-=pod
-
 =head1 NAME
 
-Alzabo - Core
+Alzabo - A data modelling tool and RDBMS-OO mapper
 
 =head1 SYNOPSIS
 
-  use Alzabo; # loads the Alzabo core modules but you probably want to
-              # use Alzabo::Create or Alzabo::Runtime instead
+  Cannot be summarized here.
 
 =head1 DESCRIPTION
 
 =head2 What is Alzabo?
 
-Alzabo is a two-fold program.  Its first function is as a data
-modelling tool.  Through either a schema creation interface or a
-custom perl program, you can create a set of schema, table, column,
-etc. objects that represent your data model.  Alzabo is also capable
-of reverse engineering an existing data model.
+Alzabo is a program and a module, with two core functions.  Its first
+use is as a data modelling tool.  Through either a schema creation
+interface or a perl program, you can create a set of schema, table,
+column, etc. objects to represent your data model.  Alzabo is also
+capable of reverse engineering your data model from an existing
+system.
 
-Its second function is as a RDBMS to object mapping system.  Once you
-have created a schema, you can use the Alzabo::Runtime::Table and
-Alzabo::Runtime::Row classes to access its data.  These classes offer
-a low level interface to common operations such as SQL SELECT, INSERT,
-DELETE, and UPDATE commands.
+Its second function is as an RDBMS to object mapping system.  Once you
+have created a schema, you can use the
+L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table> and
+L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> classes to access its
+data.  These classes offer a low level interface to common operations
+such as SQL SELECT, INSERT, DELETE, and UPDATE commands.
+
+A higher level interface can be created through the use of the
+L<C<Alzabo::MethodMaker>|Alzabo::MethodMaker> module.  This module
+takes a schema object and auto-generates useful methods based on the
+tables, columns, and relationships it finds in the module.  The code
+is generates can be integrated with your own code quite easily.
 
 To take it a step further, you could then aggregate a set of rows from
 different tables into a larger container object which could understand
 the logical relationship between these tables.
 
-This is not intended to be a total object replacement for SQL, as
-there is only the most minimal support for more complex operations
-such as joins.  Instead, it is intended to replace the drudgery of the
-most common types of operations.  In addition, the
-Alzabo::Runtime::Row objects support the use of a caching system.  One
-such system, the Alzabo::RowCache class, is included.  However, you
-may substitute any caching system you like provided it has the
-appropriate method interface (see the Alzabo::Runtime::Row and
-Alzabo::RowCache documentation for details).
+This is not yet intended to be a total object replacement for SQL, as
+there is not yet complete suppot for more operations such as joins or
+arbitrary SQL functions such as C<AVG> or C<MAX>, though that is
+coming.  However, it can still replace the drudgery of the most common
+operations.  In addition, the
+L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects support the
+use of a caching system.  Two caching modules,
+L<C<Alzabo::ObjectCache>|Alzabo::ObjectCache> and
+L<C<Alzabo::ObjectCacheIPC>|Alzabo::ObjectCacheIPC>, are included.
+However, you may substitute any caching system you like provided it
+has the appropriate method interface.
 
-=head2 Drivers and Rulesets
+=head2 What to Read?
 
-Alzabo aims to be as cross-platform as possible.  To that end, RDBMS
-specific operations are contained in two separate module hierarchies.
+Alzabo has a lot of documentation.  If you are primarily interested in
+using Alzabo as an RDBMS-OO wrapper, much of the documentation can be
+skipped.  This assumes that you will create your schema via the schema
+creation interface or via L<reverse engineering|Alazbo::Create::Schema/reverse_engineer>.
 
-The first, the Alzabo::Driver::* hierarchy, is used to handle
-communication with the database.  It uses DBI and the appropriate
-DBD::* module to handle communications.  It provides a higher level of
-abstraction than DBI, requiring that the RDBMS specific modules
-implement methods to create databases and return the next value in a
-sequence.
+Here is the suggested reading order:
 
-The second, the Alzabo::RDBMSRules::* hierarchy, is used during schema
-creation in order to validate user input.  It also generates SQL to
-create the database or generate diffs (when an already instantiated
-schema is modified).  Finally, it also handles reverse engineering an
-existing database.
+L<Alzabo - Alzabo concepts|Alzabo concepts>
 
-Currently, these modules have only been implemented for MySQL.  The
-next target platform is PostgreSQL.
+L<Alzabo - Rows and cursors|"rows and cursors">
+
+L<Alzabo - How to use Alzabo|"How to use Alzabo">
+
+L<Alzabo - Exceptions|"Exceptions">
+
+L<Alzabo - Usage Examples|"Usage Examples">
+
+Depending on what RDBMS you are using:
+
+=over 4
+
+L<Alzabo - MySQL|"MySQL">
+
+L<Alzabo - PostgreSQL|"PostgreSQL">
+
+=back
+
+L<Alzabo::Runtime::Schema> - The most important parts here are those
+related to loading a schema and connecting to a database.  Also be
+sure to read about the L<C<join>|Alzabo::Runtime::Schema/join> method.
+
+L<Alzabo::Runtime::Table> - This contains most of the methods used to
+fetch rows from the database, as well as the
+L<C<insert>|Alzabo::Runtime::Table/insert> method.
+
+L<Alzabo::Runtime::Row> - The row objects are how data is updated,
+deleted, and retrieved from the database.  Its also important to read
+the section on its L<C<import>|Alzabo::Runtime::Row/import METHOD>, as
+this is used to determine how caching is done (for now).
+
+L<Alzabo::Runtime::Cursor> - The most important part of the
+documentation here is the L<HANDLING
+ERRORS|Alzabo::Runtime::Cursor/"HANDLING ERRORS"> section.
+
+L<Alzabo::Runtime::RowCursor> - A cursor object that returns only a
+single row.
+
+L<Alzabo::Runtime::RowCursor> - A cursor object that returns multiple
+rows.
+
+L<Alzabo::MethodMaker> - One of the most useful parts of Alzabo.  This
+module can be used to auto-generate methods based on the structure of
+your schema.
+
+L<Alzabo::Exceptions> - Describes the nature of all the exceptions
+used in Alzabo.
+
+=head2 Alzabo concepts
+
+=head3 Instantiation
+
+Every schema keeps track of whether it has been instantiated or not.
+A schema that is instantiated is one that exists in an RDBMS backend.
+This can be done explicitly by calling the schema's
+L<C<create>|Alzabo::Create::Schema/create> method.  It is also
+implicitly set when a schema is created as the result of L<reverse
+engineering|Alzabo::Create::Schema/reverse_engineer>.
+
+Instantiation has several effects.  The most important part of this is
+to realize that once a schema is instantiated, the way it generates
+SQL for itself changes.  Before it is instantiated, if you ask it to
+generate SQL via
+L<C<Alzabo::Create::Schema-E<gt>make_sql>|Alzabo::Create::Schema/make_sql>,
+it will generate the set SQL statements that are needed to create the
+schema in the RDBMS.
+
+After is instantiated, the schema will instead generate the SQL
+necessary to convert the version in the RDBMS backend to match the
+object's current state.  This can be though of as a SQL 'diff'.
+
+While this feature is quite useful, it can be confusing too.  The most
+surprising aspect of this is that if you create a schema via L<reverse
+engineering|Alzabo::Create::Schema->reverse_engineer> and then call
+L<C<Alzabo::Create::Schema-E<gt>make_sql>|Alzabo::Create::Schema/make_sql>,
+you will not get any SQL.  This is because the schema knows that it is
+instantiated and it also knows that it is the same as the version in
+the RDBMS, so no SQL is necessary.
+
+The way to deal with this is to call the
+L<C<Alzabo::Create::Schema-E<gt>set_instantiated>|Alzabo::Create::Schema/set_instantiated ($bool)>
+method with a false value.  Use this method with care.
+
+=head3 Rows and cursors
+
+In Alzabo, data is returned in the form of a L<row
+object|Alzabo::Runtime::Row>.  This object can be used to access the
+data for an individual row.
+
+Unless you are retrieving a row via a unique identifier (usually its
+primary key), you will be given a L<cursor|Alzabo::Runtime::RowCursor>
+object.  This is quite similar to how C<DBI> uses statement handles
+and is done for similar reasons.
 
 =head2 How to use Alzabo
 
 The first thing you'll want to do is create a schema.  The easiest way
 to do this is via the included web based schema creation interface,
-which requires the HTML::Mason package from CPAN to run.  To install
-this, run the install_interfaces.pl program included with the Alzabo
-distribution.
+which requires the HTML::Mason package from CPAN (www.cpan.org) to
+run.
 
-The other way to do this is via a perl script.  Here's the beginning
-of such a script:
+This interface can be installed during the normal installation
+process, and you will be prompted as to whether or not you want to use
+it.
+
+The other way to create a schema is via a perl script.  Here's the
+beginning of such a script:
 
   use Alzabo::Create::Schema;
 
-  eval {
-    my $s = Alzabo::Create::Schema->new( name => 'foo',
-                                         rules => 'MySQL',
-                                         driver => 'MySQL' );
+  eval
+  {
+      my $s = Alzabo::Create::Schema->new( name => 'foo',
+                                           rdbms => 'MySQL' );
 
-    my $table = $s->make_table( name => 'some_table' );
+      my $table = $s->make_table( name => 'some_table' );
 
-    my $a_col = $table->make_column( name => 'a_column',
-                                     type => 'int',
-                                     null => 0,
-                                     sequenced => 0,
-                                     attributes => [ 'unsigned' ] );
+      my $a_col = $table->make_column( name => 'a_column',
+                                       type => 'int',
+                                       nullable => 0,
+                                       sequenced => 0,
+                                       attributes => [ 'unsigned' ] );
 
-    $table->add_primary_key($a_col);
+      $table->add_primary_key($a_col);
 
-    my $b_col = $table->make_column( name => 'b_column',
-                                    type => 'varchar(240)',
-                                    null => 0 );
+      my $b_col = $table->make_column( name => 'b_column',
+                                       type => 'varchar',
+                                       length => 240,
+                                       nullable => 0 );
 
-    $table->make_index( columns => [ column => $b_col,
-                                     prefix => 10 ] );
+      $table->make_index( columns => [ column => $b_col,
+                                       prefix => 10 ] );
 
-    ...
+      ...
 
-    $s->save_to_file;
+      $s->save_to_file;
   };
 
   if ($@) { handle exceptions }
@@ -130,8 +225,245 @@ that pretty much all calls to its methods should be wrapped in
 C<eval{}>.  This is less onerous than it sounds.  In general, there's
 no reason not to wrap all of your calls in one eval, rather than each
 one in a seperate eval.  Then at the end of the block simply check the
-value of $@.  See the code of the included HTML::Mason based interface
-for examples.
+value of C<$@>.  See the code of the included C<HTML::Mason> based
+interface for examples.
+
+Also see the L<C<Alzabo::Exceptions>|Alzabo::Exceptions> documentation,
+which lists all of the different exception used by Alzabo.
+
+=head2 Usage Examples
+
+Alzabo is a powerful tool but as with many powerful tools it can also
+be a bit overwhelming at first.  The easiest way to understand some of
+its basic capabilities is through some examples..  Let's first assume
+that you've created the following schema:
+
+  TABLE: Movie
+  movie_id                 tinyint      -- primary key
+  title                    varchar(200)
+  release_year             year
+
+  TABLE: Person
+  person_id                tinyint      -- primary key
+  name                     varchar(200)
+  birthdate                date
+  birthplace_location_id   tinyint      -- foreign key to location
+
+  TABLE: Job
+  job_id                   tinyint      -- primary key
+  job                      varchar(200) -- something like 'actor' or 'director'
+
+  TABLE: Credit
+  movie_id                 tinyint      -- primary key part 1, foreign key to movie
+  person_id                tinyint      -- primary key part 2, foreign key to person
+  job_id                   tinyint      -- primary key part 3, foreign key to job
+
+  TABLE: Location
+  location_id              tinyint      -- primary key
+  location                 varchar(200) -- 'New York City' or 'USA'
+  parent_location_id       tinyint      -- foreign key to location
+
+This is a vastly scaled down version of the 90+ table database that
+Alzabo was written to support.
+
+=head3 Fetching data
+
+First of all, let's do something simple. Let's assume I have a
+person_id value and I want to find all the movies that they were in
+and print the title, year of release, and the job they did in the
+movie.  Here's what it looks like:
+
+  my $schema = Alzabo::Runtime::Schema->load_from_file( name => 'movies' );
+
+  my $person_t = $schema->table('Person');
+  my $credit_t = $schema->table('Credit');
+  my $movie_t  = $schema->table('Movie');
+  my $job_t    = $schema->table('Job');
+
+  # returns a row representing this person.
+  my $person = $person_t->row_by_pk( pk => 42 );
+
+  # all the rows in the credit table that have the person_id of 42.
+  my $cursor = $person->rows_by_foreign_key( fk => $person_t->foreign_keys_by_table($credit_t) );
+
+  print $person->select('name'), " was in the following films:\n\n";
+  while (my $credit = $cursor->next_row)
+  {
+      # rows_by_foreign_key returns a RowCursor object.  We immediately
+      # call its next_row method, knowing it will only have one row (if
+      # it doesn't then our referential integrity is in trouble!)
+      my $movie =
+          $credit->rows_by_foreign_key( fk => $credit_t->foreign_keys_by_table($movie_t) )->next_row;
+
+      my $job =
+          $credit->rows_by_foreign_key( fk => $credit_t->foreign_keys_by_table($job_t) )->next_row;
+
+      print $movie->select('title'), " released in ", $movie->select('release_year'), "\n";
+      print '  ', $job->('job'), "\n";
+  }
+
+A more sophisticated version of this code would take into account that
+a person can do more than one job in the same movie.
+
+The method names are admittedly verbose but the end result code is
+significantly simpler to read than the equivalent using raw SQL and
+DBI calls.
+
+Let's redo the example to use
+L<C<Alzabo::MethodMaker>|Alzabo::MethodMaker>;
+
+  # I'm assuming that the pluralize_english subroutine pluralizes
+  # things as one would expect.
+  use Alzabo::MethodMaker( schema    => 'movies',
+                           all       => 1,
+                           pluralize => \&pluralize_english );
+
+  my $schema = Alzabo::Runtime::Schema->load_from_file( name => 'movies' );
+
+  # instantiates a row representing this person.
+  my $person = $schema->Person->row_by_pk( pk => 42 );
+
+  # all the rows in the credit table that have the person_id of 42.
+  my $cursor = $person->Credits;
+
+  print $person->name, " was in the following films:\n\n";
+  while (my $credit = $cursor->next_row)
+  {
+      my $movie = $credit->Movie;
+
+      my $job = $credit->Job;
+
+      print $movie->title, " released in ", $movie->release_year, "\n";
+      print '  ', $job->job, "\n";
+  }
+
+=head3 Validating data
+
+Let's assume that we've been passed a hash of values representing an
+update to the location table. Here's a way of making sure that that
+this update won't lead to a loop in terms of the parent/child
+relationships.
+
+  sub update_location
+  {
+      my %data = @_;
+      if ( $data{parent_location_id} )
+      {
+	  my $location_t = $schema->table('Location');
+          my $location = $location_t->row_by_pk( pk => $data{parent_location_id} );
+          do
+          {
+              die "Insert into location would create loop"
+                  if $location->select('parent_location_id') == $data{location_id};
+
+              # get the current location's parent location
+              $location = $location_t->row_by_pk( pk => $location->select('parent_location_id') );
+          } while ($location);
+      }
+  }
+
+Once again, let's rewrite the code to use
+L<C<Alzabo::MethodMaker>|Alzabo::MethodMaker>:
+
+
+  sub update_location
+  {
+      my %data = @_;
+      if ( $data{parent_location_id} )
+      {
+          my $location = $schema->Location->row_by_pk( pk => $data{parent_location_id} );
+          do
+          {
+              die "Insert into location would create loop"
+                  if $location->parent_location_id == $data{location_id};
+
+              $location = $location_t->row_by_pk( pk => $location->parent_location_id );
+          } while ($location);
+      }
+  }
+
+=head3 Changing the schema
+
+In MySQL, there are a number of various types of integers.  The type
+TINYINT can hold values from -128 to 127.  But what if have more than
+127 movies?  And if that's the case we might have more than 127 people
+too.
+
+For safety's sake, it might be best to make all of the primary key
+integer columns INT columns instead.  And while we're at it we want to
+make them UNSIGNED as well, as we don't need to insert negative
+numbers into these columns.
+
+You could break out the RDBMS manual (because you probably forgot the
+exact ALTER TABLE syntax you'll need).  Or you could use Alzabo.  Note
+that this time it is an
+L<C<Alzabo::Create::Schema>|Alzabo::Create::Schema> object, not
+L<C<Alzabo::Runtime::Schema>|Alzabo::Runtime::Schema>.
+
+  my $schema = Alzabo::Create::Schema->load_from_file( name => 'movies' );
+
+  foreach my $t ( $schema->tables )
+  {
+      foreach my $c ( $t->columns )
+      {
+           if ( $c->is_primary_key and lc $c->type eq 'tinyint' )
+           {
+                $c->set_type('int');
+                $c->add_attribute('unsigned');
+           }
+      }
+  }
+  $schema->create( user => 'user', password => 'password' );
+  $schema->save_to_file;
+
+=head2 Multiple RDBMS Support
+
+Alzabo aims to be as cross-platform as possible.  To that end, RDBMS
+specific operations are contained in several module hierarchies.
+
+The first, the C<Alzabo::Driver::*> hierarchy, is used to handle
+communication with the database.  It uses C<DBI> and the appropriate
+C<DBD::*> module to handle communications.  It provides a higher level
+of abstraction than C<DBI>, requiring that the RDBMS specific modules
+implement methods to do such things as create databases or return the
+next value in a sequence.
+
+The second, the C<Alzabo::RDBMSRules::*> hierarchy, is used during
+schema creation in order to validate user input such as schema and
+table names.  It also generates SQL to create the database or turn one
+schema into another (sort of a SQL diff).  Finally, it also handles
+reverse engineering an existing database.
+
+The this, the C<Alzabo::SQLMaker::*> hierarchy, is used to generate
+SQL and handle bound parameters for select, insert, update, and delete
+operations.
+
+The RDBMS to be used is specified when creating the schema.
+Currently, there is no easy way to convert a schema from one RDBMS to
+another, though this is a future goal.
+
+=head3 MySQL
+
+Alzabo does not provide support for all possible MySQL features.  One
+notable feature that is supported in column prefixes in indexes, which
+are necessary to allow indexes on blob/text columns.
+
+=head3 PostgreSQL
+
+Postgres support in Alzabo us currently missing several features.
+
+First, reverse engineering does not handle constraints (including
+foreign keys).  This will change in the future.
+
+Second, reverse engineering cannot determine from the existence of a
+sequence that a sequence is meant to be used for a particular column
+unless the sequence was created as a result of assigning the serial
+type to a column.
+
+Third, there is no support for large objects.  This was considered but
+given that 7.1 should support rows larger than 8K it was determined
+that supporting large objects was not worth the amount of effort
+reqiured.
 
 =head2 Architecture
 
@@ -145,11 +477,11 @@ owner.
 
 This is a diagram of these inheritance relationships:
 
- Alzabo::* (::Schema, ::Table, ::Column, ::ColumnDefinition, ::ForeignKey, ::Index)
-                  /   \
-	       is parent to
-                /       \
-Alzabo::Create::*   Alzabo::Runtime::*
+  Alzabo::* (::Schema, ::Table, ::Column, ::ColumnDefinition, ::ForeignKey, ::Index)
+                   /   \
+	        is parent to
+                 /       \
+ Alzabo::Create::*   Alzabo::Runtime::*
 
 This a diagram of how objects contain other objects:
 
@@ -170,54 +502,64 @@ This a diagram of how objects contain other objects:
 		  ColumnDefinition (1)
 
 Note that more than one column _may_ share a single definition object
-(this is explained in the Alzabo::Create::ColumnDefinition
-documentation).
+(this is explained in the
+L<C<Alzabo::Create::ColumnDefinition>|Alzabo::Create::ColumnDefinition>
+documentation).  This is only relevant if you are writing a schema
+creation interface.
 
 Other classes/objects used in Alzabo include:
 
 =over 4
 
-=item * Alzabo::Config
+=item * C<Alzabo::Config>
 
 This class is generated by Makefile.PL during installation and
 contains information such as what directory contains saved schemas and
 other configuration information.
 
-=item * Alzabo::ChangeTracker
+=item * C<Alzabo::ChangeTracker>
 
 This object provides a method for an object to register a series to
 backout from multiple changes.  This is done by providing the
 ChangeTracker object with a callback after a change is succesfully
 made to an object or objects.  If a future change in a set of
 operations fail, the tracker can be told to back the changes out. This
-is used primarily in Alzabo::Create::schema
+is used primarily in
+L<C<Alzabo::Create::Schema>|Alzabo::Create::Schema>.
 
-=item * Alzabo::Exceptions
+=item * C<Alzabo::MethodMaker>
+
+This module can auto-generate useful methods for you schema, table,
+and row objects based on the structure of your schema.
+
+=item * C<Alzabo::Exceptions>
 
 This object creates the exception subclasses used by Alzabo.
 
-=item * Alzabo::ObjectCacheIPC
+=item * C<Alzabo::ObjectCache> and C<Alzabo::ObjectCacheIPC>
 
-An object caching module that uses IPC to make sure that cached
-objects expired in one process get expired in any other process using
-the same caching module.
+These are object caching modules.  The latter uses IPC to make sure
+that cached objects expired in one process get expired in any other
+process using the same caching module.  This can be quite useful when
+running under mod_perl, for example.
 
-=item * Alzabo::Runtime::Row
+=item * C<Alzabo::Runtime::Row>
 
-This object represents a row from a table.  It
-is made by the Alzabo::Runtime::Table object and contains its parent
-table object.  It is the sole interface by which actual data is
-inserted/update/deleted in a table.
+This object represents a row from a table.  These objects are created
+by L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table>,
+L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor>, and
+L<C<Alzabo::Runtime::JoinCursor>|Alzabo::Runtime::JoinCursor> objects.
+It is the sole interface by which actual data is retrieved, updated,
+or deleted in a table.
 
-=item * Alzabo::Runtime::RowCursor
+=item * C<Alzabo::Runtime::JoinCursor> and C<Alzabo::Runtime::RowCursor>
 
 This object is a cursor that returns row objects.  Using a cursor
 saves a lot of memory for big selects.
 
-=item * Alzabo::Util
+=item * C<Alzabo::Util>
 
-A catchall module to store simple subroutines shared by various
-modules.
+Contains simple subroutines shared by various modules.
 
 =back
 

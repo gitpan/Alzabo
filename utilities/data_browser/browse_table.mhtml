@@ -30,18 +30,18 @@
 </table>
 </form>
 
-<& .row_count, start_row => 0, max_rows  => 50, filter_from => $filter_from, filter_where => $filter_where, rows_fetched => $rows_fetched, row_count => $row_count, %ARGS &>
+<& .row_count, start_row => 0, max_rows  => 25, filter_from => $filter_from, filter_where => $filter_where, rows_fetched => $rows_fetched, row_count => $row_count, %ARGS &>
 <& .table_header &>
 <% $table_body %>
 <& .table_footer &>
-<& .row_count, start_row => 0, max_rows  => 50, filter_from => $filter_from, filter_where => $filter_where, rows_fetched => $rows_fetched, row_count => $row_count, %ARGS &>
+<& .row_count, start_row => 0, max_rows  => 25, filter_from => $filter_from, filter_where => $filter_where, rows_fetched => $rows_fetched, row_count => $row_count, %ARGS &>
 
 <%shared>
-my %args = @{ $m->caller_args(0) };
+my %args = $m->caller_args(0);
 my $s = $args{s};
 my $t = $args{t};
 my $start_row = $args{start_row} || 0;
-my $max_rows = $args{max_rows} || 50;
+my $max_rows = $args{max_rows} || 25;
 my $filter_from = $args{filter_from};
 my $filter_where = $args{filter_where};
 my $user = $args{user};
@@ -55,35 +55,11 @@ $t->set_prefetch(@cols);
 my $non_pk_cols = scalar @cols - scalar @pk;
 
 my $row_count;
-if ($filter_where)
-{
-    my $driver = $s->driver;
-    my $sql = 'SELECT COUNT(*)';
-    $sql .= ' FROM ';
-    $sql .= $filter_from ? $filter_from : $t->name;
-    $sql .= " WHERE $filter_where" if $filter_where;
-    $sql .= " LIMIT $start_row, $max_rows";
-
-    $row_count = $driver->one_row( sql => $sql );
-}
-else
-{
-    $row_count = $t->row_count;
-}
+$row_count = $t->row_count;
 
 my $cursor;
 
-if ($filter_where)
-{
-    my $from = $filter_from ? [ split /\s*,\s*/, $filter_from ] : [ $t->name ];
-    $filter_where .= " LIMIT $start_row, $max_rows";
-    $cursor = $t->rows_by_where_clause( from => $from,
-					where => $filter_where );
-}
-else
-{
-    $cursor = $t->all_rows;
-}
+$cursor = $t->all_rows( limit => [ $max_rows, $start_row ] );
 
 my ( $rows_fetched, $rows_used );
 </%shared>
@@ -107,8 +83,8 @@ Rows <% $rows_fetched ? $start_row + 1 : 0 %>-<% $start_row + $rows_used %> (out
 % $rows_fetched = $rows_used = 0;
 % while (my $row = $cursor->next_row) {
 %   $rows_fetched++;
-%   next if $rows_fetched <= $start_row;
-%   last if $rows_fetched > $max_rows + $start_row;
+%   #next if $rows_fetched <= $start_row;
+%   #last if $rows_fetched > $max_rows + $start_row;
 %   $rows_used++;
  <tr valign="middle">
 <form action="delete_row<% Alzabo::Config::mason_extension() %>">

@@ -6,18 +6,18 @@ use vars qw($VERSION);
 use Alzabo::Exceptions;
 use Alzabo::Util;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.27 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub new
 {
     shift;
-    my $subclass = shift;
-    $subclass =~ s/Alzabo::RDBMSRules:://;
-    eval "use Alzabo::RDBMSRules::$subclass;";
-    EvalException->throw( error => $@ ) if $@;
-    return "Alzabo::RDBMSRules::$subclass"->new(@_);
+    my %p = @_;
+
+    eval "use Alzabo::RDBMSRules::$p{rdbms};";
+    Alzabo::Exception::Eval->throw( error => $@ ) if $@;
+    return "Alzabo::RDBMSRules::$p{rdbms}"->new(@_);
 }
 
 sub available
@@ -45,6 +45,11 @@ sub validate_column_type
     shift()->_virtual;
 }
 
+sub validate_column_length
+{
+    shift()->_virtual;
+}
+
 sub validate_column_attribute
 {
     shift()->_virtual;
@@ -65,9 +70,48 @@ sub validate_index
     shift()->_virtual;
 }
 
-sub schema_sql
+sub type_is_numeric
 {
     shift()->_virtual;
+}
+
+sub type_is_character
+{
+    shift()->_virtual;
+}
+
+sub type_is_blob
+{
+    shift()->_virtual;
+}
+
+sub schema_sql
+{
+    my $self = shift;
+    my $schema = shift;
+
+    my @sql;
+
+    $self->_start_sql;
+
+    foreach my $t ( $schema->tables )
+    {
+	push @sql, $self->table_sql($t);
+    }
+
+    $self->_end_sql;
+
+    return @sql;
+}
+
+sub _start_sql
+{
+    1;
+}
+
+sub _end_sql
+{
+    1;
 }
 
 sub table_sql
@@ -82,7 +126,24 @@ sub column_sql
 
 sub index_sql
 {
-    shift()->_virtual;
+    my $self = shift;
+    my $index = shift;
+
+    my @cols = $index->columns;
+
+    my $index_name = $index->id;
+
+    my $sql = 'CREATE';
+    $sql .= ' UNIQUE' if $index->unique;
+    $sql .= " INDEX $index_name ON " . $index->table->name . ' ( ';
+
+    $sql .= join ', ', ( map { my $sql = join '.', $_->table->name, $_->name;
+			       $sql .= '(' . $index->prefix($_) . ')' if $index->prefix($_);
+			       $sql; } @cols );
+
+    $sql .= ' )';
+
+    return $sql;
 }
 
 sub foreign_key_sql
@@ -92,7 +153,9 @@ sub foreign_key_sql
 
 sub drop_table_sql
 {
-    shift()->_virtual;
+    my $self = shift;
+
+    return 'DROP TABLE ' . shift->name;
 }
 
 sub drop_column_sql
@@ -122,7 +185,19 @@ sub column_sql_diff
 
 sub index_sql_diff
 {
-    shift()->_virtual;
+    my $self = shift;
+    my %p = @_;
+
+    my $new_sql = $self->index_sql($p{new});
+
+    my @sql;
+    if ( $new_sql ne $self->index_sql($p{old}) )
+    {
+	push @sql, $self->drop_index_sql($p{old});
+	push @sql, $new_sql;
+    }
+
+    return @sql;
 }
 
 sub foreign_key_sql_diff
@@ -140,12 +215,19 @@ sub reverse_engineer
     shift()->_virtual;
 }
 
+sub rules_id
+{
+    shift()->_virtual;
+}
+
 sub schema_sql_diff
 {
     my $self = shift;
     my %p = @_;
     my $new = $p{new};
     my $old = $p{old};
+
+    $self->_start_sql;
 
     my @sql;
     foreach my $new_t ($new->tables)
@@ -168,6 +250,8 @@ sub schema_sql_diff
 	    push @sql, $self->drop_table_sql($old_t);
 	}
     }
+
+    $self->_end_sql;
 
     return @sql;
 }
@@ -192,11 +276,13 @@ sub table_sql_diff
 	    push @sql, $self->column_sql_add($new_c)
 	}
     }
+
     foreach my $old_c ($old->columns)
     {
-	unless ( eval { $new->column( $old_c->name ) } )
+	unless ( my $new_c = eval { $new->column( $old_c->name ) } )
 	{
-	    push @sql, $self->drop_column_sql($old_c);
+	    push @sql, $self->drop_column_sql( new_table => $new,
+					       old => $old_c );
 	}
     }
 
@@ -212,6 +298,7 @@ sub table_sql_diff
 	    push @sql, $self->index_sql($new_i)
 	}
     }
+
     foreach my $old_i ($old->indexes)
     {
 	unless ( eval { $new->index( $old_i->id ) } )
@@ -239,6 +326,7 @@ sub table_sql_diff
 	    }
 	}
     }
+
     foreach my $old_fk ($old->all_foreign_keys)
     {
 	unless ( my @new_fk = eval { $new->foreign_keys( table => $old_fk->table_to,
@@ -286,8 +374,8 @@ sub _virtual
     my $self = shift;
 
     my $sub = (caller(1))[3];
-    VirtualMethodException->throw( error =>
-				   "$sub is a virtual method and must be subclassed in " . ref $self );
+    Alzabo::Exception::VirtualMethod->throw( error =>
+					     "$sub is a virtual method and must be subclassed in " . ref $self );
 }
 
 __END__
@@ -304,255 +392,327 @@ Alzabo::RDBMSRules - Base class for Alzabo RDBMS rulesets
 
 =head1 DESCRIPTION
 
-This class is the base class for all Alzabo::RDBMSRules modules.  To
-instantiate a subclass call this class's C<new> method.  See the
-L<SUBCLASSING Alzabo::RDBMRul/es> section for information on how to
+This class is the base class for all C<Alzabo::RDBMSRules> modules.
+To instantiate a subclass call this class's C<new> method.  See the
+L<SUBCLASSING Alzabo::RDBMSRules> section for information on how to
 make a ruleset for the RDBMS of your choice.
 
 =head1 METHODS
 
+=head2 available
+
+A list of names representing the available C<Alzabo::RDBMSRules>
+subclasses.  Any one of these names would be appropriate as the
+C<rdbms> parameter for the
+L<C<Alzabo::RDBMSRules-E<gt>new>|Alzabo::RDBMSRules/new> method.
+
+=head2 new
+
+=head3 Parameters
+
 =over 4
 
-=item * available
+=item * rdbms => $rdbms_name
 
-Returns a list of strings listing the avaiable Alzabo::Driver
-subclasses.  This is a class method.
-
-=item * new
-
-Takes the following parameters:
-
-=item -- rules => $string
-
-A string giving the name of a ruleset to instantiate.  Ruleset names
-are the name of the Alzabo::RDBMSRules subclass without the leading
-'Alzabo::RDBMSRules::' part.  For example, the driver name of the
-Alzabo::RDBMSRules::MySQL class is 'MySQL'.
-
-Some subclasses may accept additional values.
-
-The return value of this method is a new Alzabo::RDBMRules object of
-the appropriate subclass.
-
-=item * schema_sql_diff
-
-Takes the following parameters:
-
-=item -- new => Alzabo::Schema object
-
-=item -- old => Alzabo::Schema object
-
-Given two schema objects, this method compares them and returns an
-array of SQL statements which would turn the old schema into the new
-schema.
-
-=item * table_sql_diff
-
-Takes the following parameters:
-
-=item -- new => Alzabo::Table object
-
-=item -- old => Alzabo::Table object
-
-Given two table objects, this method compares them and returns an
-array of SQL statements which would turn the old table into the new
-table.
+The name of the RDBMS being used.
 
 =back
 
-=head2 Virtual Methods
+Some subclasses may accept additional values.
 
-The following methods are not implemented in Alzabo::RDBMRules itself
-and must be implemented in its subclasses.
+=head3 Returns
+
+A new C<Alzabo::RDBMSRules> object of the appropriate subclass.
+
+=head2 schema_sql (C<Alzabo::Create::Schema> object)
+
+=head3 Returns
+
+A list of SQL statements.
+
+=head2 index_sql (C<Alzabo::Create::Index> object)
+
+=head3 Returns
+
+A list of SQL statements.
+
+=head2 drop_table_sql (C<Alzabo::Create::Table> object)
+
+=head3 Returns
+
+A list of SQL statements.
+
+=head2 drop_index_sql (C<Alzabo::Create::Index> object)
+
+=head3 Returns
+
+A list of SQL statements.
+
+=head2 schema_sql_diff
+
+=head3 Parameters
 
 =over 4
 
-=item * validate_schema_name (Alzabo::Schema object)
+=item * new => C<Alzabo::Create::Schema> object
 
-Given a schema object, indicates whether its current name is
-acceptable under the ruleset.
+=item * old => C<Alzabo::Create::Schema> object
 
-Exceptions:
+=back
 
-AlzaboRDBMSRulesException - The name is not acceptable
+Given two schema objects, this method compares them and generates the
+SQL necessary to turn the 'old' one into the 'new' one.
 
-=item * validate_table_name (Alzabo::Table object)
+=head3 Returns
 
-Given a table object, indicates whether its current name is acceptable
-under the ruleset.
+An array of SQL statements.
 
-Exceptions:
+=head2 table_sql_diff
 
-AlzaboRDBMSRulesException - The name is not acceptable
+=head3 Parameters
 
-=item * validate_column_name (Alzabo::Column object)
+=over 4
 
-Given a column object, indicates whether its current name is
-acceptable under the ruleset.
+=item * new => C<Alzabo::Create::Table> object
 
-Exceptions:
+=item * old => C<Alzabo::Create::Table> object
 
-AlzaboRDBMSRulesException - The name is not acceptable
+=back
 
-=item * validate_column_type ($type_as_string)
+Given two table objects, this method compares them and generates the
+SQL necessary to turn the 'old' one into the 'new' one.
 
-Given a string indicating a column type (such as 'INT' or 'CHAR'),
-indicates whether or not this is a valid column type.
+=head3 Returns
 
-Exceptions:
+An array of SQL statements.
 
-AlzaboRDBMSRulesException - The column type is not valid
+=head2 Virtual Methods
 
-=item * validate_column_attribute
+The following methods are not implemented in the C<Alzabo::RDBMSRules>
+class itself and must be implemented in its subclasses.
 
-Takes the following parameters:
+=head2 validate_schema_name (C<Alzabo::Schema> object)
 
-=item -- column => Alzabo::Column object
+=head3 Returns
 
-=item -- attribute => $attribute
+A boolean value indicate whether the object's name is valid.
 
-Given a column and a potential attribute, indicates whether that
-attribute is valid for the column.
+=head3 Throws
 
-Exceptions:
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
-AlzaboRDBMSRulesException - The attribute is not valid
+=head2 validate_table_name (C<Alzabo::Create::Table> object)
 
-=item * validate_primary_key (Alzabo::Column object)
+=head3 Returns
 
-Given a column object, indicates whether or not the column can be part
-of a primary key.
+A boolean value indicate whether the object's name is valid.
 
-Exceptions:
+=head3 Throws
 
-AlzaboRDBMSRulesException - The column cannot be part of a primary key
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
-=item * validate_sequenced_attribute (Alzabo::Column object)
+=head2 validate_column_name (C<Alzabo::Create::Column> object)
+
+=head3 Returns
+
+A boolean value indicate whether the object's name is valid.
+
+=head3 Throws
+
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+
+=head2 validate_column_type ($type_as_string)
+
+=head3 Returns
+
+A boolean value indicate whether or not this type is valid for the
+RDBMS.
+
+=head3 Throws
+
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+
+=head2 validate_column_attribute
+
+=head3 Parameters
+
+=over 4
+
+=item * column => C<Alzabo::Create::Column> object
+
+=item * attribute => $attribute
+
+=back
+
+This method is a bit different from the others in that it takes an
+existing column object and a B<potential> attribute.
+
+=head3 Returns
+
+A boolean value indicating whether or not this attribute is acceptable
+for the column.
+
+=head3 Throws
+
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+
+=head2 validate_primary_key (C<Alzabo::Create::Column> object)
+
+=head3 Returns
+
+Returns a boolean value indicating whether or not the given column can
+be part of its table's primary key.
+
+=head3 Throws
+
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
+
+=head2 validate_sequenced_attribute (C<Alzabo::Create::Column> object)
 
 Given a column object, indicates whether or not the column can be
 sequenced.
 
-Exceptions:
+=head3 Throws
 
-AlzaboRDBMSRulesException - The column cannot be sequenced.
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
-=item * validate_index
+=head2 validate_index (C<Alzabo::Create::Index> object)
 
-Given an index object, indicates whether or not it is valid.
+=head3 Returns
 
-Exceptions:
+A boolean value indicating whether or not the index is valid.
 
-AlzaboRDBMSRulesException - The index is not valid
+=head3 Throws
 
-=item * schema_sql
+L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 
-Given a schema object, returns an array of SQL statements which would
-create that schema.
+=head2 table_sql (C<Alzabo::Create::Table> object)
 
-=item * table_sql
+=head3 Returns
 
-Given a table object, returns an array of SQL statements which would
-create that table.
+A list of SQL statements.
 
-=item * column_sql
+=head2 column_sql (C<Alzabo::Create::Column> object)
 
-Given a column object, returns an array of SQL statements which would
-create that column.
+=head3 Returns
 
-=item * index_sql
+A list of SQL statements.
 
-Given a index object, returns an array of SQL statements which wouldcreate that index
+=head2 foreign_key_sql (C<Alzabo::Create::ForeignKey> object)
 
-=item * foreign_key_sql
+=head3 Returns
 
-Given a foreign key object, returns an array of SQL statements which
-would create that foreign key.  .
+A list of SQL statements.
 
-=item * drop_table_sql
+=head2 drop_column_sql (C<Alzabo::Create::Column> object)
 
-Given a table object, returns an array of SQL statements which would
-drop that table.
+=head3 Returns
 
-=item * drop_column_sql
+A list of SQL statements.
 
-Given a column object, returns an array of SQL statements which would
-drop that column.
+=head2 drop_foreign_key_sql (C<Alzabo::Create::ForeignKey> object)
 
-=item * drop_index_sql
+=head3 Returns
 
-Given a index object, returns an array of SQL statements which would
-drop that index.
+A list of SQL statements.
 
-=item * drop_foreign_key_sql
+=head2 column_sql_add (C<Alzabo::Create::Column> object)
 
-Given a foreign key object, returns an array of SQL statements which
-would drop that foreign key.
+=head3 Returns
 
-=item * column_sql_add
+A list of SQL statements.
 
-Given a column object, returns an array of SQL statements which would
-add that column to the appropriate table.
+=head2 column_sql_diff
 
-=item * column_sql_diff
+=head3 Parameters
 
-Takes the following parameters:
+=over 4
 
-=item -- new => Alzabo::Column object
+=item * new => C<Alzabo::Create::Column> object
 
-=item -- old => Alzabo::Column object
+=item * old => C<Alzabo::Create::Column> object
 
-Given two column objects, this method compares them and returns an
-array of SQL statements which would turn the old column into the new
-column.
+=back
 
-=item * index_sql_diff
+Given two column objects, this method compares them and generates the
+SQL necessary to turn the 'old' one into the 'new' one.
 
-Takes the following parameters:
+=head3 Returns
 
-=item -- new => Alzabo::Index object
+A list of SQL statements.
 
-=item -- old => Alzabo::Index object
+=head2 index_sql_diff
 
-Given two index objects, this method compares them and returns an
-array of SQL statements which would turn the old index into the new
-index.
+=head3 Parameters
 
-=item * foreign_key_sql_diff
+=over 4
 
-Takes the following parameters:
+=item * new => C<Alzabo::Create::Index> object
 
-=item -- new => Alzabo::ForeignKey object
+=item * old => C<Alzabo::Create::Index> object
 
-=item -- old => Alzabo::ForeignKey object
+=back
 
-Given two foreign key objects, this method compares them and returns
-an array of SQL statements which would turn the old foreign key into
-the new foreign key.
+Given two index objects, this method compares them and generates the
+SQL necessary to turn the 'old' one into the 'new' one.
 
-=item * alter_primary_key_sql
+=head3 Returns
 
-Takes the following parameters:
+A list of SQL statements.
 
-=item -- new => Alzabo::Table object
+=head2 foreign_key_sql_diff
 
-=item -- old => Alzabo::Table object
+=head3 Parameters
 
-Given two table objects with different primary keys, this method
-compares them and returns an array of SQL statements which would turn
-the old table's primary key into the new table's primary key.
+=over 4
 
-=item * reverse_engineer (Alzabo::Schema object)
+=item * new => C<Alzabo::Create::ForeignKey> object
+
+=item * old => C<Alzabo::Create::ForeignKey> object
+
+=back
+
+Given two foreign key objects, this method compares them and generates
+the SQL necessary to turn the 'old' one into the 'new' one.
+
+=head3 Returns
+
+A list of SQL statements.
+
+=head2 alter_primary_key_sql
+
+=head3 Parameters
+
+=over 4
+
+=item * new => C<Alzabo::Create::Table> object
+
+=item * old => C<Alzabo::Create::Table> object
+
+=back
+
+Given two table objects, this method compares them and generates the
+SQL necessary to give change the primary key from the 'old' one's
+primary key to the 'new' one's primary key.
+
+=head3 Returns
+
+A list of SQL statements.
+
+=head2 reverse_engineer (C<Alzabo::Create::Schema> object)
 
 Given a schema object (which presumably has no tables), this method
-uses the schema's Alzabo::Driver object to connect to an existing
-database and reverse engineer it into the appopriate Alzabo objects.
+uses the schema's L<C<Alzabo::Driver>|Alzabo::Driver> object to
+connect to an existing database and reverse engineer it into the
+appopriate Alzabo objects.
 
 =head1 SUBCLASSING Alzabo::RDBMSRules
 
-To create a subclass of Alzabo::Driver for your particular RDBMS is
-fairly simple.
+To create a subclass of C<Alzabo::RDBMSRules> for your particular
+RDBMS is fairly simple.
 
-Here's a sample header to the module using a fictional RDBMS called FooDB:
+Here's a sample header to the module using a fictional RDBMS called
+FooDB:
 
  package Alzabo::RDBMSRules::FooDB;
 
@@ -578,8 +738,9 @@ bit like this:
  9:      return $self;
  10:  }
 
-The hash %p contains any values passed to the Alzabo::Driver->new
-method by its caller.
+The hash %p contains any values passed to the
+L<C<Alzabo::RDBMSRules-E<gt>new>|Alzabo::RDBMSRules/new> method by its
+caller.
 
 Lines 1-7 should probably be copied verbatim into your own C<new>
 method.  Line 5 can be deleted if you don't need to look at the
@@ -588,10 +749,10 @@ parameters.
 The rest of your module should simply implement the methods listed
 under the L<Virtual Methods> section of this documentation.
 
-Look at the included Alzabo::RDBMSRules subclasses for examples.  Feel
-free to contact me for further help if you get stuck.  Please tell me
-what database you're attempting to implement, and include the code
-you've written so far.
+Look at the included C<Alzabo::RDBMSRules> subclasses for examples.
+Feel free to contact me for further help if you get stuck.  Please
+tell me what database you're attempting to implement, and include the
+code you've written so far.
 
 =head1 AUTHOR
 

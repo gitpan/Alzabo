@@ -4,7 +4,10 @@ $table
 $column
 $type
 $sequenced => 0
-$null => 0
+$nullable => 0
+$default => undef
+$length => undef
+$precision => undef
 $primary_key => 0
 @attributes => ()
 $after => undef
@@ -18,10 +21,17 @@ eval
 
     $t = $s->table($table);
 
+    $length = undef if $length eq '';
+    $precision = undef if $precision eq '';
+    $default = undef if $default eq '';
+
     my %p = ( name => $column,
-	      null => $null,
+	      nullable => $nullable,
 	      type => $type,
 	      sequenced => $sequenced,
+	      default => $default,
+	      length => $length,
+	      precision => $precision,
 	      attributes => [ grep {$_} @attributes ],
 	    );
     $p{after} = $t->column($after) if defined $after;

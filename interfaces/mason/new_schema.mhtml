@@ -1,6 +1,5 @@
 <%args>
 $name
-$driver
 $rdbms
 </%args>
 
@@ -10,8 +9,7 @@ my $s;
 eval
 {
     $s = Alzabo::Create::Schema->new( name => $name,
-				      driver => $driver,
-				      rules => $rdbms );
+				      rdbms => $rdbms );
     $s->save_to_file;
 };
 

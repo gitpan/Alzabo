@@ -2,7 +2,6 @@
 $name
 $username => undef
 $password => undef
-$driver
 $rdbms
 </%args>
 
@@ -12,8 +11,7 @@ my $s;
 eval
 {
     $s = Alzabo::Create::Schema->reverse_engineer( name => $name,
-						   driver => $driver,
-						   rules => $rdbms,
+						   rdbms => $rdbms,
 						   user => $username,
 						   password => $password,
 						 );

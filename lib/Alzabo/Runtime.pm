@@ -14,7 +14,7 @@ use Alzabo::Runtime::Table;
 
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -39,15 +39,12 @@ Alzabo::Runtime - Loads all Alzabo::Runtime::* classes
 
 =head1 DESCRIPTION
 
-Using this module loads Alzabo::Runtime::Column,
-Alzabo::Runtime::ColumnDefinition, Alzabo::Runtime::ForeignKey,
-Alzabo::Runtime::Row, Alzabo::Runtime::Schema, and
-Alzabo::Runtime::Table.
+Using this module loads Alzabo::Runtime::* modules.
 
-These modules are what an end user of Alzabo would use to instantiate
+These modules are what an end user of Alzabo uses to instantiate
 objects representing data in a given schema.
 
-=head1 Alzabo::Runtime import METHOD
+=head1 import METHOD
 
 This method is called when you C<use> this class.  You can pass an
 array of strings to the module via the C<use> function.  These strings
@@ -59,8 +56,8 @@ the objects before a fork, hopefully increasing shared memory.
 This method explicitly ignores errors that may occur when trying to
 load a particular schema.  This means that later attempts to retrieve
 that schema will probably also fail.  This is done so that the
-application that wants the schema can explicitly handle the failure
-later on.
+application that wants a particular schema can explicitly handle the
+failure later on.
 
 =head1 AUTHOR
 

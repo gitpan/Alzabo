@@ -8,7 +8,7 @@ use Alzabo::Runtime;
 use base qw( Alzabo::Runtime::Cursor );
 use fields qw( table );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -47,12 +47,12 @@ sub next_rows
 	    my %hash = map { $pk[$_]->name => $pk_vals[$_] } 0..$#pk_vals;
 
 	    my $row = eval { $t->row_by_pk( @_,
-					    id => \%hash,
+					    pk => \%hash,
 					    no_cache => $self->{no_cache}
 					  ); };
 	    if ($@)
 	    {
-		if ( $@->isa('AlzaboNoSuchRowException') )
+		if ( $@->isa('Alzabo::Exception::NoSuchRow') )
 		{
 		    push @{ $self->{errors} },  $@;
 		}
@@ -76,7 +76,7 @@ sub all_rows
     my @errors;
     while ( my @rows = $self->next_rows )
     {
-	push @all, \@rows;
+	push @all, [@rows];
 	push @errors, $self->errors if $self->errors;
     }
 
@@ -88,8 +88,7 @@ __END__
 
 =head1 NAME
 
-Alzabo::Runtime::JoinCursor - Cursor that returns Alzabo::Runtime::Row
-arrays of objects
+Alzabo::Runtime::JoinCursor - Cursor that returns arrays of C<Alzabo::Runtime::Row> objects
 
 =head1 SYNOPSIS
 
@@ -109,59 +108,65 @@ arrays of objects
 Objects in this class are used to return arrays Alzabo::Runtime::Row
 objects when requested.  The cursor does not preload objects but
 rather creates them on demand, which is much more efficient.  For more
-details on the rational please see L<the RATIONALE FOR CURSORS
-section|RATIONALE FOR CURSORS>.
+details on the rational please see L<the HANDLING ERRORS section in
+Alzabo::Runtime::Cursor|Alzabo::Runtime::Cursor/HANDLING ERRORS>.
 
 NOTE: This class is considered experimental.
 
+=head1 INHERITS FROM
+
+L<C<Alzabo::Runtime::Cursor>|Alzabo::Runtime::Cursor>
+
 =head1 METHODS
+
+=head2 new
+
+=head3 Parameters
 
 =over 4
 
-=item * new
+=item * statement => C<Alzabo::Driver::Statement> object
 
-Takes the following parameters:
-
-=item -- statement => Alzabo::Driver::Statement object
-
-=item -- tables => [ Alzabo::Table objects ]
-
-=item * next_rows
-
-Returns the next array Alzabo::Runtime::Row objects or and empty list
-if no more are available.  This behavior can mask errors in your
-database's referntial integrity.  For more information on how to deal
-with this see L<the HANDLING ERRORS section|HANDLING ERRORS>.
-
-=item * all_rows
-
-Returns all the rows available from the current point onwards.  This
-means that if there are five rows that will be returned when the
-object is created and you call C<next_row> twice, calling all_rows
-after it will only return three.  Calling the C<errors> method after
-this will return all errors trapped during the fetching of these rows.
-The return value is an array of array references.  Each of these
-references represents a single set of rows as they would be returned
-from the C<next_rows> method.
-
-=item * errors
-
-L<Alzabo::Runtime::Cursor>.
-
-=item * reset
-
-Resets the cursor so that the next C<next_rows> call will return the
-first row of the set.
+=item * tables => [ C<Alzabo::Table> objects ]
 
 =back
 
-=head1 HANDLING ERRORS
+=head2 next_rows
 
-See L<Alzabo::Runtime::Cursor>.
+=head3 Returns
 
-=head1 RATIONALE FOR CURSORS
+The next array of L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>
+objects or an empty list if no more are available.
 
-See L<Alzabo::Runtime::Cursor>.
+This behavior can mask errors in your database's referntial integrity.
+For more information on how to deal with this see L<the HANDLING
+ERRORS section in
+Alzabo::Runtime::Cursor|Alzabo::Runtime::Cursor/HANDLING ERRORS>.
+
+=head2 all_rows
+
+=head3 Returns
+
+All the rows available from the current point onwards.  These are
+returned as an array of array references.  Each reference is to an
+array of L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects.
+
+This means that if there are five set of rows that will be returned
+when the object is created and you call C<next_rows> twice, calling
+C<all_rows> after it will only return three sets.  Calling the
+C<errors> method after this will return all errors trapped during the
+fetching of these sets of rows.  The return value is an array of array
+references.  Each of these references represents a single set of rows
+as they would be returned from the C<next_rows> method.
+
+=head2 errors
+
+See L<C<Alzabo::Runtime::Cursor>|Alzabo::Runtime::Cursor>.
+
+=head2 reset
+
+Resets the cursor so that the next L<C<next_rows>|next_rows> call will
+return the first row of the set.
 
 =head1 AUTHOR
 

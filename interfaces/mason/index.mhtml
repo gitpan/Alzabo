@@ -26,22 +26,11 @@
  </tr>
 
  <tr>
-  <td><b>RDBMS Ruleset:</b></td>
+  <td><b>RDBMS:</b></td>
   <td>
    <select name="rdbms">
 % foreach my $r (sort Alzabo::RDBMSRules->available) {
    <option value="<% $r %>"><% $r %></option>
-% }
-   </select>
-  </td>
- </tr>
-
- <tr>
-  <td><b>RDBMS Driver:</b></td>
-  <td>
-   <select name="driver">
-% foreach my $d (sort Alzabo::Driver->available) {
-   <option value="<% $d %>"><% $d %></option>
 % }
    </select>
   </td>
@@ -75,22 +64,11 @@
  </tr>
 
  <tr>
-  <td><b>RDBMS Ruleset:</b></td>
+  <td><b>RDBMS:</b></td>
   <td>
    <select name="rdbms">
 % foreach my $r (sort Alzabo::RDBMSRules->available) {
    <option value="<% $r %>"><% $r %></option>
-% }
-   </select>
-  </td>
- </tr>
-
- <tr>
-  <td><b>RDBMS Driver:</b></td>
-  <td>
-   <select name="driver">
-% foreach my $d (sort Alzabo::Driver->available) {
-   <option value="<% $d %>"><% $d %></option>
 % }
    </select>
   </td>
@@ -105,7 +83,6 @@
 </table>
 
 <%init>
-
 use Alzabo::Config;
 
 my @s = Alzabo::Config::available_schemas;

@@ -12,8 +12,17 @@ DELETE, and UPDATE commands.
 
 To take it a step further, you could then aggregate a set of rows from
 different tables into a larger container object which could understand
-the logical relationship between these tables.
+the logical relationship between these tables.  The
+Alzabo::MethodMaker module can be very helpful.
 
 For more information please see perldoc Alzabo or the Alzabo homepage
-at alzabo.sourceforge.net.  Install information is in the INSTALL
-file.
+at http://alzabo.sourceforge.net/.  The full documentation in HTML
+form is available at http://alzabo.sourceforge.net/docs/
+
+Install information is in the INSTALL file.
+
+
+CREDITS
+
+Thanks very much to Randal Schwartz for spending time with me on IRC
+helping me find problems with the install process.

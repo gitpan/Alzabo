@@ -7,7 +7,7 @@ use Alzabo::Create;
 
 use base qw(Alzabo::Column);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.25 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -16,11 +16,7 @@ sub new
     my $proto = shift;
     my $class = ref $proto || $proto;
 
-    my $self;
-    {
-	no strict 'refs';
-	$self = bless [ \%{"${class}::FIELDS"} ], $class;
-    }
+    my $self = bless {}, $class;
 
     $self->_init(@_);
 
@@ -32,13 +28,13 @@ sub _init
     my Alzabo::Create::Column $self = shift;
     my %p = @_;
 
-    AlzaboException->throw( error => 'No table provided' )
+    Alzabo::Exception::Params->throw( error => 'No table provided' )
 	unless $p{table};
     $self->set_table( $p{table} );
 
     $self->set_name( $p{name} );
 
-    $self->{null} = $p{null} || 0;
+    $self->{nullable} = $p{nullable} || $p{null} || 0;
 
     if ($p{definition})
     {
@@ -57,6 +53,10 @@ sub _init
     $self->set_attributes( @{ $p{attributes} } );
 
     $self->set_sequenced( $p{sequenced} || 0 );
+
+    $self->set_default( $p{default} );
+
+    $self->set_length( length => $p{length}, precision => $p{precision} );
 }
 
 sub set_table
@@ -88,18 +88,33 @@ sub set_name
 	if $old_name;
 }
 
-sub set_null
+*set_null = \&set_nullable;
+sub set_nullable
 {
     my Alzabo::Create::Column $self = shift;
     my $n = shift;
 
-    AlzaboException->throw( error => "Invalid value for null/not null attribute: $n" )
+    Alzabo::Exception::Params->throw( error => "Invalid value for nullable attribute: $n" )
 	unless $n eq '1' || $n eq '0';
 
-    AlzaboException->throw( error => "Primary key column cannot be null" )
-	if $n eq '1' && $self->table->column_is_primary_key($self);
+    Alzabo::Exception::Params->throw( error => "Primary key column cannot be nullable" )
+	if $n eq '1' && $self->is_primary_key;
 
-    $self->{null} = $n;
+    $self->{nullable} = $n;
+}
+
+sub set_default
+{
+    my Alzabo::Create::Column $self = shift;
+
+    $self->{default} = shift;
+}
+
+sub set_length
+{
+    my Alzabo::Create::Column $self = shift;
+
+    $self->{definition}->set_length(@_);
 }
 
 sub set_attributes
@@ -133,7 +148,7 @@ sub delete_attribute
     my Alzabo::Create::Column $self = shift;
     my $attr = shift;
 
-    AlzaboException->throw( error => "Column " . $self->name . " doesn't have attribute $attr" )
+    Alzabo::Exception::Params->throw( error => "Column " . $self->name . " doesn't have attribute $attr" )
 	unless exists $self->{attributes}{$attr};
 
     delete $self->{attributes}{$attr};
@@ -152,7 +167,7 @@ sub set_sequenced
     my Alzabo::Create::Column $self = shift;
     my $s = shift;
 
-    AlzaboException->throw( error => "Invalid value for sequenced attribute: $s" )
+    Alzabo::Exception::Params->throw( error => "Invalid value for sequenced attribute: $s" )
 	unless $s eq '1' || $s eq '0';
 
     $self->table->schema->rules->validate_sequenced_attribute($self)
@@ -182,117 +197,164 @@ Alzabo::Create::Column - Column objects for use in schema creation
 =head1 DESCRIPTION
 
 This object represents a column.  It holds data specific to a column.
-Additional data is held in a ColumnDefinition object, which is used to
-allow two columns to share a type (which is good when two columns in
-different tables are related as it means that if the type of one is
-changed, the other is also.)
+Additional data is held in a
+L<C<Alzabo::Create::ColumnDefinition>|Alzabo::Create::ColumnDefinition>
+object, which is used to allow two columns to share a type (which is
+good when two columns in different tables are related as it means that
+if the type of one is changed, the other is also.)
+
+=head1 INHERITS FROM
+
+C<Alzabo::Column>
+
+=for pod_merge merged
 
 =head1 METHODS
 
+=head2 new
+
+=head3 Parameters
+
 =over 4
 
-=item * new
+=item * table => C<Alzabo::Create::Table> object
 
-Takes the following parameters:
+=item * name => $name
 
-=item -- table => Alzabo::Table object
+=item * nullable => 0 or 1 (optional)
 
-=item -- name => $name
+Defaults to false.
 
-=item -- null => 0 or 1
+=item * sequenced => 0 or 1 (optional)
 
-=item -- sequenced => 0 or 1
+Defaults to false.
 
-=item -- attributes => \@attributes
+=item * default => $default (optional)
+
+=item * attributes => \@attributes (optional)
+
+=item * length => $length (optional)
+
+=item * precision => $precision (optional)
 
 One of either ...
 
-=item -- type => $type
+=item * type => $type
 
 ... or ...
 
-=item -- definition => Alzabo::Create::ColumnDefinition object
+=item * definition => C<Alzabo::Create::ColumnDefinition> object
 
-Returns a new Alzabo::Create::Column object.
+=back
 
-Exceptions:
+=head3 Returns
 
- AlzaboException - An invalid value for one of the parameters was
- given.
+A new C<Alzabo::Create::Column> object.
 
-=item * set_table (Alzabo::Table object)
+=head3 Throws
 
-Returns/sets the table object in which this column is located.
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
-Exceptions:
+=for pod_merge type
 
-=item * set_name ($name)
-
-Returns/sets the column's name (a string).
-
-Exceptions:
-
- AlzaboRDBMSRulesException - invalid column name
-
-=item * set_null (0 or 1)
-
-Returns/sets the null value of the column (this determines whether
-nulls are allowed in the column or not).  Must be 0 or 1.
-
-Exceptions:
-
- AlzaboException - invalid value or attempt to set primary key
- column's null value to true.
-
-=item * set_attributes (@attributes)
-
-Returns/sets the column's attributes.  These are strings describing
-the column (for example, valid attributes in MySQL are 'PRIMARY KEY'
-or 'AUTO_INCREMENT'.
-
-The return value of this method is a list.
-
-Exceptions:
-
- AlzaboRDBMSRulesException - invalid attribute
-
-=item * add_attribute ($attribute)
-
-Add an attribute to the column's list of attributes.
-
-Exceptions:
-
- AlzaboRDBMSRulesException - invalid attribute
-
-=item * delete_attribute ($attribute)
-
-Delete the given attribute from the column.
-
-Exceptions:
-
- AlzaboException - column does not have this attribute.
-
-=item * set_type ($type)
+=head2 set_type ($type)
 
 Sets the column's type.
 
-Exceptions:
+=head2 set_table (C<Alzabo::Create::Table> object)
 
- AlzaboException - invalid type.
+Returns/sets the L<C<Alzabo::Create::Table>|Alzabo::Create::Table>
+object in which this column is located.
 
-=item * set_sequenced (0 or 1)
+=for pod_merge name
+
+=head2 set_name ($name)
+
+Returns/sets the column's name (a string).
+
+=for pod_merge nullable
+
+=head2 set_nullable (0 or 1)
+
+Sets the nullability of the column (this determines whether nulls are
+allowed in the column or not).  Must be 0 or 1.
+
+=head3 Throws
+
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+
+=for pod_merge attributes
+
+=for pod_merge has_attribute
+
+=head2 set_attributes (@attributes)
+
+Sets the column's attributes.  These are strings describing the column
+(for example, valid attributes in MySQL are 'PRIMARY KEY' or
+'AUTO_INCREMENT').
+
+=head2 add_attribute ($attribute)
+
+Add an attribute to the column's list of attributes.
+
+=head2 delete_attribute ($attribute)
+
+Delete the given attribute from the column's list of attributes.
+
+=head3 Throws
+
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+
+=for pod_merge default
+
+=head2 set_default ($default)
+
+Sets the column's default value.
+
+=for pod_merge length
+
+=for pod_merge precision
+
+=head2 set_length
+
+=head3 Parameters
+
+=over 4
+
+=item * length => $length
+
+=item * precision => $precision (optional)
+
+=back
+
+Sets the column's length and precision.  The precision parameter is
+optional (though some column types may require it if the length is
+set).
+
+=for pod_merge sequenced
+
+=head2 set_sequenced (0 or 1)
 
 Sets the value of the column's sequenced attribute.
 
-Exceptions:
+=head3 Throws
 
- AlzaboException - invalid argument value.
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
-=item * set_definition (Alzabo::Create::ColumnDefinition object)
+=for pod_merge is_primary_key
 
-Sets the Alzabo::Create::ColumnDefinition object which holds this
-column's type information.
+=for pod_merge is_numeric
 
-=back
+=for pod_merge is_character
+
+=for pod_merge is_blob
+
+=for pod_merge definition
+
+=head2 set_definition (C<Alzabo::Create::ColumnDefinition> object)
+
+Sets the
+L<C<Alzabo::Create::ColumnDefinition>|Alzabo::Create::ColumnDefinition>
+object which holds this column's type information.
 
 =cut

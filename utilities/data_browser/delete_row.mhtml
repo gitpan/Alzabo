@@ -6,8 +6,6 @@ $start_row
 $max_rows
 $user => undef
 $password => undef
-$filter_from => undef
-$filter_where => undef
 </%args>
 
 <%init>
@@ -23,12 +21,10 @@ my $url = $m->comp( Alzabo::Config::mason_url_path() . '/common/make_url',
 			       table => $t->name,
 			       start_row => $start_row,
 			       max_rows => $max_rows,
-			       filter_from => $filter_from,
-			       filter_where => $filter_where,
 			       user => $user,
 			       password => $password
 			     } );
 
-$m->comp( Alzabo::Config::mason_url_path() . '/common/redirect', 
+$m->comp( Alzabo::Config::mason_url_path() . '/common/redirect',
 	  url => $url );
 </%init>

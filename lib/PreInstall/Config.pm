@@ -13,10 +13,10 @@ sub schema_dir
 
 sub available_schemas
 {
-    # Scan for schema directories
     my $dirname = Alzabo::Config::schema_dir;
+    local *DIR;
     opendir DIR, $dirname
-        or FileSystemException->throw( error =>  "can't open $dirname: $!\n" );
+        or Alzabo::Exception::System->throw( error =>  "can't open $dirname: $!\n" );
 
     my @s;
     foreach my $e (readdir DIR)
@@ -26,7 +26,7 @@ sub available_schemas
     }
 
     closedir DIR
-        or FileSystemException->throw( error =>  "can't close $dirname: $!\n" );
+        or Alzabo::Exception::System->throw( error =>  "can't close $dirname: $!\n" );
 
     return @s;
 }
@@ -65,35 +65,42 @@ information.
 
 =head1 FUNCTIONS
 
-=over 4
+=head2 schema_dir
 
-=item * schema_dir
+=head3 Returns
 
-Returns a string containing the directory under which Alzabo schema
-objects are stored in serialized form.  There will be one directory
-per schema under the directory returned.
+The directory under which Alzabo schema objects are stored in
+serialized form.
 
-=item * available_schemas
+=head2 available_schemas
 
-Returns a list of strings containing the names of the available
-schemas.
+=head3 Returns
 
-Exceptions:
+A list containing the names of the available schemas.  There will be
+one directory for each schema under the directory returned.
+Directories which cannot be read will not be included in the list.
 
-FileSystemException - an error occurred trying to open or close a
-directory.
+=head3 Throws
 
-=item * mason_web_dir
+Alzabo::Exception::System
 
-Returns the path to the root directory for the Alzabo Mason
-components.
+=head2 mason_web_dir
 
-=item * mason_url_path
+=head3 Returns
 
-Returns the relative path to the Alzabo Mason components.
+The path to the root directory for the Alzabo Mason components.
 
-=item * mason_extension
+=head2 mason_url_path
 
-Returns the used by the Alzabo Mason components.
+=head3 Returns
+
+The relative url path to the Alzabo Mason components.  This is only
+really useful inside the Mason components themselves.
+
+=head2 mason_extension
+
+=head3 Returns
+
+The file extenstion used by the Alzabo Mason components.
 
 =cut

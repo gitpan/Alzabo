@@ -2,7 +2,7 @@ package Alzabo::ChangeTracker;
 
 use vars qw( $VERSION $STACK @CHANGES );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -13,7 +13,7 @@ sub new
 
     ++$STACK;
 
-    my $self;
+    my $self = $STACK;
     bless \$self, $class;
 }
 
@@ -33,7 +33,7 @@ sub backout
     @CHANGES = ();
 }
 
-sub destroy
+sub DESTROY
 {
     --$STACK;
 
@@ -44,8 +44,7 @@ __END__
 
 =head1 NAME
 
-Alzabo::ChangeTracker - Saves a set of changes as callbacks that can
-be backed out if needed
+Alzabo::ChangeTracker - Saves a set of changes as callbacks that can be backed out if needed
 
 =head1 SYNOPSIS
 
@@ -57,6 +56,8 @@ be backed out if needed
   {
      my $tracker = Alzabo::ChangeTracker->new;
      $tracker->add( sub { $x = 0; } );
+
+     $x = 1;
 
      bar();
 
@@ -70,7 +71,7 @@ be backed out if needed
      my $tracker = Alzabo::ChangeTracker->new;
      $tracker->add( sub { $y = 1; } );
 
-     # do something useful
+     $y = 2;
   }
 
 
@@ -81,7 +82,7 @@ The trick ...
 We only want to have one object of this type at any one time.  In
 addition, only the stack frame that created it should be able to clear
 it (except through a backout).  Why?  Here's an example in pseudo-code
-to help explain it (to you and me, hehe):
+to help explain it:
 
  sub foo
  {

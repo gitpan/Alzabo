@@ -1,23 +1,22 @@
 Short term:
 
-- doc 
+- make it possible to have a multi-column foreign key
+
+- Centralize caching into Alzabo::ObjectCache and make it take options
+  on a storage mechanism (memory, file, etc) and a locking method
+  (ipc, file, dbm, etc).  This is similar to how Apache::Session works.
+
+- After conversion, make local $table->{prefetch} work (tied scalar).
+
+- save objects to disk in something a bit more robust than a
+  serialized object form.  Probably this will be some sort of XML.
+
+- write up a comparison to other similar modules/tools.  Class::DBI,
+  DbFramework, Bingo::CarbonX, DBIx::RecordSet, Tangram.
 
 - non-Mason interface (curses, plain CGI)
 
-- PostgreSQL driver & rules.  This requires actually checking that the
-  transactional aspects work.
-
-- complete regression tests for core API
-
-- refine exceptions.  right now almost all exceptions are of the class
-  AlzaboException.  This isn't terribly useful as it means that errors
-  are really distinguished by the error message, rather than the
-  class.  In addition, there are probably too many exception being
-  thrown.  In some cases, a false return value may be a better way to
-  indicate failure.
-
-- convert everything to plain hashes.  too many problems with
-  pseudohashes.
+- expand regression tests for core API
 
 Medium term:
 
@@ -28,12 +27,6 @@ Medium term:
   basic ideas are the same)
 
 - More drivers & rules (Oracle, Sybase, Interbase, Solid, and so on)
-
-- remove sort of nasty hack in Alzabo::Create::Schema that makes
-  Runtime objects and replace this with something better.
-
-- save objects to disk in something a bit more robust than a
-  serialized object form.  Probably this will be some sort of XML.
 
 Long term:
 

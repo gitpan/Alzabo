@@ -7,6 +7,8 @@ Changes
 
 Makefile.PL
 install_extras.pl
+make_html_docs.pl
+pod_merge.pl
 
 lib/Alzabo.pm
 lib/Alzabo/Column.pm
@@ -38,16 +40,19 @@ lib/Alzabo/Runtime/Table.pm
 
 lib/Alzabo/Driver.pm
 lib/Alzabo/Driver/MySQL.pm
-lib/Alzabo/Driver/Oracle.pm
 lib/Alzabo/Driver/PostgreSQL.pm
 
 lib/Alzabo/RDBMSRules.pm
 lib/Alzabo/RDBMSRules/MySQL.pm
-lib/Alzabo/RDBMSRules/Oracle.pm
 lib/Alzabo/RDBMSRules/PostgreSQL.pm
+
+lib/Alzabo/SQLMaker.pm
+lib/Alzabo/SQLMaker/MySQL.pm
+lib/Alzabo/SQLMaker/PostgreSQL.pm
 
 lib/Alzabo/ChangeTracker.pm
 lib/Alzabo/Exceptions.pm
+lib/Alzabo/MethodMaker.pm
 lib/Alzabo/ObjectCache.pm
 lib/Alzabo/ObjectCacheIPC.pm
 lib/Alzabo/Util.pm
@@ -58,7 +63,11 @@ t/00-cleanup.t
 t/01-compile.t
 t/02-create.t
 t/03-runtime.t
+t/05a-rules-mysql.t
 t/99-cleanup.t
+t/utils.pl
+
+eg/convert.pl
 
 interfaces/mason/add_column.mhtml
 interfaces/mason/add_index_1.mhtml
@@ -103,5 +112,3 @@ mason/common/href
 mason/common/make_url
 mason/common/redirect
 mason/common/url
-
-misc/images/alzabo-logo.jpg

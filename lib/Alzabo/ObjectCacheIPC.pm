@@ -6,7 +6,7 @@ use fields qw( cache ipc times );
 
 use Tie::Cache;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -35,6 +35,13 @@ sub new
     return $SELF;
 }
 
+sub clear
+{
+    return unless $SELF;
+    %{ $SELF->{times} } = {};
+    %{ $SELF->{cache} } = {};
+}
+
 sub fetch_object
 {
     my $self = shift;
@@ -47,8 +54,8 @@ sub store_object
 {
     my $self = shift;
     my $obj = shift;
-
     my $id = $obj->id;
+
     return if exists $self->{cache}{$id};
 
     my $time = time;
@@ -61,7 +68,6 @@ sub is_expired
 {
     my $self = shift;
     my $obj = shift;
-
     my $id = $obj->id;
 
     return unless $self->{cache}{$id};
@@ -73,7 +79,6 @@ sub register_refresh
 {
     my $self = shift;
     my $obj = shift;
-
     my $id = $obj->id;
 
     return unless $self->{cache}{$id};
@@ -85,7 +90,6 @@ sub register_change
 {
     my $self = shift;
     my $obj = shift;
-
     my $id = $obj->id;
 
     return unless $self->{cache}{$id};
@@ -97,7 +101,6 @@ sub register_delete
 {
     my $self = shift;
     my $obj = shift;
-
     my $id = $obj->id;
 
     return unless $self->{cache}{$id};
@@ -110,12 +113,9 @@ sub is_deleted
 {
     my $self = shift;
     my $obj = shift;
-
     my $id = $obj->id;
 
-    return unless $self->{cache}{$id};
-
-    return 1 if $self->{ipc}{$id} == -1;
+    return 1 if $self->{times}{$id} == -1;
     return 0;
 }
 
@@ -123,7 +123,6 @@ sub delete_from_cache
 {
     my $self = shift;
     my $obj = shift;
-
     my $id = $obj->id;
 
     return unless $self->{cache}{$id};
@@ -166,66 +165,83 @@ Note that pretty much all the methods that take an object as an
 argument will silently do nothing if the object is not already in the
 cache.  The obvious exception is the C<store_object> method.
 
+=head2 new
+
+=head3 Parameters
+
 =over 4
 
-=item * new
-
-Takes the following parameters:
-
-=item -- cache_size => $size
+=item * cache_size => $size
 
 Maximum number of objects that can be cached at once.
 
-Returns the caching object (there's only ever one per process).
+=back
 
-=item * fetch_object ($id)
+=head3 Returns
 
-Given an object id, returns the object if it is in the cache.
-Otherwise it returns undef.
+A new cache object.
 
-=item * store_object ($object)
+=head2 fetch_object ($id)
+
+=head3 Returns
+
+The object if it is in the cache.  Otherwise it returns undef.
+
+=head2 store_object ($object)
 
 Stores an object in the cache.  This will not overwrite an existing
 object in the cache.  To do that you must first call the
-C<delete_from_cache> method.
+L<C<delete_from_cache>|Alzabo::ObjectCacheIPC/delete_from_cache
+($object)> method.
 
-=item * is_expired ($object)
+=head2 is_expired ($object)
 
-Returns a boolean value indicating whether or not the object is
-expired (meaning the local copy's last update of its data occurred.
-Not that a deleted object will not be reported as expired.  Instead,
-call the C<is_deleted> method.
+An object is expired when the local copy's last retrieval of its data
+occurred before another copy (in another process, presumably) updated
+the external data source containing the object's data (such as an
+RDBMS).  Note that a deleted object will not be reported as expired.
+Instead, call the L<C<is_deleted>|Alzabo::ObjectCacheIPC/is_deleted
+($object)> method.
 
-=item * is_deleted ($object)
+=head3 Returns
 
-Returns a boolean value indicating whether or not an object has been
-deleted from the cache.
+A boolean value indicating whether or not the object is expired.
 
-=item * register_refresh ($object)
+=head2 is_deleted ($object)
+
+=head3 Returns
+
+A boolean value indicating whether or not an object has been deleted
+from the cache.
+
+=head2 register_refresh ($object)
 
 This tells the cache that an object considers its internal data to be
 up to date with whatever external source it needs to be up to date
 with.
 
-=item * register_change ($object)
+=head2 register_change ($object)
 
 This tells the cache that an object has updated its external data
 source.  This means that objects in other processes now become
 expired.
 
-=item * register_delete ($object)
+=head2 register_delete ($object)
 
 This tells the cache that the object has been removed from its
 external data source.  This causes the cache to remove the object
-internally.  Future calls to C<is_deleted> in any process for this
-object will now return true.
+internally.  Future calls to
+L<C<is_deleted>|Alzabo::ObjectCacheIPC/is_deleted ($object)> in any
+process for this object will now return true.
 
-=item * delete_from_cache ($object)
+=head2 delete_from_cache ($object)
 
 This method allows you to remove an object from the cache.  This does
 not register the object as deleted.  It is provided solely so that you
-can call C<store_object> after calling this method and have
-C<store_object> actually store the new object.
+can call L<C<store_object>|Alzabo::ObjectCacheIPC/store_object
+($object)> after calling this method and have
+L<C<store_object>|Alzabo::ObjectCacheIPC/store_object ($object)>
+actually store the new object.
 
 =head1 AUTHOR
 

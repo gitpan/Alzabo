@@ -9,5 +9,5 @@ use URI;
 my $uri = URI->new($url);
 
 $r->send_cgi_header("Location: " . $uri->canonical . "\n\n");
-$m->abort(REDIRECT );
+$m->abort(REDIRECT);
 </%init>

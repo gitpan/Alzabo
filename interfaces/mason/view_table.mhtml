@@ -62,7 +62,7 @@
 %   if ($t->indexes) {
    <table width="100%" border="1" align="center" cellspacing="0" cellpadding="0">
     <tr>
-     <td colspan="2" align="center"><h4>Indexes</h4></td>
+     <td align="center"><h4>Indexes</h4></td>
     </tr>
 %     foreach my $i ($t->indexes) {
     <tr valign="top">
@@ -93,7 +93,7 @@
  <input type="hidden" name="table" value="<% $t->name %>">
 <table width="100%" cellspacing="5">
  <tr>
-  <td colspan="2"><h2>Add a column</h2></td>
+  <td><h2>Add a column</h2></td>
  </tr>
 
  <tr>
@@ -111,10 +111,22 @@
  </tr>
 
  <tr>
-  <td>Column Attributes:</td>
+  <td>Column length/precision:</td>
  </tr>
  <tr>
-  <td><input type="textfield" name="attributes" size="20"></td>
+  <td><input type="textfield" name="length" size="5">,
+      <input type="textfield" name="precision" size="5"></td>
+ </tr>
+
+ <tr>
+  <td>Column default:</td>
+ </tr>
+ <tr>
+  <td><input type="textfield" name="default" size="20"></td>
+ </tr>
+
+ <tr>
+  <td>Column Attributes:</td>
  </tr>
  <tr>
   <td><input type="textfield" name="attributes" size="20"></td>
@@ -125,7 +137,7 @@
 
  <tr>
   <td>
-   Allow nulls: <input type="checkbox" name="null" value="1"><br>
+   Allow nulls: <input type="checkbox" name="nullable" value="1"><br>
    Primary key: <input type="checkbox" name="primary_key" value="1"><br>
    Sequenced: <input type="checkbox" name="sequenced" value="1">
   </td>
@@ -133,7 +145,7 @@
 
 % if ($t->columns) {
  <tr>
-  <td colspan="2">
+  <td>
    After column: 
    <select name="after">
 %   foreach my $c (@columns) {
@@ -145,7 +157,7 @@
 % }
 
  <tr>
-  <td colspan="2"><input type="submit" value="Submit"></td>
+  <td><input type="submit" value="Submit"></td>
  </tr>
 </table>
 </form>

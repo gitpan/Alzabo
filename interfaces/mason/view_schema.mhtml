@@ -34,9 +34,7 @@
 
    <b>Note:</b> This action only changes the schema object's internal
    state.  It will not actually remove the schema from the backend
-   RDBMS.  Its only value currently is if the object files were copied
-   from another system where it was already instantiated and you want
-   to change that.
+   RDBMS.
 
 % } else {
    &nbsp;

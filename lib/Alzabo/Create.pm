@@ -11,7 +11,7 @@ use Alzabo::Create::Schema;
 
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -27,9 +27,7 @@ Alzabo::Create - Loads all Alzabo::Create::* classes
 
 =head1 DESCRIPTION
 
-Using this module loads Alzabo::Create::Column,
-Alzabo::Create::ColumnDefinition, Alzabo::Create::ForeignKey,
-Alzabo::Create::Schema, and Alzabo::Create::Table.
+Using this module loads Alzabo::Create::* modules.
 
 These are the core modules that allow a new set of objects to be
 created.  This module should be used by any schema creation interface.

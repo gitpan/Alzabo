@@ -9,18 +9,17 @@ use Alzabo::Create;
 use Alzabo::Driver;
 use Alzabo::RDBMSRules;
 use Alzabo::Runtime;
+use Alzabo::SQLMaker;
 
-use Class::Fields ();
-use Class::Fields::Fuxor ();
 use Storable ();
 
 use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-use fields qw( driver_name instantiated original rules );
+#use fields qw( driver_name instantiated original rules );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.37 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.50 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -30,18 +29,19 @@ sub new
     my $class = ref $proto || $proto;
     my %p = @_;
 
-    my $self;
-    {
-	no strict 'refs';
-	$self = bless [ \%{"${class}::FIELDS"} ], $class;
-    }
+    my $self = bless {}, $class;
 
-    $self->{rules} = Alzabo::RDBMSRules->new($p{rules});
-    $self->{driver_name} = $p{driver};
-    $self->{driver} = Alzabo::Driver->new( driver => $p{driver},
+    Alzabo::Exception::Params->throw( error => "Alzabo does not support the '$p{rdbms}' RDBMS" )
+	unless ( grep { $p{rdbms} eq $_ } Alzabo::Driver->available &&
+		 grep { $p{rdbms} eq $_ } Alzabo::RDBMSRules->available );
+
+    $self->{driver} = Alzabo::Driver->new( rdbms => $p{rdbms},
 					   schema => $self );
+    $self->{rules} = Alzabo::RDBMSRules->new( rdbms => $p{rdbms} );
 
-    AlzaboException->throw( error => "Alzabo::Create::Schema->new requires a name parameter\n" )
+    $self->{sql} = Alzabo::SQLMaker->load( rdbms => $p{rdbms} );
+
+    Alzabo::Exception::Params->throw( error => "Alzabo::Create::Schema->new requires a name parameter\n" )
 	unless exists $p{name};
 
     $self->set_name($p{name});
@@ -55,26 +55,7 @@ sub new
 
 sub load_from_file
 {
-    my $class = shift;
-    my %p = @_;
-
-    my $schema = $class->_load_from_file(%p);
-
-    my $name = $p{name};
-
-    my $schema_dir = Alzabo::Config::schema_dir;
-
-    my $fh = do { local *FH; };
-    open $fh, "$schema_dir/$name/$name.rules"
-	or FileSystemException->throw( error => "Unable to open $schema_dir/$name/$name.rules: $!\n" );
-    my $rules = join '', <$fh>;
-    close $fh
-	or FileSystemException->throw( error => "Unable to close $schema_dir/$name/$name.rules: $!" );
-
-    $rules =~ s/use (.*);/$1/;
-    $schema->{rules} = Alzabo::RDBMSRules->new($rules);
-
-    return $schema;
+    return shift->_load_from_file(@_);
 }
 
 sub reverse_engineer
@@ -92,12 +73,14 @@ sub reverse_engineer
 
     $self->set_instantiated(1);
     $self->{original} = Storable::dclone($self);
+    delete $self->{original}{original};
     return $self;
 }
 
 sub set_name
 {
     my Alzabo::Create::Schema $self = shift;
+
     my $name = shift;
     return if $self->{name} && $name eq $self->{name};
 
@@ -130,8 +113,6 @@ sub make_table
     my %p = @_;
 
     $self->add_table( table => Alzabo::Create::Table->new( schema => $self,
-							   driver => $self->{driver},
-							   rules => $self->{rules},
 							   %p ),
 		      %p );
 
@@ -145,15 +126,19 @@ sub add_table
 
     my $table = $p{table};
 
-    AlzaboException->throw( error => "Table " . $table->name . " already exists in schema" )
+    Alzabo::Exception::Params->throw( error => "Table " . $table->name . " already exists in schema" )
 	if $self->{tables}->EXISTS( $table->name );
 
     $self->{tables}->STORE( $table->name, $table );
 
-    if ( exists $p{after} )
+    foreach ( qw( before after ) )
     {
-	$self->move_table( after => $p{after},
-			   table => $self->table( $p{name} ) );
+	if ( exists $p{$_} )
+	{
+	    $self->move_table( $_ => $p{$_},
+			       table => $self->table( $p{name} ) );
+	    last;
+	}
     }
 }
 
@@ -162,7 +147,7 @@ sub delete_table
     my Alzabo::Create::Schema $self = shift;
     my $table = shift;
 
-    AlzaboException->throw( error => "Table " . $table->name ." doesn't exist in schema" )
+    Alzabo::Exception::Params->throw( error => "Table " . $table->name ." doesn't exist in schema" )
 	unless $self->{tables}->EXISTS( $table->name );
 
     foreach my $fk ($table->all_foreign_keys)
@@ -183,21 +168,21 @@ sub move_table
 
     if ( exists $p{before} && exists $p{after} )
     {
-	AlzaboException->throw( error => "move_table method cannot be called with both 'before' and 'after parameters'" );
+	Alzabo::Exception::Params->throw( error => "move_table method cannot be called with both 'before' and 'after parameters'" );
     }
 
     if ( $p{before} )
     {
-	AlzaboException->throw( error => "Table " . $p{before}->name . " doesn't exist in schema" )
+	Alzabo::Exception::Params->throw( error => "Table " . $p{before}->name . " doesn't exist in schema" )
 	    unless $self->{tables}->EXISTS( $p{before}->name );
     }
     else
     {
-	AlzaboException->throw( error => "Table " . $p{after}->name . " doesn't exist in schema" )
+	Alzabo::Exception::Params->throw( error => "Table " . $p{after}->name . " doesn't exist in schema" )
 	    unless $self->{tables}->EXISTS( $p{after}->name );
     }
 
-    AlzaboException->throw( error => "Table " . $p{table}->name . " doesn't exist in schema" )
+    Alzabo::Exception::Params->throw( error => "Table " . $p{table}->name . " doesn't exist in schema" )
 	unless $self->{tables}->EXISTS( $p{table}->name );
 
     $self->{tables}->DELETE( $p{table}->name );
@@ -220,7 +205,7 @@ sub register_table_name_change
     my Alzabo::Create::Schema $self = shift;
     my %p = @_;
 
-    AlzaboException->throw( error => "Table $p{old_name} doesn't exist in schema" )
+    Alzabo::Exception::Params->throw( error => "Table $p{old_name} doesn't exist in schema" )
 	unless $self->{tables}->EXISTS( $p{old_name} );
 
     my $index = $self->{tables}->Indices( $p{old_name} );
@@ -243,8 +228,15 @@ sub add_relation
 	return;
     }
 
-    my $f_table = $p{table_from};
-    my $t_table = $p{table_to};
+
+    Alzabo::Exception::Params->throw( error => "Must provide 'table_from' or 'column_from' parameter" )
+	unless $p{table_from} || $p{column_from};
+
+    Alzabo::Exception::Params->throw( error => "Must provide 'table_to' or 'column_to' parameter" )
+	unless $p{table_to} || $p{column_to};
+
+    my $f_table = $p{table_from} || $p{column_from}->table;
+    my $t_table = $p{table_to} || $p{column_to}->table;
 
     # Determined later.  This is the column that the relationship is
     # to.  As in table A/column B maps _to_ table X/column Y
@@ -270,8 +262,7 @@ sub add_relation
 
     eval
     {
-	$f_table->make_foreign_key( table_to    => $t_table,
-				    column_from => $col_from,
+	$f_table->make_foreign_key( column_from => $col_from,
 				    column_to   => $col_to,
 				    min_max_from => $p{min_max_from},
 				    min_max_to   => $p{min_max_to} );
@@ -325,8 +316,7 @@ sub add_relation
 
     eval
     {
-	$t_table->make_foreign_key( table_to    => $f_table,
-				    column_from => $col_from,
+	$t_table->make_foreign_key( column_from => $col_from,
 				    column_to   => $col_to,
 				    min_max_from => $p{min_max_to},
 				    min_max_to   => $p{min_max_from} );
@@ -345,18 +335,18 @@ sub _check_add_relation_args
 
     foreach my $t ( $p{table_from}, $p{table_to} )
     {
-	AlzaboException->throw( error => "Table " . $t->name . " doesn't exist in schema" )
+	Alzabo::Exception::Params->throw( error => "Table " . $t->name . " doesn't exist in schema" )
 	    unless $self->{tables}->EXISTS( $t->name );
     }
 
     foreach my $mm ( $p{min_max_from}, $p{min_max_to} )
     {
-	AlzaboException->throw( error => "Incorrect number of min/max elements" )
+	Alzabo::Exception::Params->throw( error => "Incorrect number of min/max elements" )
 	    unless scalar @$mm == 2;
 
 	foreach my $c ( @$mm )
 	{
-	    AlzaboException->throw( error => "Invalid min/max: $c" )
+	    Alzabo::Exception::Params->throw( error => "Invalid min/max: $c" )
 		unless $c =~ /^[01n]$/i;
 	}
     }
@@ -364,7 +354,7 @@ sub _check_add_relation_args
     # No such thing as 1..0, n..0, or n..1!
     foreach my $k ( qw( min_max_from min_max_to ) )
     {
-	AlzaboException->throw( error => "Invalid min/max: $p{$k}->[0]..$p{$k}->[1]" )
+	Alzabo::Exception::Params->throw( error => "Invalid min/max: $p{$k}->[0]..$p{$k}->[1]" )
 	    if  $p{$k}->[1] eq '0' || ( $p{$k}->[0] eq 'n' && $p{$k}->[1] ne 'n' );
     }
 }
@@ -413,9 +403,9 @@ sub _create_to_1_relationship
 	my @c = $t_table->primary_key;
 
 	# Is there a way to handle this properly?
-	AlzaboException->throw( error => $t_table->name . " has a multiple column primary key." )
+	Alzabo::Exception::Params->throw( error => $t_table->name . " has a multiple column primary key." )
 	    if @c > 1;
-	AlzaboException->throw( error => $t_table->name . " has no primary key." )
+	Alzabo::Exception::Params->throw( error => $t_table->name . " has no primary key." )
 	    if @c == 0;
 
 	$col_to = $c[0];
@@ -460,9 +450,9 @@ sub _create_to_n_relationship
 	my @c = $f_table->primary_key;
 
 	# Is there a way to handle this properly?
-	AlzaboException->throw( error => $f_table->name . " has a multiple column primary key." )
+	Alzabo::Exception::Params->throw( error => $f_table->name . " has a multiple column primary key." )
 	    if @c > 1;
-	AlzaboException->throw( error => $f_table->name . " has no primary key." )
+	Alzabo::Exception::Params->throw( error => $f_table->name . " has no primary key." )
 	    if @c == 0;
 
 	$col_from = $c[0];
@@ -558,9 +548,9 @@ sub _create_linking_table
 	my @c = $t1->primary_key;
 
 	# Is there a way to handle this properly?
-	AlzaboException->throw( error => $t1->name . " has a multiple column primary key." )
+	Alzabo::Exception::Params->throw( error => $t1->name . " has a multiple column primary key." )
 	    if @c > 1;
-	AlzaboException->throw( error => $t1->name . " has no primary key." )
+	Alzabo::Exception::Params->throw( error => $t1->name . " has no primary key." )
 	    if @c == 0;
 
 	$t1_col = $c[0];
@@ -576,9 +566,9 @@ sub _create_linking_table
 	my @c = $t2->primary_key;
 
 	# Is qthere a way to handle this properly?
-	AlzaboException->throw( error => $t2->name . " has a multiple column primary key." )
+	Alzabo::Exception::Params->throw( error => $t2->name . " has a multiple column primary key." )
 	    if @c > 1;
-	AlzaboException->throw( error => $t2->name . " has no primary key." )
+	Alzabo::Exception::Params->throw( error => $t2->name . " has no primary key." )
 	    if @c == 0;
 
 	$t2_col = $c[0];
@@ -664,13 +654,6 @@ sub instantiated
     return $self->{instantiated};
 }
 
-sub rules
-{
-    my Alzabo::Create::Schema $self = shift;
-
-    return $self->{rules};
-}
-
 sub create
 {
     my Alzabo::Create::Schema $self = shift;
@@ -690,6 +673,7 @@ sub create
 
     $self->set_instantiated(1);
     $self->{original} = Storable::dclone($self);
+    delete $self->{original}{original};
 }
 
 sub make_sql
@@ -726,15 +710,15 @@ sub delete
 
     my $dh = do { local *DH; };
     opendir $dh, "$schema_dir/$name"
-	or FileSystemException->throw( error => "Unable to open $schema_dir/$name directory: $!" );
+	or Alzabo::Exception::System->throw( error => "Unable to open $schema_dir/$name directory: $!" );
     foreach my $f (grep {-f "$schema_dir/$name/$_"} readdir $dh)
     {
 	unlink "$schema_dir/$name/$f"
-	    or FileSystemException->throw( error => "Unable to delete $schema_dir/$name/$f: $!" );
+	    or Alzabo::Exception::System->throw( error => "Unable to delete $schema_dir/$name/$f: $!" );
     }
-    closedir $dh or FileSystemException->throw( error => "Unable to close $schema_dir/$name: $!" );
+    closedir $dh or Alzabo::Exception::System->throw( error => "Unable to close $schema_dir/$name: $!" );
     rmdir "$schema_dir/$name"
-	or FileSystemException->throw( error => "Unable to delete $schema_dir/$name: $!" );
+	or Alzabo::Exception::System->throw( error => "Unable to delete $schema_dir/$name: $!" );
 }
 
 sub save_to_file
@@ -745,37 +729,31 @@ sub save_to_file
     unless (-e "$schema_dir/$self->{name}")
     {
 	mkdir "$schema_dir/$self->{name}", 0775
-	    or FileSystemException->throw( error => "Unable to make directory $schema_dir/$self->{name}: $!" );
+	    or Alzabo::Exception::System->throw( error => "Unable to make directory $schema_dir/$self->{name}: $!" );
     }
 
     my $fh = do { local *FH; };
     open $fh, ">$schema_dir/$self->{name}/$self->{name}.create.alz"
-	or FileSystemException->throw( error => "Unable to write to $schema_dir/$self->{name}.create.alz: $!\n" );
+	or Alzabo::Exception::System->throw( error => "Unable to write to $schema_dir/$self->{name}.create.alz: $!\n" );
     Storable::nstore_fd( $self, $fh )
-	or StorableException->throw( error => "Can't store to filehandle" );
+	or Alzabo::Exception::System->throw( error => "Can't store to filehandle" );
     close $fh
-	or FileSystemException->throw( error => "Unable to close $schema_dir/$self->{name}/$self->{name}.create.alz: $!" );
+	or Alzabo::Exception::System->throw( error => "Unable to close $schema_dir/$self->{name}/$self->{name}.create.alz: $!" );
 
-    open $fh, ">$schema_dir/$self->{name}/$self->{name}.rules"
-	or FileSystemException->throw( error => "Unable to write to $schema_dir/$self->{name}.alz: $!\n" );
-    print $fh ref $self->{rules};
+    open $fh, ">$schema_dir/$self->{name}/$self->{name}.rdbms"
+	or Alzabo::Exception::System->throw( error => "Unable to write to $schema_dir/$self->{name}.rdbms: $!\n" );
+    print $fh $self->{driver}->driver_id;
     close $fh
-	or FileSystemException->throw( error => "Unable to close $schema_dir/$self->{name}/$self->{name}.rules: $!" );
-
-    open $fh, ">$schema_dir/$self->{name}/$self->{name}.driver"
-	or FileSystemException->throw( error => "Unable to write to $schema_dir/$self->{name}.alz: $!\n" );
-    print $fh ref $self->{driver};
-    close $fh
-	or FileSystemException->throw( error => "Unable to close $schema_dir/$self->{name}/$self->{name}.driver: $!" );
+	or Alzabo::Exception::System->throw( error => "Unable to close $schema_dir/$self->{name}/$self->{name}.rdbms: $!" );
 
     my $rt = $self->make_runtime_clone;
 
     open $fh, ">$schema_dir/$self->{name}/$self->{name}.runtime.alz"
-	or FileSystemException->throw( error => "Unable to write to $schema_dir/$self->{name}.runtime.alz: $!\n" );
+	or Alzabo::Exception::System->throw( error => "Unable to write to $schema_dir/$self->{name}.runtime.alz: $!\n" );
     Storable::nstore_fd( $rt, $fh )
-	or StorableException->throw( error => "Can't store to filehandle" );
+	or Alzabo::Exception::System->throw( error => "Can't store to filehandle" );
     close $fh
-	or FileSystemException->throw( error => "Unable to close $schema_dir/$self->{name}/$self->{name}.create.alz: $!" );
+	or Alzabo::Exception::System->throw( error => "Unable to close $schema_dir/$self->{name}/$self->{name}.create.alz: $!" );
 
     $self->_save_to_cache;
 }
@@ -785,81 +763,36 @@ sub make_runtime_clone
     my Alzabo::Create::Schema $self = shift;
 
     my $clone = Storable::dclone($self);
-    my $fields = Class::Fields::Fuxor::get_fields('Alzabo::Create::Schema');
-    foreach my $f ( reverse sort { $fields->{$a} cmp $fields->{$b} } keys %$fields )
+
+    foreach my $f ( qw( original instantiated rules ) )
     {
-	next if Class::Fields::is_inherited('Alzabo::Create::Schema', $f);
-	my $idx = $clone->[0]->{$f};
-	splice @$clone, $idx, 1;
+	delete $clone->{$f};
     }
 
     foreach my $t ($clone->tables)
     {
-	my $fields = Class::Fields::Fuxor::get_fields('Alzabo::Create::Table');
-	foreach my $f ( reverse sort { $fields->{$a} cmp $fields->{$b} } keys %$fields )
-	{
-	    next if Class::Fields::is_inherited('Alzabo::Create::Table', $f);
-	    my $idx = $t->[0]->{$f};
-	    splice @$t, $idx, 1;
-	}
-
 	foreach my $c ($t->columns)
 	{
-	    my $fields = Class::Fields::Fuxor::get_fields('Alzabo::Create::Column');
-	    foreach my $f ( reverse sort { $fields->{$a} cmp $fields->{$b} } keys %$fields )
-	    {
-		next if Class::Fields::is_inherited('Alzabo::Create::Column', $f);
-		my $idx = $c->[0]->{$f};
-		splice @$c, $idx, 1;
-	    }
-
 	    my $def = $c->definition;
-	    $fields = Class::Fields::Fuxor::get_fields('Alzabo::Create::ColumnDefinition');
-	    foreach my $f ( reverse sort { $fields->{$a} cmp $fields->{$b} } keys %$fields )
-	    {
-		next if Class::Fields::is_inherited('Alzabo::Create::ColumnDefinition', $f);
-		my $idx = $def->[0]->{$f};
-		splice @$def, $idx, 1;
-	    }
 	    bless $def, 'Alzabo::Runtime::ColumnDefinition';
-	    $def->[0] = \%Alzabo::Runtime::ColumnDefinition::FIELDS;
 	    bless $c, 'Alzabo::Runtime::Column';
-	    $c->[0] = \%Alzabo::Runtime::Column::FIELDS;
 	}
 
 	foreach my $fk ($t->all_foreign_keys)
 	{
-	    my $fields = Class::Fields::Fuxor::get_fields('Alzabo::Create::ForeignKey');
-	    foreach my $f ( reverse sort { $fields->{$a} cmp $fields->{$b} } keys %$fields )
-	    {
-		next if Class::Fields::is_inherited('Alzabo::Create::ForeignKey', $f);
-		my $idx = $fk->[0]->{$f};
-		splice @$fk, $idx, 1;
-	    }
 	    bless $fk, 'Alzabo::Runtime::ForeignKey';
-	    $fk->[0] = \%Alzabo::Runtime::ForeignKey::FIELDS;
 	}
 
 	foreach my $i ($t->indexes)
 	{
-	    my $fields = Class::Fields::Fuxor::get_fields('Alzabo::Create::Index');
-	    foreach my $f ( reverse sort { $fields->{$a} cmp $fields->{$b} } keys %$fields )
-	    {
-		next if Class::Fields::is_inherited('Alzabo::Create::Index', $f);
-		my $idx = $i->[0]->{$f};
-		splice @$i, $idx, 1;
-	    }
 	    bless $i, 'Alzabo::Runtime::Index';
-	    $i->[0] = \%Alzabo::Runtime::Index::FIELDS;
 	}
 
 	bless $t, 'Alzabo::Runtime::Table';
-	$t->[0] = \%Alzabo::Runtime::Table::FIELDS;
     }
     bless $clone, 'Alzabo::Runtime::Schema';
-    $clone->[0] = \%Alzabo::Runtime::Schema::FIELDS;
 
-    $clone->{driver} = Alzabo::Driver->new( driver => $self->{driver_name},
+    $clone->{driver} = Alzabo::Driver->new( rdbms => $self->{driver}->driver_id,
 					    schema => $clone );
 
     return $clone;
@@ -884,159 +817,242 @@ Alzabo::Create::Schema - Schema objects for schema creation
 
 =head1 DESCRIPTION
 
-This class represnets the whole schema, and contains table objects.
+This class represents the whole schema.  It contains table objects,
+which in turn contain columns, indexes, etc.  It contains methods that
+act globally on the schema, including methods to save it to disk,
+create itself in an RDBMS, create relationships between tables, etc.
+
+=head1 INHERITS FROM
+
+C<Alzabo::Schema>
+
+=for pod_merge merged
 
 =head1 METHODS
 
+=head2 Constructors
+
+=head2 new
+
+=head3 Parameters
+
 =over 4
 
-=item * new
+=item * name => $name
 
-Takes the following parameters:
+This is the name of the schema, and will be the name of the database
+in the RDBMS.
 
-=item -- name => $name
+=item * rdbms => $rdbms
 
-=item -- rules => $rules_subclass
+The value given to RDBMS should be.
 
-=item -- driver => $driver_subclass
+=back
 
-The values given to rules and driver should be the identifying piece
-of the subclass.  For example, to use the MySQL driver you'd give the
-string 'MySQL' (which identifies the class Alzabo::Driver::MySQL).
+=head3 Returns
 
-Exceptions:
+A new C<Alzabo::Create::Schema> object.
 
- AlzaboException - no name provided.
+=head3 Throws
 
-=item * load_from_file($name)
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+L<C<Alzabo::Exception::System>|Alzabo::Exceptions>
 
-Returns a schema object previously saved to disk based on the name
-given.
+=head2 load_from_file($name)
 
-Exceptions:
+Returns a schema object previously saved to disk.
 
- AlzaboException - No saved schema of the given name.
- FileSystemException - Can't open, close or stat a file.
- EvalException - Unable to evaluate the contents of a file.
+=head3 Returns
 
-=item * reverse_engineer
+The C<Alzabo::Create::Schema> object specified by the name parameter.
 
-Takes the following parameters:
+=head3 Throws
 
-=item -- name => $name
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
-=item -- rules => $rules_subclass
+=head2 reverse_engineer
 
-=item -- driver => $driver_subclass
+Attempts to connect to a database and instantiate a new schema object
+based on information in the specified database.  The returned object
+will have its instantiated value set to true so that subsequent
+changes will lead to SQL diffs, as opposed to SQL to create the
+database from scratch.
 
-See the new method documentation for an explanation of the 'rules' and
-'driver' parameters.
+The schema object returned by this method will have its instantiated
+attribute set as true.  This means that calling the C<make_sql> method
+on the object won't generate any SQL.  To do this you'd have to first
+call
+L<C<$schema-E<gt>set_instantiated(0)>|Alzabo::Create::Schema/set_instantiated
+($bool)> and then L<C<$schema-E<gt>make_sql>|make_sql>.
 
-=item -- user => $user (optional)
+=head3 Parameters
+
+=over 4
+
+=item * name => $name
+
+The name of the database with which to connect.
+
+=item * rules => $rules_subclass
+
+=item * driver => $driver_subclass
+
+See the L<C<new>|new> method documentation for an explanation of the
+C<rules> and <driver> parameters.
+
+=item * user => $user (optional)
 
 User name to use when connecting to database.
 
-=item -- password => $password (optional)
+=item * password => $password (optional)
 
 Password to use when connecting to database.
 
-Attempts to connect to a database and instantiate a new schema object
-based on information on a given database.  The returned object will
-have its instantiated value set to true so that subsequent changes
-will lead to SQL diffs, as opposed to SQL to create the database from
-scratch.
+=back
 
-=item * set_name ($name)
+=head3 Returns
 
-Change the schema name.  Since the schemas are saved on disk based on
-the name, this deletes the files under the old name.  Call
-save_to_file immediately afterwards if you want to make sure you have
-a copy of the schema saved.
+A new C<Alzabo::Create::Schema> object.
 
-Exceptions:
+=head2 Other Methods
 
- AlzaboRDBMSRulesException - invalid schema name.
+=for pod_merge name
 
-=item * make_table (see below)
+=head2 set_name ($name)
+
+Change the schema name.  Since schemas are saved on disk with
+filenames based on the schema name, this deletes the files for the old
+name.  Call L<C<save_to_file>|save_to_file> immediately afterwards if
+you want to make sure you have a copy of the schema saved.
+
+=for pod_merge table
+
+=for pod_merge tables
+
+=head2 make_table
 
 This method makes a new table and adds it to the schema, the
-parameters given are passed directly to the Alzabo::Create::Table->new
-method.  In addition, the schema fills in the schema parameter for the
-table.
+parameters given are passed directly to the
+L<C<Alzabo::Create::Table-E<gt>new>|Alzabo::Create::Table/new> method.
+The schema parameter is filled in automatically.
 
-Exceptions:
+=head3 Returns
 
- AlzaboException - Table already exists in the table.
+The L<C<Alzabo::Create::Table>|Alzabo::Create::Table> object created.
 
- See Alzabo::Create::Table docs for other exceptions
+=head2 delete_table (C<Alzabo::Create::Table> object)
 
-=item * add_table
+Removes the given table from the schema.  This method will also delete
+all foreign keys in other tables that point at the given table.
 
-Takes the following parameters:
+=head3 Throws
 
-=item -- table => Alzabo::Create::Table object
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
-=item -- after => Alzabo::Create::Table object (optional)
+=head2 add_table
 
-Add a table to the schema.  If the 'after' parameter is given then the
-C<move_table> method will be called to move the new table to the
-appropriate position.
+Add a table to the schema.  If a before or after parameter is given
+then the L<C<move_table>|move_table> method will be called to move the
+new table to the appropriate position.
 
-Exceptions:
+=head3 Parameters
 
- AlzaboException - Table already exists in schema.
+=over 4
 
-=item * delete_table( Alzabo::Create::Table object )
+=item * table => C<Alzabo::Create::Table> object
 
-Removes the given table from the schema.  Will also delete all foreign
-keys in other tables that it can find a link to.
+=item * after => C<Alzabo::Create::Table> object (optional)
 
-Exceptions:
+... or ...
 
-AlzaboException - Table doesn't exist in schema.
+=item * before => C<Alzabo::Create::Table> object (optional)
 
-=item * move_table
+=back
 
-Takes the following parameters:
+=head3 Returns
 
-=item -- table => Alzabo::Create::Table object
+The L<C<Alzabo::Create::Table>|Alzabo::Create::Table> object created.
+
+=head3 Throws
+
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+
+=head2 move_table
+
+Allows you to change the order of the tables as they are stored in the
+schema.
+
+=head3 Parameters
+
+=over 4
+
+=item * table => C<Alzabo::Create::Table> object
 
 The table to move.
 
 and either ...
 
-=item -- before => Alzabo::Create::Table object
+=item * before => C<Alzabo::Create::Table> object
 
 Move the table before this table
 
 ... or ...
 
-=item -- after => Alzabo::Create::Table object
+=item * after => C<Alzabo::Create::Table> object
 
 Move the table after this table.
 
-Exceptions:
+=back
 
- AlzaboException - one of the tables passed in is not part of the
- schema.
- AlzaboException - both a 'before' and 'after' parameter were
- specified.
+=head3 Throws
 
-=item * add_relation
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
-Takes the following parameters:
+=head2 add_relation
 
-=item -- table_from => Alzabo::Create::Table object
+Creates a relationship between two tables.  This involves creating
+L<C<Alzabo::Create::ForeignKey>|Alzabo::Create::ForeignKey> objects in
+both tables.  If the C<column_from> and C<column_to> parameters are
+not specified then the schema object attempts to calculate the proper
+values for these attributes.
 
-=item -- table_to => Alzabo::Create::Table object
+This is determined as follows: If the min_max_from value is 1..1 or
+1..n, it assumes that the table specified as C<table_from> is dependent
+on the other table, and use the other table's primary key as the
+linking table.  If the C<min_max_from> and C<min_max_to> are both 0..(1
+or n) then it also assumes that the C<table_from> table is dependent.
+In all other cases, it uses the primary key from the C<table_from>.
 
-=item -- column_from => Alzabo::Create::Column object (optional)
+If no column with the same name exists in the other table, then a
+column with that name will be created.  Otherwise, it changes the
+dependent column so that its
+L<C<Alzabo::Create::ColumnDefinition>|Alzabo::Create::ColumnDefinition>
+object is the same as the column in the table upon which it is
+dependent, meaning that changes to the type of one column affect both
+at the same time.
 
-=item -- column_to => Alzabo::Create::Column object (optional)
+If both the C<min_max_from> and C<min_max_to> parameters are (0 or
+1)..n then a new table will be created to link the two tables
+together.  This table will contain the primary keys of both the tables
+passed into this function.  It will contain foreign keys to both of
+these tables as well and these tables will be linked to this new
+table.
 
-=item -- min_max_from => (see below)
+=head3 Parameters
 
-=item -- min_max_to => (see below)
+=over 4
+
+=item * table_from => C<Alzabo::Create::Table> object (optional if column_from is provided)
+
+=item * table_to => C<Alzabo::Create::Table> object (optional if column_to is provided)
+
+=item * column_from => C<Alzabo::Create::Column> object (optional if table_from is provided)
+
+=item * column_to => C<Alzabo::Create::Column> object (optional if table_to is provided)
+
+=item * min_max_from => (see below)
+
+=item * min_max_to => (see below)
 
 The two min_max attributes both take the same kind of argument, an
 array reference two scalars long.
@@ -1044,82 +1060,94 @@ array reference two scalars long.
 The first of these scalars can be the value '0' or '1' while the
 second can be '1' or 'n'.
 
-Creates a relationship between two tables.  This involves creating
-Alzabo::Create::ForeignKey objects in both tables.  If the
-'column_from' and 'column_to' parameters are not specified then the
-schema object attempts to calculate the proper values for these
-attributes.
+=back
 
-If both the 'min_max_from' and 'min_max_to' attributes are 0 or 1 to
-'n' then a new table will be created to link the two tables together.
-This table will contain the primary keys of both the tables passed
-into this function.  It will contain foreign keys to both of these
-tables as well and these tables will be linked to this new table.
+=head3 Throws
 
-=item * instantiated
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
-Returns the value of the schema's instantiated attribute.  It is true
-if the schema has been created in a RDBMS backend, otherwise false.
-
-=item * set_instantiated ($bool)
-
-Set the schema's instantiated attribute as true or false.
-
-=item * rules
-
-Returns the schema's Alzabo::RDBMSRules object.
-
-=item * create
-
-Takes the following parameters:
-
-=item -- host => $host
-
-=item -- user => $user
-
-=item -- password => $user
-
-These three are all passed the schema's Alzabo::Driver object to
-connect to the database.
+=head2 create
 
 This method causes the schema to connect to the RDBMS, create a new
 database if necessary, and then execute whatever SQL is necessary to
-make the database match the schema.
+make that database match the current state of the schema object.  If
+the schema has been instantiated previously, then it will generate the
+SQL necessary to change the database.  This may be destructive
+(dropping tables, columns, etc) so be careful.  This will cause the
+schema to be marked as instantiated.
 
-=item * make_sql
+=head3 Parameters
 
-Returns an array containing the SQL statements necessary to either
-create the database from scratch or update the database to match the
-schema object.
+=over 4
 
-=item * drop
+=item * host => $host
 
-Takes the following parameters:
+=item * user => $user
 
-=item -- host => $host
+=item * password => $user
 
-=item -- user => $user
-
-=item -- password => $user
-
-These three are all passed the schema's Alzabo::Driver object to
-connect to the database.
-
-Drops the database/schema from the RDBMS.  It does not delete the
-Alzabo files from disk.  To do this, call the C<delete> method.
-
-=item * delete
-
-Removes the schema object from disk.  It does not delete the database
-from the RDBMS.  To do this you must call the C<drop> method first.
-
-=item * save_to_file
-
-Saves the schema to a file on disk.  It also saves a version of the
-schema that has been re-blessed into the Alzabo::Runtime::* classes
-with the creation specific attributes removed.
+These three parameters are all passed the schema's Alzabo::Driver
+object to connect to the database.
 
 =back
+
+=head2 instantiated
+
+=head3 Returns
+
+The value of the schema's instantiated attribute.  It is true if the
+schema has been created in an RDBMS backend, otherwise it is false.
+
+=head2 set_instantiated ($bool)
+
+Set the schema's instantiated attribute as true or false.
+
+=for pod_merge driver
+
+=head2 rules
+
+=head3 Returns
+
+The schema's L<C<Alzabo::RDBMSRules>|Alzabo::RDBMSRules> object.
+
+=head2 make_sql
+
+=head3 Returns
+
+An array containing the SQL statements necessary to either create the
+database from scratch or update the database to match the schema
+object.
+
+=head2 drop
+
+Drops the database/schema from the RDBMS.  This will cause the schema
+to be marked as not instantiated.  This method does not delete the
+Alzabo files from disk.  To do this, call the C<delete> method.
+
+=head3 Parameters
+
+=over 4
+
+=item * host => $host
+
+=item * user => $user
+
+=item * password => $user
+
+These three parameters are all passed the schema's Alzabo::Driver
+object to connect to the database.
+
+=back
+
+=head2 delete
+
+Removes the schema object from disk.  It does not delete the database
+from the RDBMS.  To do this you must call the L<C<drop>|drop> method
+first.
+
+=head2 save_to_file
+
+Saves the schema to a file on disk.
 
 =head1 AUTHOR
 

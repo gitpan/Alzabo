@@ -1,16 +1,100 @@
-0.10_%
+0.20
+
+- Preliminary Postgres support.  There is no support yet for
+constraints or foreign keys when reverse engineering or making SQL.
+There is also no support for large objects (I'm hoping that 7.1 will
+be released soon so I won't have to think about this).  Otherwise, the
+support is about at the same level as MySQL support, though less
+mature.
+
+- Added Alzabo::MethodMaker module.  This can be used to auto-generate
+useful methods for your schema/table/row objects based on the
+properties of your objects themselves.
+
+- Reworking/expanding/clarifying/editing of the docs.
+
+- Add sort_by and limit options whenever creating a cursor.
+
+- Method documentation POD from the Alzabo::* modules is merged into
+the relevant Alzabo::Create::* and Alzabo::Runtime::* modules during
+install.  This should make it easier to find what you need since the
+average user will only need to look at a few modules in
+Alzabo::Runtime::*.
+
+- Reworked exceptions so they are all now Alzabo::Exception::Something.
+
+- Added default as a column attribute (thus there are now
+Alzabo::Column->default and Alzabo::Create::Column->set_default
+methods).
+
+- Added length & precision attributes for columns.  Both are set
+through the Alzabo::Create::Column->set_length method.
+
+- This release includes a script in eg/ called convert.pl to convert
+older schemas.
+
+- Alzabo::Schema->tables & Alzabo::Table->columns now take an optional
+list of tables/columns as an argument and return a list of matching
+objects.
+
+- Added Alzabo::Column->has_attribute method.
+
+- The data browser has actually lost some functionality (the
+filtering).  Making this more powerful is a fairly low priority at the
+moment.
+
+- Fix bugs where extra params passed to Alzabo::Runtime::Table->insert
+were not making it to the Alzabo::Runtime::Row->new method.
+
+- Fix for Alzabo::Runtime::Table->set_prefetch method.
+
+- Fixed bug in handling of deleted object in Alzabo::ObjectCacheIPC
+(they were never reported as deleted).
+
+- Fix bug that caused schema to get bigger every time it was saved.
+
+- Finally switched to regular hashes for objects.
+
+- Added Alzabo::SQLMaker classes to handle generating SQL
+in a cross-platform compatible way.
+
+DEPRECATIONS:
+
+- Parameters for Alzabo::Create::Column->new: 'null' parameter is now
+'nullable'.  The use of the parameter 'null' is deprecated.
+
+- Alzabo::Column->null & Alzabo::Column->set_null methods are now
+Alzabo::Column->nullable & Alzabo::Column->set_nullable.  The old
+methods are deprecated.
+
+- Alzabo::Create::ForeignKey->new no longer requires table_from &
+table_to params (it took me this long to realize I can get that from
+the column passed in.  doh!)
+
+INCOMPATIBILITIES:
+
+- Alzabo::Runtime::Table->rows_where parameters have changed.  The
+from parameter has been removed (use the Alzabo::Runtime::Schema->join
+method instead).  The where parameter expects something different now.
+
+- Alzabo::Runtime::Table->rows_by_where_clause method has been
+removed.
+
+- Alzabo::Runtime::Schema->join method's where parameter expects
+something different.
+
+0.10_5
 
 - You can now specify a database name to be used for testing.  The
 default is 'test_alzabo'.  This a good default for MySQL, at least.
-Thanks to Randal Schwartz for the suggestion/complaints.
+Thanks to Randal Schwartz for the help.
 
 - Make sure test file cleanup is done _before_ attempting tests so
 that files from a test previously aborted are cleaned up (and no
-errors are generated.  Thanks to Randal Schwartz for the
-suggestion/complaints.
+errors are generated.  Thanks to Randal Schwartz for the bug report.
 
 - Doesn't fail on install for Mason components if no Mason component
-extension was given.  Thanks again to Randal for working with me on
+extension was given.  Thanks _again_ to Randal for working with me on
 this in IRC late at night.
 
 0.10_4

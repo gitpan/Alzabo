@@ -7,7 +7,7 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::Index);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.1 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -21,9 +21,15 @@ Alzabo::Runtime::Index - Index objects
 
   use Alzabo::Runtime::Index;
 
-=head1 DESCRIPTION
+=for pod_merge DESCRIPTION
 
-Right now this class is empty and is just a placeholder.
+=head1 INHERITS FROM
+
+C<Alzabo::Index>
+
+=for pod_merge merged
+
+=for pod_merge METHODS
 
 =head1 AUTHOR
 

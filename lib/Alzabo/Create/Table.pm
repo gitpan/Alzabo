@@ -9,7 +9,7 @@ use Tie::IxHash;
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.23 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.31 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -19,15 +19,11 @@ sub new
     my $class = ref $proto || $proto;
     my %p = @_;
 
-    my $self;
-    {
-	no strict 'refs';
-	$self = bless [ \%{"${class}::FIELDS"} ], $class;
-    }
+    my $self = bless {}, $class;
 
     $self->{schema} = $p{schema};
 
-    AlzaboException->throw( error => "No name provided for new table" )
+    Alzabo::Exception::Params->throw( error => "No name provided for new table" )
 	unless exists $p{name};
     $self->set_name($p{name});
 
@@ -95,17 +91,21 @@ sub add_column
 
     my $col = $p{column};
 
-    AlzaboException->throw( error => "Column " . $col->name . " already exists" )
+    Alzabo::Exception::Params->throw( error => "Column " . $col->name . " already exists" )
 	if $self->{columns}->EXISTS( $col->name );
 
     $col->set_table($self) unless $col->table eq $self;
 
     $self->{columns}->STORE( $col->name, $col);
 
-    if ( exists $p{after} )
+    foreach ( qw( before after ) )
     {
-	$self->move_column( after => $p{after},
-			    column => $self->column( $p{name} ) );
+	if ( exists $p{$_} )
+	{
+	    $self->move_column( $_ => $p{$_},
+				column => $self->column( $p{name} ) );
+	    last;
+	}
     }
 }
 
@@ -114,10 +114,10 @@ sub delete_column
     my Alzabo::Create::Table $self = shift;
     my $col = shift;
 
-    AlzaboException->throw( error => "Column $col doesn't exist in $self->{name}" )
+    Alzabo::Exception::Params->throw( error => "Column $col doesn't exist in $self->{name}" )
 	unless $self->{columns}->EXISTS( $col->name );
 
-    $self->delete_primary_key($col) if $self->column_is_primary_key($col);
+    $self->delete_primary_key($col) if $col->is_primary_key;
 
     foreach my $fk ($self->foreign_keys_by_column($col))
     {
@@ -144,21 +144,21 @@ sub move_column
 
     if ( exists $p{before} && exists $p{after} )
     {
-	AlzaboException->throw( error => "move_column method cannot be called with both 'before' and 'after parameters'" );
+	Alzabo::Exception::Params->throw( error => "move_column method cannot be called with both 'before' and 'after parameters'" );
     }
 
     if ( exists $p{before} )
     {
-	AlzaboException->throw( error => "Column " . $p{before}->name . " doesn't exist in schema" )
+	Alzabo::Exception::Params->throw( error => "Column " . $p{before}->name . " doesn't exist in schema" )
 	    unless $self->{columns}->EXISTS( $p{before}->name );
     }
     else
     {
-	AlzaboException->throw( error => "Column " . $p{after}->name . " doesn't exist in schema" )
+	Alzabo::Exception::Params->throw( error => "Column " . $p{after}->name . " doesn't exist in schema" )
 	    unless $self->{columns}->EXISTS( $p{after}->name );
     }
 
-    AlzaboException->throw( error => "Column " . $p{column}->name . " doesn't exist in schema" )
+    Alzabo::Exception::Params->throw( error => "Column " . $p{column}->name . " doesn't exist in schema" )
 	unless $self->{columns}->EXISTS( $p{column}->name );
 
     $self->{columns}->DELETE( $p{column}->name );
@@ -182,10 +182,10 @@ sub add_primary_key
     my $col = shift;
 
     my $name = $col->name;
-    AlzaboException->throw( error => "Column $name doesn't exist in $self->{name}" )
+    Alzabo::Exception::Params->throw( error => "Column $name doesn't exist in $self->{name}" )
 	unless exists $self->{columns}{$name};
 
-    AlzaboException->throw( error => "Column $name is already a primary key" )
+    Alzabo::Exception::Params->throw( error => "Column $name is already a primary key" )
 	if $self->{pk}->EXISTS($name);
 
     $self->schema->rules->validate_primary_key($col);
@@ -201,10 +201,10 @@ sub delete_primary_key
     my $col = shift;
 
     my $name = $col->name;
-    AlzaboException->throw( error => "Column $name doesn't exist in $self->{name}" )
+    Alzabo::Exception::Params->throw( error => "Column $name doesn't exist in $self->{name}" )
 	unless $self->{columns}->EXISTS($name);
 
-    AlzaboException->throw( error => "Column $name is not a primary key" )
+    Alzabo::Exception::Params->throw( error => "Column $name is not a primary key" )
 	unless $self->{pk}->EXISTS($name);
 
     $self->{pk}->DELETE($name);
@@ -214,7 +214,7 @@ sub make_foreign_key
 {
     my Alzabo::Create::Table $self = shift;
 
-    $self->add_foreign_key( Alzabo::Create::ForeignKey->new( table_from => $self, @_ ) );
+    $self->add_foreign_key( Alzabo::Create::ForeignKey->new( @_ ) );
 }
 
 sub add_foreign_key
@@ -230,13 +230,13 @@ sub delete_foreign_key
     my Alzabo::Create::Table $self = shift;
     my $fk = shift;
 
-    AlzaboException->throw( error => "Column " . $fk->column_from->name . " doesn't exist in $self->{name}" )
+    Alzabo::Exception::Params->throw( error => "Column " . $fk->column_from->name . " doesn't exist in $self->{name}" )
 	unless exists $self->{columns}{ $fk->column_from->name };
 
-    AlzaboException->throw( error => "No foreign keys to " . $fk->table_to->name . " exist in $self->{name}" )
+    Alzabo::Exception::Params->throw( error => "No foreign keys to " . $fk->table_to->name . " exist in $self->{name}" )
 	unless exists $self->{fk}{ $fk->table_to->name };
 
-    AlzaboException->throw( error => "Column " . $fk->column_from->name . " is not a foreign key to " . $fk->table_to->name . " in $self->{name}" )
+    Alzabo::Exception::Params->throw( error => "Column " . $fk->column_from->name . " is not a foreign key to " . $fk->table_to->name . " in $self->{name}" )
 	unless exists $self->{fk}{ $fk->table_to->name }{ $fk->column_from->name };
 
     my @current_fk = @{ $self->{fk}{ $fk->table_to->name }{ $fk->column_from->name } };
@@ -274,7 +274,7 @@ sub add_index
     my Alzabo::Table $self = shift;
     my $i = shift;
 
-    AlzaboException->throw( error => "Index already exists." )
+    Alzabo::Exception::Params->throw( error => "Index already exists." )
 	if $self->{indexes}->EXISTS( $i->id );
 
     $self->{indexes}->STORE( $i->id, $i );
@@ -287,7 +287,7 @@ sub delete_index
     my Alzabo::Table $self = shift;
     my $i = shift;
 
-    AlzaboException->throw( error => "Index does not exist." )
+    Alzabo::Exception::Params->throw( error => "Index does not exist." )
 	unless $self->{indexes}->EXISTS( $i->id );
 
     $self->{indexes}->DELETE( $i->id );
@@ -344,158 +344,229 @@ Alzabo::Create::Table - Table objects for schema creation
 
 =head1 DESCRIPTION
 
-This class represents tables in the schema.
+This class represents tables in the schema.  It contains column,
+index, and foreign key objects.
+
+=head1 INHERITS FROM
+
+Alzabo::Table
+
+=for pod_merge merged
 
 =head1 METHODS
 
+=head2 new
+
+=head3 Parameters
+
 =over 4
 
-=item * new
+=item * schema => C<Alzabo::Create::Schema> object
 
-Takes the following parameters:
+The schema to which this table belongs.
 
-=item -- schema => Alzabo::Create::Schema object
+=item * name => $name
 
-The schema that this table belongs to.
+=back
 
-=item -- name => $name
+=head3 Returns
 
-This method returns a new table object.
+A new C<Alzabo::Create::Table> object.
 
-Exceptions:
+=head3 Throws
 
- AlzaboException - missing required parameter.
- AlzaboException - invalid table name.
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
-=item * set_name ($name)
+=for pod_merge schema
+
+=for pod_merge name
+
+=head2 set_name ($name)
 
 Changes the name of the table.
 
-Exceptions:
+=for pod_merge column
 
- AlzaboException - invalid table name.
+=for pod_merge columns
 
-=item * make_column
+=head2 make_column
 
-Takes all the parameters the Alzabo::Create::Column method except the
-'table' parameter, which is automatically added.  In addition it takes
-the following parameter:
+Creates a new L<C<Alzabo::Create::Column>|Alzabo::Create::Column>
+object and adds it to the table.  This object is the function's return
+value.
 
-=item -- primary_key => 0 or 1
+In addition, if the before or after parameter is given, the
+L<C<move_column>|move_column> method is called to move the new column.
 
-If this value is true, then the C<add_primary_key> method will be
-called after this new column is made in order to make a it a primary
-key for the table.
+This method takes all of the same parameters as the
+L<C<Alzabo::Create::Column>|Alzabo::Create::Column> method except the
+C<table> parameter, which is automatically added.
 
-Creates a new Alzabo::Create::Column object and adds it to the table.
-This object is the function's return value.
+=head3 Additional Parameters
 
-In addition, if the 'after' parameter is given, the C<move_column>
-method is called to move the new column.
+=over 4
 
-Exceptions:
+=item * primary_key => 0 or 1
 
- AlzaboException - column already exists.
+If this value is true, then the
+L<C<add_primary_key>|Alzabo::Create::Table/add_primary_key
+(Alzabo::Create::Column object)> method will be called after this new
+column is made in order to make a it a primary key for the table.
 
-=item * delete_column (Alzabo::Create::Column object)
+=item * after => C<Alzabo::Create::Column> object
+
+... or ...
+
+=item * before => C<Alzabo::Create::Column> object
+
+=back
+
+=head3 Returns
+
+A new L<C<Alzabo::Create::Column>|Alzabo::Create::Column> object.
+
+=head2 add_column
+
+Adds a column to the table.  If a before or after parameter is given
+then the L<C<move_column>|move_column> method will be called to move
+the new column to the appropriate position.
+
+=head3 Parameters
+
+=over 4
+
+=item * column => C<Alzabo::Create::Column> object
+
+=item * after => C<Alzabo::Create::Column> object (optional)
+
+... or ...
+
+=item * before => C<Alzabo::Create::Column> object (optional)
+
+=back
+
+=head3 Throws
+
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+
+=head2 delete_column (C<Alzabo::Create::Column> object)
 
 Deletes a column from the table.
 
-Exeptions:
+=head3 Throws
 
-AlzaboException - column is not in the table.
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
-=item * move_column
+=head2 move_column
 
-Takes the following parameters:
+=head3 Parameters
 
-=item -- column => Alzabo::Create::Column object
+=over 4
+
+=item * column => C<Alzabo::Create::Column> object
 
 The column to move.
 
 and either ...
 
-=item -- before => Alzabo::Create::Column object
+=item * before => C<Alzabo::Create::Column> object
 
 Move the column before this column
 
 ... or ...
 
-=item -- after => Alzabo::Create::Column object
+=item * after => C<Alzabo::Create::Column> object
 
 Move the column after this column.
 
-Exceptions:
+=back
 
- AlzaboException - one of the columns passed in is not part of the
- table.
- AlzaboException - both a 'before' and 'after' parameter were
- specified.
+=head3 Throws
 
-=item * add_primary_key (Alzabo::Create::Column)
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+
+=for pod_merge primary_key
+
+=head2 add_primary_key (C<Alzabo::Create::Column> object)
 
 Make the given column part of the table's primary key.  The primary
 key is an ordered list of columns.  The given column will be added to
 the end of this list.
 
-Exceptions:
+=head3 Throws
 
- AlzaboException - the column is not part of the table.
- AlzaboException - the column is already part of the primary key.
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
-=item * delete_primary_key (Alzabo::Create::Column)
+=head2 delete_primary_key (C<Alzabo::Create::Column> object)
 
 Delete the given column from the primary key.
 
-Exceptions:
+=head3 Throws
 
- AlzaboException - the column is not part of the table.
- AlzaboException - the column is not part of the primary key.
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
-=item * make_foreign_key (see below)
+=for pod_merge foreign_keys
 
-Takes the same parameters as the Alzabo::Create::ForeignKey C<new>
-method except for the 'table' parameter, which is automatically added.
+=for pod_merge foreign_keys_by_table
+
+=for pod_merge foreign_keys_by_column
+
+=for pod_merge all_foreign_keys
+
+=head2 make_foreign_key (see below)
+
+Takes the same parameters as the
+L<C<Alzabo::Create::ForeignKey-E<gt>new>|Alzabo::Create::ForeignKey/new>
+method except for the table parameter, which is automatically added.
 The foreign key object that is created is then added to the table.
 
-Exceptions:
+=head3 returns
 
- See Alzabo::Create::ForeignKey C<new> documentation.
+A new L<C<Alzabo::Create::ForeignKey>|Alzabo::Create::ForeignKey>
+object.
 
-=item * add_foreign_key (Alzabo::Create::ForeignKey object)
+=head2 add_foreign_key (C<Alzabo::Create::ForeignKey> object)
 
 Adds the given foreign key to the table.
 
-Exceptions:
+=head2 delete_foreign_key (C<Alzabo::Create::ForeignKey> object)
 
- AlzaboException - a foreign key to the given table from the given
- column already exists.
+Deletes the given foreign key from the table
 
-=item * delete_foreign_key (Alzabo::Create::ForeignKey object)
+=head3 Throws
 
-Deletes the foreign key from the table
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
-Exceptions:
+=for pod_merge index
 
- AlzaboException - no such foreign key exists in the table.
+=for pod_merge indexes
 
-=item * make_index (see below)
+=head2 make_index
 
-Takes the same parameters as the Alzabo::Create::Index C<new> method
-except for the 'table' parameter, which is automatically added.  The
+Takes the same parameters as the
+L<C<Alzabo::Create::Index-E<gt>new>|Alzabo::Create::Index/new> method
+except for the C<table> parameter, which is automatically added.  The
 index object that is created is then added to the table.
 
-Exceptions:
+=head3 Returns
 
- See Alzabo::Create::Index C<new> documentation.
+A new L<C<Alzabo::Create::Index>|Alzabo::Create::Index> object.
 
-=item * delete_index (Alzabo::Create::Index object)
+=head2 add_index (C<Alzabo::Create::Index> object)
+
+Adds the given index to the table.
+
+=head3 Throws
+
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+
+=head2 delete_index (C<Alzabo::Create::Index> object)
 
 Deletes an index from the table.
 
-Exceptions:
+=head3 Throws
 
- AlzaboException - the index is not part of the table.
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
 =head1 AUTHOR
 

@@ -7,7 +7,7 @@ use Alzabo::Create;
 
 use base qw(Alzabo::Index);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -17,11 +17,7 @@ sub new
     my $class = ref $proto || $proto;
     my %p = @_;
 
-    my $self;
-    {
-	no strict 'refs';
-	$self = bless [ \%{"${class}::FIELDS"} ], $class;
-    }
+    my $self = bless {}, $class;
 
     $self->{table} = $p{table};
     $self->{unique} = $p{unique} || 0;
@@ -45,7 +41,7 @@ sub add_column
 
     my $new_name = $p{column}->name;
 
-    AlzaboException->throw( "Column $new_name already exists in index." )
+    Alzabo::Exception::Params->throw( "Column $new_name already exists in index." )
 	if $self->{columns}->EXISTS($new_name);
 
     $self->{columns}->STORE( $new_name, \%p );
@@ -64,7 +60,7 @@ sub delete_column
     my Alzabo::Create::Index $self = shift;
     my $c = shift;
 
-    AlzaboException->throw( error => "Column " . $c->name . " is not part of index." )
+    Alzabo::Exception::Params->throw( error => "Column " . $c->name . " is not part of index." )
 	unless $self->{columns}->EXISTS( $c->name );
 
     $self->{columns}->DELETE( $c->name );
@@ -75,7 +71,7 @@ sub set_prefix
     my Alzabo::Create::Index $self = shift;
     my %p = @_;
 
-    AlzaboException->throw( error => "Column " . $p{column}->name . " is not part of index." )
+    Alzabo::Exception::Params->throw( error => "Column " . $p{column}->name . " is not part of index." )
 	unless $self->{columns}->EXISTS( $p{column}->name );
 
     my $col = $self->{columns}->FETCH( $p{column}->name );
@@ -130,94 +126,104 @@ Alzabo::Create::Index - Index objects for schema creation
 
   use Alzabo::Create::Index;
 
-=head1 DESCRIPTION
+=for pod_merge DESCRIPTION
 
-An object representing an index.
+=head1 INHERITS FROM
+
+C<Alzabo::Index>
+
+=for pod_merge merged
 
 =head1 METHODS
 
+=head2 new
+
+=head3 Parameters
+
 =over 4
 
-=item * new
-
-Takes the following parameters:
-
-=item -- table => Alzabo::Create::Table object
+=item * table => C<Alzabo::Create::Table> object
 
 The table that this index is indexing.
 
-=item -- columns => [ { column => Alzabo::Create::Column object,
-                        prefix => $prefix },
+=item * columns => [ { column => C<Alzabo::Create::Column> object,
+                       prefix => $prefix },
                       repeat as needed ...
-                    ]
+                   ]
 
 This is a list of columns that are being indexes.  The prefix part of
 the hashref is optional.
 
-=item -- unique => $boolean
+=item * unique => $boolean
 
 Indicates whether or not this is a unique index.
 
-Returns a new index object.
+=back
 
-Exceptions:
+=head3 Returns
 
- AlzaboRDBMSRulesException - invalid index parameters.
+A new C<Alzabo::Create::Index> object.
 
-=item * add_column
+=for pod_merge table
 
-Takes the following parameters:
+=for pod_merge columns
 
-=item -- column => Alzabo::Create::Column object
-
-=item -- prefix => $prefix (optional)
+=head2 add_column
 
 Add a column to the index.
 
-Exceptions:
+=head3 Parameters
 
- AlzaboException - column already exists in index.
- AlzaboRDBMSRulesException - invalid parameters.
+=over 4
 
-=item * delete_column (Alzabo::Create::Column object)
+=item * column => C<Alzabo::Create::Column> object
+
+=item * prefix => $prefix (optional)
+
+=back
+
+=head2 delete_column (C<Alzabo::Create::Column> object)
 
 Delete the given column from the index.
 
-Exceptions:
+=for pod_merge prefix
 
- AlzaboException - the column does not exist in the index.
+=head2 set_prefix
 
-=item * set_prefix
+=head3 Parameters
 
-Takes the following parameters:
+=over 4
 
-=item -- column => Alzabo::Create::Column object
+=item * column => C<Alzabo::Create::Column> object
 
-=item -- prefix => $prefix
+=item * prefix => $prefix
 
-Exceptions:
+=back
 
- AlzaboException - the column is not part of the index.
- AlzaboRDBMSRulesException - invalid prefix specification
+=for pod_merge unique
 
-=item * set_unique ($boolean)
+=head2 set_unique ($boolean)
 
-Sets the unique value of the index object.
+Set whether or not the index is a unique index.
 
-=item * register_column_name_change
+=head2 register_column_name_change
 
-Takes the following parameters:
+=head3 Parameters
 
-=item * column => Alzabo::Create::Column object
+=over 4
+
+=item * column => C<Alzabo::Create::Column> object
 
 The column (with the new name already set).
 
 =item * old_name => $old_name
 
+=back
+
 Called by the owning table object when a column changes.  You should
 never need to call this yourself.
 
-=back
+=for pod_merge id
 
 =head1 AUTHOR
 

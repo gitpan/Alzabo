@@ -7,9 +7,9 @@ use Alzabo;
 
 use Tie::IxHash;
 
-use fields qw( columns table unique );
+#use fields qw( columns table unique );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -31,7 +31,7 @@ sub prefix
     my Alzabo::Index $self = shift;
     my $c = shift;
 
-    AlzaboException->throw( error => "Column " . $c->name . " is not part of index." )
+    Alzabo::Exception::Params->throw( error => "Column " . $c->name . " is not part of index." )
 	unless $self->{columns}->EXISTS( $c->name );
 
     return ($self->{columns}->FETCH( $c->name ))->{prefix};
@@ -82,43 +82,56 @@ Alzabo::Index - Index objects
 This object represents an index on a table.  Indexes consist of
 columns and optional prefixes for each column.  The prefix specifies
 how many characters of the columns should be indexes (the first X
-chars).  Not all column types are likely to allow prefixes though this
-depends on the RDBMS.  The order of the columns is significant.
+chars).  Some RDBMS's do not have a concept of index prefixes.  Not
+all column types are likely to allow prefixes though this depends on
+the RDBMS.  The order of the columns is significant.
 
 =head1 METHODS
 
-=over 4
+=head2 columns
 
-=item * columns
+=head3 Returns
 
-Returns an ordered list of columns that are part of the index.
+An ordered list of the L<C<Alzabo::Column>|Alzabo::Column> objects
+that are being indexed.
 
-=item * prefix ($column)
+=head2 prefix (C<Alzabo::Column> object)
 
-Given a column object that is part of the index, this method returns
-the prefix of the index.  If there is no prefix for this column in the
-index, then it returns undef.
+A column prefix is, to the best of my knowledge, a MySQL specific
+concept, and as such cannot be set when using an RDBMSRules module for
+a different RDBMS.  However, it is important enough for MySQL to have
+the functionality be present.  It allows you to specify that the index
+should only look at a certain portion of a field (the first N
+characters).  This prefix is required to index any sort of BLOB column
+in MySQL.
 
-Exceptions:
+=head3 Returns
 
- AlzaboException - The given column is not part of the index.
+This method returns the prefix for the column in the index.  If there
+is no prefix for this column in the index, then it returns undef.
 
-=item * unique
+=head2 unique
 
-Returns a boolean value indicating whether or not the index is a
-unique index.
+=head3 Returns
 
-=item * id
+A boolean value indicating whether or not the index is a unique index.
 
-Returns an id for the index, which is generated from the tasble,
-column and prefix information for the index.  This is useful as a
-cardinal name for hashing.
+=head2 id
 
-=item * table
+The id is generated from the table, column and prefix information for
+the index.  This is useful as a canonical name for a hash key, for
+example.
 
-Returns the table object that the index belongs to.
+=head3 Returns
 
-=back
+A string that is the id for the index.
+
+=head2 table
+
+=head3 Returns
+
+The L<C<Alzabo::Table>|Alzabo::Table> object to which the index
+belongs.
 
 =head1 AUTHOR
 

@@ -6,13 +6,13 @@ use Cwd;
 
 my $count = 0;
 $| = 1;
-print "1..77\n";
+print "1..80\n";
 
 ok(1);
 
 my $s = Alzabo::Create::Schema->new( name => 'foo',
-				     rules => 'MySQL',
-				     driver => 'MySQL' );
+				     rdbms => 'MySQL',
+				   );
 
 ok( $s && ref $s,
     "Unable to create schema object" );
@@ -44,10 +44,8 @@ my $dir = Alzabo::Config->schema_dir;
 	"'$base/$name.create.alz' file should exist but it doesn't" );
     ok( -e "$base/$name.runtime.alz",
 	"'$base/$name.runtime.alz' file should exist but it doesn't" );
-    ok( -e "$base/$name.rules",
-	"'$base/$name.rules' file should exist but it doesn't" );
-    ok( -e "$base/$name.driver",
-	"'$base/$name.driver' file should exist but it doesn't" );
+    ok( -e "$base/$name.rdbms",
+	"'$base/$name.rdbms' file should exist but it doesn't" );
 }
 
 eval { $s->make_table( name => 'footab' ); };
@@ -61,21 +59,28 @@ ok( ! $@ && $t1,
 
 eval { $t1->make_column( name => 'foo_pk',
 			 type => 'int',
-			 attributes => [ 'default 10' ],
+			 attributes => [ 'unsigned' ],
 			 sequenced => 1,
-			 null => 0 ); };
+			 nullable => 0,
+		       ); };
 ok( ! $@,
     "Unable to make column 'foo_pk': $@" );
 
 my $t1_c1;
 eval { $t1_c1 = $t1->column('foo_pk'); };
-ok( (! $@) && defined $t1_c1,
+ok( ! $@,
     "Unable to retrieve column 'foo_pk': $@" );
+ok( defined $t1_c1,
+    "\$t1->column('foo_pk') returned undefined value\n" );
 
 ok( $t1_c1->type eq 'int',
     "foo_pk type should be 'int'" );
-ok( $t1_c1->attributes == 1 && ($t1_c1->attributes)[0], 'default 10',
-    "foo_pk should have one attribute, 'default 10'" );
+ok( $t1_c1->attributes == 1 && ($t1_c1->attributes)[0], 'unsigned',
+    "foo_pk should have one attribute, 'unsigned'" );
+ok( $t1_c1->has_attribute( attribute => 'UNSIGNED' ),
+    "foo_pk should have attribute 'UNSIGNED' (case-insensitive check)" );
+ok( ! $t1_c1->has_attribute( attribute => 'UNSIGNED', case_sensitive => 1 ),
+    "foo_pk should _not_ have attribute 'UNSIGNED' (case-sensitive check)" );
 ok( ! $t1_c1->null,
     "foo_pk should not be NULLable" );
 
@@ -99,9 +104,10 @@ ok( ! $@ && $t2,
 
 eval { $t2->make_column( name => 'bar_pk',
 			 type => 'int',
-			 attributes => [ 'default 10' ],
+			 default => 10,
 			 sequenced => 1,
-			 null => 0 ); };
+			 nullable => 0,
+		       ); };
 ok( ! $@,
     "Unable to make column bar_pk: $@" );
 
@@ -109,6 +115,9 @@ my $t2_c1;
 eval { $t2_c1 = $t2->column('bar_pk'); };
 ok( ! $@ && $t2_c1,
     "Unable to retrieve column 'bar_pk': $@" );
+
+ok( $t2_c1->default eq '10',
+    "bar_pk default should be '10'" );
 
 eval { $t2->add_primary_key($t2_c1); };
 ok( ! $@,

@@ -7,13 +7,14 @@ use Alzabo;
 use Alzabo::Config;
 use Alzabo::Driver;
 use Alzabo::RDBMSRules;
+use Alzabo::SQLMaker;
 
 use Storable ();
 use Tie::IxHash ();
 
-use fields qw( name driver tables );
+#use fields qw( name driver tables );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.28 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -30,24 +31,27 @@ sub _load_from_file
     my $schema_dir = Alzabo::Config::schema_dir;
     my $file =  "$schema_dir/$p{name}/$p{name}." . $class->_schema_file_type . '.alz';
 
-    -e $file or AlzaboException->throw( error => "No saved schema named $name" );
+    -e $file or Alzabo::Exception::Params->throw( error => "No saved schema named $name ($file)" );
 
     my $fh = do { local *FH; };
     open $fh, $file
-	or FileSystemException->throw( error => "Unable to open $file: $!" );
+	or Alzabo::Exception::System->throw( error => "Unable to open $file: $!" );
     my $schema = Storable::retrieve_fd($fh);
     close $fh
-	or FileSystemException->throw( error => "Unable to close $file: $!" );
+	or Alzabo::Exception::System->throw( error => "Unable to close $file: $!" );
 
-    open $fh, "$schema_dir/$name/$name.driver"
-	or FileSystemException->throw( error => "Unable to open $schema_dir/$name/$name.driver: $!\n" );
-    my $driver = join '', <$fh>;
+    open $fh, "$schema_dir/$name/$name.rdbms"
+	or Alzabo::Exception::System->throw( error => "Unable to open $schema_dir/$name/$name.driver: $!\n" );
+    my $rdbms = join '', <$fh>;
     close $fh
-	or FileSystemException->throw( error => "Unable to close $schema_dir/$name/$name.driver: $!" );
+	or Alzabo::Exception::System->throw( error => "Unable to close $schema_dir/$name/$name.driver: $!" );
 
-    $driver =~ s/use (.*);/$1/;
-    $schema->{driver} = Alzabo::Driver->new( driver => $driver,
+    $schema->{driver} = Alzabo::Driver->new( rdbms => $rdbms,
 					     schema => $schema );
+
+    $schema->{rules} = Alzabo::RDBMSRules->new( rdbms => $rdbms );
+
+    $schema->{sql} = Alzabo::SQLMaker->load( rdbms => $rdbms );
 
     $schema->_save_to_cache;
 
@@ -56,7 +60,7 @@ sub _load_from_file
 
 sub _cached_schema
 {
-    my $class = shift;
+    my $class = shift->isa('Alzabo::Runtime::Schema') ? 'Alzabo::Runtime::Schema' : 'Alzabo::Create::Schema';
     my $name = shift;
 
     my $schema_dir = Alzabo::Config::schema_dir;
@@ -65,7 +69,8 @@ sub _cached_schema
     if (exists $CACHE{$name}{$class}{object})
     {
 	my $mtime = (stat($file))[9]
-	    or FileSystemException->throw( error => "can't stat $file" );
+	    or Alzabo::Exception::System->throw( error => "can't stat $file" );
+
 	return $CACHE{$name}{$class}{object}
 	    if $mtime <= $CACHE{$name}{$class}{mtime};
     }
@@ -74,7 +79,7 @@ sub _cached_schema
 sub _save_to_cache
 {
     my $self = shift;
-    my $class = ref $self;
+    my $class = $self->isa('Alzabo::Runtime::Schema') ? 'Alzabo::Runtime::Schema' : 'Alzabo::Create::Schema';
     my $name = $self->name;
 
     $CACHE{$name}{$class} = { object => $self,
@@ -93,7 +98,7 @@ sub table
     my Alzabo::Schema $self = shift;
     my $name = shift;
 
-    AlzaboException->throw( error => "Table $name doesn't exist in schema" )
+    Alzabo::Exception::Params->throw( error => "Table $name doesn't exist in schema" )
 	unless $self->{tables}->EXISTS($name);
 
     return $self->{tables}->FETCH($name);
@@ -103,6 +108,11 @@ sub tables
 {
     my Alzabo::Schema $self = shift;
 
+    if (@_)
+    {
+	return map { $self->table($_) } @_;
+    }
+
     return $self->{tables}->Values;
 }
 
@@ -111,6 +121,20 @@ sub driver
     my Alzabo::Schema $self = shift;
 
     return $self->{driver};
+}
+
+sub rules
+{
+    my Alzabo::Schema $self = shift;
+
+    return $self->{rules};
+}
+
+sub sqlmaker
+{
+    my Alzabo::Schema $self = shift;
+
+    return $self->{sql};
 }
 
 __END__
@@ -138,29 +162,41 @@ which in turn contain column definition objects.
 
 =head1 METHODS
 
-=over 4
+=head2 name
 
-=item * name
+=head3 Returns
 
-Returns the name of the schema.
+A string containing the name of the schema.
 
-=item * table ($name)
+=head2 table ($name)
 
-Given a table name, it returns an object representing the table.
+=head3 Returns
 
-Exceptions:
+An L<C<Alzabo::Table>|Alzabo::Table> object representing the specified
+table.
 
- AlzaboException - Table doesn't exist in the schema.
+=head3 Throws
 
-=item * tables
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
-Returns all the table objects in this schema
+=head2 tables (@optional_list)
 
-=item * driver
+=head3 Returns
 
-Returns the Alzabo::Driver object for the schema.
+A list of L<C<Alzabo::Table>|Alzabo::Table> object named in the list
+given.  If no list is provided, then it returns all table objects in
+the schema.
 
-=back
+=head3 Throws
+
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+
+=head2 driver
+
+=head3 Returns
+
+The L<C<Alzabo::Driver>|Alzabo::Driver> subclass object for the
+schema.
 
 =head1 AUTHOR
 

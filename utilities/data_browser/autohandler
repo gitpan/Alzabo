@@ -55,6 +55,9 @@ if ($table)
 }
 
 </%init>
+<%flags>
+inherit => undef
+</%flags>
 
 <%def .title>
 <%init>
@@ -91,6 +94,3 @@ if (defined $s)
 % }
 </div>
 </%def>
-<%flags>
-inherit => undef
-</%flags>

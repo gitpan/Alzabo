@@ -7,11 +7,10 @@ use Alzabo::Driver;
 
 use DBI;
 use DBD::mysql;
-use Digest::MD5;
 
 use base qw(Alzabo::Driver);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.26 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -29,26 +28,10 @@ sub new
 sub connect
 {
     my $self = shift;
-    my %p = @_;
 
-    my $dsn = 'DBI:mysql:' . $self->{schema}->name;
-    $dsn .= ";host=$p{host}" if $p{host};
+    return if $self->{dbh} && $self->{dbh}->ping;
 
-    eval
-    {
-	# If I don't do this I get weirdness with Apache::DBI.  Help?
-	if ($self->{dbh})
-	{
-	    eval { $self->{dbh}->disconnect; };
-	    undef $self->{dbh};
-	}
-	$self->{dbh} = DBI->connect( $dsn,
-				     $p{user},
-				     $p{password},
-				     { RaiseError => 1 } );
-    };
-    DBIException->throw( error => $@ ) if $@;
-    AlzaboException->throw( error => "Unable to connect to database\n" ) unless $self->{dbh};
+    $self->{dbh} = $self->_make_dbh(@_);
 }
 
 sub create_database
@@ -59,8 +42,15 @@ sub create_database
     my $db = $self->{schema}->name;
     my $drh = DBI->install_driver('mysql');
 
-    $drh->func( 'createdb', $db, $p{host}, $p{user}, $p{password}, 'admin' )
-	or DBIException->throw( error => $DBI::errstr );
+    my $host;
+    if ($p{host})
+    {
+	$host = $p{host};
+	$host .= ":$p{port}" if $p{port};
+    }
+
+    $drh->func( 'createdb', $db, $host, $p{user}, $p{password}, 'admin' )
+	or Alzabo::Exception::Driver->throw( error => $DBI::errstr );
 }
 
 sub drop_database
@@ -71,8 +61,39 @@ sub drop_database
     my $db = $self->{schema}->name;
     my $drh = DBI->install_driver('mysql');
 
-    $drh->func( 'dropdb', $db, $p{host}, $p{user}, $p{password}, 'admin' )
-	or DBIException->throw( error => $DBI::errstr );
+    my $host;
+    if ($p{host})
+    {
+	$host = $p{host};
+	$host .= ":$p{port}" if $p{port};
+    }
+
+    $drh->func( 'dropdb', $db, $host, $p{user}, $p{password}, 'admin' )
+	or Alzabo::Exception::Driver->throw( error => $DBI::errstr );
+}
+
+sub _make_dbh
+{
+    my $self = shift;
+    my %p = @_;
+
+    my $dsn = 'DBI:mysql:' . $self->{schema}->name;
+    $dsn .= ";host=$p{host}" if $p{host};
+    $dsn .= ";post=$p{port}" if $p{port};
+
+    my $dbh;
+    eval
+    {
+	$dbh = DBI->connect( $dsn,
+			     $p{user},
+			     $p{password},
+			     { RaiseError => 1 } );
+    };
+
+    Alzabo::Exception::Driver->throw( error => $@ ) if $@;
+    Alzabo::Exception::Driver->throw( error => "Unable to connect to database\n" ) unless $dbh;
+
+    return $dbh;
 }
 
 sub next_sequence_number
@@ -105,6 +126,10 @@ sub finish_transaction
     return;
 }
 
+sub driver_id
+{
+    return 'MySQL';
+}
 
 __END__
 
@@ -123,21 +148,17 @@ methods in Alzabo::Driver.
 
 =head1 METHODS
 
-=over 4
-
-=item * connect
+=head2 connect
 
 This functions exactly as described in Alzabo::Driver.
 
-=item * create_database
+=head2 create_database
 
 This functions exactly as described in Alzabo::Driver.
 
-=item * get_last_id
+=head2 get_last_id
 
 Returns the last id created via an AUTO_INCREMENT column.
-
-=back
 
 =head1 AUTHOR
 

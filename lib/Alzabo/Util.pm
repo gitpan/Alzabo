@@ -7,7 +7,7 @@ use Config;
 
 use Alzabo::Exceptions;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.6 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -20,12 +20,12 @@ sub subclasses
     $base = $Config{installsitelib} . "/$base";
 
     opendir DIR, $base
-	or FileSystemException->throw( error => "Cannot open directory $base: $!" );
+	or Alzabo::Exception::System->throw( error => "Cannot open directory $base: $!" );
 
     my @packages = map { substr($_, 0, length($_) - 3) } grep { substr($_, -3) eq '.pm' && -f "$base/$_" } readdir DIR;
 
     closedir DIR
-	or FileSystemException->throw( error => "Cannot close directory $base: $!" );
+	or Alzabo::Exception::System->throw( error => "Cannot close directory $base: $!" );
 
     return @packages;
 }
@@ -47,13 +47,9 @@ unrelated classes.
 
 =head1 FUNCTIONS
 
-=over 4
-
-=item * subclasses ($package_name)
+=head2 subclasses ($package_name)
 
 Given a package name, finds the available subclasses for that package.
-
-=back
 
 =head1 AUTHOR
 

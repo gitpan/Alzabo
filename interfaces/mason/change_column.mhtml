@@ -3,7 +3,10 @@ $schema
 $table
 $column
 $type
-$null => 0
+$nullable => 0
+$default => undef
+$length => undef
+$precision => undef
 $primary_key => 0
 $sequenced => 0
 @old_attributes => ()
@@ -22,40 +25,51 @@ eval
 
     $c = $t->column($column);
 
-    if ($null)
+    $length = undef if $length eq '';
+    $precision = undef if $precision eq '';
+    $default = undef if $default eq '';
+
+    foreach ( qw( nullable sequenced ) )
     {
-	unless ($c->null)
+	my $m = "set_$_";
+	if ($ARGS{$_})
 	{
-	    $c->set_null(1);
+	    unless ($c->$_())
+	    {
+		$c->$m(1);
+	    }
+	}
+	elsif ($c->$_())
+	{
+	    $c->$m(0);
 	}
     }
-    elsif ($c->null)
+
+    if (defined $default)
     {
-	$c->set_null(0);
+	$c->set_default($default);
+    }
+    elsif (defined $c->default)
+    {
+	$c->set_default(undef);
+    }
+
+    if ( defined $length || defined $precision )
+    {
+	$c->set_length( length => $length,
+			precision => $precision );
     }
 
     if ($primary_key)
     {
-	unless ($t->column_is_primary_key($c))
+	unless ($c->is_primary_key)
 	{
 	    $t->add_primary_key($c);
 	}
     }
-    elsif ($t->column_is_primary_key($c))
+    elsif ($c->is_primary_key)
     {
 	$t->delete_primary_key($c);
-    }
-
-    if ($sequenced)
-    {
-	unless ($c->sequenced)
-	{
-	    $c->set_sequenced(1);
-	}
-    }
-    elsif ($c->sequenced)
-    {
-	$c->set_sequenced(0);
     }
 
     $c->set_type($type) if $type ne $c->type;

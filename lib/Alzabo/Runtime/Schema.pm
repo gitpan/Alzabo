@@ -7,9 +7,9 @@ use Alzabo::Runtime;
 
 use base qw(Alzabo::Schema);
 
-use fields qw( user password host maintain_integrity );
+#use fields qw( user password host maintain_integrity );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.9 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.21 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -87,11 +87,10 @@ sub connect
     my Alzabo::Runtime::Schema $self = shift;
 
     my %p;
-    $p{user} = $self->user if $self->user;
-    $p{password} = $self->password if $self->password;
-    $p{host} = $self->host if $self->host;
-    $self->driver->connect( %p,
-			    @_ );
+    $p{user} = $self->user if defined $self->user;
+    $p{password} = $self->password if defined $self->password;
+    $p{host} = $self->host if defined $self->host;
+    $self->driver->connect( %p, @_ );
 }
 
 sub join
@@ -100,54 +99,70 @@ sub join
     my %p = @_;
 
     my $select = $p{select} || $p{tables};
+    $select = [ $select ] unless UNIVERSAL::isa($select, 'ARRAY');
 
-    my $sql = 'SELECT ';
-    $sql .= join ', ', map { $_->table->name . '.' . $_->name } map {$_->primary_key} @$select;
-    $sql .= ' FROM ';
-    $sql .= join ', ', map { $_->name } @{ $p{tables} };
-    $sql .= ' WHERE ';
+    $p{tables} = [ $p{tables} ] unless UNIVERSAL::isa($p{tables}, 'ARRAY');
 
-    my @join_fk;
+    my $sql = ( $self->sqlmaker->
+		select( map {$_->primary_key} @$select )->
+		from( @{ $p{tables} } ) );
+
     for (my $x = 0; $x < @{ $p{tables} } - 1; $x++)
     {
 	my $cur_t = $p{tables}->[$x];
 	my $next_t = $p{tables}->[$x + 1];
 
-	AlzaboException->throw( error => "Table " . $cur_t->name . " doesn't exist in schema" )
+	Alzabo::Exception::Params->throw( error => "Table " . $cur_t->name . " doesn't exist in schema" )
 	    unless $self->{tables}->EXISTS( $cur_t->name );
 
 	my @fk = $cur_t->foreign_keys_by_table($next_t);
-	AlzaboException->throw( error => "The " . $cur_t->name . " table has no foreign keys to the " . $next_t->name . " table" )
+
+	Alzabo::Exception::Params->throw( error => "The " . $cur_t->name . " table has no foreign keys to the " . $next_t->name . " table" )
 	    unless @fk;
-	AlzaboException->throw( error => "The " . $cur_t->name . " table has more than 1 foreign key to the " . $next_t->name . " table" )
+
+	Alzabo::Exception::Params->throw( error => "The " . $cur_t->name . " table has more than 1 foreign key to the " . $next_t->name . " table" )
 	    if @fk > 1;
 
-	push @join_fk, @fk;
+	my $op = $x ? 'and' : 'where';
+	$sql->$op( $fk[0]->column_from, '=', $fk[0]->column_to );
     }
 
-    $sql .= join ' AND ', ( map { $_->table_from->name . '.' . $_->column_from->name .
-				  ' = ' .
-				  $_->table_to->name . '.' . $_->column_to->name } @join_fk
-			  );
-    $sql .= ' AND ';
-    my @bind;
     if ( $p{where} )
     {
-	while ( my @pair = splice @{ $p{where} }, 0, 2 )
+	$p{where} = [ $p{where} ] unless UNIVERSAL::isa( $p{where}[0], 'ARRAY' );
+	$sql->and(@$_) foreach @{ $p{where} };
+    }
+
+    if ( $p{limit} )
+    {
+	$sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} );
+    }
+
+    if ( exists $p{order_by} )
+    {
+	Alzabo::Exception::Params->throw( error => "No columns provided for order by" )
+	    unless $p{order_by}{columns};
+
+	my @c = ( UNIVERSAL::isa( $p{order_by}{columns}, 'ARRAY' ) ?
+		  @{ $p{order_by}{columns} } :
+		  $p{order_by}{columns} );
+
+	$sql->order_by( @c );
+
+	if ( defined $p{order_by}{sort} )
 	{
-	    $sql .= $pair[0]->table->name . '.' . $pair[0]->name;
-	    $sql .= defined $pair[1] ? " = ?" : " IS NULL";
-	    push @bind, $pair[1] if defined $pair[1];
+	    my $s = lc $p{order_by}{sort};
+	    $sql->$s();
 	}
     }
 
-    my $statement = $self->driver->statement( sql => $sql,
-					      bind => \@bind );
+    my $statement = $self->driver->statement( sql => $sql->sql,
+					      bind => $sql->bind );
 
     if (@$select == 1)
     {
-	return Alzabo::Runtime::JoinCursor->new( statement => $statement,
-						 table => $select->[0] );
+	return Alzabo::Runtime::RowCursor->new( statement => $statement,
+						table => $select->[0] );
     }
     else
     {
@@ -168,138 +183,200 @@ Alzabo::Runtime::Schema - Schema objects
 
   use Alzabo::Runtime::Schema qw(some_schema);
 
+  my $schema = Alzabo::Runtime::Schema->load_from_file( name => 'foo' );
+  $schema->set_user( $username );
+  $schema->set_password( $password );
+
+  $schema->connect;
+
 =head1 DESCRIPTION
 
 This object can only be loaded from a file.  The file is created
 whenever a corresponding Alzabo::Create::Schema object is saved.
 
+=head1 INHERITS FROM
+
+C<Alzabo::Schema>
+
+=for pod_merge merged
+
 =head1 METHODS
 
-=over 4
-
-=item * load_from_file
-
-Takes the following parameter:
-
-=item -- name => $schema_name
+=head2 load_from_file
 
 Loads a schema from a file.  This is the only constructor for this
 class.
 
- AlzaboException - No saved schema of the given name.
- FileSystemException - Can't open, close or stat a file.
- EvalException - Unable to evaluate the contents of a file.
+=head3 Parameters
 
-=item * user
+=over 4
 
-Returns the username used by the schema when connecting to the
-database.
+=item * name => $schema_name
 
-=item * password
+=back
 
-Returns the password used by the schema when connecting to the
-database.
+=head3 Returns
 
-=item * host
+An C<Alzabo::Runtime::Schema> object.
 
-Returns the host used by the schema when connecting to the database.
+=head3 Throws
 
-=item * referential_integrity
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
 
-Returns a true/false value indicating whether this schema will attempt
-to maintain referential integrity.  Defaults to false.
+=head2 user
 
-=item * set_user ($user)
+=head3 Returns
+
+The username used by the schema when connecting to the database.
+
+=head2 set_user ($user)
 
 Set the username to use when connecting to the database.
 
-=item * set_password ($password)
+=head2 password
+
+=head3 Returns
+
+The password used by the schema when connecting to the database.
+
+=head2 set_password ($password)
 
 Set the password to use when connecting to the database.
 
-=item * set_host ($host)
+=head2 host
+
+=head3 Returns
+
+The host used by the schema when connecting to the database.
+
+=head2 set_host ($host)
 
 Set the host to use when connecting to the database.
 
-=item * set_referential_integrity ($boolean)
+=head2 referential_integrity
 
-Sets the value returned by the C<referential_integrity> method.  If
-true, then when Alzabo::Runtime::Row objects are deleted or updated,
-they will use report this to the Alzabo::Runtime::ForeignKey objects
-for the row so that they can take appropriate action.
+=head3 Returns
 
-=item * connect (%params)
+A boolean value indicating whether this schema will attempt to
+maintain referential integrity.  Defaults to false.
 
-Call the Alzabo::Driver C<connect> method for the driver owned by the
-schema.  The username, password, and host set for the schema will be
-passed to the driver, as will any additional parameters given to this
-method.
+=head2 set_referential_integrity ($boolean)
 
-=item * join
+Sets the value returned by the
+L<C<referential_integrity>|referential_integrity> method.  If true,
+then when L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects are
+deleted, updated, or inserted, they will report this activity to any
+relevant L<C<Alzabo::Runtime::ForeignKey>|Alzabo::Runtime::ForeignKey>
+objects for the row, so that the foreign key objects can take
+appropriate action.
+
+=head2 connect (%params)
+
+Calls the L<C<Alzabo::Driver-E<gt>connect>|Alzabo::Driver/connect>
+method for the driver owned by the schema.  The username, password,
+and host set for the schema will be passed to the driver, as will any
+additional parameters given to this method.  See the
+L<C<Alzabo::Driver-E<gt>connect>|Alzabo::Driver/connect> method for
+more details.
+
+=head2 join
+
+Join tables is done by taking the tables provided, in order, and
+finding a relation between them.  If any given table pair has more
+than one relation, then this method will fail.  The relations, along
+with the values given in the optional where clause will then be used
+to generate the necessary SQL.  See
+L<C<Alzabo::Runtime::JoinCursor>|Alzabo::Runtime::JoinCursor> for more
+information.
 
 NOTE: This method is currently considered experimental.
 
-Takes the following parameters:
+=head3 Parameters
 
-=item -- tables => [ Alzabo::Runtime::Table objects ]
+=over 4
 
-The tables being joined together.
+=item * tables => C<Alzabo::Runtime::Table> object or objects
 
-=item -- where => [ Alzabo::Runtime::Column => $value ]  (optional)
+The tables being joined together.  The order of these tables is
+significant if there are more than 2 tables, as we expect to find
+relationships between tables 1 & 2, 2 & 3, 3 & 4, etc.
 
-This parameter must be an array reference, not a hash reference.  It
-specifies the values to be used in the where clause (in addition to
-those necessary to create the join).
+This can be either a single table or an array reference of table
+objects.
 
-=item -- select => [ Alzabo::Runtime::Table objects ]  (optional)
+=item * where => [ C<Alzabo::Runtime::Column> => $value ] (optional)
 
-This parameter specified which tables you want to get rows back from.
-If this parameter is not given, then the tables parameter will be used
-instead.
+This parameter must be an array reference, not a hash reference (or
+the column object will be stringified).  It specifies the values to be
+used in the where clause (in addition to those necessary to create the
+join).
 
-If the select parameter (or tables parameter) specified that more than
-one table is desired, then this method will return an
-Alzabo::Runtime::JoinCursor object representing the results of the
-join.  Otherwise, the method returns an Alzabo::Runtime::RowCursor
-object.
+=item * select => C<Alzabo::Runtime::Table> object or objects (optional)
 
-The join is done by taking the tables in order and finding a relation
-between them.  If any given table pair has more than one relation,
-then this method will fail.  The relations, along with the values
-given in the optional where clause will then be used to generate the
-necessary SQL.  See L<Alzabo::Runtime::JoinCursor> for more
-information.
+This parameter specifies from which tables you would like rows
+returned.  If this parameter is not given, then the tables parameter
+will be used instead.
+
+This can be either a single table or an array reference of table
+objects.
 
 =back
+
+=head3 Returns
+
+If the C<select> parameter (or C<tables> parameter) specified that
+more than one table is desired, then this method will return an
+L<C<Alzabo::Runtime::JoinCursor>|Alzabo::Runtime::JoinCursor> object
+representing the results of the join.  Otherwise, the method returns
+an L<C<Alzabo::Runtime::RowCursor>|Alzabo::Runtime::RowCursor> object.
+
+=head3 Throws
+
+L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
+
+=for pod_merge name
+
+=for pod_merge tables
+
+=for pod_merge table
+
+=for pod_merge driver
 
 =head1 USER AND PASSWORD INFORMATION
 
 This information is never saved to disk.  This means that if you're
 operating in an environment where the schema object is reloaded from
-disk every time it is used (as in a CGI program spanning multiple
-requests) then you will have to make a new connection every time.  In
+disk every time it is used, such as a CGI program spanning multiple
+requests, then you will have to make a new connection every time.  In
 a persistent evironment, this is not a problem.  In a mod_perl
-environment, you could load the schema and call the C<set_user> and
-C<set_password> methods in the server startup file.  Then all the
-mod_perl children will inherit the schema with the user and password
-already set.  Otherwise you will have to provide it for each request.
+environment, you could load the schema and call the
+L<C<set_user>|Alzabo::Runtime::Schema/set_user ($user)> and
+L<C<set_password>|Alzabo::Runtime::Schema/set_password ($password)>
+methods in the server startup file.  Then all the mod_perl children
+will inherit the schema with the user and password already set.
+Otherwise you will have to provide it for each request.
 
 You may ask why you have to go to all this trouble to deal with the
 user and password information.  The basic reason was that I did not
-want to try to come up with a security solution that was secure, easy
-to use and configure, and cross-platform compatible.  Rather, I prefer
-to let each person decide on a security practice that they feel
-comfortable with.
+feel I could come up with a solution to this problem that was secure,
+easy to configure and use, and cross-platform compatible.  Rather, I
+think it is best to let each user decide on a security practice with
+which they feel comfortable.  If anybody does come up with such a
+scheme, then code submissions are more than welcome.
 
 =head1 CAVEATS
 
 =head2 Refential Integrity
 
 If Alzabo is attempting to maintain referential integrity and you are
-not using either the Alzabo::ObjectCache or Alzabo::ObjectCacheIPC
-module then situations can arise where objects you are holding onto in
-memory can get out of sync with the database.  Please see
-L<Alzabo::ObjectCache> for more details.
+not using either the L<C<Alzabo::ObjectCache>|Alzabo::ObjectCache> or
+L<C<Alzabo::ObjectCacheIPC>|Alzabo::ObjectCacheIPC> module, then
+situations can arise where objects you are holding onto in memory can
+get out of sync with the database and you will not know this.  If you
+are using one of the cache modules then attempts to access data from
+an expired or deleted object will throw an exception, allowing you to
+try again (if it is expired) or give up (if it is deleted).  Please
+see L<C<Alzabo::ObjectCache>|Alzabo::ObjectCache> for more details.
 
 =head1 AUTHOR
 

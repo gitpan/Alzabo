@@ -14,14 +14,18 @@ use Alzabo::Runtime;
 
 use Alzabo::Driver;
 use Alzabo::Driver::MySQL;
-use Alzabo::Driver::Oracle;
 use Alzabo::Driver::PostgreSQL;
+#use Alzabo::Driver::Oracle;
 
 use Alzabo::RDBMSRules;
 use Alzabo::RDBMSRules::MySQL;
-use Alzabo::RDBMSRules::Oracle;
 use Alzabo::RDBMSRules::PostgreSQL;
+#use Alzabo::RDBMSRules::Oracle;
 
+use Alzabo::SQLMaker;
+use Alzabo::SQLMaker::MySQL;
+use Alzabo::SQLMaker::PostgreSQL;
+#use Alzabo::SQLMaker::Oracle;
 
 
 print "1..1\n";

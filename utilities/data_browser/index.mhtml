@@ -36,8 +36,9 @@
  </tr>
 </table>
 </form>
+% } else {
+You have not created any schemas yet.
 % }
-
 <%init>
 use Alzabo::Config;
 

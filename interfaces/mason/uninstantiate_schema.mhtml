@@ -1,6 +1,5 @@
 <%args>
 $schema
-$table
 </%args>
 
 <%init>
@@ -8,7 +7,7 @@ use Alzabo::Config;
 
 my $s;
 eval
-{
+
     $s = Alzabo::Create::Schema->load_from_file( name => $schema );
 
     $s->set_instantiated(0);
