@@ -1,3 +1,10 @@
+0.79_04  October 18, 2003
+
+Identical to 0.79_03 except for minor POD changes in order to try to
+fix the problem of search.cpan.org treating the wrong file as the main
+Alzabo.pm docs.  Again reported by Darren Duncan.
+
+
 0.79_03  October 18, 2003
 
 ENHANCEMENTS:

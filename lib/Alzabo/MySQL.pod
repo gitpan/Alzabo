@@ -2,7 +2,7 @@
 
 =head1 NAME
 
-Alzabo and MySQL
+Alzabo::MySQL - Alzabo and MySQL
 
 =head1 DESCRIPTION
 
