@@ -20,7 +20,7 @@ if ($ARGS{more})
     $m->comp( '../common/redirect',
 	      url =>
 	      $m->comp( '../common/make_url',
-			path => 'add_relation' . Alzabo::Config::mason_extension(),
+			path => 'add_relationship' . Alzabo::Config::mason_extension(),
 			query => \%ARGS ) );
 }
 

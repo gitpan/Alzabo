@@ -16,16 +16,28 @@ the logical relationship between these tables.  The
 Alzabo::MethodMaker module can be very helpful in this regard.
 
 For more information please see the Alzabo docs (start with perldoc
-Alzabo) or the Alzabo homepage at http://alzabo.sourceforge.net/.  The
-full documentation in HTML form is available at
-http://alzabo.sourceforge.net/docs/
+Alzabo) or the Alzabo homepage at http://www.alzabo.org/.  The full
+documentation in HTML form is available at
+http://www.alzabo.org/docs/.
 
 Install information is in the INSTALL file.
+
+REQUIREMENTS
+
+Alzabo passes all its test with aPerl 5.00503, 5.6.1 or, 5.8.0.  5.6.0
+is known to be buggy and not recommended.
+
+Alzabo currently supports MySQL (latest 3.23.x release is recommended)
+and Postgres (7.2.x is recommended).
+
+Alzabo also requires a number of modules, and will prompt you to
+install them if necessary.  Of course, if you install Alzabo via the
+CPAN module this will be handled for you.
 
 SUPPORT
 
 The Alzabo docs are conveniently located online at
-http://alzabo.sourceforge.net/docs/.
+http://www.alzabo.org/docs/.
 
 There is also a mailing list.  You can sign up at
 http://lists.sourceforge.net/lists/listinfo/alzabo-general.
@@ -48,19 +60,9 @@ ask you to do this before I can do anything.
 
 UPGRADING
 
-If you have an older version of Alzabo installed and you want to
-continue to use older schema objects you need to do the following
-steps _before_ installation.
-
-Run the convert.pl script in the eg/ directory.  By default, it will
-attempt to convert all your schemas.  This script generates files
-containing Perl code which will recreate your schema with the latest
-of version of Alzabo.  
-
-Once you've run the convert.pl script for the all schemas you need to
-upgrade, install the latest version of Alzabo.  Then run the files
-created by the convert.pl script.  This overwrites your old files so
-_make backups first_!
+As of version 0.65, Alzabo automatically upgrades older schemas as it
+loads them.  This works for schemas made by versions going back to
+version 0.55.
 
 BUGS
 
@@ -84,8 +86,9 @@ can just ignore them.
 
 CREDITS
 
-Ilya Martynov has provided lots of suggestions, as well as quite a
-number of working patches.
+Ilya Martynov deserves special thanks for providing a _lot_ of patches
+(mostly catching my dumb mistakes) as well as many useful suggestions
+on new features, bug fixing, etc.
 
 Bob Gustafson has provided extensive assistance in testing and
 debugging.
@@ -99,15 +102,22 @@ Some features in Alzabo have been borrowed or influenced by Class:DBI
 
 Various bug reports and assistance from:
 
+Alexei Barantsev
 Robin Berjon
+Brad Bowman
 Terrence Brannon
-Rami Cohen-Scali
+Remi Cohen-Scali
 Martin Ertl
 Daniel Gaspani
 Robert Goff
 Raul Nohea Goodness
 Michael Graham
+Eric Hillman
+Barry Hoggard
 Sam Horrocks
 Aaron Johnson
+Dan Martinez
 Dana Powers
+Jared Rhine
 Ron Savage
+Jeremy R. Semeiks

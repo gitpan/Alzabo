@@ -2,7 +2,7 @@ BUGS
 Changes
 INSTALL
 LICENSE
-MANIFEST
+MANIFEST			This list of files
 Makefile.PL
 README
 TODO
@@ -125,6 +125,7 @@ mason/widgets/insert_or_update
 mason/widgets/update
 t/00-cleanup.t
 t/01-compile.t
+t/01-driver.t
 t/02-create.t
 t/03-runtime.t
 t/04-db_drop.t
@@ -148,10 +149,3 @@ t/make_schemas.pl
 t/methodmaker.pl
 t/runtime_tests.pl
 t/utils.pl
-utilities/data_browser/autohandler
-utilities/data_browser/browse_schema.mhtml
-utilities/data_browser/browse_table.mhtml
-utilities/data_browser/change_row.mhtml
-utilities/data_browser/delete_row.mhtml
-utilities/data_browser/index.mhtml
-utilities/data_browser/schema_menubar

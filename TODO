@@ -15,6 +15,8 @@ Short term:
 - Track table/column renames when working with schemas so that Alzabo
   can preserve data during these sorts of changes.
 
+- Store PK as list of indices to columns, not as hash.
+
 Medium term:
 
 - Abort during Makefile.PL if supplied username/pw cannot connect to
@@ -82,6 +84,5 @@ Ongoing:
   as Alzabo::QuickRef.
 
 - Support any and all SQL, of arbitrary complexity.  This is fairly
-  far along, but there's probably more bits to handle (like outer
-  joins of > 2 tables).
+  far along.
 

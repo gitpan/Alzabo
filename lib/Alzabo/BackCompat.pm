@@ -13,6 +13,10 @@ use Tie::IxHash;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
+use vars qw($VERSION);
+
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
+
 #
 # Each pair represents a range of versions which are compatible with
 # each other.  The first one is not quite right but it has to start

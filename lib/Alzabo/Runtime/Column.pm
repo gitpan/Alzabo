@@ -9,7 +9,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Column);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.7 $ =~ /(\d+)\.(\d+)/;
 
 sub alias_clone
 {
@@ -26,6 +26,27 @@ sub alias_clone
     bless $clone, ref $self;
 
     return $clone;
+}
+
+sub alias
+{
+    my $self = shift;
+    my %p = validate( @_, { as => { type => SCALAR } } );
+
+    my $clone;
+    %$clone = %$self;
+
+    bless $clone, ref $self;
+
+    $clone->{alias_name} = $p{as};
+    $clone->{real_column} = $self;
+
+    return $clone;
+}
+
+sub alias_name
+{
+    return $_[0]->{alias_name} || $_[0]->{name};
 }
 
 1;
@@ -49,6 +70,24 @@ C<Alzabo::Column>
 =for pod_merge merged
 
 =for pod_merge METHODS
+
+=head2 alias
+
+=head3 Parameters
+
+=over 4
+
+=item * as => $name
+
+=back
+
+=head3 Returns
+
+This returns an object that can be used in calls to the table and
+schema C<select> method in order to change the name given to the
+column if C<next_hash> is called on the
+L<C<Alzabo::DriverStatement>|Alzabo::Driver/Alzabo::DriverStatment>
+returned by the aforementioned C<select> method.
 
 =head1 AUTHOR
 

@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use Tie::IxHash;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.39 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.44 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -40,14 +40,17 @@ sub has_column
 sub column
 {
     my $self = shift;
-
-    validate_pos( @_, { type => SCALAR } );
     my $name = shift;
 
-    Alzabo::Exception::Params->throw( error => "Column $name doesn't exist in $self->{name}" )
-	unless $self->{columns}->EXISTS($name);
-
-    return $self->has_column($name);
+    if ( my $col = $self->{columns}->FETCH($name) )
+    {
+        return $col;
+    }
+    else
+    {
+        Alzabo::Exception::Params->throw
+            ( error => "Column $name doesn't exist in $self->{name}" );
+    }
 }
 
 sub columns
@@ -56,7 +59,19 @@ sub columns
 
     if (@_)
     {
-	return map { $self->column($_) } @_;
+        my @idx = $self->{columns}->Indices(@_);
+
+        # if only some of the keys are in the Tie::IxHash object, then
+        # @idx may contain undef for some values.
+        if ( ( grep { defined } @idx ) == @_ )
+        {
+            return $self->{columns}->Values(@idx);
+        }
+        else
+        {
+            # just to find the missing one(s)
+            $self->column($_) foreach @_;
+        }
     }
 
     return $self->{columns}->Values;
@@ -66,8 +81,10 @@ sub primary_key
 {
     my $self = shift;
 
-    return wantarray ? $self->columns( $self->{pk}->Keys ) :
-	   ($self->columns( $self->{pk}->Keys ))[0];
+    return ( wantarray ?
+             $self->columns( map { $_->name } $self->{pk}->Values ) :
+             $self->column( $self->{pk}->Values(0)->name )
+           );
 }
 
 sub primary_key_size
@@ -84,10 +101,13 @@ sub column_is_primary_key
     validate_pos( @_, { isa => 'Alzabo::Column' } );
 
     my $name = shift->name;
+
+    return 1 if $self->{pk}->EXISTS($name);
+
     Alzabo::Exception::Params->throw( error => "Column $name doesn't exist in $self->{name}" )
 	unless $self->{columns}->EXISTS($name);
 
-    return $self->{pk}->EXISTS($name);
+    return 0;
 }
 
 sub foreign_keys

@@ -7,7 +7,7 @@ use strict;
 use Alzabo::Exceptions;
 use Time::HiRes qw( time );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -58,6 +58,8 @@ sub is_expired
     my $cache_id = $obj->cache_id;
 
     my $sync_time = $self->sync_time($id);
+
+    return 0 unless defined $sync_time;
 
     return 0
 	if exists $self->{obj_times}{$cache_id} && $self->{obj_times}{$cache_id} >= $sync_time;
@@ -115,7 +117,9 @@ sub is_deleted
     my $obj = shift;
     my $id = $obj->id_as_string;
 
-    return 1 if $self->sync_time($id) == -1;
+    my $time = $self->sync_time($id);
+
+    return 1 if defined $time && $time == -1;
     return 0;
 }
 

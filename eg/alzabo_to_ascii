@@ -37,6 +37,14 @@ my $column = <<'EOF';
   \| [[[[[[[[[[[[[[[[[[[[[[[[ \| [[[[[[[[[[[[[[[[[[[[[[ \| [[[[[ \| [[[[[[[[ \| [[ \|
 EOF
 
+my $column_comment = <<'EOF';
+  \| - [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ \|
+EOF
+
+my $fk_comment = <<'EOF';
+  \| - [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ \|
+EOF
+
 my $lj_table_line = <<'EOF';
   \| [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ \|
 EOF
@@ -140,6 +148,12 @@ sub render_column
 	  ( defined $c->default ? $c->default : ''),
 	  ( $c->is_primary_key ? 'PK' : '' )
 	);
+
+    my $comment = $c->comment;
+    if ( length $comment )
+    {
+	push @out, form $column_comment, $comment;
+    }
 }
 
 sub render_foreign_key
@@ -185,6 +199,12 @@ sub render_foreign_key
     }
 
     push @out, form $lj_table_line, "There $verb $amount corresponding row$plural in the foreign table";
+
+    my $comment = $fk->comment;
+    if ( length $comment )
+    {
+	push @out, form $fk_comment, $comment;
+    }
 }
 
 sub render_index

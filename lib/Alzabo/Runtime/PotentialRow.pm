@@ -10,7 +10,7 @@ use base qw(Alzabo::Runtime::Row);
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.8 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/;
 
 sub new
 {
@@ -103,8 +103,10 @@ sub make_live
 		  );
 }
 
+sub is_live { 0 }
+
 # Class or object method
-sub id
+sub id_as_string
 {
     return '';
 }
@@ -177,11 +179,15 @@ L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> objects.
 This method throws an exception as it is not meaningful to try to
 delete a row that does not exist in the database.
 
-=head2 id
+=head2 id_as_string
 
 This method returns an empty string.  Since primary keys may not be
 known til an insert, in the case of sequenced columns, there is no way
 to calculate an id.
+
+=head2 is_live
+
+Indicates whether or not a given row is a real or potential row.
 
 =head2 make_live
 

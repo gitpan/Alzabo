@@ -12,7 +12,7 @@ use Time::HiRes qw(time);
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.23 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.29 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -30,6 +30,7 @@ sub new
 		       time => sprintf( '%11.23f', time ),
 		       seen => {},
 		       errors => [],
+		       count => 0,
 		     }, $class;
 
     return $self;
@@ -94,6 +95,9 @@ sub next
 	}
     }
 
+    $self->{count}++;
+
+    return unless $row;
     return $row;
 }
 
@@ -110,6 +114,9 @@ sub all_rows
     }
 
     $self->{errors} = \@errors;
+
+    $self->{count} = scalar @rows;
+
     return @rows;
 }
 
@@ -182,6 +189,19 @@ See L<C<Alzabo::Runtime::Cursor>|Alzabo::Runtime::Cursor>.
 
 Resets the cursor so that the next L<C<next>|next> call will
 return the first row of the set.
+
+=head2 count
+
+=head3 Returns
+
+The number of rows returned by the cursor so far.
+
+=head2 next_as_hash
+
+=head3 Returns
+
+The next row or rows in a hash, where the hash key is the table name
+and the hash value is the row object.
 
 =head1 AUTHOR
 

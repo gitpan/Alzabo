@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.83 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.88 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -93,7 +93,7 @@ sub _make_id_hash
 
     return $p{pk} if ref $p{pk};
 
-    return { ($p{table}->primary_key)[0]->name => $p{pk} };
+    return { (scalar $p{table}->primary_key)->name => $p{pk} };
 }
 
 sub _get_data
@@ -155,12 +155,15 @@ sub update
 
 	# Only make the change if the two values are different.  The
 	# convolutions are necessary to avoid a warning.
-	unless ( ! exists $self->{data}{$k} ||
-		 ( defined $data{$k} && ! defined $self->{data}{$k} ) ||
-		 ( ! defined $data{$k} && defined $self->{data}{$k} ) ||
-		 ( $data{$k} ne $self->{data}{$k} )
-	       )
-	{
+        if ( exists $self->{data}{$k} &&
+             ( ( ! defined $data{$k} && ! defined $self->{data}{$k} ) ||
+               ( defined $data{$k} &&
+                 defined $self->{data}{$k} &&
+                 ( $data{$k} eq $self->{data}{$k} )
+               )
+             )
+           )
+        {
 	    delete $data{$k};
 	    next;
 	}
@@ -314,9 +317,10 @@ sub id_as_string
     {
 	unless ( exists $self->{id_string} )
 	{
-	    $self->{id_string} = join ';:;_;:;', ( $self->schema->name,
-						   $self->table->name,
-						   map { $_, $self->{id}{$_} } sort keys %{ $self->{id} } );
+	    $self->{id_string} =
+                join ';:;_;:;', ( $self->schema->name,
+                                  $self->table->name,
+                                  map { $_, $self->{id}{$_} } sort keys %{ $self->{id} } );
 	}
 	$id_string = $self->{id_string};
     }
@@ -328,9 +332,10 @@ sub id_as_string
 	    local $^W; # weirdly, enough there are code paths that can
                        # lead here that'd lead to $id_hash having some
                        # values that are undef
-	    $id_string = join ';:;_;:;', ( $p{table}->schema->name,
-					   $p{table}->name,
-					   map { $_, $id_hash->{$_} } sort keys %$id_hash );
+	    $id_string =
+                join ';:;_;:;', ( $p{table}->schema->name,
+                                  $p{table}->name,
+                                  map { $_, $id_hash->{$_} } sort keys %$id_hash );
 	}
     }
 
@@ -352,6 +357,8 @@ sub _no_such_row_error
     $err .= join ', ', @vals;
     Alzabo::Exception::NoSuchRow->throw( error => $err );
 }
+
+sub is_live { 1 }
 
 sub STORABLE_freeze
 {
@@ -401,12 +408,13 @@ sub STORABLE_thaw
 
 BEGIN
 {
-    # dumb hack to fix bugs in Storable 2.00 - 2.03 w/ Perl < 5.8.0
+    # dumb hack to fix bugs in Storable 2.00 - 2.03 w/ a non-threaded
+    # Perl
     #
     # Basically, Storable somehow screws up the hooks business the
     # _first_ time an object from a class with hooks is stored.  So
     # we'll just _force_ it do it once right away.
-    if ( $Storable::VERSION >= 2 && $] < 5.008 )
+    if ( $Storable::VERSION >= 2 && $Storable::VERSION <= 2.03 )
     {
 	eval <<'EOF';
 	{ package ___name; sub name { 'foo' } }
@@ -475,11 +483,15 @@ and the object to represent these new values.
 
 Deletes the row from the RDBMS and the cache, if it exists.
 
-=head2 id
+=head2 id_as_string
 
 Returns the row's id value as a string.  This can be passed to the
 L<C<Alzabo::Runtime::Table-E<gt>row_by_id>|Alzabo::Runtime::Table/row_by_id>
 method to recreate the row later.
+
+=head2 is_live
+
+Indicates whether or not the given row is a real or potential row.
 
 =head2 table
 

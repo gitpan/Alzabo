@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.31 $ =~ /(\d+)\.(\d+)/;
 
 sub new
 {
@@ -22,11 +22,12 @@ sub new
 			    no_cache => { optional => 1 },
 			  } );
 
-    my $self = bless \%p, $class;
-
-    $self->{seen} = {};
-
-    $self->{errors} = [];
+    my $self = bless { %p,
+		       time => sprintf( '%11.23f', time ),
+		       seen => {},
+		       errors => [],
+		       count => 0,
+		     }, $class;
 
     return $self;
 }
@@ -37,52 +38,70 @@ sub next
 
     my @rows;
 
- OUTER:
-    until ( scalar @rows == scalar @{ $self->{tables} } )
+    $self->{errors} = [];
+
+    my @data = $self->{statement}->next;
+
+    return unless @data;
+
+    my $i = 0;
+    foreach my $t ( @{ $self->{tables} } )
     {
-	$self->{errors} = [];
+        my %pk;
+        my $def = 0;
+        foreach my $c ( $t->primary_key )
+        {
+            $pk{ $c->name } = $data[$i];
 
-	my @data = $self->{statement}->next
-	    or return;
+            $def = 1 if defined $data[$i];
 
-	foreach my $t ( @{ $self->{tables} } )
-	{
-	    my @pk = $t->primary_key;
-	    my @pk_vals = splice @data, 0, scalar @pk;
+            $i++;
+        }
 
-	    unless ( grep { defined } @pk_vals )
-	    {
-		push @rows, undef;
-		next;
-	    }
+        unless ($def)
+        {
+            push @rows, undef;
+            next;
+        }
 
-	    my %hash = map { $pk[$_]->name => $pk_vals[$_] } 0..$#pk_vals;
+        my %prefetch;
+        {
+            my @pre;
+            if ( @pre = $t->prefetch )
+            {
+                @prefetch{@pre} = @data[ $i .. ($i + $#pre) ];
+                $i += @pre;
+            }
+        }
 
-	    my $row = eval { $t->row_by_pk( @_,
-					    pk => \%hash,
-					    no_cache => $self->{no_cache},
-					  ) };
-	    if ($@)
-	    {
-		if ( $@->isa('Alzabo::Exception::NoSuchRow') )
-		{
-		    push @{ $self->{errors} },  $@;
-		}
-		else
-		{
-		    if ( UNIVERSAL::can( $@, 'rethrow' ) )
-		    {
-			$@->rethrow;
-		    }
-		    else
-		    {
-			Alzabo::Exception->throw( error => $@ );
-		    }
-		}
-	    }
-	    push @rows, $row;
-	}
+        my $row = eval { $t->row_by_pk( pk => \%pk,
+                                        prefetch => \%prefetch,
+                                        time => $self->{time},
+                                        no_cache => $self->{no_cache},
+                                        @_,
+                                      ) };
+        if ($@)
+        {
+            if ( $@->isa('Alzabo::Exception::NoSuchRow') )
+            {
+                push @{ $self->{errors} },  $@;
+            }
+            else
+            {
+                if ( UNIVERSAL::can( $@, 'rethrow' ) )
+                {
+                    $@->rethrow;
+                }
+                else
+                {
+                    Alzabo::Exception->throw( error => $@ );
+                }
+            }
+        }
+        push @rows, $row;
     }
+
+    $self->{count}++;
 
     return @rows;
 }
@@ -100,6 +119,9 @@ sub all_rows
     }
 
     $self->{errors} = \@errors;
+
+    $self->{count} = scalar @all;
+
     return @all;
 }
 
@@ -186,6 +208,19 @@ See L<C<Alzabo::Runtime::Cursor>|Alzabo::Runtime::Cursor>.
 
 Resets the cursor so that the next L<C<next>|next> call will
 return the first row of the set.
+
+=head2 count
+
+=head3 Returns
+
+The number of rowsets returned by the cursor so far.
+
+=head2 next_as_hash
+
+=head3 Returns
+
+The next row or rows in a hash, where the hash key is the table name
+and the hash value is the row object.
 
 =head1 AUTHOR
 

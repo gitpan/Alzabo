@@ -5,14 +5,19 @@ eval { require Alzabo; };
 
 if ( ! $@ && defined Alzabo::Config::root_dir() &&
      length Alzabo::Config::root_dir() &&
+     -d Alzabo::Config::root_dir() &&
      Alzabo::Config::available_schemas() && $Alzabo::VERSION < 0.55 )
 {
     print <<'EOF';
 
 You appear to have schemas created with an older version of Alzabo.
-If you want to continue to use these, you will need to run the
+If you want to continue to use these, you may need to run the
 convert.pl script in the eg/ directory _before_ installing this
 version of Alzabo.
+
+For newer versions, starting with the transition from 0.64 to 0.65,
+Alzabo automatically converts schemas as needed.
+
 EOF
     exit unless prompt( '  Continue?', 'no' ) =~ /^y/i;
 }
@@ -125,18 +130,20 @@ if ( keys %Alazabo::Config::CONFIG )
 write_config_module(%config);
 get_test_setup();
 
+my $dbi_version = 1.21;
 if ( eval { require DBI } && $DBI::VERSION == 1.24 )
 {
     warn "You appear to have DBI version 1.24 installed.  This version has a bug which causes major problems with Alzabo.  Please upgrade or downgrade.\n";
+    $dbi_version = 1.25;
 }
 
-%prereq = ( 'DBI' => 0,
+%prereq = ( 'DBI' => $dbi_version,
 	    'Storable' => 0.7,
 	    'Tie::IxHash' => 0,
 	    'Exception::Class' => 0.97,
 	    'Time::HiRes' => 0,
 	    'Pod::Man' => 1.14,
-	    'Params::Validate' => 0.16,
+	    'Params::Validate' => 0.24,
 	    'Test::Simple' => 0.44,
 	    'Test::Harness' => 1.26,
 	    'Class::Factory::Util' => 1.2,

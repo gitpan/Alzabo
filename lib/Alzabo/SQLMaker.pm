@@ -9,7 +9,7 @@ use Class::Factory::Util;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.44 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.52 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -135,15 +135,19 @@ sub init
 sub new
 {
     my $class = shift;
-    my $driver = shift;
+    my %p = validate( @_, { driver => { isa => 'Alzabo::Driver' },
+                            quote_identifiers  => { type => BOOLEAN,
+                                                    default => 0 },
+                          },
+                    );
 
     return bless { last_op => undef,
 		   expect => undef,
 		   type => undef,
 		   sql => '',
 		   bind => [],
-		   driver => $driver,
 		   as_id => 'aaaaa10000',
+                   %p,
 		 }, $class;
 }
 
@@ -161,34 +165,63 @@ sub select
 
     $self->{sql} .= 'SELECT ';
 
-    if ( $_[0] eq 'distinct' )
+    if ( lc $_[0] eq 'distinct' )
     {
 	$self->{sql} .= ' DISTINCT ';
 	shift;
     }
 
     my @sql;
-    foreach (@_)
+    foreach my $elt (@_)
     {
-	if ( UNIVERSAL::can( $_, 'table' ) )
+	if ( UNIVERSAL::can( $elt, 'table' ) )
 	{
-	    push @{ $self->{columns} }, $_;
-	    push @sql,
-		$self->{driver}->quote_identifier( $_->table->alias_name, $_->name );
-	}
-	elsif ( UNIVERSAL::can( $_, 'columns' ) )
-	{
-	    push @{ $self->{columns} }, $_->columns;
-	    push @sql,
-		( join ', ',
-		  map { $self->{driver}->quote_identifier( $_->table->alias_name, $_->name ) }
-		  $_->columns );
-	}
-	elsif ( UNIVERSAL::isa( $_, 'Alzabo::SQLMaker::Function' ) )
-	{
-	    my $string = $_->as_string( $self->{driver} );
+            my $table = $elt->table;
 
-	    if ( $_->allows_alias )
+	    $self->{column_tables}{"$table"} = 1;
+
+            my $sql =
+                ( $self->{quote_identifiers} ?
+                  $self->{driver}->quote_identifier
+                      ( $table->alias_name, $elt->name ) :
+                  $table->alias_name . '.' . $elt->name );
+
+            $sql .= ' AS ' .
+                ( $self->{quote_identifiers} ?
+                  $self->{driver}->quote_identifier( $elt->alias_name ) :
+                  $elt->alias_name );
+
+	    push @sql, $sql;
+	}
+	elsif ( UNIVERSAL::can( $elt, 'columns' ) )
+	{
+	    $self->{column_tables}{"$elt"} = 1;
+
+            my @cols;
+
+            foreach my $col ( $elt->columns )
+            {
+                my $sql =
+                    ( $self->{quote_identifiers} ?
+                      $self->{driver}->quote_identifier
+                      ( $elt->alias_name, $col->name ) :
+                      $elt->alias_name . '.' . $col->name );
+
+                $sql .= ' AS ' .
+                    ( $self->{quote_identifiers} ?
+                      $self->{driver}->quote_identifier( $elt->alias_name ) :
+                      $elt->alias_name );
+
+                push @cols, $sql;
+            }
+
+	    push @sql, join ', ', @cols;
+	}
+	elsif ( UNIVERSAL::isa( $elt, 'Alzabo::SQLMaker::Function' ) )
+	{
+	    my $string = $elt->as_string( $self->{driver}, $self->{quote_identifiers} );
+
+	    if ( $elt->allows_alias )
 	    {
 		push @sql, " $string AS " . $self->{as_id};
 		$self->{functions}{$string} = $self->{as_id};
@@ -199,13 +232,15 @@ sub select
 		push @sql, $string;
 	    }
 	}
-	elsif ( ! ref $_ )
+	elsif ( ! ref $elt )
 	{
-	    push @sql, $_;
+	    push @sql, $elt;
 	}
 	else
 	{
-	    Alzabo::Exception::SQL->throw( error => 'Arguments to select must be either column objects, table objects, function objects, or plain scalars' );
+	    Alzabo::Exception::SQL->throw
+                    ( error => 'Arguments to select must be either column objects,' .
+                               ' table objects, function objects, or plain scalars' );
 	}
     }
 
@@ -223,7 +258,9 @@ sub from
 
     $self->_assert_last_op( qw( select delete function ) );
 
-    my $spec = $self->{last_op} eq 'select' ? { type => OBJECT | ARRAYREF } : { can => 'alias_name' };
+    my $spec =
+        $self->{last_op} eq 'select' ? { type => OBJECT | ARRAYREF } : { can => 'alias_name' };
+
     validate_pos( @_, ( $spec ) x @_ );
 
     $self->{sql} .= ' FROM ';
@@ -231,7 +268,9 @@ sub from
     if ( $self->{last_op} eq 'delete' )
     {
 	$self->{sql} .=
-	    join ', ', map { $self->{driver}->quote_identifier( $_->name ) } @_;
+	    join ', ', map { ( $self->{quote_identifiers} ?
+                               $self->{driver}->quote_identifier( $_->name ) :
+                               $_->name ) } @_;
 
 	$self->{tables} = { map { $_ => 1 } @_ };
     }
@@ -245,16 +284,23 @@ sub from
 	    {
 		$self->_outer_join(@$elt);
 
-		@{ $self->{tables} }{ $elt->[1], $elt->[2] } = (1, 1);
+		@{ $self->{tables} }{ @{$elt}[1,2] } = (1, 1);
 	    }
 	    else
 	    {
 		$self->{sql} .= ', ' unless $elt eq $_[0];
 
-		$self->{sql} .=
-		    ( $self->{driver}->quote_identifier( $elt->name ) .
-		      ' AS ' .
-		      $self->{driver}->quote_identifier( $elt->alias_name ) );
+                if ( $self->{quote_identifiers} )
+                {
+                    $self->{sql} .=
+                        ( $self->{driver}->quote_identifier( $elt->name ) .
+                          ' AS ' .
+                          $self->{driver}->quote_identifier( $elt->alias_name ) );
+                }
+                else
+                {
+                    $self->{sql} .= $elt->name . ' AS ' . $elt->alias_name;
+                }
 
 		$self->{tables}{$elt} = 1;
 	    }
@@ -263,13 +309,12 @@ sub from
 
     if ($self->{type} eq 'select')
     {
-	foreach my $c ( @{ $self->{columns} } )
-	{
-	    unless ( $self->{tables}{ $c->table } )
+        foreach my $t ( keys %{ $self->{column_tables} } )
+        {
+	    unless ( $self->{tables}{$t} )
 	    {
-		my $err = 'Cannot select column (';
-		$err .= join '.', $c->table->name, $c->name;
-		$err .= ') unless its table is included in the FROM clause';
+		my $err = 'Cannot select column ';
+		$err .= 'unless its table is included in the FROM clause';
 		Alzabo::Exception::SQL->throw( error => $err );
 	    }
 	}
@@ -309,18 +354,39 @@ sub _outer_join
 	$fk = $fk[0];
     }
 
-    $self->{sql} .= $self->{driver}->quote_identifier( $join_from->alias_name );
-
-    $self->{sql} .= ( " $type OUTER JOIN " .
-		      $self->{driver}->quote_identifier( $join_on->alias_name ) .
-		      ' ON ' );
-
     $self->{sql} .=
-	( join ' AND ',
-	  map { $self->{driver}->quote_identifier( $_->[0]->table->alias_name, $_->[0]->name ) .
-		' = ' .
-		$self->{driver}->quote_identifier( $_->[1]->table->alias_name, $_->[1]->name )
-	      } $fk->column_pairs );
+        ( $self->{quote_identifiers} ?
+          $self->{driver}->quote_identifier( $join_from->alias_name ) :
+          $join_from->alias_name );
+
+    $self->{sql} .= " $type OUTER JOIN ";
+
+    $self->{sql} .= ( $self->{quote_identifiers} ?
+                      $self->{driver}->quote_identifier( $join_on->alias_name ) :
+                      $join_on->alias_name );
+
+    $self->{sql} .= ' ON ';
+
+    if ( $self->{quote_identifiers} )
+    {
+        $self->{sql} .=
+            ( join ' AND ',
+              map { $self->{driver}->quote_identifier
+                        ( $_->[0]->table->alias_name, $_->[0]->name ) .
+                    ' = ' .
+                    $self->{driver}->quote_identifier
+                        ( $_->[1]->table->alias_name, $_->[1]->name )
+                  } $fk->column_pairs );
+    }
+    else
+    {
+        $self->{sql} .=
+            ( join ' AND ',
+              map { $_->[0]->table->alias_name . '.' . $_->[0]->name .
+                    ' = ' .
+                    $_->[1]->table->alias_name . '.' .  $_->[1]->name
+                  } $fk->column_pairs );
+    }
 
     return $self;
 }
@@ -413,6 +479,7 @@ sub condition
 		  { type => SCALAR },
 		  { type => UNDEF | SCALAR | OBJECT },
 		  ( { type => UNDEF | SCALAR | OBJECT, optional => 1 } ) x (@_ - 3) );
+
     my $lhs = shift;
     my $comp = uc shift;
     my $rhs = shift;
@@ -430,12 +497,20 @@ sub condition
 	    $err .= ' clause';
 	    Alzabo::Exception::SQL->throw( error => $err );
 	}
+
 	$self->{sql} .=
-	    $self->{driver}->quote_identifier( $lhs->table->alias_name, $lhs->name );
+	    ( $self->{quote_identifiers} ?
+              $self->{driver}->quote_identifier( $lhs->table->alias_name, $lhs->name ) :
+              $lhs->table->alias_name . '.' . $lhs->name );
     }
     elsif ( $lhs->isa('Alzabo::SQLMaker::Function') )
     {
-	$self->{sql} .= $lhs->as_string( $self->{driver} );
+	$self->{sql} .= $lhs->as_string( $self->{driver}, $self->{quote_identifiers} );
+    }
+    else
+    {
+        Alzabo::Exception::SQL->throw
+            ( error => "Cannot use " . ref $lhs . " object as part of condition" );
     }
 
     if ( $comp eq 'BETWEEN' )
@@ -451,9 +526,9 @@ sub condition
 		if grep { UNIVERSAL::isa( $_, 'Alzabo::SQLMaker' ) } $rhs, $rhs2;
 
 	$self->{sql} .= ' BETWEEN ';
-	$self->{sql} .= $self->_rhs($lhs, $rhs);
+	$self->{sql} .= $self->_rhs($rhs);
 	$self->{sql} .= " AND ";
-	$self->{sql} .= $self->_rhs($lhs, $rhs2);
+	$self->{sql} .= $self->_rhs($rhs2);
 
 	return;
     }
@@ -464,7 +539,7 @@ sub condition
 	$self->{sql} .=
 	    join ', ', map { ( UNIVERSAL::isa( $_, 'Alzabo::SQLMaker' ) ?
 			       '(' . $self->_subselect($_) . ')' :
-			       $self->_rhs($lhs, $_) ) } $rhs, @_;
+			       $self->_rhs($_) ) } $rhs, @_;
 	$self->{sql} .= ')';
 
 	return;
@@ -477,7 +552,7 @@ sub condition
     if ( ! ref $rhs && defined $rhs )
     {
 	$self->{sql} .= " $comp ";
-	$self->{sql} .= $self->_rhs($lhs, $rhs);
+	$self->{sql} .= $self->_rhs($rhs);
     }
     elsif ( ! defined $rhs )
     {
@@ -506,7 +581,7 @@ sub condition
 	}
 	else
 	{
-	    $self->{sql} .= $self->_rhs($lhs, $rhs);
+	    $self->{sql} .= $self->_rhs($rhs);
 	}
     }
 }
@@ -514,7 +589,6 @@ sub condition
 sub _rhs
 {
     my $self = shift;
-    my $col = shift;
     my $rhs = shift;
 
     if ( UNIVERSAL::can( $rhs, 'table' ) )
@@ -528,7 +602,10 @@ sub _rhs
 	    $err .= ' clause';
 	    Alzabo::Exception::SQL->throw( error => $err );
 	}
-	return $self->{driver}->quote_identifier( $rhs->table->alias_name, $rhs->name );
+
+	return ( $self->{quote_identifiers} ?
+                 $self->{driver}->quote_identifier( $rhs->table->alias_name, $rhs->name ) :
+                 $rhs->table->alias_name . '.' . $rhs->name );
     }
     else
     {
@@ -583,13 +660,15 @@ sub order_by
 	    # no comma needed for first column
 	    $self->{sql} .= ', ', if $x++;
 	    $self->{sql} .=
-		$self->{driver}->quote_identifier( $i->table->alias_name, $i->name );
+		( $self->{quote_identifiers} ?
+                  $self->{driver}->quote_identifier( $i->table->alias_name, $i->alias_name ) :
+                  $i->table->alias_name . '.' . $i->alias_name );
 
 	    $last = 'column';
 	}
 	elsif ( UNIVERSAL::isa( $i, 'Alzabo::SQLMaker::Function' ) )
 	{
-	    my $string = $i->as_string( $self->{driver} );
+	    my $string = $i->as_string( $self->{driver}, $self->{quote_identifiers} );
 	    if ( exists $self->{functions}{$string} )
 	    {
 		$self->{sql} .= ', ', if $x++;
@@ -644,7 +723,9 @@ sub group_by
     $self->{sql} .= ' GROUP BY ';
     $self->{sql} .=
 	( join ', ',
-	  map { $self->{driver}->quote_identifier( $_->table->alias_name, $_->name ) }
+	  map { ( $self->{quote_identifiers} ?
+                  $self->{driver}->quote_identifier( $_->table->alias_name, $_->alias_name ) :
+                  $_->table->alias_name . '.' . $_->alias_name ) }
 	  @_ );
 
     $self->{last_op} = 'group_by';
@@ -688,11 +769,19 @@ sub into
 
     $self->{columns} = [ @_ ? @_ : $table->columns ];
 
-    $self->{sql} .= 'INTO ' . $self->{driver}->quote_identifier( $table->name ) . ' (';
+    $self->{sql} .= 'INTO ';
+
+    $self->{sql} .= ( $self->{quote_identifiers} ?
+                      $self->{driver}->quote_identifier( $table->name ) :
+                      $table->name );
+
+    $self->{sql} .= ' (';
 
     $self->{sql} .=
 	( join ', ',
-	  map { $self->{driver}->quote_identifier( $_->name ) }
+	  map { ( $self->{quote_identifiers} ?
+                  $self->{driver}->quote_identifier( $_->name ) :
+                  $_->name ) }
 	  @{ $self->{columns} } );
 
     $self->{sql} .= ') ';
@@ -758,7 +847,12 @@ sub update
 
     my $table = shift;
 
-    $self->{sql} = 'UPDATE ' . $self->{driver}->quote_identifier( $table->name );
+    $self->{sql} = 'UPDATE ';
+
+    $self->{sql} .= ( $self->{quote_identifiers} ?
+                      $self->{driver}->quote_identifier( $table->name ) :
+                      $table->name );
+
     $self->{tables} = { $table => 1 };
 
     $self->{type} = 'update';
@@ -796,7 +890,10 @@ sub set
 	}
 
 	push @set,
-	    $self->{driver}->quote_identifier( $col->name ) . ' = ' . $self->_bind_val($val);
+	    ( $self->{quote_identifiers} ?
+              $self->{driver}->quote_identifier( $col->name ) :
+              $col->name ) .
+            ' = ' . $self->_bind_val($val);
     }
     $self->{sql} .= join ', ', @set;
 
@@ -835,13 +932,17 @@ sub _bind_val
 
     validate_pos( @_, { type => UNDEF | SCALAR | OBJECT } );
 
-    my $val = shift;
+    unless ( ref $_[0] )
+    {
+        push @{ $self->{bind} }, $_[0];
+        return '?';
+    }
 
-    return $val->as_string( $self->{driver} ) if defined $val && UNIVERSAL::isa( $val, 'Alzabo::SQLMaker::Function' );
+    return $_[0]->as_string( $self->{driver}, $self->{quote_identifiers} )
+        if UNIVERSAL::isa( $_[0], 'Alzabo::SQLMaker::Function' );
 
-    push @{ $self->{bind} }, $val;
-
-    return '?';
+    Alzabo::Exception::Params->throw
+        ( error => "Cannot pass a " . ref $_[0] . " object to _bind_val" );
 }
 
 sub sql
@@ -907,6 +1008,7 @@ sub as_string
 {
     my $self = shift;
     my $driver = shift;
+    my $quote = shift;
 
     my @args;
     foreach ( 0..$#{ $self->{args} } )
@@ -914,13 +1016,16 @@ sub as_string
 	if ( UNIVERSAL::can( $self->{args}[$_], 'table' ) )
 	{
 	    push @args,
-		$driver->quote_identifier( $self->{args}[$_]->table->alias_name,
-					   $self->{args}[$_]->name );
+		( $quote ?
+                  $driver->quote_identifier( $self->{args}[$_]->table->alias_name,
+                                             $self->{args}[$_]->name ) :
+                  $self->{args}[$_]->table->alias_name . '.' .
+                  $self->{args}[$_]->name );
 	    next;
 	}
 	elsif ( UNIVERSAL::isa( $self->{args}[$_], 'Alzabo::SQLMaker::Function' ) )
 	{
-	    push @args, $self->{args}[$_]->as_string($driver);
+	    push @args, $self->{args}[$_]->as_string( $driver, $quote );
 	    next;
 	}
 
@@ -930,7 +1035,8 @@ sub as_string
 	# is the value that should be used for all of the extra
 	# arguments.
 	my $i = $_ > $#{ $self->{quote} } ? -1 : $_;
-	push @args, $self->{quote}[$i] ? $driver->quote( $self->{args}[$_] ) : $self->{args}[$_];
+	push @args,
+            $self->{quote}[$i] ? $driver->quote( $self->{args}[$_] ) : $self->{args}[$_];
     }
 
     my $sql = $self->{function};

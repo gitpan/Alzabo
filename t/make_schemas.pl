@@ -71,20 +71,20 @@ sub mysql_make_schema
 			 nullable => 1,
 		       );
 
-    $s->add_relation( table_from => $dep_t,
-		      table_to => $emp_t,
-		      columns_from => $dep_t->column('manager_id'),
-		      columns_to => $emp_t->column('employee_id'),
-		      cardinality => [1, 1],
-		      from_is_dependent => 0,
-		      to_is_dependent => 0,
-		    );
-    $s->add_relation( table_from => $emp_t,
-		      table_to => $dep_t,
-		      cardinality => ['n', 1],
-		      from_is_dependent => 1,
-		      to_is_dependent => 0,
-		    );
+    $s->add_relationship( table_from => $dep_t,
+			  table_to => $emp_t,
+			  columns_from => $dep_t->column('manager_id'),
+			  columns_to => $emp_t->column('employee_id'),
+			  cardinality => [1, 1],
+			  from_is_dependent => 0,
+			  to_is_dependent => 0,
+			);
+    $s->add_relationship( table_from => $emp_t,
+			  table_to => $dep_t,
+			  cardinality => ['n', 1],
+			  from_is_dependent => 1,
+			  to_is_dependent => 0,
+			);
 
     $s->make_table( name => 'project' );
     my $proj_t = $s->table('project');
@@ -99,21 +99,26 @@ sub mysql_make_schema
 			);
     $proj_t->make_index( columns => [ { column => $proj_t->column('name'),
 					prefix => 20 } ] );
-    $s->add_relation( table_from => $proj_t,
-		      table_to   => $dep_t,
-		      cardinality => ['n', 1],
-		      from_is_dependent => 1,
-		      to_is_dependent => 0,
-		    );
+    $proj_t->make_column( name => 'blobby',
+			  type => 'text',
+                          nullable => 1,
+			);
+
+    $s->add_relationship( table_from => $proj_t,
+			  table_to   => $dep_t,
+			  cardinality => ['n', 1],
+			  from_is_dependent => 1,
+			  to_is_dependent => 0,
+			);
 
     $emp_t->column('department_id')->set_name('dep_id');
 
-    $s->add_relation( table_from => $emp_t,
-		      table_to   => $proj_t,
-		      cardinality => ['n', 'n'],
-		      from_is_dependent => 0,
-		      to_is_dependent => 0,
-		    );
+    $s->add_relationship( table_from => $emp_t,
+			  table_to   => $proj_t,
+			  cardinality => ['n', 'n'],
+			  from_is_dependent => 0,
+			  to_is_dependent => 0,
+			);
 
     my $char_pk_t = $s->make_table( name => 'char_pk' );
     $char_pk_t->make_column( name => 'char_col',
@@ -152,14 +157,14 @@ sub mysql_make_schema
 			     nullable => 1,
 			   );
 
-    $s->add_relation( table_from => $outer_1_t,
-		      table_to   => $outer_2_t,
-		      columns_from => $outer_1_t->column('outer_2_key'),
-		      columns_to   => $outer_2_t->column('outer_2_key'),
-		      cardinality => [1, 1],
-		      from_is_dependent => 0,
-		      to_is_dependent => 0,
-		    );
+    $s->add_relationship( table_from => $outer_1_t,
+			  table_to   => $outer_2_t,
+			  columns_from => $outer_1_t->column('outer_2_key'),
+			  columns_to   => $outer_2_t->column('outer_2_key'),
+			  cardinality => [1, 1],
+			  from_is_dependent => 0,
+			  to_is_dependent => 0,
+			);
 
     delete @p{'rdbms', 'schema_name'};
     $s->create(%p);
@@ -227,20 +232,20 @@ sub pg_make_schema
 			 nullable => 1,
 		       );
 
-    $s->add_relation( table_from => $dep_t,
-		      table_to => $emp_t,
-		      columns_from => $dep_t->column('manager_id'),
-		      columns_to => $emp_t->column('employee_id'),
-		      cardinality => [ 1, 1 ],
-		      from_is_dependent => 0,
-		      to_is_dependent => 0,
-		    );
-    $s->add_relation( table_from => $emp_t,
-		      table_to => $dep_t,
-		      cardinality => ['n', 1],
-		      from_is_dependent => 1,
-		      to_is_dependent => 0,
-		    );
+    $s->add_relationship( table_from => $dep_t,
+			  table_to => $emp_t,
+			  columns_from => $dep_t->column('manager_id'),
+			  columns_to => $emp_t->column('employee_id'),
+			  cardinality => [ 1, 1 ],
+			  from_is_dependent => 0,
+			  to_is_dependent => 0,
+			);
+    $s->add_relationship( table_from => $emp_t,
+			  table_to => $dep_t,
+			  cardinality => ['n', 1],
+			  from_is_dependent => 1,
+			  to_is_dependent => 0,
+			);
 
     $s->make_table( name => 'project' );
     my $proj_t = $s->table('project');
@@ -253,24 +258,28 @@ sub pg_make_schema
 			  type => 'varchar',
 			  length => 200,
 			);
+    $proj_t->make_column( name => 'blobby',
+			  type => 'text',
+                          nullable => 1,
+			);
 
-    $s->add_relation( table_from => $emp_t,
-		      table_to   => $proj_t,
-		      cardinality => ['n', 'n'],
-		      from_is_dependent => 0,
-		      to_is_dependent => 0,
-		    );
+    $s->add_relationship( table_from => $emp_t,
+			  table_to   => $proj_t,
+			  cardinality => ['n', 'n'],
+			  from_is_dependent => 0,
+			  to_is_dependent => 0,
+			);
 
     $proj_t->make_index( columns => [ { column => $proj_t->column('name') } ] );
 
     $emp_t->column('department_id')->set_name('dep_id');
 
-    $s->add_relation( table_from => $proj_t,
-		      table_to   => $dep_t,
-		      cardinality => ['n', 1],
-		      from_is_dependent => 1,
-		      to_is_dependent => 0,
-		    );
+    $s->add_relationship( table_from => $proj_t,
+			  table_to   => $dep_t,
+			  cardinality => ['n', 1],
+			  from_is_dependent => 1,
+			  to_is_dependent => 0,
+			);
 
     my $char_pk_t = $s->make_table( name => 'char_pk' );
     $char_pk_t->make_column( name => 'char_col',
@@ -312,14 +321,14 @@ sub pg_make_schema
 			     nullable => 1,
 			   );
 
-    $s->add_relation( table_from => $outer_1_t,
-		      table_to   => $outer_2_t,
-		      columns_from => $outer_1_t->column('outer_2_key'),
-		      columns_to   => $outer_2_t->column('outer_2_key'),
-		      cardinality => [1, 1],
-		      from_is_dependent => 0,
-		      to_is_dependent => 0,
-		    );
+    $s->add_relationship( table_from => $outer_1_t,
+			  table_to   => $outer_2_t,
+			  columns_from => $outer_1_t->column('outer_2_key'),
+			  columns_to   => $outer_2_t->column('outer_2_key'),
+			  cardinality => [1, 1],
+			  from_is_dependent => 0,
+			  to_is_dependent => 0,
+			);
 
     my $mixed = $s->make_table( name => 'MixEDCasE' );
     $mixed->make_column( name => 'mixed_CASE_Pk',

@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Runtime::Row);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.19 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -139,8 +139,9 @@ sub update
     my $self = shift;
     my %data = @_;
 
-    Alzabo::Exception::Cache::Expired->throw( error => "Cannot update expired object" )
-	unless $self->check_cache;
+    Alzabo::Exception::Cache::Expired->throw
+        ( error => "Cannot update expired object: " . $self->id_as_string )
+            unless $self->check_cache;
 
     $self->SUPER::update(%data);
 
@@ -216,6 +217,17 @@ This class is loaded by the
 L<C<Alzabo::ObjectCache>|Alzabo::ObjectCache> module.  It subclasses
 the L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> class and caches
 rows and row object data.
+
+=head1 METHODS
+
+It has the exact same methods as
+L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> plus:
+
+=head2 check_cache
+
+This checks if the row has been expired or deleted.  If the row is
+deleted, an C<Alzabo::Exception::Cache::Deleted> exception is thrown.
+If the row is expired, it will update itself from the RDBMS.
 
 =head1 AUTHOR
 

@@ -15,7 +15,7 @@ use vars qw($VERSION);
 
 use 5.005;
 
-$VERSION = '0.67';
+$VERSION = '0.68';
 
 1;
 
@@ -742,7 +742,7 @@ contained objects.
 =head1 SUPPORT
 
 The Alzabo docs are conveniently located online at
-http://alzabo.sourceforge.net/docs/.
+http://www.alzabo.org/docs/.
 
 There is also a mailing list.  You can sign up at
 http://lists.sourceforge.net/lists/listinfo/alzabo-general.
@@ -750,9 +750,9 @@ http://lists.sourceforge.net/lists/listinfo/alzabo-general.
 Please don't email me directly.  Use the list instead so others can
 see your questions.
 
-=head1 LICENSE
+=head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2000-2001 Dave Rolsky
+Copyright (c) 2000-2002 Dave Rolsky
 
 All rights reserved.
 

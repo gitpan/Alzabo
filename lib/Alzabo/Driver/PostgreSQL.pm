@@ -9,7 +9,7 @@ use DBD::Pg;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.18 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
 
 use base qw(Alzabo::Driver);
 
@@ -42,7 +42,43 @@ sub schemas
 {
     my $self = shift;
 
-    return map { /dbi:\w+:dbname=(\w+)/i; defined $1 ? $1 : () } DBI->data_sources( $self->dbi_driver_name );
+    my %p = @_;
+
+    %p = validate( @_, { user => { type => SCALAR | UNDEF,
+				   optional => 1 },
+			 password => { type => SCALAR | UNDEF,
+				       optional => 1 },
+			 host => { type => SCALAR | UNDEF,
+				   optional => 1 },
+			 port => { type => SCALAR | UNDEF,
+				   optional => 1 },
+			 options => { type => SCALAR | UNDEF,
+				      optional => 1 },
+			 tty => { type => SCALAR | UNDEF,
+				  optional => 1 },
+		       } );
+
+    local %ENV;
+    foreach ( grep { defined $p{$_} && length $p{$_} } keys %p )
+    {
+        my $key = uc "pg$_";
+        $ENV{$key} = $p{$_};
+    }
+
+    my @schemas = ( map { if ( defined )
+                          {
+                              /dbi:\w+:dbname=(\w+)/i;
+                              $1 ? $1 : ();
+                          }
+                          else
+                          {
+                              ();
+                          }
+                        }
+                    DBI->data_sources( $self->dbi_driver_name ) );
+
+    return @schemas;
+
 }
 
 sub create_database
@@ -210,6 +246,10 @@ drop_database>, the following parameters are accepted:
 =item * tty
 
 =back
+
+=head2 schemas
+
+This method accepts the same parameters as the C<connect> method.
 
 =head2 get_last_id
 

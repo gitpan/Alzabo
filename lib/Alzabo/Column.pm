@@ -10,36 +10,28 @@ use Tie::IxHash;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.26 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.29 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
 sub table
 {
-    my $self = shift;
-
-    return $self->{table};
+    $_[0]->{table};
 }
 
 sub name
 {
-    my $self = shift;
-
-    return $self->{name};
+    $_[0]->{name};
 }
 
 sub nullable
 {
-    my $self = shift;
-
-    return $self->{nullable};
+    $_[0]->{nullable};
 }
 
 sub attributes
 {
-    my $self = shift;
-
-    return keys %{ $self->{attributes} };
+    return keys %{ $_[0]->{attributes} };
 }
 
 sub has_attribute
@@ -56,72 +48,90 @@ sub has_attribute
 
 sub type
 {
-    my $self = shift;
-
-    return $self->definition->type;
+    $_[0]->definition->type;
 }
 
 sub sequenced
 {
-    my $self = shift;
-
-    return $self->{sequenced};
+    $_[0]->{sequenced};
 }
 
 sub default
 {
-    my $self = shift;
-
-    return $self->{default};
+    $_[0]->{default};
 }
 
 sub length
 {
-    my $self = shift;
-
-    return $self->definition->length;
+    $_[0]->definition->length;
 }
 
 sub precision
 {
-    my $self = shift;
-
-    return $self->definition->precision;
+    $_[0]->definition->precision;
 }
 
 sub definition
 {
-    my $self = shift;
-
-    return $self->{definition};
+    $_[0]->{definition};
 }
 
 sub is_primary_key
 {
-    my $self = shift;
-
-    return $self->table->column_is_primary_key($self);
+    $_[0]->table->column_is_primary_key($_[0]);
 }
 
 sub is_numeric
 {
-    my $self = shift;
+    $_[0]->table->schema->rules->type_is_numeric($_[0]);
+}
 
-    return $self->table->schema->rules->type_is_numeric( $self->type );
+sub is_integer
+{
+    $_[0]->table->schema->rules->type_is_integer($_[0]);
+}
+
+sub is_floating_point
+{
+    $_[0]->table->schema->rules->type_is_floating_point($_[0]);
 }
 
 sub is_character
 {
-    my $self = shift;
+    $_[0]->table->schema->rules->type_is_char($_[0]);
+}
 
-    return $self->table->schema->rules->type_is_char( $self->type );
+sub is_date
+{
+    $_[0]->table->schema->rules->type_is_date($_[0]);
+}
+
+sub is_datetime
+{
+    $_[0]->table->schema->rules->type_is_datetime($_[0]);
+}
+
+sub is_time
+{
+    $_[0]->table->schema->rules->type_is_time($_[0]);
 }
 
 sub is_blob
 {
+    $_[0]->table->schema->rules->type_is_blob($_[0]);
+}
+
+sub generic_type
+{
     my $self = shift;
 
-    return $self->table->schema->rules->type_is_blob( $self->type );
+    foreach my $type ( qw( integer floating_point character date datetime time blob ) )
+    {
+        my $method = "is_$type";
+        return $type if $self->$method();
+    }
+
+    return 'unknown';
 }
 
 sub comment { $_[0]->{comment} }
@@ -252,6 +262,20 @@ table's primary key.
 A boolean value indicating whether the column is a numeric type
 column.
 
+=head2 is_integer
+
+=head3 Returns
+
+A boolean value indicating whether the column is a numeric type
+column.
+
+=head2 is_floating_point
+
+=head3 Returns
+
+A boolean value indicating whether the column is a numeric type
+column.
+
 =head2 is_character
 
 =head3 Returns
@@ -259,11 +283,56 @@ column.
 A boolean value indicating whether the column is a character type
 column.
 
+=head2 is_date
+
+=head3 Returns
+
+A boolean value indicating whether the column is a date type column.
+
+=head2 is_datetime
+
+=head3 Returns
+
+A boolean value indicating whether the column is a datetime type
+column.
+
+=head2 is_time
+
+=head3 Returns
+
+A boolean value indicating whether the column is a time type column.
+
 =head2 is_blob
 
 =head3 Returns
 
 A boolean value indicating whether the column is a blob column.
+
+=head2 generic_type
+
+=head3
+
+This methods returns one of the following strings:
+
+=over 4
+
+=item integer
+
+=item floating_point
+
+=item character
+
+=item date
+
+=item datetime
+
+=item time
+
+=item blob
+
+=item unknown
+
+=back
 
 =head2 definition
 

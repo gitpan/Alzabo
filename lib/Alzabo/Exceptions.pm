@@ -3,7 +3,7 @@ package Alzabo::Exceptions;
 use strict;
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.22 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.25 $ =~ /(\d+)\.(\d+)/;
 
 my %e;
 
@@ -79,6 +79,76 @@ BEGIN
 use Exception::Class (%e);
 
 Alzabo::Exception->Trace(1);
+
+package Alzabo::Exception;
+
+sub format
+{
+    my $self = shift;
+
+    if (@_)
+    {
+        $self->{format} = shift eq 'html' ? 'html' : 'text';
+    }
+
+    return $self->{format} || 'text';
+}
+
+sub as_string
+{
+    my $self = shift;
+
+    my $stringify_function = "as_" . $self->format;
+
+    return $self->$stringify_function();
+}
+
+sub as_text
+{
+    return $_[0]->full_message;
+}
+
+sub as_html
+{
+    my $self = shift;
+
+    my $msg = $self->full_message;
+
+    require HTML::Entities;
+    $msg = HTML::Entities::encode_entities($msg);
+    $msg =~ s/\n/<br>/;
+
+    my $html = <<"EOF";
+<html><body>
+<p align="center"><font face="Verdana, Arial, Helvetica, sans-serif"><b>System error</b></font></p>
+<table border="0" cellspacing="0" cellpadding="1">
+ <tr>
+  <td nowrap align="left" valign="top"><b>error:</b>&nbsp;</td>
+  <td align="left" valign="top" nowrap>$msg</td>
+ </tr>
+ <tr>
+  <td align="left" valign="top" nowrap><b>code stack:</b>&nbsp;</td>
+  <td align="left" valign="top" nowrap>
+EOF
+
+    foreach my $frame ( $self->trace->frames )
+    {
+        my $filename = HTML::Entities::encode_entities( $frame->filename );
+        my $line = $frame->line;
+
+        $html .= "$filename: $line<br>\n";
+    }
+
+    $html .= <<'EOF';
+  </td>
+ </tr>
+</table>
+
+</body></html>
+EOF
+
+    return $html;
+}
 
 package Alzabo::Exception::Driver;
 

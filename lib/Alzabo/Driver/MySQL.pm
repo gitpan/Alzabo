@@ -11,7 +11,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.43 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.48 $ =~ /(\d+)\.(\d+)/;
 
 use base qw(Alzabo::Driver);
 
@@ -28,12 +28,13 @@ sub new
 sub connect
 {
     my $self = shift;
-    my %p = @_;
 
     return if $self->{dbh} && $self->{dbh}->ping;
 
     $self->disconnect if $self->{dbh};
-    $self->{dbh} = $self->_make_dbh(%p, name => $self->{schema}->name);
+    $self->{dbh} = $self->_make_dbh( @_,
+                                     name => $self->{schema}->name
+                                   );
 
     my @vars = $self->rows(sql=>'SHOW VARIABLES');
     foreach (@vars)
@@ -97,23 +98,29 @@ sub schemas
 {
     my $self = shift;
 
-    return ( map { /dbi:\w+:(\w+)/i; defined $1 ? $1 : () }
-	     DBI->data_sources( $self->dbi_driver_name ) );
+    my $dbh = $self->_make_dbh( name => '',
+				@_ );
+
+    my @schemas = $dbh->func('_ListDBs');
+
+    Alzabo::Exception::Driver->throw( error => $dbh->errstr )
+        if $dbh->errstr;
+
+    return @schemas;
 }
 
 sub create_database
 {
     my $self = shift;
 
-    my %p = @_;
-
     my $db = $self->{schema}->name;
 
     my $dbh = $self->_make_dbh( name => '',
-				%p );
+				@_ );
 
-    eval { $dbh->func( 'createdb', $db, 'admin' ) };
-    Alzabo::Exception::Driver->throw( error => $@ ) if $@;
+    $dbh->func( 'createdb', $db, 'admin' );
+    Alzabo::Exception::Driver->throw( error => $dbh->errstr )
+	if $dbh->errstr;
 
     $dbh->disconnect;
 }
@@ -121,15 +128,15 @@ sub create_database
 sub drop_database
 {
     my $self = shift;
-    my %p = @_;
 
     my $db = $self->{schema}->name;
 
     my $dbh = $self->_make_dbh( name => '',
-				%p );
+				@_ );
 
-    eval { $dbh->func( 'dropdb', $db, 'admin' ) };
-    Alzabo::Exception::Driver->throw( error => $@ ) if $@;
+    $dbh->func( 'dropdb', $db, 'admin' );
+    Alzabo::Exception::Driver->throw( error => $dbh->errstr )
+	if $dbh->errstr;
 
     $dbh->disconnect;
 }
@@ -253,6 +260,10 @@ drop_database>, these methods will also include any parameter starting
 with C<mysql_> in the DSN used to connect to the database.  This
 allows you to pass parameters such as C<mysql_default_file>.  See the
 L<DBD::mysql docs|DBD::mysql> for more details.
+
+=head2 schemas
+
+This method accepts optional C<host> and C<port> parameters.
 
 =head2 get_last_id
 

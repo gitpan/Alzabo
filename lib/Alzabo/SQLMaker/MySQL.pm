@@ -11,7 +11,7 @@ use base qw(Alzabo::SQLMaker);
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.23 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.25 $ =~ /(\d+)\.(\d+)/;
 
 my $MADE_FUNCTIONS;
 
@@ -330,19 +330,20 @@ sub select
     for ( my $i = 0; $i <= $#_; $i++ )
     {
 	if ( UNIVERSAL::isa( $_[$i], 'Alzabo::SQLMaker::Function' ) &&
-	     $_[$i]->as_string( $self->{driver} ) =~ /^\s*MATCH/i )
+	     $_[$i]->as_string( $self->{driver}, $self->{quote_identifiers} ) =~ /^\s*MATCH/i )
 	{
-	    $_[$i] = $_[$i]->as_string( $self->{driver} );
+	    $_[$i] = $_[$i]->as_string( $self->{driver}, $self->{quote_identifiers} );
 
-	    $_[$i] .= ' ' . $_[$i + 1]->as_string( $self->{driver} );
+	    $_[$i] .= ' ' . $_[$i + 1]->as_string( $self->{driver}, $self->{quote_identifiers} );
 
 	    splice @_, $i + 1, 1;
 
 	    if ( defined $_[ $i + 1 ] &&
 		 UNIVERSAL::isa( $_[ $i + 1 ], 'Alzabo::SQLMaker::Function' ) &&
-		 $_[ $i + 1 ]->as_string( $self->{driver} ) =~ /^\s*IN BOOLEAN MODE/i )
+		 $_[ $i + 1 ]->as_string( $self->{driver}, $self->{quote_identifiers} ) =~
+                 /^\s*IN BOOLEAN MODE/i )
 	    {
-		$_[$i] .= ' ' . $_[$i + 1]->as_string( $self->{driver} );
+		$_[$i] .= ' ' . $_[$i + 1]->as_string( $self->{driver}, $self->{quote_identifiers} );
 		splice @_, $i + 1, 1;
 	    }
 	}
@@ -360,10 +361,11 @@ sub condition
     # IN_BOOLEAN_MODE is optional
     #
     if ( UNIVERSAL::isa( $_[0], 'Alzabo::SQLMaker::Function' ) &&
-	 $_[0]->as_string( $self->{driver} ) =~ /^\s*MATCH/i )
+	 $_[0]->as_string( $self->{driver}, $self->{quote_identifiers} ) =~ /^\s*MATCH/i )
     {
 	$self->{last_op} = 'condition';
-	$self->{sql} .= join ' ', map { $_->as_string( $self->{driver} ) } @_;
+	$self->{sql} .=
+            join ' ', map { $_->as_string( $self->{driver}, $self->{quote_identifiers} ) } @_;
     }
     else
     {

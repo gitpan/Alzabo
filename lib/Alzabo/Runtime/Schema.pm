@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.64 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.71 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -97,6 +97,14 @@ sub set_referential_integrity
     $self->{maintain_integrity} = $val if defined $val;
 }
 
+sub set_quote_identifiers
+{
+    my $self = shift;
+    my $val = shift;
+
+    $self->{quote_identifiers} = $val if defined $val;
+}
+
 sub connect
 {
     my $self = shift;
@@ -109,6 +117,13 @@ sub connect
     $self->driver->connect( %p, @_ );
 
 #    $self->set_referential_integrity( ! $self->driver->supports_referential_integrity );
+}
+
+sub disconnect
+{
+    my $self = shift;
+
+    $self->driver->disconnect;
 }
 
 sub one_row
@@ -132,7 +147,7 @@ sub join
 					  optional => 1 },
 			    limit => { type => SCALAR | ARRAYREF,
 				       optional => 1 },
-			    distinct => { isa => 'Alzabo::Table',
+			    distinct => { type => ARRAYREF | OBJECT,
 					  optional => 1 },
 			  } );
 
@@ -154,35 +169,53 @@ sub join
 	@tables = @{ $p{join} };
     }
 
+    if ( $p{distinct} )
+    {
+        $p{distinct} =
+            UNIVERSAL::isa( $p{distinct}, 'ARRAY' ) ? $p{distinct} : [ $p{distinct} ];
+    }
+
     # We go in this order:  $p{select}, $p{distinct}, @tables
     my @select_tables = ( $p{select} ?
 			  ( UNIVERSAL::isa( $p{select}, 'ARRAY' ) ?
 			    @{ $p{select} } : $p{select} ) :
-			  ( $p{distinct} ? $p{distinct} :
-			    @tables ) );
+                          $p{distinct} ?
+                          @{ $p{distinct} } :
+                          @tables );
 
     my @select_cols;
     if ( $p{distinct} )
     {
-	@select_cols = ( 'distinct',
-			 map { $_->primary_key }
-			 ( UNIVERSAL::isa( $p{distinct}, 'ARRAY' ) ?
-			   @{ $p{distinct} } :
-			   $p{distinct} )
+        my %distinct = map { $_ => 1 } @{ $p{distinct} };
+
+        # hack so distinct is not treated as a function, just a
+        # bareword in the SQL
+	@select_cols = ( 'DISTINCT',
+			 map { ( $_->primary_key,
+                                 $_->prefetch ?
+                                 $_->columns( $_->prefetch ) :
+                                 () ) }
+			 @{ $p{distinct} }
 		       );
 
-	foreach (@select_tables)
+	foreach my $t (@select_tables)
 	{
-	    next if $_ eq $p{distinct};
-	    push @select_cols, $_->primary_key;
+	    next if $distinct{$t};
+	    push @select_cols, $t->primary_key;
+
+            push @select_cols, $t->columns( $t->prefetch ) if $t->prefetch;
 	}
 
-	@select_tables = ( $p{distinct}, grep { $_ ne $p{distinct} } @select_tables );
-	delete $p{distinct};
+	@select_tables = ( @{ $p{distinct} }, grep { ! $p{distinct} } @select_tables );
     }
     else
     {
-	@select_cols = map { $_->primary_key } @select_tables;
+	@select_cols =
+            ( map { ( $_->primary_key,
+                      $_->prefetch ?
+                      $_->columns( $_->prefetch ) :
+                      () ) }
+              @select_tables );
     }
 
     my $sql = ( $self->sqlmaker->
@@ -328,28 +361,27 @@ sub _join_all_tables
 	    # referenced, and changes here could break that.
 
 	    # XXX - improve
-	    Alzabo::Exception::Params->throw( error => 'The table map must contain only two tables per array refernce' )
-		if @$set > 4;
+	    Alzabo::Exception::Params->throw
+                ( error => 'The table map must contain only two tables per array reference' )
+                    if @$set > 4;
 
 	    my @tables;
-	    my $fk;
 	    if ( ! ref $set->[0] )
 	    {
 		$set->[0] =~ /^(right|left|full)_outer_join$/i
-		    or Alzabo::Exception::Params->throw( error => "Invalid join type; $set->[0]" );
+		    or Alzabo::Exception::Params->throw
+                        ( error => "Invalid join type; $set->[0]" );
 
 	        @tables = @$set[1,2];
-	        $fk = $set->[3];
 
-		push @from, [ $1, @tables, $fk ];
+		push @from, [ $1, @tables, $set->[3] ];
 	    }
 	    else
 	    {
-		@tables = @$set[0,1];
-	        $fk = $set->[2];
+                @tables = @$set[0,1];
 
 		push @from, grep { ! exists $tables{ $_->name } } @tables;
-		push @joins, [ @tables, $fk ];
+		push @joins, [ @tables, $set->[2] ];
 	    }
 
 	    # Track the tables we've seen
@@ -381,7 +413,7 @@ sub _join_all_tables
     {
 	for (my $x = 0; $x < @{ $p{join} } - 1; $x++)
 	{
-	    push @joins, [ $p{join}->[$x], $p{join}->[$x + 1], undef ];
+	    push @joins, [ $p{join}->[$x], $p{join}->[$x + 1] ];
 	}
 
 	@from = @{ $p{join} };
@@ -391,14 +423,14 @@ sub _join_all_tables
 
     foreach my $join (@joins)
     {
-	$self->_join_two_tables( @$join, $p{sql} );
+	$self->_join_two_tables( $p{sql}, @$join );
     }
 }
 
 sub _join_two_tables
 {
     my $self = shift;
-    my ($table_1, $table_2, $fk, $sql) = @_;
+    my ($sql, $table_1, $table_2, $fk) = @_;
 
     my $op =  $sql->last_op eq 'and' || $sql->last_op eq 'condition' ? 'and' : 'where';
 
@@ -428,6 +460,19 @@ sub _join_two_tables
     }
 }
 
+sub prefetch_all
+{
+    my $self = shift;
+
+    $_->set_prefetch( $_->columns) for $self->tables;
+}
+
+sub prefetch_all_but_blobs
+{
+    my $self = shift;
+
+    $_->set_prefetch( grep { ! $_->is_blob } $_->columns) for $self->tables;
+}
 
 __END__
 
@@ -538,6 +583,13 @@ appropriate action.
 
 Defaults to false.
 
+=head2 set_quote_identifiers ($boolean)
+
+If this is true, then all SQL constructed for this schema will have
+quoted identifiers (like `Table`.`column` in MySQL).
+
+Defaults to false.
+
 =head2 connect (%params)
 
 Calls the L<C<Alzabo::Driver-E<gt>connect>|Alzabo::Driver/connect>
@@ -545,6 +597,13 @@ method for the driver owned by the schema.  The username, password,
 host, and port set for the schema will be passed to the driver, as
 will any additional parameters given to this method.  See the
 L<C<Alzabo::Driver-E<gt>connect>|Alzabo::Driver/connect> method for
+more details.
+
+=head2 disconnect
+
+Calls the L<C<Alzabo::Driver-E<gt>disconnect>|Alzabo::Driver/disconnect>
+method for the driver owned by the schema.  See the
+L<C<Alzabo::Driver-E<gt>disconnect>|Alzabo::Driver/disconnect> method for
 more details.
 
 =head2 join
@@ -759,6 +818,18 @@ object containing the results of the query.
 
 This method is simply a shortcut to get the result of COUNT('*') for a
 join.
+
+=head2 prefetch_all
+
+This method will set all the tables in the schema to prefetch all
+their columns.  See the L<lazy column
+loading|Alzabo::Runtime::Table/LAZY COLUMN LOADING> section in
+L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table> for more details.
+
+=head2 prefetch_all_but_blobs
+
+This method will set all the tables in the schema to prefetch all
+their non-blob-type columns.
 
 =for pod_merge name
 

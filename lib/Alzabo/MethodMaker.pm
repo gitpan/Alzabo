@@ -9,7 +9,7 @@ use Alzabo::Runtime;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.59 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.61 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
@@ -527,7 +527,7 @@ sub make_self_relation
 
     my $children = join '::', $self->{row_class}, $name;
 
-    warn "Making self-relation method $children: returns row cursor\n" if $DEBUG;
+    warn "Making self-relationship method $children: returns row cursor\n" if $DEBUG;
     {
 	no strict 'refs';
 	*{$children} =
@@ -643,7 +643,9 @@ sub make_lookup_columns_methods
 	    no strict 'refs';
 	    *{$method} =
 		sub { my $self = shift;
-		      return $self->rows_by_foreign_key( foreign_key => $fk, @_ )->select($col_name) };
+                      my $row = $self->rows_by_foreign_key( foreign_key => $fk, @_ );
+                      return unless $row;
+		      return $row->select($col_name) };
 	}
 
 	$self->{row_class}->add_method_docs
@@ -1010,7 +1012,9 @@ sub make_lookup_table_method
 	no strict 'refs';
 	*{$method} =
 	    sub { my $self = shift;
-		  return $self->rows_by_foreign_key( foreign_key => $fk, @_ )->select($non_pk_name) };
+                  my $row = $self->rows_by_foreign_key( foreign_key => $fk, @_ );
+                  return unless $row;
+		  return $row->select($non_pk_name) };
     }
 
     return 1;

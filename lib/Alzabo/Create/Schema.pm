@@ -21,7 +21,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.83 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.87 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -630,8 +630,8 @@ sub _create_linking_table
 
     my $tracker = Alzabo::ChangeTracker->new;
 
-    my $t1 = $p{table_from};
-    my $t2 = $p{table_to};
+    my $t1 = $p{table_from} || $p{columns_from}->[0]->table;
+    my $t2 = $p{table_to} || $p{columns_to}->[0]->table;
 
     my $t1_col;
     if ($p{columns_from})
@@ -669,15 +669,15 @@ sub _create_linking_table
 
     if ( exists $p{name} )
     {
-	$name = $p{name}
+	$name = $p{name};
     }
-    elsif ( lc $p{table_from}->name eq $p{table_from}->name )
+    elsif ( lc $t1->name eq $t1->name )
     {
-	$name = join '_', $p{table_from}->name, $p{table_to}->name;
+	$name = join '_', $t1->name, $t2->name;
     }
     else
     {
-	$name = join '', $p{table_from}->name, $p{table_to}->name;
+	$name = join '', $t1->name, $t2->name;
     }
 
     $linking = $self->make_table( name => $name );
@@ -693,25 +693,27 @@ sub _create_linking_table
 				 );
 	}
 
-	$self->add_relationship( table_from => $t1,
-				 table_to   => $linking,
-				 columns_from => $t1_col,
-				 columns_to   => [ $linking->columns( map { $_->name } @$t1_col ) ],
-				 cardinality  => [ '1', 'n' ],
-				 from_is_dependent => $p{from_is_dependent},
-				 to_is_dependent => 1,
-				 comment => $p{comment},
-			       );
+	$self->add_relationship
+	    ( table_from => $t1,
+	      table_to   => $linking,
+	      columns_from => $t1_col,
+	      columns_to   => [ $linking->columns( map { $_->name } @$t1_col ) ],
+	      cardinality  => [ '1', 'n' ],
+	      from_is_dependent => $p{from_is_dependent},
+	      to_is_dependent => 1,
+	      comment => $p{comment},
+	    );
 
-	$self->add_relationship( table_from => $t2,
-				 table_to   => $linking,
-				 columns_from => $t2_col,
-				 columns_to   => [ $linking->columns( map { $_->name } @$t2_col ) ],
-				 cardinality  => [ '1', 'n' ],
-				 from_is_dependent => $p{to_is_dependent},
-				 to_is_dependent => 1,
-				 comment => $p{comment},
-			       );
+	$self->add_relationship
+	    ( table_from => $t2,
+	      table_to   => $linking,
+	      columns_from => $t2_col,
+	      columns_to   => [ $linking->columns( map { $_->name } @$t2_col ) ],
+	      cardinality  => [ '1', 'n' ],
+	      from_is_dependent => $p{to_is_dependent},
+	      to_is_dependent => 1,
+	      comment => $p{comment},
+	    );
     };
 
     if ($@)
@@ -738,14 +740,13 @@ sub instantiated
 sub create
 {
     my $self = shift;
-    my %p = @_;
 
     my @sql = $self->make_sql;
 
-    $self->{driver}->create_database(%p)
-	unless grep { $self->{name} eq $_ } $self->{driver}->schemas;
+    $self->{driver}->create_database(@_)
+	unless grep { $self->{name} eq $_ } $self->{driver}->schemas(@_);
 
-    $self->{driver}->connect(%p);
+    $self->{driver}->connect(@_);
 
     foreach my $statement (@sql)
     {
@@ -778,7 +779,7 @@ sub sync_backend_sql
 {
     my $self = shift;
 
-    unless ( grep { $self->{name} eq $_ } $self->{driver}->schemas )
+    unless ( grep { $self->{name} eq $_ } $self->{driver}->schemas(@_) )
     {
 	return $self->rules->schema_sql($self);
     }
@@ -796,10 +797,10 @@ sub sync_backend
 {
     my $self = shift;
 
-    unless ( grep {  $self->{name} eq $_ } $self->{driver}->schemas )
+    unless ( grep {  $self->{name} eq $_ } $self->{driver}->schemas(@_) )
     {
 	$self->set_instantiated(0);
-	return $self->create;
+	return $self->create(@_);
     }
 
     $self->{driver}->connect(@_);
@@ -819,9 +820,8 @@ sub sync_backend
 sub drop
 {
     my $self = shift;
-    my %p = @_;
 
-    $self->{driver}->drop_database(%p);
+    $self->{driver}->drop_database(@_);
     $self->set_instantiated(0);
 }
 
@@ -1194,24 +1194,24 @@ not specified then the schema object attempts to calculate the proper
 values for these attributes.
 
 To do this, Alzabo attempts to determine the dependencies of the
-tables.  If you have specified a cardinality of 1..1, or n..1,n cases
-where both tables are independent, or where they are both dependent
-(which makes little sense but its your code so...) then the
-C<table_from> is treated as being the dependent table for the purposes
-of determining
+tables.  If you have specified a cardinality of 1..1, or n..1, in
+cases where both tables are independent, or where they are both
+dependent (which makes little sense, but it's your code, so...) then
+the C<table_from> is treated as being the dependent table for the
+purposes of determining
 
 If no columns with the same names exist in the other table, then
-columns with that name will be created.  Otherwise, it changes the
-dependent columns so that their
+columns with those names will be created.  Otherwise, add_relationship
+changes the dependent columns so that their
 L<C<Alzabo::Create::ColumnDefinition>|Alzabo::Create::ColumnDefinition>
-objects are the same as the columns in the table upon which it is
+objects are the same as the columns in the table upon which they are
 dependent, meaning that changes to the type of one column affects both
 at the same time.
 
-If you want to make multi-column relation, the assumption is that the
-order of the columns is significant.  In other words, the first column
-in the C<columns_from> parameter is assumed to correspond to the first
-column in hte C<columns_to> parameter and so on.
+If you want to make a multi-column relationship, the assumption is
+that the order of the columns is significant.  In other words, the
+first column in the C<columns_from> parameter is assumed to correspond
+to the first column in hte C<columns_to> parameter and so on.
 
 The number of columns given in C<columns_from> and C<columns_to> must
 be the same except when creating a many to many relationship.
@@ -1219,7 +1219,7 @@ be the same except when creating a many to many relationship.
 If the cardinality is many to many then a new table will be created to
 link the two tables together.  This table will contain the primary
 keys of both the tables passed into this function.  It will contain
-foreign keys to both of these tables as well and these tables will be
+foreign keys to both of these tables as well, and these tables will be
 linked to this new table.
 
 =head3 Parameters
@@ -1235,6 +1235,13 @@ linked to this new table.
 =item * columns_to => C<Alzabo::Create::Column> object (optional if table_to is provided)
 
 =item * cardinality => [1, 1], [1, 'n'], ['n', 1], or ['n', 'n']
+
+=item * name => $name
+
+If provided, and if the specified cardinality requires the creation of
+a linking table, this string will be used to name that linking
+table. Otherwise, the new table's name will be synthesized from the
+names of those it's linking.
 
 =item * from_is_dependent => $boolean
 

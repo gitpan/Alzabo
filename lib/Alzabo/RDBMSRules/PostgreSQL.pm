@@ -10,7 +10,7 @@ use base qw(Alzabo::RDBMSRules);
 use Params::Validate qw( validate_pos );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.33 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.35 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -170,8 +170,8 @@ sub validate_sequenced_attribute
     my $self = shift;
     my $col = shift;
 
-    Alzabo::Exception::RDBMSRules->throw( error => 'Non-numeric columns cannot be sequenced' )
-	unless $self->type_is_numeric( $col->type );
+    Alzabo::Exception::RDBMSRules->throw( error => 'Non-integer columns cannot be sequenced' )
+	unless $col->is_integer;
 }
 
 sub validate_index
@@ -189,19 +189,16 @@ sub validate_index
 	if $index->fulltext;
 }
 
-sub type_is_numeric
+sub type_is_integer
 {
     my $self = shift;
-    my $type = uc shift;
+    my $col  = shift;
+    my $type = uc $col->type;
 
     return 1 if $type =~ /\A(?:
-                             DECIMAL|
-			     FLOAT(?:4|8)?|
 			     INT(?:2|4|8)?|
 			     SMALLINT|
 			     INTEGER|
-			     MONEY|
-			     NUMERIC|
 			     OID|
 			     SERIAL
 			    )
@@ -209,20 +206,65 @@ sub type_is_numeric
                          /x;
 }
 
+sub type_is_floating_point
+{
+    my $self = shift;
+    my $col  = shift;
+    my $type = uc $col->type;
+
+    return 1 if $type =~ /\A(?:
+                             DECIMAL|
+			     FLOAT(?:4|8)?|
+			     MONEY|
+			     NUMERIC
+                            )
+                          \z
+                         /x;
+}
+
 sub type_is_char
 {
     my $self = shift;
-    my $type = uc shift;
+    my $col  = shift;
+    my $type = uc $col->type;
 
-    return 1 if $type =~ /\A(?:(?:VAR)?CHAR|CHARACTER|TEXT)\z/;
+    return 1 if $type =~ /\A(?:(?:VAR)?CHAR|CHARACTER)\z/;
+}
+
+sub type_is_date
+{
+    my $self = shift;
+    my $col  = shift;
+    my $type = uc $col->type;
+
+    return 1 if $type eq 'DATE';
+}
+
+sub type_is_datetime
+{
+    my $self = shift;
+    my $col  = shift;
+    my $type = uc $col->type;
+
+    return 1 if $type eq 'TIMESTAMP';
+}
+
+sub type_is_time
+{
+    my $self = shift;
+    my $col  = shift;
+    my $type = uc $col->type;
+
+    return 1 if $type eq 'TIME';
 }
 
 sub type_is_blob
 {
     my $self = shift;
-    my $type = uc shift;
+    my $col  = shift;
+    my $type = uc $col->type;
 
-    return 1 if $type =~ /\ABYTEA\z/;
+    return 1 if $type =~ /\A(?:BYTEA|TEXT)\z/;
 }
 
 sub blob_type { return 'BYTEA' }

@@ -12,7 +12,7 @@ require 'base.pl';
 
 my @db;
 my $tests = 0;
-my $shared_tests = 135;
+my $shared_tests = 141;
 my $mysql_only_tests = 2;
 my $pg_only_tests = 1;
 if (eval { require DBD::mysql } && ! $@ )
@@ -90,6 +90,15 @@ foreach my $db (@db)
 				   ) },
 	     "Make column 'foo_pk' in 'footab'" );
 
+
+    eval { $s->tables( 'footab', 'does not exist' ) };
+    like( $@, qr/Table does not exist doesn't exist/,
+          "Make sure tables method catches missing tables" );
+
+    eval { $t1->columns( 'foo_pk', 'does not exist' ) };
+    like( $@, qr/Column does not exist doesn't exist/,
+          "Make sure columns method catches missing columns" );
+
     my $t1_c1;
     eval_ok( sub { $t1_c1 = $t1->column('foo_pk') },
 	     "Retrieve 'foo_pk' from 'footab'" );
@@ -144,12 +153,12 @@ foreach my $db (@db)
     eval_ok( sub { $t2->add_primary_key($t2_c1) },
 	     "Make 'bar_pk' a primary key for 'bartab'" );
 
-    eval_ok( sub { $s->add_relation( table_from => $t1,
-				     table_to   => $t2,
-				     cardinality => ['n', 'n'],
-				     from_is_dependent => 1,
-				     to_is_dependent => 0,
-				   ) },
+    eval_ok( sub { $s->add_relationship( table_from => $t1,
+					 table_to   => $t2,
+					 cardinality => ['n', 'n'],
+					 from_is_dependent => 1,
+					 to_is_dependent => 0,
+				       ) },
 	     "Add many to many relationship from 'footab' to 'bartab'" );
 
     my $link;
@@ -252,12 +261,12 @@ foreach my $db (@db)
     is( $link_fk[0]->table_to->name, 'bartab',
 	"The table_to for the foreign key should be bartab" );
 
-    eval_ok( sub { $s->add_relation( table_from => $t1,
-				     table_to => $t2,
-				     cardinality => [ 'n', 1 ],
-				     from_is_dependent => 0,
-				     to_is_dependent => 0,
-				   ) },
+    eval_ok( sub { $s->add_relationship( table_from => $t1,
+					 table_to => $t2,
+					 cardinality => [ 'n', 1 ],
+					 from_is_dependent => 0,
+					 to_is_dependent => 0,
+				       ) },
 	     "Create a many to one relation from 'footab' to 'bartab'" );
 
     my $new_col;
@@ -284,12 +293,12 @@ foreach my $db (@db)
     ok( @fk,
 	"bartab should only have one foreign key to footab from bar_pk" );
 
-    eval_ok( sub { $s->add_relation( table_from => $t1,
-				     table_to => $t2,
-				     cardinality => [ 1, 'n' ],
-				     from_is_dependent => 0,
-				     to_is_dependent => 0,
-				   ) },
+    eval_ok( sub { $s->add_relationship( table_from => $t1,
+					 table_to => $t2,
+					 cardinality => [ 1, 'n' ],
+					 from_is_dependent => 0,
+					 to_is_dependent => 0,
+				       ) },
 	     "Create a second relation (this time one to many) from footab to bartab" );
 
     eval_ok( sub { $new_col = $t2->column('foo_pk') },
@@ -319,12 +328,12 @@ foreach my $db (@db)
     $s->make_table( name => 'baztab' );
     my $t3 = $s->table('baztab');
 
-    eval_ok( sub { $s->add_relation( table_from => $t1,
-				     table_to => $t3,
-				     cardinality => [ 1, 'n' ],
-				     from_is_dependent => 0,
-				     to_is_dependent => 0,
-				   ) },
+    eval_ok( sub { $s->add_relationship( table_from => $t1,
+					 table_to => $t3,
+					 cardinality => [ 1, 'n' ],
+					 from_is_dependent => 0,
+					 to_is_dependent => 0,
+				       ) },
 	     "Add one to many relation from footab to baztab" );
 
     eval_ok( sub { $new_col = $t3->column('foo_pk') },
@@ -401,12 +410,12 @@ foreach my $db (@db)
     $other->make_column( name => 'somethin',
 			 type => 'text' );
 
-    eval_ok( sub { $s->add_relation( table_from => $tc,
-				     table_to   => $other,
-				     cardinality => [ 1, 'n' ],
-				     from_is_dependent => 0,
-				     to_is_dependent => 0,
-				   ) },
+    eval_ok( sub { $s->add_relationship( table_from => $tc,
+					 table_to   => $other,
+					 cardinality => [ 1, 'n' ],
+					 from_is_dependent => 0,
+					 to_is_dependent => 0,
+				       ) },
 	     "Add a one to many relationship from two_col_pk to other" );
 
     my @cols;
@@ -592,4 +601,20 @@ foreach my $db (@db)
     my $e = $@;
     isa_ok( $e, 'Alzabo::Exception::RDBMSRules',
 	    "Exception thrown making a column with a bad name" );
+
+    ok( $other->column('othertest')->is_numeric,
+        "Should return true from is_numeric" );
+    ok( $other->column('othertest')->is_integer,
+        "Should return true from is_integer" );
+    is( $other->column('othertest')->generic_type, 'integer',
+        "Should return 'integer' from generic_type" );
+
+
+    eval_ok( sub { $s->add_relationship( columns_from => [ $tc->primary_key ],
+					 columns_to   => [ $other->primary_key ],
+					 cardinality => [ 'n', 'n' ],
+					 from_is_dependent => 0,
+					 to_is_dependent => 0,
+				       ) },
+	     "Add a many to many relationship without specifying tables" );
 }

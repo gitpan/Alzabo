@@ -7,7 +7,7 @@ use vars qw($VERSION $SCHEMA %CONNECT_PARAMS);
 use Digest::MD5 ();
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.14 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.15 $ =~ /(\d+)\.(\d+)/;
 
 sub import
 {
@@ -32,8 +32,11 @@ sub import
 	{
 	    _load_create_code();
 
-	    Alzabo::Exception::Params->throw( error => "Alzabo::ObjectCache::RDBMS requires a store_rdbms parameter if it is going to create a new schema" )
-		unless exists $p{store_rdbms};
+	    Alzabo::Exception::Params->throw
+                ( error =>
+                  "Alzabo::ObjectCache::RDBMS requires a store_rdbms" .
+                  " parameter if it is going to create a new schema" )
+                    unless exists $p{store_rdbms};
 
 	    $SCHEMA = Alzabo::Create::Schema->new( name  => $p{store_schema_name},
 						   rdbms => $p{store_rdbms} );
@@ -42,7 +45,8 @@ sub import
     }
 
     my $store_table =
-	$SCHEMA->table('AlzaboObjectCacheStore') if $SCHEMA->has_table('AlzaboObjectCacheStore');
+	$SCHEMA->table('AlzaboObjectCacheStore')
+            if $SCHEMA->has_table('AlzaboObjectCacheStore');
 
     if ($store_table)
     {
@@ -108,7 +112,8 @@ sub _load_create_code
     unless ($Alzabo::Create::VERSION)
     {
 	require Alzabo::Create;
-	warn "Had to load Alzabo::Create.  If this is a persistent environment your processes will be bloated.\n"
+	warn "Had to load Alzabo::Create.  If this is a persistent" .
+             " environment your processes will be bloated.\n"
 	    if $^W;
     }
 }

@@ -5,7 +5,7 @@ use vars qw($VERSION);
 
 use Alzabo::Runtime;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -51,6 +51,7 @@ sub reset
 
     $self->{errors} = [];
     $self->{seen} = {};
+    $self->{count} = 0;
 }
 
 sub errors
@@ -58,6 +59,22 @@ sub errors
     my $self = shift;
 
     return @{ $self->{errors} };
+}
+
+sub count
+{
+    my $self = shift;
+
+    return $self->{count};
+}
+
+sub next_as_hash
+{
+    my $self = shift;
+
+    my @next = $self->next or return;
+
+    return map { $_->table->name => $_ } @next;
 }
 
 __END__
@@ -103,6 +120,19 @@ objects.
 
 Resets the cursor so that the next C<next> call will return the first
 row of the set.
+
+=head2 count
+
+=head3 Returns
+
+The number of rows returned by the cursor so far.
+
+=head2 next_as_hash
+
+=head3 Returns
+
+The next row or rows in a hash, where the hash key is the table name
+and the hash value is the row object.
 
 =head1 HANDLING ERRORS
 

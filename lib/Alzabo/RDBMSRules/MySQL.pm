@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.63 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.64 $ =~ /(\d+)\.(\d+)/;
 
 sub new
 {
@@ -218,22 +218,28 @@ sub validate_column_attribute
     my %p = @_;
 
     my $column = $p{column};
-    my $type = $column->type;
     my $a = uc $p{attribute};
     $a =~ s/\A\s//;
     $a =~ s/\s\z//;
 
-    if ( $a eq 'AUTO_INCREMENT' || $a eq 'UNSIGNED' || $a eq 'ZEROFILL' )
+    if ( $a eq 'UNSIGNED' || $a eq 'ZEROFILL' )
     {
 	Alzabo::Exception::RDBMSRules->throw( error => "$a attribute can only be applied to numeric columns" )
-	    unless $self->type_is_numeric($type);
+	    unless $column->is_numeric;
+	return;
+    }
+
+    if ( $a eq 'AUTO_INCREMENT' )
+    {
+	Alzabo::Exception::RDBMSRules->throw( error => "$a attribute can only be applied to integer columns" )
+	    unless $column->is_integer;
 	return;
     }
 
     if ($a eq 'BINARY')
     {
 	Alzabo::Exception::RDBMSRules->throw( error => "$a attribute can only be applied to character columns" )
-	    unless $self->type_is_char($type);
+	    unless $column->is_character;
 	return;
     }
     return if $a =~ /\AREFERENCES/i;
@@ -255,8 +261,8 @@ sub validate_sequenced_attribute
     my $self = shift;
     my $col = shift;
 
-    Alzabo::Exception::RDBMSRules->throw( error => 'Non-numeric columns cannot be sequenced' )
-	unless $self->type_is_numeric( $col->type );
+    Alzabo::Exception::RDBMSRules->throw( error => 'Non-integer columns cannot be sequenced' )
+	unless $col->is_integer;
 
     Alzabo::Exception::RDBMSRules->throw( error => 'Only one sequenced column per table is allowed.' )
 	if grep { $_ ne $col && $_->sequenced } $col->table->columns;
@@ -276,7 +282,7 @@ sub validate_index
 		unless $prefix =~ /\d+/ && $prefix > 0;
 
 	    Alzabo::Exception::RDBMSRules->throw( error => 'Non-character/blob columns cannot have an index prefix' )
-		unless $self->type_is_blob( $c->type ) || $self->type_is_char( $c->type );
+		unless $c->is_blob || $c->is_character;
 	}
 
 	if ( $c->is_blob )
@@ -297,33 +303,75 @@ sub validate_index
 
 }
 
-sub type_is_numeric
+sub type_is_integer
 {
     my $self = shift;
-    my $type = uc shift;
+    my $col  = shift;
+    my $type = uc $col->type;
 
-    return 1 if $type =~ /\A(?:
-                            (?:TINY|SMALL|MEDIUM|BIG)?
-                            INT|INTEGER
-                            )
-                           |
-                           FLOAT|DOUBLE|REAL
-                          \z
-                         /x;
+    return 1 if $type =~ /\A(?:(?:TINY|SMALL|MEDIUM|BIG)?INT|INTEGER)\z/;
+}
+
+sub type_is_floating_point
+{
+    my $self = shift;
+    my $col  = shift;
+    my $type = uc $col->type;
+
+    return 1 if $type =~ /\A(?:FLOAT|DOUBLE|REAL)\z/;
 }
 
 sub type_is_char
 {
     my $self = shift;
-    my $type = uc shift;
+    my $col  = shift;
+    my $type = uc $col->type;
 
     return 1 if $type =~ /\A(?:(?:NATIONAL\s+)?VAR)?CHAR\z/;
+}
+
+sub type_is_date
+{
+    my $self = shift;
+    my $col  = shift;
+    my $type = uc $col->type;
+
+    return 1 if $type =~ /\A(?:DATE|DATETIME|TIMESTAMP)\z/;
+}
+
+sub type_is_datetime
+{
+    my $self = shift;
+    my $col  = shift;
+    my $type = uc $col->type;
+
+    if ( $type eq 'TIMESTAMP' )
+    {
+        return $col->length > 8;
+    }
+
+    return 1 if $type eq 'DATETIME';
+}
+
+sub type_is_time
+{
+    my $self = shift;
+    my $col  = shift;
+    my $type = uc $col->type;
+
+    if ( $type eq 'TIMESTAMP' )
+    {
+        return $col->length > 8;
+    }
+
+    return 1 if $type eq /\A(?:DATETIME|TIME)\z/;
 }
 
 sub type_is_blob
 {
     my $self = shift;
-    my $type = uc shift;
+    my $col  = shift;
+    my $type = uc $col->type;
 
     return 1 if $type =~ /\A(?:TINY|MEDIUM|LONG)?(?:TEXT|BLOB)\z/;
 }
@@ -444,7 +492,7 @@ sub column_sql
     my @default;
     if ( defined $col->default )
     {
-	my $def = ( $self->type_is_numeric( $col->type ) ? $col->default :
+	my $def = ( $col->is_numeric ? $col->default :
 		    do { my $d = $col->default; $d =~ s/"/""/g; $d } );
 
 	@default = ( qq|DEFAULT "$def"| );

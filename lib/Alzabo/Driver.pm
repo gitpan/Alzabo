@@ -10,7 +10,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.66 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.72 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -76,7 +76,7 @@ sub rows
     eval
     {
 	my @row;
-	$sth->bind_columns( \ (@row[ 0..$#{ $sth->{NAME} } ] ) );
+	$sth->bind_columns( \ (@row[ 0..$#{ $sth->{NAME_lc} } ] ) );
 
 	push @data, [@row] while $sth->fetch;
 
@@ -190,7 +190,7 @@ sub column
     eval
     {
 	my @row;
-	$sth->bind_columns( \ (@row[ 0..$#{ $sth->{NAME} } ] ) );
+	$sth->bind_columns( \ (@row[ 0..$#{ $sth->{NAME_lc} } ] ) );
 	push @data, $row[0] while ($sth->fetch);
 	$sth->finish;
     };
@@ -310,7 +310,8 @@ sub func
 	    return $r[0];
 	}
     };
-    Alzabo::Exception::Driver->throw( error => $@ ) if $@;
+    Alzabo::Exception::Driver->throw( error => $self->{dbh}->errstr )
+	if $self->{dbh}->errstr;
 }
 
 sub DESTROY
@@ -479,12 +480,13 @@ sub new
 	$self->{sth} = $p{dbh}->prepare( $p{sql} );
 
 	$self->{bind} = exists $p{bind} ? ( ref $p{bind} ? $p{bind} : [ $p{bind} ] ) : [];
-	$self->{sth}->execute( @{ $self->{bind} } );
     };
 
     Alzabo::Exception::Driver->throw( error => $@,
 				      sql => $p{sql},
 				      bind => $self->{bind} ) if $@;
+
+    $self->execute;
 
     return $self;
 }
@@ -493,12 +495,16 @@ sub execute
 {
     my $self = shift;
 
-    $self->{bind} = [@_];
     eval
     {
 	$self->{sth}->finish if $self->{sth}->{Active};
 	$self->{rows_fetched} = 0;
-	$self->{sth}->execute(@_);
+	$self->{sth}->execute( @_ ? @_ : @{ $self->{bind} } );
+
+        $self->{result} = [];
+
+        $self->{sth}->bind_columns
+            ( \ ( @{ $self->{result} }[ 0..$#{ $self->{sth}->{NAME_lc} } ] ) );
     };
     Alzabo::Exception::Driver->throw( error => $@,
 				      sql => $self->{sth}{Statement},
@@ -508,20 +514,17 @@ sub execute
 sub next
 {
     my $self = shift;
+    my %p = @_;
 
     return unless $self->{sth}->{Active};
 
-    my @row;
     my $active;
     eval
     {
-	$self->{sth}->bind_columns( \ (@row[ 0..$#{ $self->{sth}->{NAME} } ] ) );
 	do
 	{
 	    $active = $self->{sth}->fetch;
 	} while ( $active && $self->{rows_fetched}++ < $self->{offset} );
-
-	$self->{sth}->finish if $self->{rows_fetched} == $self->{offset} + $self->{limit};
     };
 
     Alzabo::Exception::Driver->throw( error => $@,
@@ -530,7 +533,7 @@ sub next
 
     return unless $active;
 
-    return wantarray ? @row : $row[0];
+    return wantarray ? @{ $self->{result} } : $self->{result}[0];
 }
 
 sub next_hash
@@ -539,23 +542,22 @@ sub next_hash
 
     return unless $self->{sth}->{Active};
 
-    my %hash;
     my $active;
     eval
     {
-	$self->{sth}->bind_columns( \ ( @hash{ @{ $self->{sth}->{NAME_lc} } } ) );
 	do
 	{
 	    $active = $self->{sth}->fetch;
 	} while ( $active && $self->{rows_fetched}++ < $self->{offset} );
-
-	$self->{sth}->finish if $self->{rows_fetched} == $self->{offset} + $self->{limit};
     };
     Alzabo::Exception::Driver->throw( error => $@,
 				      sql => $self->{sth}{Statement},
 				      bind => $self->{bind} ) if $@;
 
     return unless $active;
+
+    my %hash;
+    @hash{ @{ $self->{sth}->{NAME_lc} } } = @{ $self->{result} };
 
     return %hash;
 }

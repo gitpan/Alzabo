@@ -1,3 +1,92 @@
+0.68  July 20, 2002
+
+ENHANCEMENTS:
+
+- Updated the thank you list in the README file (you too can be listed
+by sending me useful bug reports, patches, suggestions, or reminding
+that you already did so and I forgot ;)
+
+- Allow the Driver's ->schemas method to take connection params,
+wherever possible.  This allows Alzabo::Create::Schema methods like
+->create, ->sync_backend_sql, and ->sync_backend to work properly when
+the database server is on another machine.  Patch by Ilya Martynov.
+
+- Added Alzabo::Runtime::*Row->is_live method to easily distinguish
+between real and potential rows.
+
+- Did some profiling of data retrieval (Alzabo::Runtime bits) and
+optimized some of the most heavily used pieces of Alzabo.
+
+- Added the Alzabo::Runtime::Schema->prefetch_all and
+Alzabo::Runtime::Schema->prefetch_all_but_blobs convenience methods.
+
+- Added a ->count method to the cursor classes.
+
+- Added ->is_integer, ->is_floating_point, ->is_date, ->is_datetime,
+->is_time, and ->generic_type methods to column objects.
+
+- The Alzabo::Driver->schemas method now takes connection parameters.
+See your specific driver subclass for details on which.  Bug report by
+Ilya Martynov.
+
+- Added Alzabo::Runtime::Schema->disconnect method.  Patch by Ilya
+Martynov.
+
+- Make the Makefile.PL act gracefully when it is invoked without a
+tty.  Patch by Ilya Martynov.
+
+- The quoting of identifiers (table/column names) is now optional, and
+_off_ by default.  In profiling I found that a non-trivial amount of
+time was being spent quoting these, and in most cases it's not
+necessary.  There is now a
+Alzabo::Runtime::Schema->set_quote_identifiers method that can be used
+to change this behavior.
+
+Identifiers are always quoted when using Alzabo::Create::* with
+Postgres, however.
+
+- Did a fair amount of profiling in order to optimize Alzabo's data
+fetching.  In general, Alzabo::Runtime::* operations should be faster.
+
+- Added Alzabo::Runtime::Column->alias which is useful when executing
+queries via the Alzabo::Runtime::Schema and Alzabo::Runtime::Table
+->select methods.
+
+BUG FIXES:
+
+- Alzabo::MethodMake generated "lookup column/table" methods will
+return if there is no matching entry in the related table, which is
+important when the two tables are independent.  Previously it would
+have been a runtime error (attempting to call a method on an undefined
+value).
+
+- Fix warning from Row->update.  Patch by Ilya Martynov.
+
+- Alzabo::Runtime::PotentialRow's id_as_string method was misnamed id.
+The docs had it wrong for all classes.
+
+- Catch where clauses that contain non-column/function objects as left
+hand side value (like if you accidentally pass in a table object).
+
+- The Postgres TEXT column type is now considered a blob, not a
+character type column.
+
+- There was a fatal error when creating an n-to-n relationship if only
+columns were given, without tables.  This was fixed with a patch from
+Dan Martinez.
+
+- Explicitly check for errors after calling $dbh->func.
+
+- There was a bug when trying to use the schema creator to create
+relationships involving more than one column.
+
+- Fixed a bug where a query using the Alzabo::Runtime::Table->one_row
+could cause an exception if no rows were found.
+
+- Alzabo::Create::Schema->sync_backend was not passing through the
+connection parameters it was getting to the ->create method, causing
+failures.  Patch from Ilya Martynov.
+
 0.67  June 6, 2002
 
 BUG FIXES:

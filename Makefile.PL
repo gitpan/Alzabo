@@ -13,6 +13,8 @@ use Getopt::Long;
 my %opts;
 GetOptions( \%opts, 'dist' );
 
+$opts{dist} = 1 unless -t STDIN and -t STDOUT;
+
 unless ( $opts{dist} )
 {
     my $pl_file = File::Spec->catfile( 'install_helpers', 'prompts.pl' );

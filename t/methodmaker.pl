@@ -59,6 +59,9 @@ foreach my $t ($s->tables)
     $s->set_referential_integrity(1);
     $s->connect;
 
+    # needed for Pg!
+    $s->set_quote_identifiers(1);
+
     my $char = 'a';
     my $loc1 = $s->Location_t->insert( values => { location_id => 1,
 						   location => $a++ } );

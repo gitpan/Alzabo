@@ -9,7 +9,7 @@ use Class::Factory::Util;
 use Params::Validate qw( validate validate_pos );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.42 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.46 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -77,10 +77,38 @@ sub validate_index
 
 sub type_is_numeric
 {
+    my $self = shift;
+    my $col  = shift;
+
+    return $self->type_is_integer($col) || $self->type_is_floating_point($col);
+}
+
+sub type_is_integer
+{
+    shift()->_virtual;
+}
+
+sub type_is_floating_point
+{
     shift()->_virtual;
 }
 
 sub type_is_character
+{
+    shift()->_virtual;
+}
+
+sub type_is_date
+{
+    shift()->_virtual;
+}
+
+sub type_is_datetime
+{
+    shift()->_virtual;
+}
+
+sub type_is_time
 {
     shift()->_virtual;
 }

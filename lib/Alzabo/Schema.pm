@@ -17,7 +17,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 use Storable ();
 use Tie::IxHash ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.46 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.52 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -152,25 +152,38 @@ sub has_table
 sub table
 {
     my $self = shift;
-
-    validate_pos( @_, { type => SCALAR } );
     my $name = shift;
 
-    Alzabo::Exception::Params->throw( error => "Table $name doesn't exist in schema" )
-	unless $self->{tables}->EXISTS($name);
-
-    return $self->has_table($name);
+    if ( my $table = $self->{tables}->FETCH($name) )
+    {
+        return $table;
+    }
+    else
+    {
+        Alzabo::Exception::Params->throw
+            ( error => "Table $name doesn't exist in $self->{name}" );
+    }
 }
 
 sub tables
 {
     my $self = shift;
 
-    validate_pos( @_, ( { type => SCALAR } ) x @_ ) if @_;
-
     if (@_)
     {
-	return map { $self->table($_) } @_;
+        my @idx = $self->{tables}->Indices(@_);
+
+        # if only some of the keys are in the Tie::IxHash object, then
+        # @idx may contain undef for some values.
+        if ( ( grep { defined } @idx ) == @_ )
+        {
+            return $self->{tables}->Values(@idx);
+        }
+        else
+        {
+            # just to find the missing one(s)
+            $self->table($_) foreach @_;
+        }
     }
 
     return $self->{tables}->Values;
@@ -185,7 +198,6 @@ sub begin_work
 sub rollback
 {
     shift->driver->rollback;
-    Alzabo::ObjectCache->new->clear if $Alzabo::Object::VERSION;
 }
 
 sub commit
@@ -247,7 +259,9 @@ sub sqlmaker
 {
     my $self = shift;
 
-    return $self->{sql}->new( $self->driver );
+    return $self->{sql}->new( driver => $self->driver,
+                              quote_identifiers => $self->{quote_identifiers},
+                            );
 }
 
 __END__

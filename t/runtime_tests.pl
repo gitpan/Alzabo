@@ -149,6 +149,9 @@ sub run_tests
     is( $data{smell}, 'robotic',
 	"select_hash - check smell key" );
 
+    is( $emp{bill}->is_live, 1,
+        "->is_live should be true for real row" );
+
     eval { $emp_t->insert( values => { name => undef,
 				       dep_id => $borg_id,
 				       smell => 'robotic',
@@ -212,12 +215,16 @@ sub run_tests
 
     my $cursor;
     my $x = 0;
-    eval_ok( sub { $cursor = $emp_t->rows_where( where => [ $emp_t->column('employee_id'), '=', $emp2_id ] );
+    eval_ok( sub { $cursor =
+                       $emp_t->rows_where
+                           ( where => [ $emp_t->column('employee_id'), '=', $emp2_id ] );
+
 		   while ( my $row = $cursor->next )
 		   {
 		       $x++;
 		       $emp{2} = $row;
-		   } },
+		   }
+                 },
 	     "Retrieve 'unit 2' employee via rows_where method and cursor" );
 
     ok( ! $cursor->errors,
@@ -251,18 +258,27 @@ sub run_tests
 
     my $fk = $emp_t->foreign_keys_by_table($emp_proj_t);
     my @emp_proj;
+    my @cursor_counts;
     eval_ok( sub { $cursor = $emp{bill}->rows_by_foreign_key( foreign_key => $fk );
 		   while ( my $row = $cursor->next )
 		   {
 		       push @emp_proj, $row;
+                       push @cursor_counts, $cursor->count;
 		   } },
 	     "Fetch rows via ->rows_by_foreign_key method (expect cursor)" );
+
     is( scalar @emp_proj, 2,
 	"Check that only two rows were returned" );
     is( $emp_proj[0]->select('employee_id'), $emp{bill}->select('employee_id'),
 	"Check that employee_id in employee_project is same as bill's" );
     is( $emp_proj[0]->select('project_id'), $proj{extend}->select('project_id'),
 	"Check that project_id in employee_project is same as extend project" );
+
+    foreach (1..2)
+    {
+        is( $cursor_counts[$_ - 1], $_,
+            "$cursor->count should be 1..2" );
+    }
 
     my $emp_proj = $emp_proj[0];
     $fk = $emp_proj_t->foreign_keys_by_table($emp_t);
@@ -281,7 +297,7 @@ sub run_tests
 	         },
 	     "Fetch all rows from employee table" );
     ok( ! $cursor->errors,
-	"Check that cursor has no errors from previous fethc" );
+	"Check that cursor has no errors from previous fetch" );
     is( $x, 2,
 	"Only 2 rows should be found" );
 
@@ -293,28 +309,33 @@ sub run_tests
     is( $x, 2,
 	"Only 2 rows should be found after cursor reset" );
 
-    eval_ok( sub { $cursor = $s->join( join     => [ $emp_t, $emp_proj_t, $proj_t ],
-				       where    => [ $emp_t->column('employee_id'), '=', 1 ],
-				       order_by => $proj_t->column('project_id') ) },
-	     "Join employee, employee_project, and project tables where employee_id = 1" );
+    {
+        my $cursor;
+        eval_ok( sub { $cursor =
+                           $s->join( join     => [ $emp_t, $emp_proj_t, $proj_t ],
+                                     where    => [ $emp_t->column('employee_id'), '=', 1 ],
+                                     order_by => $proj_t->column('project_id') ) },
+                 "Join employee, employee_project, and project tables where employee_id = 1" );
 
-    @rows = $cursor->next;
+        my @rows = $cursor->next;
 
-    is( scalar @rows, 3,
-	"3 rows per cursor ->next call" );
-    is( $rows[0]->table->name, 'employee',
-	"First row is from employee table" );
-    is( $rows[1]->table->name, 'employee_project',
-	"Second row is from employee_project table" );
-    is( $rows[2]->table->name, 'project',
-	"Third row is from project table" );
+        is( scalar @rows, 3,
+            "3 rows per cursor ->next call" );
+        is( $rows[0]->table->name, 'employee',
+            "First row is from employee table" );
+        is( $rows[1]->table->name, 'employee_project',
+            "Second row is from employee_project table" );
+        is( $rows[2]->table->name, 'project',
+            "Third row is from project table" );
 
-    my $first_proj_id = $rows[2]->select('project_id');
-    @rows = $cursor->next;
-    my $second_proj_id = $rows[2]->select('project_id');
+        my $first_proj_id = $rows[2]->select('project_id');
+        @rows = $cursor->next;
+        my $second_proj_id = $rows[2]->select('project_id');
 
-    ok( $first_proj_id < $second_proj_id,
-	"Order by clause should cause project rows to come back in ascending order of project id" );
+        ok( $first_proj_id < $second_proj_id,
+            "Order by clause should cause project rows to come back" .
+            " in ascending order of project id" );
+    }
 
     # Alias code
     {
@@ -326,10 +347,12 @@ sub run_tests
 	eval_ok( sub { $p_alias = $proj_t->alias },
 		 "Create an alias object for the project table" );
 
-	eval_ok( sub { $cursor = $s->join( join     => [ $e_alias, $emp_proj_t, $p_alias ],
-					   where    => [ $e_alias->column('employee_id'), '=', 1 ],
-					   order_by => $p_alias->column('project_id') ) },
-		 "Join employee, employee_project, and project tables where employee_id = 1 using aliases" );
+	eval_ok( sub { $cursor =
+                           $s->join( join     => [ $e_alias, $emp_proj_t, $p_alias ],
+                                     where    => [ $e_alias->column('employee_id'), '=', 1 ],
+                                     order_by => $p_alias->column('project_id') ) },
+		 "Join employee, employee_project, and project tables where" .
+                 " employee_id = 1 using aliases" );
 
 	my @rows = $cursor->next;
 
@@ -386,9 +409,9 @@ sub run_tests
 			order_by => { columns => $proj_t->column('project_id'),
 				      sort => 'desc' } );
     @rows = $cursor->next;
-    $first_proj_id = $rows[2]->select('project_id');
+    my $first_proj_id = $rows[2]->select('project_id');
     @rows = $cursor->next;
-    $second_proj_id = $rows[2]->select('project_id');
+    my $second_proj_id = $rows[2]->select('project_id');
 
     ok( $first_proj_id > $second_proj_id,
 	"Order by clause should cause project rows to come back in descending order of project id" );
@@ -1111,7 +1134,10 @@ sub run_tests
 	    "Second smell should be 'a' - with limit via ->select" );
     }
 
-    foreach ( [ 9000, 1 ], [ 9000, 2 ], [ 9001, 1 ], [ 9002, 1 ] )
+    my $extend_id = $proj{extend}->select('project_id');
+    my $embrace_id = $proj{embrace}->select('project_id');
+    foreach ( [ 9000, $extend_id ], [ 9000, $embrace_id ],
+              [ 9001, $extend_id ], [ 9002, $extend_id ] )
     {
 	$emp_proj_t->insert( values => { employee_id => $_->[0],
 					 project_id => $_->[1] } );
@@ -1231,7 +1257,6 @@ sub run_tests
     my $p2 = $proj_t->insert( values => { name => 'P2',
 					  department_id => $dep_id,
 					} );
-
     eval_ok( sub { $cursor = $s->join( distinct => $dep_t,
 				       join     => [ $dep_t, $proj_t ],
 				       where    => [ $proj_t->column('project_id'), 'in',
@@ -1262,6 +1287,28 @@ sub run_tests
 
 	is( $rows[0]->select('employee_id'), 9001,
 	    "Returned row's employee_id should be 9001" );
+    }
+
+    {
+	eval_ok( sub { $cursor =
+			   $s->join
+                               ( distinct => [ $emp_t, $emp_proj_t ],
+                                 join     => [ $emp_t, $emp_proj_t ],
+                                 where    =>
+                                 [ $emp_t->column('employee_id'), 'in', 9000, 9001 ],
+                               ) },
+	     "Do a join with distinct parameter set to a table with a multi-col PK" );
+
+	@rows = $cursor->all_rows;
+
+	is( scalar @rows, 3,
+	    "Setting distinct should cause only three rows to be returned" );
+
+	ok( ( grep { $_->[0]->select('employee_id') == 9000 } @rows ),
+	    "Returned rows should include employee_id 9000" );
+
+	ok( ( grep { $_->[0]->select('employee_id') == 9001 } @rows ),
+	    "Returned rows should include employee_id 9001" );
     }
 
     # insert rows used to test order by with multiple columns
@@ -1474,6 +1521,9 @@ sub run_tests
     eval_ok( sub { $p_emp = $emp_t->potential_row },
 	     "Create potential row object");
 
+    is( $p_emp->is_live, 0,
+        "potential_row should ! ->is_live" );
+
     is( $p_emp->select('smell'), 'grotesque',
 	"Potential Employee should have default smell, 'grotesque'" );
 
@@ -1554,6 +1604,80 @@ sub run_tests
 	is( $@, "ok\n",
 	    "\$\@ should be 'ok'" );
     }
+
+    {
+	my $row;
+	eval_ok( sub { $row =
+			   $emp_t->one_row
+			       ( where => [ $emp_t->column('name'), '=', 'nonexistent' ] ) },
+		 "Call ->one_row with a query guaranteed to fail" );
+
+	ok( ! defined $row,
+	    "Make sure that the query really returned nothing" );
+    }
+
+    if ( $Alzabo::ObjectCache::VERSION )
+    {
+        {
+            $proj_t->set_prefetch();
+            $s->prefetch_all;
+
+            is( scalar $proj_t->prefetch,
+                ( scalar $proj_t->columns -
+                  scalar $proj_t->primary_key_size ),
+                "Check that schema->prefetch_all works" );
+        }
+
+        {
+            $proj_t->set_prefetch();
+            $s->prefetch_all_but_blobs;
+
+            is( scalar $proj_t->prefetch,
+                ( scalar $proj_t->columns -
+                  $proj_t->primary_key_size -
+                  scalar ( grep { $_->is_blob } $proj_t->columns ) ),
+                "Check that schema->prefetch_all_but_blobs works" );
+        }
+    }
+    else
+    {
+        ok(1, "Don't test prefetch with no caching");
+        ok(1, "Don't test prefetch with no caching");
+    }
+
+    {
+        $s->prefetch_all;
+
+        my $cursor;
+
+        eval_ok( sub { $cursor =
+                           $s->join( join  => [ $emp_t, $emp_proj_t, $proj_t ],
+                                     where => [ $emp_t->column('employee_id'), '=', 9001 ] ) },
+                 "Join with join as arrayref of arrayrefs" );
+
+        my @rows = $cursor->next;
+
+        is( scalar @rows, 3,
+            "3 rows per cursor ->next call" );
+        is( ( grep { defined } @rows ), 3,
+            "Make sure all rows are defined" );
+        is( $rows[0]->select('employee_id'), 9001,
+            "First rows should have employee_id == 9001" );
+        is( $rows[0]->select('name'), 'bob9001',
+            "First rows should have employee with name eq 'bob9001'" );
+        is( $rows[2]->select('name'), 'Extend',
+            "First rows should have project with name eq 'Extend'");
+    }
+
+    {
+        my $foo = $emp_t->column('employee_id')->alias( as => 'foo' );
+
+        my $st = $emp_t->select( select => $foo );
+
+        my %h = $st->next_hash;
+        is( exists $h{foo}, 1,
+            "next_hash should return a hash with a 'foo' key" );
+    }
 }
 
 my $pid;
@@ -1599,7 +1723,7 @@ sub parent
     close $p_read;
     close $p_write;
 
-    $s->driver->disconnect;
+    $s->disconnect;
     $s->connect;
 
     my $emp;
@@ -1687,13 +1811,13 @@ sub parent
     my $pid2;
     if ( $pid2 = fork )
     {
-	$s->driver->disconnect;
+	$s->disconnect;
 	$s->connect;
 	waitpid($pid2, 0);
     }
     else
     {
-	$s->driver->disconnect;
+	$s->disconnect;
 	$s->connect;
 	# circumvent caching
 	$s->driver->do( sql => 'DELETE FROM employee WHERE employee_id = ?',
@@ -1792,7 +1916,7 @@ sub child
     close $c_read;
     close $c_write;
 
-    $s->driver->disconnect;
+    $s->disconnect;
     $s->connect;
 
     # A.
@@ -1919,7 +2043,7 @@ sub child
     close $p_write;
     close $p_read;
 
-    $s->driver->disconnect;
+    $s->disconnect;
     exit;
 }
 
