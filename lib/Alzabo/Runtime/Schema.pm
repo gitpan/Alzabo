@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.71 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.77 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -262,7 +262,8 @@ sub function
 
     my $sql = $self->_select_sql(%p);
 
-    my $method = UNIVERSAL::isa( $p{select}, 'ARRAY' ) && @{ $p{select} } > 1 ? 'rows' : 'column';
+    my $method =
+        UNIVERSAL::isa( $p{select}, 'ARRAY' ) && @{ $p{select} } > 1 ? 'rows' : 'column';
 
     return $self->driver->$method( sql => $sql->sql,
 				   bind => $sql->bind );
@@ -421,10 +422,14 @@ sub _join_all_tables
 
     $p{sql}->from(@from);
 
+    return unless @joins;
+
     foreach my $join (@joins)
     {
 	$self->_join_two_tables( $p{sql}, @$join );
     }
+
+    $p{sql}->subgroup_end;
 }
 
 sub _join_two_tables
@@ -455,7 +460,17 @@ sub _join_two_tables
 
     foreach my $cp ( $fk->column_pair_names )
     {
-	$sql->$op( $table_1->column( $cp->[0] ), '=', $table_2->column( $cp->[1] ) );
+        if ( $op eq 'where' )
+        {
+            # first time through loop only
+            $sql->where;
+            $sql->subgroup_start;
+            $sql->condition( $table_1->column( $cp->[0] ), '=', $table_2->column( $cp->[1] ) );
+        }
+        else
+        {
+            $sql->$op( $table_1->column( $cp->[0] ), '=', $table_2->column( $cp->[1] ) );
+        }
 	$op = 'and';
     }
 }

@@ -10,7 +10,7 @@ use base qw(Alzabo::RDBMSRules);
 use Params::Validate qw( validate_pos );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.35 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.36 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -52,7 +52,7 @@ sub _check_name
     my $self = shift;
     my $name = shift;
 
-    Alzabo::Exception::RDBMSRules->throw( error => "Name ($name) must at least one character long" )
+    Alzabo::Exception::RDBMSRules->throw( error => "Name ($name) must be at least one character long" )
 	unless length $name;
     Alzabo::Exception::RDBMSRules->throw( error => "Name ($name) is too long.  Names must be 31 characters or less." )
 	if length $name > 31;

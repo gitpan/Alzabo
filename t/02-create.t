@@ -12,7 +12,7 @@ require 'base.pl';
 
 my @db;
 my $tests = 0;
-my $shared_tests = 141;
+my $shared_tests = 142;
 my $mysql_only_tests = 2;
 my $pg_only_tests = 1;
 if (eval { require DBD::mysql } && ! $@ )
@@ -617,4 +617,44 @@ foreach my $db (@db)
 					 to_is_dependent => 0,
 				       ) },
 	     "Add a many to many relationship without specifying tables" );
+
+    {
+        my $s2 = Alzabo::Create::Schema->new( name => "foo_$db",
+                                              rdbms => $db,
+                                            );
+
+        my $t1 = $s2->make_table( name => 't1' );
+        my $t2 = $s2->make_table( name => 't2' );
+        my $t3 = $s2->make_table( name => 't3' );
+
+        $t1->make_column( name => 't1_pk',
+                          type => 'integer',
+                          primary_key => 1 );
+        $t2->make_column( name => 't2_pk',
+                          type => 'integer',
+                          primary_key => 1 );
+        $t3->make_column( name => 't3_pk',
+                          type => 'integer',
+                          primary_key => 1 );
+
+        $s2->add_relationship( table_from => $t1,
+                               table_to   => $t2,
+                               cardinality => [ 'n', '1' ],
+                               from_is_dependent => 0,
+                               to_is_dependent => 0,
+                             );
+
+        $s2->add_relationship( table_from => $t3,
+                               table_to   => $t2,
+                               cardinality => [ 'n', '1' ],
+                               from_is_dependent => 0,
+                               to_is_dependent => 0,
+                             );
+
+        $t1->delete_column( $t1->column('t2_pk') );
+
+        my @fk = $t2->all_foreign_keys;
+        is( scalar @fk, 1,
+            "t2 should still have one foreign key" );
+    }
 }

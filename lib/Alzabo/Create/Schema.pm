@@ -21,7 +21,7 @@ use Tie::IxHash;
 
 use base qw( Alzabo::Schema );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.87 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.88 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -203,7 +203,7 @@ sub move_table
 
     if ( exists $p{before} && exists $p{after} )
     {
-	Alzabo::Exception::Params->throw( error => "move_table method cannot be called with both 'before' and 'after parameters'" );
+	Alzabo::Exception::Params->throw( error => "move_table method cannot be called with both 'before' and 'after' parameters" );
     }
 
     if ( $p{before} )

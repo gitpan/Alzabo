@@ -237,7 +237,10 @@ sub run_tests
 
     {
 	my $row;
-	eval_ok( sub { $row = $emp_t->one_row( where => [ $emp_t->column('employee_id'), '=', $emp2_id ] ) },
+	eval_ok( sub { $row =
+                           $emp_t->one_row
+                               ( where =>
+                                 [ $emp_t->column('employee_id'), '=', $emp2_id ] ) },
 		 "Retrieve 'unit 2' employee via one_row method" );
 
 	is( $row->select('name'), 'unit 2',
@@ -277,7 +280,7 @@ sub run_tests
     foreach (1..2)
     {
         is( $cursor_counts[$_ - 1], $_,
-            "$cursor->count should be 1..2" );
+            "cursor->count should be 1..2" );
     }
 
     my $emp_proj = $emp_proj[0];
@@ -313,9 +316,11 @@ sub run_tests
         my $cursor;
         eval_ok( sub { $cursor =
                            $s->join( join     => [ $emp_t, $emp_proj_t, $proj_t ],
-                                     where    => [ $emp_t->column('employee_id'), '=', 1 ],
+                                     where    =>
+                                     [ $emp_t->column('employee_id'), '=',
+                                       $emp{bill}->select('employee_id') ],
                                      order_by => $proj_t->column('project_id') ) },
-                 "Join employee, employee_project, and project tables where employee_id = 1" );
+                 "Join employee, employee_project, and project tables where employee_id = bill's employee id" );
 
         my @rows = $cursor->next;
 
@@ -335,6 +340,26 @@ sub run_tests
         ok( $first_proj_id < $second_proj_id,
             "Order by clause should cause project rows to come back" .
             " in ascending order of project id" );
+    }
+
+    {
+        my $cursor;
+        eval_ok( sub { $cursor =
+                           $s->join( join     => [ $emp_t, $emp_proj_t, $proj_t ],
+                                     where    =>
+                                     [ [ $proj_t->column('project_id'), '=',
+                                         $proj{extend}->select('project_id') ],
+                                       'or',
+                                       [ $proj_t->column('project_id'), '=',
+                                         $proj{embrace}->select('project_id') ],
+                                     ],
+                                     order_by => $proj_t->column('project_id') ) },
+                 "Join employee, employee_project, and project tables with OR in where clause" );
+
+        1 while $cursor->next;
+
+        is( $cursor->count, 2,
+            "join with OR in where clause should return two sets of rows" );
     }
 
     # Alias code

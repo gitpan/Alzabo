@@ -10,7 +10,7 @@ Also, as you may have noticed below, schemas without any relations
 defined look very silly.
 </p>
 
-<img src="draw_graph.mhtml?schema=<% $s->name %>">
+<img src="draw_graph.<% Alzabo::Config::mason_extension() %>?schema=<% $s->name %>">
 <%args>
 $s
 </%args>

@@ -1,9 +1,12 @@
 use strict;
 
-eval { require Alzabo::Config; };
-eval { require Alzabo; };
+use ExtUtils::MakeMaker qw( prompt );
 
-if ( ! $@ && defined Alzabo::Config::root_dir() &&
+eval { require Alzabo; };
+eval { require Alzabo::Config; };
+
+if ( ! $@ && %Alzabo::Config::CONFIG &&
+     defined Alzabo::Config::root_dir() &&
      length Alzabo::Config::root_dir() &&
      -d Alzabo::Config::root_dir() &&
      Alzabo::Config::available_schemas() && $Alzabo::VERSION < 0.55 )

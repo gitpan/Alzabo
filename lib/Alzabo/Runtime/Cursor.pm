@@ -5,7 +5,7 @@ use vars qw($VERSION);
 
 use Alzabo::Runtime;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.16 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.17 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -74,7 +74,7 @@ sub next_as_hash
 
     my @next = $self->next or return;
 
-    return map { $_->table->name => $_ } @next;
+    return map { defined $_ ? ( $_->table->name => $_ ) : () } @next;
 }
 
 __END__

@@ -9,7 +9,7 @@ use Class::Factory::Util;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.52 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.55 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -276,35 +276,47 @@ sub from
     }
     else
     {
+        my $sql;
+
 	$self->{tables} = {};
 
+        my @plain;
 	foreach my $elt (@_)
 	{
 	    if ( UNIVERSAL::isa( $elt, 'ARRAY' ) )
 	    {
-		$self->_outer_join(@$elt);
+		$sql .= ' ' if $sql;
+
+		$sql .= $self->_outer_join(@$elt);
 
 		@{ $self->{tables} }{ @{$elt}[1,2] } = (1, 1);
 	    }
-	    else
-	    {
-		$self->{sql} .= ', ' unless $elt eq $_[0];
+            else
+            {
+                push @plain, $elt;
+            }
+        }
 
-                if ( $self->{quote_identifiers} )
-                {
-                    $self->{sql} .=
-                        ( $self->{driver}->quote_identifier( $elt->name ) .
-                          ' AS ' .
-                          $self->{driver}->quote_identifier( $elt->alias_name ) );
-                }
-                else
-                {
-                    $self->{sql} .= $elt->name . ' AS ' . $elt->alias_name;
-                }
+        foreach my $elt ( grep { ! exists $self->{tables}{$_ } } @plain )
+        {
+            $sql .= ', ' if $sql;
 
-		$self->{tables}{$elt} = 1;
-	    }
+            if ( $self->{quote_identifiers} )
+            {
+                $sql .=
+                    ( $self->{driver}->quote_identifier( $elt->name ) .
+                      ' AS ' .
+                      $self->{driver}->quote_identifier( $elt->alias_name ) );
+            }
+            else
+            {
+                $sql .= $elt->name . ' AS ' . $elt->alias_name;
+            }
+
+            $self->{tables}{$elt} = 1;
 	}
+
+        $self->{sql} .= $sql;
     }
 
     if ($self->{type} eq 'select')
@@ -354,41 +366,52 @@ sub _outer_join
 	$fk = $fk[0];
     }
 
-    $self->{sql} .=
-        ( $self->{quote_identifiers} ?
-          $self->{driver}->quote_identifier( $join_from->alias_name ) :
-          $join_from->alias_name );
+    my $sql;
+    unless ( $self->{tables}{$join_from} )
+    {
+        $sql .=
+            ( $self->{quote_identifiers} ?
+              $self->{driver}->quote_identifier( $join_from->name ) :
+              $join_from->name );
 
-    $self->{sql} .= " $type OUTER JOIN ";
+        $sql .= ' AS ' . $join_from->alias_name
+    }
 
-    $self->{sql} .= ( $self->{quote_identifiers} ?
-                      $self->{driver}->quote_identifier( $join_on->alias_name ) :
-                      $join_on->alias_name );
+    $sql .= " $type OUTER JOIN ";
 
-    $self->{sql} .= ' ON ';
+    unless ( $self->{tables}{$join_on} )
+    {
+        $sql .= ( $self->{quote_identifiers} ?
+                          $self->{driver}->quote_identifier( $join_on->name ) :
+                          $join_on->name );
+
+        $sql .= ' AS ' . $join_on->alias_name
+    }
+
+    $sql .= ' ON ';
 
     if ( $self->{quote_identifiers} )
     {
-        $self->{sql} .=
+        $sql .=
             ( join ' AND ',
               map { $self->{driver}->quote_identifier
-                        ( $_->[0]->table->alias_name, $_->[0]->name ) .
+                        ( $join_from->alias_name, $_->[0]->name ) .
                     ' = ' .
                     $self->{driver}->quote_identifier
-                        ( $_->[1]->table->alias_name, $_->[1]->name )
+                        ( $join_on->alias_name, $_->[1]->name )
                   } $fk->column_pairs );
     }
     else
     {
-        $self->{sql} .=
+        $sql .=
             ( join ' AND ',
-              map { $_->[0]->table->alias_name . '.' . $_->[0]->name .
+              map { $join_from->alias_name . '.' . $_->[0]->name .
                     ' = ' .
-                    $_->[1]->table->alias_name . '.' .  $_->[1]->name
+                    $join_on->alias_name . '.' .  $_->[1]->name
                   } $fk->column_pairs );
     }
 
-    return $self;
+    return $sql;
 }
 
 sub where

@@ -4,7 +4,7 @@ $^W = 1;
 
 use Cwd;
 use Data::Dumper;
-use ExtUtils::MakeMaker qw( prompt WriteMakefile );
+use ExtUtils::MakeMaker qw( WriteMakefile );
 use File::Spec;
 
 use vars qw(%prereq %extra %config %test @TESTS);

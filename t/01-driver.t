@@ -1,5 +1,14 @@
 use strict;
 
+BEGIN
+{
+    unless (defined $ENV{ALZABO_RDBMS_TESTS})
+    {
+	print "1..0\n";
+	exit;
+    }
+}
+
 use Alzabo::Driver;
 
 use Cwd;

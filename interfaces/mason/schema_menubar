@@ -1,7 +1,7 @@
 % if (@t) {
 %   if ($GraphViz::VERSION) {
  <tr>
-  <td colspan="5" align="center"><a href="view_graph.mhtml?schema=<% $s->name %>">Schema graph</a></td>
+  <td colspan="5" align="center"><a href="view_graph.<% Alzabo::Config::mason_extension() %>?schema=<% $s->name %>">Schema graph</a></td>
  </tr>
 %   }
 %   if ( $m->base_comp->attr('full_header') ) {

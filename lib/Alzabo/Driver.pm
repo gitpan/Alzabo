@@ -10,7 +10,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.72 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.73 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -502,6 +502,7 @@ sub execute
 	$self->{sth}->execute( @_ ? @_ : @{ $self->{bind} } );
 
         $self->{result} = [];
+        $self->{count} = 0;
 
         $self->{sth}->bind_columns
             ( \ ( @{ $self->{result} }[ 0..$#{ $self->{sth}->{NAME_lc} } ] ) );
@@ -533,6 +534,8 @@ sub next
 
     return unless $active;
 
+    $self->{count}++;
+
     return wantarray ? @{ $self->{result} } : $self->{result}[0];
 }
 
@@ -559,6 +562,8 @@ sub next_hash
     my %hash;
     @hash{ @{ $self->{sth}->{NAME_lc} } } = @{ $self->{result} };
 
+    $self->{count}++;
+
     return %hash;
 }
 
@@ -572,6 +577,8 @@ sub all_rows
     {
 	push @rows, @row > 1 ? \@row : $row[0];
     }
+
+    $self->{count} = scalar @rows;
 
     return @rows;
 }
@@ -587,6 +594,8 @@ sub all_rows_hash
 	push @rows, \%h;
     }
 
+    $self->{count} = scalar @rows;
+
     return @rows;
 }
 
@@ -596,6 +605,8 @@ sub bind
 
     return @{ $self->{bind} };
 }
+
+sub count { $_[0]->{count} }
 
 sub DESTROY
 {
@@ -863,6 +874,10 @@ will be called first.
 =head3 Throws
 
 L<C<Alzabo::Exception::Driver>|Alzabo::Exceptions>
+
+=head2 count
+
+Returns the number of rows returned so far.
 
 =head1 Alzabo::Exception::Driver METHODS
 

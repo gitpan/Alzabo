@@ -5,4 +5,3 @@ failures along the lines of "source database "template1" is being
 accessed by other users".  I've tried working around this by forking
 like crazy during the test suite, and that seems to have mostly fixed
 it.  But I still see this from time to time.
-

@@ -12,7 +12,7 @@ use Tie::IxHash;
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.48 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.50 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -163,7 +163,8 @@ sub delete_column
     {
 	$self->delete_foreign_key($fk);
 
-	foreach my $other_fk ($fk->table_to->foreign_keys_by_column( $fk->columns_to ) )
+	foreach my $other_fk ($fk->table_to->foreign_keys( table => $self,
+                                                           column => $fk->columns_to ) )
 	{
 	    $fk->table_to->delete_foreign_key( $other_fk );
 	}
@@ -190,7 +191,7 @@ sub move_column
 
     if ( exists $p{before} && exists $p{after} )
     {
-	Alzabo::Exception::Params->throw( error => "move_column method cannot be called with both 'before' and 'after parameters'" );
+	Alzabo::Exception::Params->throw( error => "move_column method cannot be called with both 'before' and 'after' parameters" );
     }
 
     if ( exists $p{before} )

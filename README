@@ -1,3 +1,5 @@
+ABOUT
+
 Alzabo is a two-fold program. Its first function is as a data
 modelling tool. Through either a schema creation interface or a custom
 perl program, you can create a set of schema, table, column,

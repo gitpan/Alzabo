@@ -7,7 +7,7 @@ use Alzabo::RDBMSRules;
 
 use base qw(Alzabo::RDBMSRules);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.64 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.65 $ =~ /(\d+)\.(\d+)/;
 
 sub new
 {
@@ -22,7 +22,7 @@ sub validate_schema_name
     my $self = shift;
     my $name = shift->name;
 
-    Alzabo::Exception::RDBMSRules->throw( error => "Schema name must at least one character long" )
+    Alzabo::Exception::RDBMSRules->throw( error => "Schema name must be at least one character long" )
 	unless length $name;
 
     # These are characters that are illegal in a dir name.  I'm trying
@@ -42,7 +42,7 @@ sub validate_table_name
     my $self = shift;
     my $name = shift->name;
 
-    Alzabo::Exception::RDBMSRules->throw( error => "Table name must at least one character long" )
+    Alzabo::Exception::RDBMSRules->throw( error => "Table name must be at least one character long" )
 	unless length $name;
     Alzabo::Exception::RDBMSRules->throw( error => "Table name is too long.  Names must be 64 characters or less." )
 	if length $name >= 64;
@@ -55,7 +55,7 @@ sub validate_column_name
     my $self = shift;
     my $name = shift->name;
 
-    Alzabo::Exception::RDBMSRules->throw( error => "Column name must at least one character long" )
+    Alzabo::Exception::RDBMSRules->throw( error => "Column name must be at least one character long" )
 	unless length $name;
     Alzabo::Exception::RDBMSRules->throw( error => 'Name is too long.  Names must be 64 characters or less.' )
 	if length $name >= 64;

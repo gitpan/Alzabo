@@ -17,7 +17,7 @@ use Alzabo::Runtime::Table;
 
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.27 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.29 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -36,29 +36,44 @@ sub process_where_clause
 
     $where = [ $where ] unless UNIVERSAL::isa( $where->[0], 'ARRAY' ) || $where->[0] eq '(';
 
-    my $has_conditions = ( $sql->last_op eq 'where' || $sql->last_op eq 'and' ||
-			   $sql->last_op eq 'or' || $sql->last_op eq 'condition' ) ? 1 : 0;
+    my $has_where = ( $sql->last_op eq 'where' || $sql->last_op eq 'condition' ) ? 1 : 0;
+
+    my $needs_op = $sql->last_op eq 'where' ? 0 : 1;
+
+    if ($has_where)
+    {
+        # wrap this in parens in order to protect from interactions with
+        # join clauses
+        $sql->and;
+
+        $sql->subgroup_start;
+
+        $needs_op = 0;
+    }
 
     my $x = 0;
-    my $needs_op = 1;
     foreach my $clause (@$where)
     {
 	if (ref $clause)
 	{
-	    Alzabo::Exception::Params->throw( error => "Individual where clause components must be array references" )
-		unless UNIVERSAL::isa( $clause, 'ARRAY' );
-	    Alzabo::Exception::Params->throw( error => "Individual where clause components cannot be empty" )
-		unless @$clause;
+	    Alzabo::Exception::Params->throw
+                ( error => "Individual where clause components must be array references" )
+                    unless UNIVERSAL::isa( $clause, 'ARRAY' );
+
+	    Alzabo::Exception::Params->throw
+                ( error => "Individual where clause components cannot be empty" )
+                    unless @$clause;
 
 	    if ($needs_op)
 	    {
-		my $op = $x || $has_conditions ? 'and' : 'where';
+		my $op = $x || $has_where ? 'and' : 'where';
 		$sql->$op();
 	    }
+
 	    $sql->condition(@$clause);
 	    $needs_op = 1;
 	}
-	elsif ($clause eq 'and' || $clause eq 'or')
+	elsif (lc $clause eq 'and' || lc $clause eq 'or')
 	{
 	    $sql->$clause();
 	    $needs_op = 0;
@@ -68,7 +83,7 @@ sub process_where_clause
 	{
 	    if ($needs_op)
 	    {
-		my $op = $x || $has_conditions ? 'and' : 'where';
+		my $op = $x || $has_where ? 'and' : 'where';
 		$sql->$op();
 	    }
 	    $sql->subgroup_start;
@@ -85,6 +100,8 @@ sub process_where_clause
 	}
 	$x++;
     }
+
+    $sql->subgroup_end if $has_where;
 }
 
 sub process_order_by_clause

@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw( Alzabo::Runtime::Cursor );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.31 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.32 $ =~ /(\d+)\.(\d+)/;
 
 sub new
 {
@@ -220,7 +220,8 @@ The number of rowsets returned by the cursor so far.
 =head3 Returns
 
 The next row or rows in a hash, where the hash key is the table name
-and the hash value is the row object.
+and the hash value is the row object.  Tables included in the join via
+an outer join will only be included if they are available.
 
 =head1 AUTHOR
 

@@ -9,7 +9,7 @@ use Alzabo::Runtime;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.61 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.63 $ =~ /(\d+)\.(\d+)/;
 
 $DEBUG = $ENV{ALZABO_DEBUG} || 0;
 
@@ -720,7 +720,7 @@ EOF
     $self->{table_class}->add_class_docs
 	( Alzabo::ClassDocs->new
 	  ( group => 'Hooks',
-	    description => "has $hooks",
+	    description => "$hooks",
 	  ) );
 }
 
@@ -730,14 +730,14 @@ sub _hooks_doc_string
     my ($class, $hook1, $hook2) = @_;
 
     my @hooks;
-    push @hooks, $hook1 if $self->{table_class}->can($hook1);
+    push @hooks, $hook1 if $class->can($hook1);
 
-    push @hooks, $hook2 if $self->{table_class}->can($hook2);
+    push @hooks, $hook2 if $class->can($hook2);
 
-    my $hooks = 'contains';
+    my $hooks = 'has';
     $hooks .= @hooks > 1 ? '' : ' a ';
     $hooks .= join ' and ', @hooks;
-    $hooks .= @hooks > 1 ? 'hooks' : 'hook';
+    $hooks .= @hooks > 1 ? ' hooks' : ' hook';
 
     return $hooks;
 }
@@ -811,7 +811,7 @@ EOF
     $self->{row_class}->add_class_docs
 	( Alzabo::ClassDocs->new
 	  ( group => 'Hooks',
-	    description => "has $hooks",
+	    description => "$hooks",
 	  ) );
 }
 
@@ -881,7 +881,7 @@ EOF
     $self->{row_class}->add_class_docs
 	( Alzabo::ClassDocs->new
 	  ( group => 'Hooks',
-	    description => "has $hooks",
+	    description => "$hooks",
 	  ) );
 }
 
@@ -936,7 +936,7 @@ EOF
     $self->{row_class}->add_class_docs
 	( Alzabo::ClassDocs->new
 	  ( group => 'Hooks',
-	    description => "has $hooks",
+	    description => "$hooks",
 	  ) );
 }
 

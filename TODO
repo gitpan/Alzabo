@@ -2,20 +2,25 @@ To Do List
 
 Short term:
 
-- Expand regression tests for core API - SQLMaker, RDBMSRules.
+- Track table/column renames when working with schemas so that Alzabo
+  can preserve data during these sorts of changes.
 
-- Give the options to save objects to disk in something a bit more
-  robust than a serialized object form.  Eventually, Alzabo will spit
-  out some sort of XML.
+- Support for table attributes (constraints, MySQL table types)
+
+- Store PK as list of indices to columns, not as hash.
+
+- Overhaul foreign key objects so that one relation has one such
+  object, shared by two tables.
+
+- Add constraints to output SQL for Postgres and MySQL (InnoDB tables
+  will actually use them).
+
+- Make sense of foreign key definitions in Postgres and for InnoDB
+  tables in MySQL.
 
 - Make local $table->{prefetch} work (tied scalar).  I'm no longer
   sure this is possible.  My most recent attempt caused inexplicable
   test failures.
-
-- Track table/column renames when working with schemas so that Alzabo
-  can preserve data during these sorts of changes.
-
-- Store PK as list of indices to columns, not as hash.
 
 Medium term:
 
@@ -26,14 +31,6 @@ Medium term:
   real transactions at the middleware layer.  argh!
 
 - Output Dia XML.
-
-- Support for table attributes (constraints, MySQL table types)
-
-- Add constraints to output SQL for Postgres and MySQL (InnoDB tables
-  will actually use them).
-
-- Make sense of foreign key definitions in Postgres and for InnoDB
-  tables in MySQL.
 
 - Make a tool to convert schemas from one RDBMS to another.  This will
   probably require user prompting because some things are unresolvable
@@ -58,18 +55,15 @@ Medium term:
 
 - More drivers & rules (Oracle, Sybase, Interbase, Solid, and so on)
 
-- Non-Mason interface(s) (curses, plain CGI)
-
 - Integrate data validation into the code and schema creator in such a
   way that Alzabo::MethodMaker can automatically create pre_insert and
   pre_update methods.
 
-Long term:
+- Expand regression tests for core API - SQLMaker, RDBMSRules.
 
-- Overhaul foreign key objects so that one relation has one such
-  object, shared by two tables.
-
-- GUI (preferably both UNIX & Win32 so Tk?)
+- Give the options to save objects to disk in something a bit more
+  robust than a serialized object form.  Eventually, Alzabo will spit
+  out some sort of XML.
 
 Ongoing:
 
@@ -86,3 +80,4 @@ Ongoing:
 - Support any and all SQL, of arbitrary complexity.  This is fairly
   far along.
 
+- Non-Mason interface(s) (curses, plain CGI)

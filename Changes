@@ -1,3 +1,35 @@
+0.69  September 19, 2002
+
+ENHANCEMENTS:
+
+- Add count method to Alzabo::DriverStatement objects.
+
+BUG FIXES:
+
+** - A particularly nasty bug sometimes manifested itself when
+removing a foreign key.  This bug caused the deletion of all foreign
+keys involving the _corresponding_ column(s) in the foreign table.
+Needless to say, this could make a big mess.
+
+- A join that included a where clause with an 'OR' generated improper
+SQL.  Reported by Ilya Martynov.
+
+- Calling the Alzabo::Runtime::JoinCursor->next_as_hash method when
+the query involved an outer join could cause a runtime error.
+
+- In where clause specifications, 'and' and 'or' were only being
+allowed in lower-case.  They are now allowed in any case.
+
+- Aliases did not work in outer joins.  This has been fixed.
+
+- Using outer joins was a bit fragile, in that the order of the outer
+join in the context of the other joins could cause Alzabo to generate
+incorrect SQL.  Now outer joins should work no matter what.
+
+- A couple links in the schema creator had a hardcoded ".mhtml"
+extension, as opposed to using the value of
+Alzabo::Config::mason_extension().  Patch by Scott Lanning.
+
 0.68  July 20, 2002
 
 ENHANCEMENTS:
