@@ -112,6 +112,8 @@ sub insert
 	rethrow_exception $e;
     }
 
+    return unless defined wantarray || $p{potential_row};
+
     return $self->row_by_pk( pk => \%id, %p );
 }
 

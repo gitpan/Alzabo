@@ -243,7 +243,9 @@ sub make_mysql_schema
 					 rdbms => 'MySQL',
 				       );
 
-    $s->make_table( name => 'employee' );
+    $s->make_table( name => 'employee',
+		    attributes => [ 'TYPE=MYISAM' ],
+		  );
     my $emp_t = $s->table('employee');
 
     $emp_t->make_column( name => 'employee_id',
@@ -284,7 +286,9 @@ sub make_mysql_schema
     $emp_t->make_index( columns => [ { column => $emp_t->column('name') } ],
 			fulltext => 1 );
 
-    $s->make_table( name => 'department');
+    $s->make_table( name => 'department',
+		    attributes => [ 'TYPE=MYISAM' ],
+		  );
     my $dep_t = $s->table('department');
     $dep_t->make_column( name => 'department_id',
 			 type => 'int',
@@ -316,7 +320,9 @@ sub make_mysql_schema
 			  to_is_dependent => 0,
 			);
 
-    $s->make_table( name => 'project' );
+    $s->make_table( name => 'project',
+		    attributes => [ 'TYPE=MYISAM' ],
+		  );
     my $proj_t = $s->table('project');
     $proj_t->make_column( name => 'project_id',
 			  type => 'int',
@@ -350,14 +356,20 @@ sub make_mysql_schema
 			  to_is_dependent => 0,
 			);
 
-    my $char_pk_t = $s->make_table( name => 'char_pk' );
+    $s->table('employee_project')->set_attributes( 'TYPE=MYISAM' );
+
+    my $char_pk_t = $s->make_table( name => 'char_pk',
+				    attributes => [ 'TYPE=MYISAM' ],
+				  );
     $char_pk_t->make_column( name => 'char_col',
 			     type => 'varchar',
 			     length => 40,
 			     primary_key => 1 );
 
 
-    my $outer_1_t = $s->make_table( name => 'outer_1' );
+    my $outer_1_t = $s->make_table( name => 'outer_1',
+				    attributes => [ 'TYPE=MYISAM' ],
+				  );
     $outer_1_t->make_column( name => 'outer_1_pk',
 			     type => 'int',
 			     sequenced => 1,
@@ -372,7 +384,9 @@ sub make_mysql_schema
                              nullable => 1,
 			   );
 
-    my $outer_2_t = $s->make_table( name => 'outer_2' );
+    my $outer_2_t = $s->make_table( name => 'outer_2',
+				    attributes => [ 'TYPE=MYISAM' ],
+				  );
     $outer_2_t->make_column( name => 'outer_2_pk',
 			     type => 'int',
 			     sequenced => 1,
@@ -392,7 +406,9 @@ sub make_mysql_schema
 			  to_is_dependent => 0,
 			);
 
-    my $u = $s->make_table( name => 'user' );
+    my $u = $s->make_table( name => 'user',
+			    attributes => [ 'TYPE=MYISAM' ],
+			  );
     $u->make_column( name => 'user_id', type => 'integer', primary_key => 1 );
 
     delete @{ $config }{'rdbms', 'schema_name'};

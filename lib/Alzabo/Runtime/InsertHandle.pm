@@ -121,6 +121,8 @@ sub insert
 	rethrow_exception $e;
     }
 
+    return unless defined wantarray;
+
     return $self->{table}->row_by_pk( pk => \%id,
                                       no_cache => $self->{no_cache},
                                       %p,
@@ -137,16 +139,19 @@ Alzabo::Runtime::InsertHandle - A handle representing an insert
 
 =head1 SYNOPSIS
 
- my $handle = $table->insert_handle
-                  ( columns => [ $table->columns( 'name', 'job' ) ] );
+ my $handle =
+     $table->insert_handle
+         ( columns => [ $table->columns( 'name', 'job' ) ] );
 
  my $faye_row =
-     $handle->insert( values => { name => 'Faye',
-                                  job => 'HK Pop Chanteuse' } );
+     $handle->insert( values =>
+                      { name => 'Faye',
+                        job => 'HK Pop Chanteuse' } );
 
  my $guesch_row =
-     $handle->insert( values => { name => 'Guesch',
-                                  job => 'French Chanteuse and Dancer' } );
+     $handle->insert( values =>
+                      { name => 'Guesch',
+                        job => 'French Chanteuse and Dancer' } );
 
 =head1 DESCRIPTION
 

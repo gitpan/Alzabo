@@ -1,3 +1,30 @@
+0.82  January 6, 2003
+
+ENHANCEMENTS:
+
+- The Alzabo::Runtime::Table->insert() and
+Alzabo::Runtime::InsertHandle->insert() will not create a new row
+object when called in void context.  This should make inserts faster
+when you don't need a row object back.
+
+- When reverse engineering a MySQL schema, Alzabo will now set a table
+attribute for the table type (MyISAM, InnoDB, etc.) if the server
+supports table types (which any modern version of MySQL does do).
+
+BUG FIXES:
+
+- When creating the test database for MySQL, we now explicitly set the
+table type to MYISAM, in case the default is something else.
+Otherwise the tests will fail when we try to create a fulltext index.
+
+KNOWN BUGS:
+
+- This release will fail several tests when tested with Postgres 7.4.
+Specifically, reverse engineering with Postgres 7.4 is known to be
+broken.  This will be fixed in the next release.
+
+---------------------------------------------------------------------------
+
 0.81  December 21, 2003
 
 ENHANCEMENTS:

@@ -579,8 +579,8 @@ sub table_sql_diff
             $alter_attributes = 1;
 
             push @sql, $self->alter_table_attributes_sql( new => $p{new},
-                                                           old => $p{old},
-                                                         );
+                                                          old => $p{old},
+                                                        );
 
             last;
         }

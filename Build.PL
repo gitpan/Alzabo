@@ -30,7 +30,6 @@ GetOptions( \%opts, 'dist' );
         Alzabo::Build->new( module_name => 'Alzabo',
                             license => 'perl',
                             %$prereq,
-                            args => $config,
                             sign => 1,
                           );
 

@@ -806,6 +806,10 @@ sub reverse_engineer
 
     my $driver = $schema->driver;
 
+    my $has_table_types =
+        $driver->one_row( sql  => 'SHOW VARIABLES LIKE ?',
+                          bind => 'table_type' );
+
     foreach my $table ( $driver->tables )
     {
 	( my $table_name = $table ) =~ s/^[`"]|[`"]$//g;
@@ -900,6 +904,15 @@ sub reverse_engineer
 			    unique   => $i{$index}{unique},
 			    fulltext => $i{$index}{fulltext} );
 	}
+
+        if ( $has_table_types )
+        {
+            my $table_type =
+                ( $driver->one_row( sql  => 'SHOW TABLE STATUS LIKE ?',
+                                    bind => $table_name ) )[1];
+
+            $t->add_attribute( 'TYPE=' . uc $table_type );
+        }
     }
 }
 
