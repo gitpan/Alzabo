@@ -10,96 +10,96 @@ my %e;
 BEGIN
 {
     %e = ( 'Alzabo::Exception' =>
-	   { description =>
-	     'Generic exception within the Alzabo API.  Should only be used as a base class.',
-	     alias => 'exception',
-	   },
+           { description =>
+             'Generic exception within the Alzabo API.  Should only be used as a base class.',
+             alias => 'exception',
+           },
 
-	   'Alzabo::Exception::Driver' =>
-	   { description => 'An attempt to eval a string failed',
-	     fields => [ 'sql', 'bind' ],
-	     isa => 'Alzabo::Exception',
-	     alias => 'driver_exception',
-	   },
+           'Alzabo::Exception::Driver' =>
+           { description => 'An attempt to eval a string failed',
+             fields => [ 'sql', 'bind' ],
+             isa => 'Alzabo::Exception',
+             alias => 'driver_exception',
+           },
 
-	   'Alzabo::Exception::Eval' =>
-	   { description => 'An attempt to eval a string failed',
-	     isa => 'Alzabo::Exception',
-	     alias => 'eval_exception',
-	   },
+           'Alzabo::Exception::Eval' =>
+           { description => 'An attempt to eval a string failed',
+             isa => 'Alzabo::Exception',
+             alias => 'eval_exception',
+           },
 
-	   'Alzabo::Exception::Logic' =>
-	   { description =>
-	     'An internal logic error occurred (presumably, Alzabo was asked to do something that cannot be done)',
-	     isa => 'Alzabo::Exception',
-	     alias => 'logic_exception',
-	   },
+           'Alzabo::Exception::Logic' =>
+           { description =>
+             'An internal logic error occurred (presumably, Alzabo was asked to do something that cannot be done)',
+             isa => 'Alzabo::Exception',
+             alias => 'logic_exception',
+           },
 
-	   'Alzabo::Exception::NoSuchRow' =>
-	   { description => 'An attempt to fetch data from the database for a primary key that did not exist in the specified table',
-	     isa => 'Alzabo::Exception',
-	     alias => 'no_such_row_exception',
-	   },
+           'Alzabo::Exception::NoSuchRow' =>
+           { description => 'An attempt to fetch data from the database for a primary key that did not exist in the specified table',
+             isa => 'Alzabo::Exception',
+             alias => 'no_such_row_exception',
+           },
 
-	   'Alzabo::Exception::Params' =>
-	   { description => 'An exception generated when there is an error in the parameters passed in a method of function call',
-	     isa => 'Alzabo::Exception',
+           'Alzabo::Exception::Params' =>
+           { description => 'An exception generated when there is an error in the parameters passed in a method of function call',
+             isa => 'Alzabo::Exception',
              alias => 'params_exception',
            },
 
-	   'Alzabo::Exception::NotNullable' =>
-	   { description => 'An exception generated when there is an attempt is made to set a non-nullable column to NULL',
-	     isa => 'Alzabo::Exception::Params',
+           'Alzabo::Exception::NotNullable' =>
+           { description => 'An exception generated when there is an attempt is made to set a non-nullable column to NULL',
+             isa => 'Alzabo::Exception::Params',
              fields => [ 'column_name', 'table_name', 'schema_name' ],
              alias => 'not_nullable_exception',
            },
 
-	   'Alzabo::Exception::Panic' =>
-	   { description => 'An exception generated when something totally unexpected happens',
-	     isa => 'Alzabo::Exception',
-	     alias => 'panic_exception',
-	   },
+           'Alzabo::Exception::Panic' =>
+           { description => 'An exception generated when something totally unexpected happens',
+             isa => 'Alzabo::Exception',
+             alias => 'panic_exception',
+           },
 
-	   'Alzabo::Exception::RDBMSRules' =>
-	   { description => 'An RDBMS rule check failed',
-	     isa => 'Alzabo::Exception',
-	     alias => 'rdbms_rules_exception',
-	   },
+           'Alzabo::Exception::RDBMSRules' =>
+           { description => 'An RDBMS rule check failed',
+             isa => 'Alzabo::Exception',
+             alias => 'rdbms_rules_exception',
+           },
 
-	   'Alzabo::Exception::ReferentialIntegrity' =>
-	   { description =>
-	     'An operation was attempted that would violate referential integrity',
-	     isa => 'Alzabo::Exception',
-	     alias => 'referential_integrity_exception',
-	   },
+           'Alzabo::Exception::ReferentialIntegrity' =>
+           { description =>
+             'An operation was attempted that would violate referential integrity',
+             isa => 'Alzabo::Exception',
+             alias => 'referential_integrity_exception',
+           },
 
-	   'Alzabo::Exception::SQL' =>
-	   { description =>
-	     'An exception generated when there a logical error in a set of operation on an Alzabo::SQLMaker object',
-	     isa => 'Alzabo::Exception',
-	     alias => 'sql_exception',
-	   },
+           'Alzabo::Exception::SQL' =>
+           { description =>
+             'An exception generated when there a logical error in a set of operation on an Alzabo::SQLMaker object',
+             isa => 'Alzabo::Exception',
+             alias => 'sql_exception',
+           },
 
-	   'Alzabo::Exception::Storable' =>
-	   { description => 'An attempt to call a function from the Storable module failed',
-	     isa => 'Alzabo::Exception',
-	     alias => 'storable_exception',
-	   },
+           'Alzabo::Exception::Storable' =>
+           { description => 'An attempt to call a function from the Storable module failed',
+             isa => 'Alzabo::Exception',
+             alias => 'storable_exception',
+           },
 
-	   'Alzabo::Exception::System' =>
-	   { description => 'An attempt to interact with the system failed',
-	     isa => 'Alzabo::Exception',
+           'Alzabo::Exception::System' =>
+           { description => 'An attempt to interact with the system failed',
+             isa => 'Alzabo::Exception',
              alias => 'system_exception',
            },
 
-	   'Alzabo::Exception::VirtualMethod' =>
-	   { description =>
-	     'Indicates that the method called must be subclassed in the appropriate class',
-	     isa => 'Alzabo::Exception',
-	     alias => 'virtual_method_exception',
-	   },
+           'Alzabo::Exception::VirtualMethod' =>
+           { description =>
+             'Indicates that the method called must be subclassed in the appropriate class',
+             isa => 'Alzabo::Exception',
+             alias => 'virtual_method_exception',
+           },
 
-	 );
+         );
 }
 
 use Exception::Class (%e);
@@ -113,20 +113,19 @@ sub import
     my $caller = caller;
     if ( $args{abbr} )
     {
-	foreach my $name ( ref $args{abbr} ? @{ $args{abbr} } : $args{abbr} )
-	{
-	    no strict 'refs';
-	    die "Unknown exception abbreviation '$name'" unless defined &{$name};
-	    *{"${caller}::$name"} = \&{$name};
-	}
+        foreach my $name ( ref $args{abbr} ? @{ $args{abbr} } : $args{abbr} )
+        {
+            no strict 'refs';
+            die "Unknown exception abbreviation '$name'" unless defined &{$name};
+            *{"${caller}::$name"} = \&{$name};
+        }
     }
     {
-	no strict 'refs';
-	*{"${caller}::isa_alzabo_exception"} = \&isa_alzabo_exception;
-	*{"${caller}::rethrow_exception"} = \&rethrow_exception;
+        no strict 'refs';
+        *{"${caller}::isa_alzabo_exception"} = \&isa_alzabo_exception;
+        *{"${caller}::rethrow_exception"} = \&rethrow_exception;
     }
 }
-
 
 sub isa_alzabo_exception
 {
@@ -135,19 +134,19 @@ sub isa_alzabo_exception
 
     if ($name)
     {
-	my $class = "Alzabo::Exception::$name";
+        my $class = "Alzabo::Exception::$name";
 
-	{
+        {
             no strict 'refs';
             die "no such exception class $class"
                 unless defined(${"${class}::VERSION"});
         }
 
-	return UNIVERSAL::isa($err, "Alzabo::Exception::$name");
+        return UNIVERSAL::isa($err, $class);
     }
     else
     {
-	return UNIVERSAL::isa($err, "Alzabo::Exception");
+        return UNIVERSAL::isa($err, "Alzabo::Exception");
     }
 }
 
@@ -159,7 +158,7 @@ sub rethrow_exception
 
     if ( UNIVERSAL::can( $err, 'rethrow' ) )
     {
-	$err->rethrow;
+        $err->rethrow;
     }
     elsif ( ref $err )
     {
@@ -250,8 +249,8 @@ sub full_message
 
     if ( $self->bind )
     {
-	my @bind = map { defined $_ ? $_ : '<undef>' } @{ $self->bind };
-	$msg .= "\nBIND: @bind" if @bind;
+        my @bind = map { defined $_ ? $_ : '<undef>' } @{ $self->bind };
+        $msg .= "\nBIND: @bind" if @bind;
     }
 
     return $msg;

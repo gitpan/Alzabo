@@ -8,7 +8,7 @@ BEGIN
         ( SQL => 0,
           TRACE => 0,
           METHODMAKER => 0,
-	  REVERSE_ENGINEER => 0,
+          REVERSE_ENGINEER => 0,
         );
 
     if ( $ENV{ALZABO_DEBUG} )
@@ -48,11 +48,11 @@ Alzabo::Debug - Creates constants used to turn on debugging
 
   export ALZABO_DEBUG='SQL|TRACE'
 
-  ... run code using Alzabo ...
+  ... load and run code using Alzabo ...
 
   export ALZABO_DEBUG=METHODMAKER
 
-  ... run code using Alzabo ...
+  ... load and run code using Alzabo ...
 
 =head1 DESCRIPTION
 
@@ -67,6 +67,9 @@ Currently, the only way to turn on debugging is by setting the
 C<ALZABO_DEBUG> environment variable.  This variable can contain
 various flags, each separated by a pipe char (|).  Each flag turns on
 different types of debugging output.
+
+These flags B<must be set before Alzabo is loaded>, as debugging is
+turned on or off through the use of constants.
 
 The current flags are:
 

@@ -1,11 +1,81 @@
+0.83
+
+MISCELLANEOUS:
+
+- I got fed up with the instability of CVS on Sourceforge, and am now
+using a Subversion repository I host myself.  See "source" page on
+www.alzabo.org for details.
+
+
+ENHANCEMENTS:
+
+- All SQL-generating methods for the Alzabo::Runtime::Schema and
+Alzabo::Runtime::Table classes now accept a "quote_identifiers"
+parameter, which allows you to turn this on for a single query.
+
+- Improved handling of MySQL's "default defaults" when reverse
+engineering or comparing two schemas, so that the code doesn't
+generate ALTER TABLE statements that don't do anything.
+
+- Make many Params::Validate specs into constants, which may improve
+speed a bit, and may affect memory usage under mod_perl.  This is
+probably a useless micro-optimization, though.
+
+
+BUG FIXES
+
+- Make sure generated SQL for Postgres schema diffs does not include
+dropping & adding the same FK constraint more than once.
+
+- Reverse engineering works with Postgres 7.4.  Thanks to Josh Jore
+for this big patch.  Hopefully this won't break anything for Postgres
+7.3 ;)
+
+- The Alzabo::Column->is_time_interval method was misspelled, and so
+did not work at all.  Patch from Josh Jore.
+
+- With Postgres 7.4, the DBI tables method always includes system
+tables, so we have to filter these out in the
+Alzabo::Driver::PostgreSQL->tables method.  Patch from Josh Jore.
+
+- Make the is_date & is_datetime method consistent across various
+databases.  For Postgres, is_date was only returning true for the DATE
+type, not TIMESTAMP.
+
+- Make is_datetime return true for Postgres' TIMESTAMPTZ column
+type.
+
+- Turning on SQL debugging could cause Alzabo to alter bound values
+that were null to the string "NULL" before performing a query.
+
+- If a table name was changed and an index, column, or foreign key
+dropped from that table, then the generated "diff" SQL could refer to
+the old table name in the various DROP statements that were generated.
+
+- Workaround a bug in MySQL that reports a "Sub_part" of 1 for
+fulltext indexes.
+
+- The changes introduced in 0.71 to track table and column renames
+could cause bogus SQL to be generated if something was renamed, the
+schema was instantiated, and then the schema was compared to an
+existing live database which also had the same renaming done to it.
+
+- If you tried to create a relationship between two tables where one
+of the tables had a varchar or char column as part of its PK, and you
+let Alzabo create the foreign key column in the other table, then
+Alzabo would try to set the length of the varchar/char column to
+undef, which would cause an exception to be thrown.
+
+---------------------------------------------------------------------------
+
 0.82  January 6, 2003
 
 ENHANCEMENTS:
 
 - The Alzabo::Runtime::Table->insert() and
-Alzabo::Runtime::InsertHandle->insert() will not create a new row
-object when called in void context.  This should make inserts faster
-when you don't need a row object back.
+Alzabo::Runtime::InsertHandle->insert() methods will not create a new
+row object when called in void context.  This should make inserts
+faster when you don't need a row object back.
 
 - When reverse engineering a MySQL schema, Alzabo will now set a table
 attribute for the table type (MyISAM, InnoDB, etc.) if the server

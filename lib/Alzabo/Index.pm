@@ -18,7 +18,7 @@ sub columns
     my @c;
     foreach my $c ($self->{columns}->Keys)
     {
-	push @c, ($self->{columns}->FETCH($c))->{column};
+        push @c, ($self->{columns}->FETCH($c))->{column};
     }
 
     return @c;
@@ -30,7 +30,7 @@ sub prefix
     my $c = shift;
 
     Alzabo::Exception::Params->throw( error => "Column " . $c->name . " is not part of index." )
-	unless $self->{columns}->EXISTS( $c->name );
+        unless $self->{columns}->EXISTS( $c->name );
 
     return ($self->{columns}->FETCH( $c->name ))->{prefix};
 }
@@ -56,12 +56,12 @@ sub id
 # making this change would break schemas when the user tries to
 # delete/drop the index.  save for later, maybe?
 
-#			 ( $self->unique ? 'U' : () ),
-#			 ( $self->fulltext ? 'F' : () ),
+#                        ( $self->unique ? 'U' : () ),
+#                        ( $self->fulltext ? 'F' : () ),
                          ( $function ? $function : () ),
-			 ( map { $_->name, $self->prefix($_) || () }
-			   $self->columns ),
-		       );
+                         ( map { $_->name, $self->prefix($_) || () }
+                           $self->columns ),
+                       );
 }
 
 sub table

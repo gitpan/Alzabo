@@ -27,7 +27,7 @@ sub _load_from_file
     my $class = shift;
 
     my %p = validate( @_, { name => { type => SCALAR },
-			  } );
+                          } );
 
     # Making these (particularly from files) is expensive.
     return $class->_cached_schema($p{name}) if $class->_cached_schema($p{name});
@@ -44,34 +44,34 @@ sub _load_from_file
     my $fh = do { local *FH; };
     if ( -e $version_file )
     {
-	open $fh, "<$version_file"
-	    or Alzabo::Exception::System->throw( error => "Unable to open $version_file: $!\n" );
-	$version = join '', <$fh>;
-	close $fh
-	    or Alzabo::Exception::System->throw( error => "Unable to close $version_file: $!" );
+        open $fh, "<$version_file"
+            or Alzabo::Exception::System->throw( error => "Unable to open $version_file: $!\n" );
+        $version = join '', <$fh>;
+        close $fh
+            or Alzabo::Exception::System->throw( error => "Unable to close $version_file: $!" );
     }
 
     if ( $version < $Alzabo::VERSION )
     {
-	require Alzabo::BackCompat;
+        require Alzabo::BackCompat;
 
-	Alzabo::BackCompat::update_schema( name => $p{name},
-					   version => $version );
+        Alzabo::BackCompat::update_schema( name => $p{name},
+                                           version => $version );
     }
 
     open $fh, "<$file"
-	or Alzabo::Exception::System->throw( error => "Unable to open $file: $!" );
+        or Alzabo::Exception::System->throw( error => "Unable to open $file: $!" );
     my $schema = Storable::retrieve_fd($fh)
-	or Alzabo::Exception::System->throw( error => "Can't retrieve from filehandle" );
+        or Alzabo::Exception::System->throw( error => "Can't retrieve from filehandle" );
     close $fh
-	or Alzabo::Exception::System->throw( error => "Unable to close $file: $!" );
+        or Alzabo::Exception::System->throw( error => "Unable to close $file: $!" );
 
     my $rdbms_file = File::Spec->catfile( $schema_dir, $p{name}, "$p{name}.rdbms" );
     open $fh, "<$rdbms_file"
-	or Alzabo::Exception::System->throw( error => "Unable to open $rdbms_file: $!\n" );
+        or Alzabo::Exception::System->throw( error => "Unable to open $rdbms_file: $!\n" );
     my $rdbms = join '', <$fh>;
     close $fh
-	or Alzabo::Exception::System->throw( error => "Unable to close $rdbms_file: $!" );
+        or Alzabo::Exception::System->throw( error => "Unable to close $rdbms_file: $!" );
 
     $rdbms =~ s/\s//g;
 
@@ -82,7 +82,7 @@ sub _load_from_file
     bless $schema, $class;
 
     $schema->{driver} = Alzabo::Driver->new( rdbms => $rdbms,
-					     schema => $schema );
+                                             schema => $schema );
 
     $schema->{rules} = Alzabo::RDBMSRules->new( rdbms => $rdbms );
 
@@ -105,11 +105,11 @@ sub _cached_schema
 
     if (exists $CACHE{$name}{$class}{object})
     {
-	my $mtime = (stat($file))[9]
-	    or Alzabo::Exception::System->throw( error => "can't stat $file: $!" );
+        my $mtime = (stat($file))[9]
+            or Alzabo::Exception::System->throw( error => "can't stat $file: $!" );
 
-	return $CACHE{$name}{$class}{object}
-	    if $mtime <= $CACHE{$name}{$class}{mtime};
+        return $CACHE{$name}{$class}{object}
+            if $mtime <= $CACHE{$name}{$class}{mtime};
     }
 }
 
@@ -135,7 +135,7 @@ sub _save_to_cache
     my $name = $self->name;
 
     $CACHE{$name}{$class} = { object => $self,
-			      mtime => time };
+                              mtime => time };
 }
 
 sub name
@@ -154,10 +154,12 @@ sub has_table
     return $self->{tables}->FETCH(shift);
 }
 
+use constant TABLE_SPEC => { type => SCALAR };
+
 sub table
 {
     my $self = shift;
-    my ($name) = validate_pos( @_, { type => SCALAR } );
+    my ($name) = validate_pos( @_, TABLE_SPEC );
 
     return
         $self->{tables}->FETCH($name) ||
@@ -200,24 +202,24 @@ sub run_in_transaction
     my @r;
     if (wantarray)
     {
-	@r = eval { $code->() };
+        @r = eval { $code->() };
     }
     else
     {
-	$r[0] = eval { $code->() };
+        $r[0] = eval { $code->() };
     }
 
     if (my $e = $@)
     {
-	eval { $self->rollback };
-	if ( UNIVERSAL::can( $e, 'rethrow' ) )
-	{
-	    $e->rethrow;
-	}
-	else
-	{
-	    Alzabo::Exception->throw( error => $e );
-	}
+        eval { $self->rollback };
+        if ( UNIVERSAL::can( $e, 'rethrow' ) )
+        {
+            $e->rethrow;
+        }
+        else
+        {
+            Alzabo::Exception->throw( error => $e );
+        }
     }
 
     $self->commit;
@@ -242,9 +244,15 @@ sub rules
 sub sqlmaker
 {
     my $self = shift;
+    my %p = validate( @_, { quote_identifiers =>
+                            { type    => BOOLEAN,
+                              default => $self->{quote_identifiers},
+                            },
+                          },
+                    );
 
     return $self->{sql}->new( driver => $self->driver,
-                              quote_identifiers => $self->{quote_identifiers},
+                              quote_identifiers => $p{quote_identifiers},
                             );
 }
 

@@ -8,17 +8,17 @@ use Alzabo::Runtime;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { params_exception join '', @_ } );
 
+use constant NEW_SPEC => { table => { isa => 'Alzabo::Runtime::Table' },
+                           sql   => { isa => 'Alzabo::SQLMaker' },
+                           columns => { type => ARRAYREF },
+                           values  => { type => HASHREF, default => {} },
+                         };
+
 sub new
 {
     my $class = shift;
 
-    my %p = validate( @_,
-                      { table => { isa => 'Alzabo::Runtime::Table' },
-                        sql   => { isa => 'Alzabo::SQLMaker' },
-                        columns => { type => ARRAYREF },
-                        values  => { type => HASHREF, default => {} },
-                      }
-                    );
+    my %p = validate( @_, NEW_SPEC );
 
     my $self = bless \%p, $class;
 
@@ -64,25 +64,25 @@ sub insert
     my @pk = $self->{table}->primary_key;
     foreach my $pk (@pk)
     {
-	unless ( exists $vals->{ $pk->name } )
-	{
-	    if ( $pk->sequenced )
-	    {
-		$vals->{ $pk->name } = $driver->next_sequence_number($pk);
-	    }
-	    else
-	    {
-		params_exception
-		    ( "No value provided for primary key (" .
-		      $pk->name . ") and no sequence is available." );
-	    }
-	}
+        unless ( exists $vals->{ $pk->name } )
+        {
+            if ( $pk->sequenced )
+            {
+                $vals->{ $pk->name } = $driver->next_sequence_number($pk);
+            }
+            else
+            {
+                params_exception
+                    ( "No value provided for primary key (" .
+                      $pk->name . ") and no sequence is available." );
+            }
+        }
     }
 
     foreach my $c ( @{ $self->{columns} } )
     {
-	delete $vals->{ $c->name }
-	    if ! defined $vals->{ $c->name } && defined $c->default;
+        delete $vals->{ $c->name }
+            if ! defined $vals->{ $c->name } && defined $c->default;
     }
 
     my @fk = $self->{table}->all_foreign_keys;
@@ -92,33 +92,33 @@ sub insert
     $schema->begin_work if @fk;
     eval
     {
-	foreach my $fk (@fk)
-	{
-	    $fk->register_insert( map { $_->name => $vals->{ $_->name } } $fk->columns_from );
-	}
+        foreach my $fk (@fk)
+        {
+            $fk->register_insert( map { $_->name => $vals->{ $_->name } } $fk->columns_from );
+        }
 
         $self->{sql}->debug(\*STDERR) if Alzabo::Debug::SQL;
         print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
-	$self->{handle}->execute_no_result
+        $self->{handle}->execute_no_result
             ( map { exists $vals->{$_} ? $vals->{$_} : undef } @val_order );
 
-	foreach my $pk (@pk)
-	{
-	    $id{ $pk->name } = ( defined $vals->{ $pk->name } ?
-				 $vals->{ $pk->name } :
-				 $driver->get_last_id($self) );
-	}
+        foreach my $pk (@pk)
+        {
+            $id{ $pk->name } = ( defined $vals->{ $pk->name } ?
+                                 $vals->{ $pk->name } :
+                                 $driver->get_last_id($self) );
+        }
 
-	# must come after call to ->get_last_id for MySQL because the
-	# id will no longer be available after the transaction ends.
-	$schema->commit if @fk;
+        # must come after call to ->get_last_id for MySQL because the
+        # id will no longer be available after the transaction ends.
+        $schema->commit if @fk;
     };
     if (my $e = $@)
     {
-	eval { $schema->rollback };
+        eval { $schema->rollback };
 
-	rethrow_exception $e;
+        rethrow_exception $e;
     }
 
     return unless defined wantarray;
@@ -201,7 +201,5 @@ L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row> object.
 
 Throws: L<C<Alzabo::Exception::Logic>|Alzabo::Exceptions>,
 L<C<Alzabo::Exception::Params>|Alzabo::Exceptions>
-
-
 
 =cut

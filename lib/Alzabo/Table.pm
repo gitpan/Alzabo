@@ -28,11 +28,13 @@ sub name
     return $self->{name};
 }
 
+use constant HAS_COLUMN_SPEC => { type => SCALAR };
+
 sub has_column
 {
     my $self = shift;
 
-    validate_pos( @_, { type => SCALAR } );
+    validate_pos( @_, HAS_COLUMN_SPEC );
 
     return $self->{columns}->FETCH(shift);
 }
@@ -81,16 +83,18 @@ sub primary_key_size
     return scalar @{ $self->{pk} };
 }
 
+use constant COLUMN_IS_PRIMARY_KEY_SPEC => { isa => 'Alzabo::Column' };
+
 sub column_is_primary_key
 {
     my $self = shift;
 
-    validate_pos( @_, { isa => 'Alzabo::Column' } );
+    validate_pos( @_, COLUMN_IS_PRIMARY_KEY_SPEC );
 
     my $name = shift->name;
 
     Alzabo::Exception::Params->throw( error => "Column $name doesn't exist in $self->{name}" )
-	unless $self->{columns}->EXISTS($name);
+        unless $self->{columns}->EXISTS($name);
 
     my $idx = $self->{columns}->Indices($name);
     return 1 if grep { $idx == $_ } @{ $self->{pk} };
@@ -103,12 +107,15 @@ sub attributes
     return keys %{ $_[0]->{attributes} };
 }
 
+use constant HAS_ATTRIBUTE_SPEC => { attribute => { type => SCALAR },
+                                     case_sensitive => { type => SCALAR,
+                                                         default => 0 },
+                                   };
+
 sub has_attribute
 {
     my $self = shift;
-    my %p = validate( @_, { attribute => { type => SCALAR },
-			    case_sensitive => { type => SCALAR,
-						default => 0 } } );
+    my %p = validate( @_, HAS_ATTRIBUTE_SPEC );
 
     if ( $p{case_sensitive} )
     {
@@ -120,66 +127,73 @@ sub has_attribute
     }
 }
 
+use constant FOREIGN_KEYS_SPEC => { column => { isa => 'Alzabo::Column' },
+                                    table  => { isa => 'Alzabo::Table' },
+                                  };
+
 sub foreign_keys
 {
     my $self = shift;
 
-    validate( @_, { column => { isa => 'Alzabo::Column' },
-		    table  => { isa => 'Alzabo::Table' } } );
+    validate( @_, FOREIGN_KEYS_SPEC );
     my %p = @_;
 
     my $c_name = $p{column}->name;
     my $t_name = $p{table}->name;
 
     Alzabo::Exception::Params->throw( error => "Column $c_name doesn't exist in $self->{name}" )
-	unless $self->{columns}->EXISTS($c_name);
+        unless $self->{columns}->EXISTS($c_name);
 
     Alzabo::Exception::Params->throw( error => "No foreign keys to $t_name exist in $self->{name}" )
-	unless exists $self->{fk}{$t_name};
+        unless exists $self->{fk}{$t_name};
 
     Alzabo::Exception::Params->throw( error => "Column $c_name is not a foreign key to $t_name in $self->{name}" )
-	unless exists $self->{fk}{$t_name}{$c_name};
+        unless exists $self->{fk}{$t_name}{$c_name};
 
     return wantarray ? @{ $self->{fk}{$t_name}{$c_name} } : $self->{fk}{$t_name}{$c_name}[0];
 }
+
+use constant FOREIGN_KEYS_BY_TABLE_SPEC => { isa => 'Alzabo::Table' };
 
 sub foreign_keys_by_table
 {
     my $self = shift;
 
-    validate_pos( @_, { isa => 'Alzabo::Table' } );
+    validate_pos( @_, FOREIGN_KEYS_BY_TABLE_SPEC );
     my $name = shift->name;
 
     my $fk = $self->{fk};
     my @fk;
     if ( exists $fk->{$name} )
     {
-	foreach my $c ( keys %{ $fk->{$name} } )
-	{
-	    push @fk, @{ $fk->{$name}{$c} };
-	}
+        foreach my $c ( keys %{ $fk->{$name} } )
+        {
+            push @fk, @{ $fk->{$name}{$c} };
+        }
     }
 
     return wantarray ? @fk : $fk[0];
 }
 
+use constant FOREIGN_KEYS_BY_COLUMN_SPEC => { isa => 'Alzabo::Column' };
+
 sub foreign_keys_by_column
 {
     my $self = shift;
 
-    my ($col) = validate_pos( @_, { isa => 'Alzabo::Column' } );
+    my ($col) = validate_pos( @_, FOREIGN_KEYS_BY_COLUMN_SPEC );
 
     Alzabo::Exception::Params->throw( error => "Column " . $col->name . " doesn't exist in $self->{name}" )
-	unless $self->{columns}->EXISTS( $col->name );
+        unless $self->{columns}->EXISTS( $col->name );
 
     my @fk;
     my $fk = $self->{fk};
     foreach my $t (keys %$fk)
     {
-	if ( exists $fk->{$t}{ $col->name } )
-	{
-	    push @fk, @{ $fk->{$t}{ $col->name } };
-	}
+        if ( exists $fk->{$t}{ $col->name } )
+        {
+            push @fk, @{ $fk->{$t}{ $col->name } };
+        }
     }
 
     return wantarray ? @fk : $fk[0];
@@ -194,15 +208,15 @@ sub all_foreign_keys
     my $fk = $self->{fk};
     foreach my $t (keys %$fk)
     {
-	foreach my $c ( keys %{ $fk->{$t} } )
-	{
-	    foreach my $key ( @{ $fk->{$t}{$c} } )
-	    {
-		next if $seen{$key};
-		push @fk, $key;
-		$seen{$key} = 1;
-	    }
-	}
+        foreach my $c ( keys %{ $fk->{$t} } )
+        {
+            foreach my $key ( @{ $fk->{$t}{$c} } )
+            {
+                next if $seen{$key};
+                push @fk, $key;
+                $seen{$key} = 1;
+            }
+        }
     }
 
     return wantarray ? @fk : $fk[0];
@@ -216,7 +230,7 @@ sub index
     my $id = shift;
 
     Alzabo::Exception::Params->throw( error => "Index $id doesn't exist in $self->{name}" )
-	unless $self->{indexes}->EXISTS($id);
+        unless $self->{indexes}->EXISTS($id);
 
     return $self->{indexes}->FETCH($id);
 }

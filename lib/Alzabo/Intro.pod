@@ -185,16 +185,16 @@ relationships.
 
       if ( $data{parent_location_id} )
       {
-	  my $parent_location_id = $data{parent_location_id};
-	  my $location_t = $schema->table('Location');
+          my $parent_location_id = $data{parent_location_id};
+          my $location_t = $schema->table('Location');
 
           while ( my $location =
                   $location_t->row_by_pk( pk => $parent_location_id ) )
-	  {
+          {
               die "Insert into location would create loop"
                   if $location->select('parent_location_id') == $data{location_id};
 
-	      $parent_location_id = $location->select('parent_location_id');
+              $parent_location_id = $location->select('parent_location_id');
           }
       }
   }
@@ -210,9 +210,9 @@ L<C<Alzabo::MethodMaker>|Alzabo::MethodMaker>:
 
       if ( $data{parent_location_id} )
       {
-	  my $location = $self;
+          my $location = $self;
           while ( my $location = $location->parent )
-	  {
+          {
               die "Insert into location would create loop"
                   if $location->parent_location_id == $data{location_id};
           }

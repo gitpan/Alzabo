@@ -50,8 +50,8 @@ sub refresh
 sub _in_cache
 {
     return
-	Alzabo::Runtime::UniqueRowCache->row_in_cache
-	    ( $_[1]->table->name, $_[1]->id_as_string );
+        Alzabo::Runtime::UniqueRowCache->row_in_cache
+            ( $_[1]->table->name, $_[1]->id_as_string );
 }
 
 sub _write_to_cache

@@ -34,7 +34,7 @@ sub new
     my $class = ref $proto || $proto;
 
     validate( @_, { rdbms => { type => SCALAR },
-		    name  => { type => SCALAR } } );
+                    name  => { type => SCALAR } } );
     my %p = @_;
 
     my $self = bless {}, $class;
@@ -44,7 +44,7 @@ sub new
                  ( grep { $p{rdbms} eq $_ } Alzabo::RDBMSRules->available ) );
 
     $self->{driver} = Alzabo::Driver->new( rdbms => $p{rdbms},
-					   schema => $self );
+                                           schema => $self );
     $self->{rules} = Alzabo::RDBMSRules->new( rdbms => $p{rdbms} );
 
     $self->{sql} = Alzabo::SQLMaker->load( rdbms => $p{rdbms} );
@@ -73,7 +73,7 @@ sub reverse_engineer
     my %p = @_;
 
     my $self = $class->new( name => $p{name},
-			    rdbms => $p{rdbms} );
+                            rdbms => $p{rdbms} );
 
     delete $p{rdbms};
     $self->{driver}->connect(%p);
@@ -103,7 +103,7 @@ sub set_name
     eval { $self->rules->validate_schema_name($self); };
     if ($@)
     {
-	$self->{name} = $old_name;
+        $self->{name} = $old_name;
 
         rethrow_exception($@);
     }
@@ -130,11 +130,11 @@ sub make_table
     my %p2;
     foreach ( qw( before after ) )
     {
-	$p2{$_} = delete $p{$_} if exists $p{$_};
+        $p2{$_} = delete $p{$_} if exists $p{$_};
     }
     $self->add_table( table => Alzabo::Create::Table->new( schema => $self,
-							   %p ),
-		      %p2 );
+                                                           %p ),
+                      %p2 );
 
     return $self->table( $p{name} );
 }
@@ -144,25 +144,25 @@ sub add_table
     my $self = shift;
 
     validate( @_, { table  => { isa => 'Alzabo::Create::Table' },
-		    before => { optional => 1 },
-		    after  => { optional => 1 } } );
+                    before => { optional => 1 },
+                    after  => { optional => 1 } } );
     my %p = @_;
 
     my $table = $p{table};
 
     params_exception "Table " . $table->name . " already exists in schema"
-	if $self->{tables}->EXISTS( $table->name );
+        if $self->{tables}->EXISTS( $table->name );
 
     $self->{tables}->STORE( $table->name, $table );
 
     foreach ( qw( before after ) )
     {
-	if ( exists $p{$_} )
-	{
-	    $self->move_table( $_ => $p{$_},
-			       table => $table );
-	    last;
-	}
+        if ( exists $p{$_} )
+        {
+            $self->move_table( $_ => $p{$_},
+                               table => $table );
+            last;
+        }
     }
 }
 
@@ -174,14 +174,14 @@ sub delete_table
     my $table = shift;
 
     params_exception "Table " . $table->name ." doesn't exist in schema"
-	unless $self->{tables}->EXISTS( $table->name );
+        unless $self->{tables}->EXISTS( $table->name );
 
     foreach my $fk ($table->all_foreign_keys)
     {
-	foreach my $other_fk ( $fk->table_to->foreign_keys_by_table($table) )
-	{
-	    $fk->table_to->delete_foreign_key($other_fk);
-	}
+        foreach my $other_fk ( $fk->table_to->foreign_keys_by_table($table) )
+        {
+            $fk->table_to->delete_foreign_key($other_fk);
+        }
     }
 
     $self->{tables}->DELETE( $table->name );
@@ -192,42 +192,42 @@ sub move_table
     my $self = shift;
 
     validate( @_, { table  => { isa => 'Alzabo::Create::Table' },
-		    before => { isa => 'Alzabo::Create::Table',
-				optional => 1 },
-		    after  => { isa => 'Alzabo::Create::Table',
-				optional => 1 } } );
+                    before => { isa => 'Alzabo::Create::Table',
+                                optional => 1 },
+                    after  => { isa => 'Alzabo::Create::Table',
+                                optional => 1 } } );
     my %p = @_;
 
     if ( exists $p{before} && exists $p{after} )
     {
-	params_exception
+        params_exception
             "move_table method cannot be called with both 'before' and 'after' parameters";
     }
 
     if ( $p{before} )
     {
-	params_exception "Table " . $p{before}->name . " doesn't exist in schema"
-	    unless $self->{tables}->EXISTS( $p{before}->name );
+        params_exception "Table " . $p{before}->name . " doesn't exist in schema"
+            unless $self->{tables}->EXISTS( $p{before}->name );
     }
     else
     {
-	params_exception "Table " . $p{after}->name . " doesn't exist in schema"
-	    unless $self->{tables}->EXISTS( $p{after}->name );
+        params_exception "Table " . $p{after}->name . " doesn't exist in schema"
+            unless $self->{tables}->EXISTS( $p{after}->name );
     }
 
     params_exception "Table " . $p{table}->name . " doesn't exist in schema"
-	unless $self->{tables}->EXISTS( $p{table}->name );
+        unless $self->{tables}->EXISTS( $p{table}->name );
 
     $self->{tables}->DELETE( $p{table}->name );
 
     my $index;
     if ( $p{before} )
     {
-	$index = $self->{tables}->Indices( $p{before}->name );
+        $index = $self->{tables}->Indices( $p{before}->name );
     }
     else
     {
-	$index = $self->{tables}->Indices( $p{after}->name ) + 1;
+        $index = $self->{tables}->Indices( $p{after}->name ) + 1;
     }
 
     $self->{tables}->Splice( $index, 0, $p{table}->name => $p{table} );
@@ -238,11 +238,11 @@ sub register_table_name_change
     my $self = shift;
 
     validate( @_, { table => { isa => 'Alzabo::Create::Table' },
-		    old_name => { type => SCALAR } } );
+                    old_name => { type => SCALAR } } );
     my %p = @_;
 
     params_exception "Table $p{old_name} doesn't exist in schema"
-	unless $self->{tables}->EXISTS( $p{old_name} );
+        unless $self->{tables}->EXISTS( $p{old_name} );
 
     my $index = $self->{tables}->Indices( $p{old_name} );
     $self->{tables}->Replace( $index, $p{table}, $p{table}->name );
@@ -261,15 +261,15 @@ sub add_relationship
     # This requires an entirely new table.
     unless ( grep { $_ ne 'n' } @{ $p{cardinality} } )
     {
-	$self->_create_linking_table(%p);
-	return;
+        $self->_create_linking_table(%p);
+        return;
     }
 
     params_exception "Must provide 'table_from' or 'columns_from' parameter"
-	unless $p{table_from} || $p{columns_from};
+        unless $p{table_from} || $p{columns_from};
 
     params_exception "Must provide 'table_to' or 'columns_to' parameter"
-	unless $p{table_to} || $p{columns_to};
+        unless $p{table_to} || $p{columns_to};
 
     $p{columns_from} =
         ( defined $p{columns_from} ?
@@ -290,7 +290,7 @@ sub add_relationship
 
     if ( $p{columns_from} && $p{columns_to} )
     {
-	params_exception
+        params_exception
             "Cannot create a relationship with differing numbers of columns " .
             "on either side of the relation"
                 unless @{ $p{columns_from} } == @{ $p{columns_to} };
@@ -298,14 +298,14 @@ sub add_relationship
 
     foreach ( [ columns_from => $f_table ], [ columns_to => $t_table ] )
     {
-	my ($key, $table) = @$_;
-	if ( defined $p{$key} )
-	{
-	    params_exception
+        my ($key, $table) = @$_;
+        if ( defined $p{$key} )
+        {
+            params_exception
                 "All the columns in a given side of the relationship ".
                 "must be from the same table"
                     if grep { $_->table ne $table } @{ $p{$key} };
-	}
+        }
     }
 
     # Determined later.  This is the column that the relationship is
@@ -323,23 +323,23 @@ sub add_relationship
     my $method = "_create_${cardinality}_relationship";
 
     ($col_from, $col_to) = $self->$method( %p,
-					   table_from => $f_table,
-					   table_to   => $t_table,
-					 );
+                                           table_from => $f_table,
+                                           table_to   => $t_table,
+                                         );
 
     eval
     {
-	$f_table->make_foreign_key( columns_from => $col_from,
-				    columns_to   => $col_to,
-				    cardinality  => $p{cardinality},
-				    from_is_dependent => $p{from_is_dependent},
-				    to_is_dependent   => $p{to_is_dependent},
-				    comment => $p{comment},
-				  );
+        $f_table->make_foreign_key( columns_from => $col_from,
+                                    columns_to   => $col_to,
+                                    cardinality  => $p{cardinality},
+                                    from_is_dependent => $p{from_is_dependent},
+                                    to_is_dependent   => $p{to_is_dependent},
+                                    comment => $p{comment},
+                                  );
     };
     if ($@)
     {
-	$tracker->backout;
+        $tracker->backout;
 
         rethrow_exception($@);
     }
@@ -347,15 +347,15 @@ sub add_relationship
     my @fk;
     eval
     {
-	foreach my $c ( @$col_from )
-	{
-	    push @fk, $f_table->foreign_keys( table => $t_table,
-					      column => $c );
-	}
+        foreach my $c ( @$col_from )
+        {
+            push @fk, $f_table->foreign_keys( table => $t_table,
+                                              column => $c );
+        }
     };
     if ($@)
     {
-	$tracker->backout;
+        $tracker->backout;
 
         rethrow_exception($@);
     }
@@ -373,37 +373,37 @@ sub add_relationship
     my $inverse_method = "_create_${inverse_cardinality}_relationship";
 
     ($col_from, $col_to) = $self->$method( table_from => $t_table,
-					   table_to   => $f_table,
-					   columns_from => $col_to,
-					   columns_to   => $col_from,
-					   cardinality  => [ @{ $p{cardinality} }[1,0] ],
-					   from_is_dependent => $p{to_is_dependent},
-					   to_is_dependent   => $p{from_is_dependent},
-					 );
+                                           table_to   => $f_table,
+                                           columns_from => $col_to,
+                                           columns_to   => $col_from,
+                                           cardinality  => [ @{ $p{cardinality} }[1,0] ],
+                                           from_is_dependent => $p{to_is_dependent},
+                                           to_is_dependent   => $p{from_is_dependent},
+                                         );
 
     if ($p{from_is_dependent})
     {
-	$_->nullable(0) foreach @{ $p{columns_from} };
+        $_->nullable(0) foreach @{ $p{columns_from} };
     }
 
     if ($p{to_is_dependent})
     {
-	$_->nullable(0) foreach @{ $p{columns_to} };
+        $_->nullable(0) foreach @{ $p{columns_to} };
     }
 
     eval
     {
-	$t_table->make_foreign_key( columns_from => $col_from,
-				    columns_to   => $col_to,
-				    cardinality  => [ @{ $p{cardinality} }[1,0] ],
-				    from_is_dependent => $p{to_is_dependent},
-				    to_is_dependent   => $p{from_is_dependent},
-				    comment => $p{comment},
-				  );
+        $t_table->make_foreign_key( columns_from => $col_from,
+                                    columns_to   => $col_to,
+                                    cardinality  => [ @{ $p{cardinality} }[1,0] ],
+                                    from_is_dependent => $p{to_is_dependent},
+                                    to_is_dependent   => $p{from_is_dependent},
+                                    comment => $p{comment},
+                                  );
     };
     if ($@)
     {
-	$tracker->backout;
+        $tracker->backout;
 
         rethrow_exception($@);
     }
@@ -418,23 +418,23 @@ sub _check_add_relationship_args
 
     foreach my $t ( $p{table_from}, $p{table_to} )
     {
-	next unless defined $t;
-	params_exception "Table " . $t->name . " doesn't exist in schema"
-	    unless $self->{tables}->EXISTS( $t->name );
+        next unless defined $t;
+        params_exception "Table " . $t->name . " doesn't exist in schema"
+            unless $self->{tables}->EXISTS( $t->name );
     }
 
     params_exception "Incorrect number of cardinality elements"
-	unless scalar @{ $p{cardinality} } == 2;
+        unless scalar @{ $p{cardinality} } == 2;
 
     foreach my $c ( @{ $p{cardinality} } )
     {
-	params_exception "Invalid cardinality: $c"
+        params_exception "Invalid cardinality: $c"
             unless $c =~ /^[01n]$/i;
     }
 
     # No such thing as 1..0 or n..0
     params_exception "Invalid cardinality: $p{cardinality}->[0]..$p{cardinality}->[1]"
-	if  $p{cardinality}->[1] eq '0';
+        if  $p{cardinality}->[1] eq '0';
 }
 
 sub _create_1_to_1_relationship
@@ -443,7 +443,7 @@ sub _create_1_to_1_relationship
     my %p = @_;
 
     return @p{ 'columns_from', 'columns_to' }
-	if $p{columns_from} && $p{columns_to};
+        if $p{columns_from} && $p{columns_to};
 
     # Add these columns to the table which _must_ participate in the
     # relationship, if there is one.  This reduces NULL values.
@@ -453,14 +453,14 @@ sub _create_1_to_1_relationship
 
     # If the from table is dependent or neither one is or both are ...
     if ( $p{from_is_dependent} ||
-	 $p{from_is_dependent} == $p{to_is_dependent} )
+         $p{from_is_dependent} == $p{to_is_dependent} )
     {
-	@order = ( 'from', 'to' );
+        @order = ( 'from', 'to' );
     }
     # The to table is dependent
     else
     {
-	@order = ( 'to', 'from' );
+        @order = ( 'to', 'from' );
     }
 
     # Determine which table we are linking from.  This gets a new
@@ -475,33 +475,33 @@ sub _create_1_to_1_relationship
     my $col_to;
     if ( $p{"columns_$order[1]"} )
     {
-	$col_to = $p{"columns_$order[1]"};
+        $col_to = $p{"columns_$order[1]"};
     }
     else
     {
-	my @c = $t_table->primary_key;
+        my @c = $t_table->primary_key;
 
-	params_exception $t_table->name . " has no primary key."
-	    unless @c;
+        params_exception $t_table->name . " has no primary key."
+            unless @c;
 
-	$col_to = \@c;
+        $col_to = \@c;
     }
 
     my ($col_from);
     if ($p{"columns_$order[0]"})
     {
-	$col_from = $p{"columns_$order[0]"};
+        $col_from = $p{"columns_$order[0]"};
     }
     else
     {
-	my @new_col;
-	foreach my $c ( @$col_to )
-	{
-	    push @new_col, $self->_add_foreign_key_column( table  => $f_table,
-							   column => $c );
-	}
+        my @new_col;
+        foreach my $c ( @$col_to )
+        {
+            push @new_col, $self->_add_foreign_key_column( table  => $f_table,
+                                                           column => $c );
+        }
 
-	$col_from = \@new_col;
+        $col_from = \@new_col;
     }
 
     return ($col_from, $col_to);
@@ -522,37 +522,37 @@ sub _create_1_to_n_relationship
     my $col_from;
     if ( $p{columns_from} )
     {
-	$col_from = $p{columns_from};
+        $col_from = $p{columns_from};
     }
     else
     {
-	my @c = $f_table->primary_key;
+        my @c = $f_table->primary_key;
 
-	# Is there a way to handle this properly?
-	params_exception $f_table->name . " has no primary key."
-	    unless @c;
+        # Is there a way to handle this properly?
+        params_exception $f_table->name . " has no primary key."
+            unless @c;
 
-	$col_from = \@c;
+        $col_from = \@c;
     }
 
     my $col_to;
     if ($p{columns_to})
     {
-	$col_to = $p{columns_to};
+        $col_to = $p{columns_to};
     }
     else
     {
-	# If the columns this links to in the 'to' table ares not specified
-	# explicitly we assume that the user wants to have this coumn
-	# created/adjusted in the 'to' table.
-	my @new_col;
-	foreach my $c ( @$col_from )
-	{
-	    push @new_col, $self->_add_foreign_key_column( table  => $t_table,
-							   column => $c );
-	}
+        # If the columns this links to in the 'to' table ares not specified
+        # explicitly we assume that the user wants to have this coumn
+        # created/adjusted in the 'to' table.
+        my @new_col;
+        foreach my $c ( @$col_from )
+        {
+            push @new_col, $self->_add_foreign_key_column( table  => $t_table,
+                                                           column => $c );
+        }
 
-	$col_to = \@new_col;
+        $col_to = \@new_col;
     }
 
     return ($col_from, $col_to);
@@ -589,7 +589,7 @@ sub _add_foreign_key_column
     my $self = shift;
 
     validate( @_, { table => { isa => 'Alzabo::Create::Table' },
-		    column => { isa => 'Alzabo::Create::Column' } } );
+                    column => { isa => 'Alzabo::Create::Column' } } );
     my %p = @_;
 
     my $tracker = Alzabo::ChangeTracker->new;
@@ -598,26 +598,26 @@ sub _add_foreign_key_column
     # representation of the $p{column}->definition reference.
     my $new_col;
     if ( eval { $p{table}->column( $p{column}->name ) } &&
-	 ( $p{column}->definition ne $p{table}->column( $p{column}->name )->definition ) )
+         ( $p{column}->definition ne $p{table}->column( $p{column}->name )->definition ) )
     {
-	# This will make the two column share a single definition
-	# object.
-	my $old_def = $p{table}->column( $p{column}->name )->definition;
-	$p{table}->column( $p{column}->name )->set_definition($p{column}->definition);
+        # This will make the two column share a single definition
+        # object.
+        my $old_def = $p{table}->column( $p{column}->name )->definition;
+        $p{table}->column( $p{column}->name )->set_definition($p{column}->definition);
 
-	$tracker->add
+        $tracker->add
             ( sub { $p{table}->column
                         ( $p{column}->name )->set_definition($old_def) } );
     }
     else
     {
-	# Just add the new column, but use the existing definition
-	# object.
-	$p{table}->make_column( name => $p{column}->name,
-			     definition => $p{column}->definition );
+        # Just add the new column, but use the existing definition
+        # object.
+        $p{table}->make_column( name => $p{column}->name,
+                                definition => $p{column}->definition );
 
-	my $del_col = $p{table}->column( $p{column}->name );
-	$tracker->add( sub { $p{table}->delete_column($del_col) } );
+        my $del_col = $p{table}->column( $p{column}->name );
+        $tracker->add( sub { $p{table}->delete_column($del_col) } );
     }
 
     # Return the new column we just made.
@@ -637,31 +637,31 @@ sub _create_linking_table
     my $t1_col;
     if ($p{columns_from})
     {
-	$t1_col = $p{columns_from};
+        $t1_col = $p{columns_from};
     }
     else
     {
-	my @c = $t1->primary_key;
+        my @c = $t1->primary_key;
 
-	params_exception $t1->name . " has no primary key."
-	    unless @c;
+        params_exception $t1->name . " has no primary key."
+            unless @c;
 
-	$t1_col = \@c;
+        $t1_col = \@c;
     }
 
     my $t2_col;
     if ($p{columns_to})
     {
-	$t2_col = $p{columns_to};
+        $t2_col = $p{columns_to};
     }
     else
     {
-	my @c = $t2->primary_key;
+        my @c = $t2->primary_key;
 
-	params_exception $t2->name . " has no primary key."
-	    unless @c;
+        params_exception $t2->name . " has no primary key."
+            unless @c;
 
-	$t2_col = \@c;
+        $t2_col = \@c;
     }
 
     # First we create the table.
@@ -670,15 +670,15 @@ sub _create_linking_table
 
     if ( exists $p{name} )
     {
-	$name = $p{name};
+        $name = $p{name};
     }
     elsif ( lc $t1->name eq $t1->name )
     {
-	$name = join '_', $t1->name, $t2->name;
+        $name = join '_', $t1->name, $t2->name;
     }
     else
     {
-	$name = join '', $t1->name, $t2->name;
+        $name = join '', $t1->name, $t2->name;
     }
 
     $linking = $self->make_table( name => $name );
@@ -686,40 +686,40 @@ sub _create_linking_table
 
     eval
     {
-	foreach my $c ( @$t1_col, @$t2_col )
-	{
-	    $linking->make_column( name => $c->name,
-				   definition => $c->definition,
-				   primary_key => 1,
-				 );
-	}
+        foreach my $c ( @$t1_col, @$t2_col )
+        {
+            $linking->make_column( name => $c->name,
+                                   definition => $c->definition,
+                                   primary_key => 1,
+                                 );
+        }
 
-	$self->add_relationship
-	    ( table_from => $t1,
-	      table_to   => $linking,
-	      columns_from => $t1_col,
-	      columns_to   => [ $linking->columns( map { $_->name } @$t1_col ) ],
-	      cardinality  => [ '1', 'n' ],
-	      from_is_dependent => $p{from_is_dependent},
-	      to_is_dependent => 1,
-	      comment => $p{comment},
-	    );
+        $self->add_relationship
+            ( table_from => $t1,
+              table_to   => $linking,
+              columns_from => $t1_col,
+              columns_to   => [ $linking->columns( map { $_->name } @$t1_col ) ],
+              cardinality  => [ '1', 'n' ],
+              from_is_dependent => $p{from_is_dependent},
+              to_is_dependent => 1,
+              comment => $p{comment},
+            );
 
-	$self->add_relationship
-	    ( table_from => $t2,
-	      table_to   => $linking,
-	      columns_from => $t2_col,
-	      columns_to   => [ $linking->columns( map { $_->name } @$t2_col ) ],
-	      cardinality  => [ '1', 'n' ],
-	      from_is_dependent => $p{to_is_dependent},
-	      to_is_dependent => 1,
-	      comment => $p{comment},
-	    );
+        $self->add_relationship
+            ( table_from => $t2,
+              table_to   => $linking,
+              columns_from => $t2_col,
+              columns_to   => [ $linking->columns( map { $_->name } @$t2_col ) ],
+              cardinality  => [ '1', 'n' ],
+              from_is_dependent => $p{to_is_dependent},
+              to_is_dependent => 1,
+              comment => $p{comment},
+            );
     };
 
     if ($@)
     {
-	$tracker->backout;
+        $tracker->backout;
 
         rethrow_exception($@);
     }
@@ -739,13 +739,13 @@ sub create
     my @sql = $self->make_sql;
 
     $self->{driver}->create_database(@_)
-	unless grep { $self->{name} eq $_ } $self->{driver}->schemas(@_);
+        unless grep { $self->{name} eq $_ } $self->{driver}->schemas(@_);
 
     $self->{driver}->connect(@_);
 
     foreach my $statement (@sql)
     {
-	$self->{driver}->do( sql => $statement );
+        $self->{driver}->do( sql => $statement );
     }
 
     $self->save_current_name;
@@ -763,12 +763,12 @@ sub make_sql
 
     if ($self->{instantiated})
     {
-	return $self->rules->schema_sql_diff( old => $self->{original},
-					      new => $self );
+        return $self->rules->schema_sql_diff( old => $self->{original},
+                                              new => $self );
     }
     else
     {
-	return $self->rules->schema_sql($self);
+        return $self->rules->schema_sql($self);
     }
 }
 
@@ -778,16 +778,16 @@ sub sync_backend_sql
 
     unless ( grep { $self->{name} eq $_ } $self->{driver}->schemas(@_) )
     {
-	return $self->rules->schema_sql($self);
+        return $self->rules->schema_sql($self);
     }
 
     my $existing = $self->reverse_engineer( @_,
-					    name => $self->name,
-					    rdbms => $self->driver->driver_id,
-					  );
+                                            name => $self->name,
+                                            rdbms => $self->driver->driver_id,
+                                          );
 
     return $self->rules->schema_sql_diff( old => $existing,
-					  new => $self );
+                                          new => $self );
 }
 
 sub sync_backend
@@ -796,15 +796,15 @@ sub sync_backend
 
     unless ( grep {  $self->{name} eq $_ } $self->{driver}->schemas(@_) )
     {
-	$self->set_instantiated(0);
-	return $self->create(@_);
+        $self->set_instantiated(0);
+        return $self->create(@_);
     }
 
     $self->{driver}->connect(@_);
 
     foreach my $statement ( $self->sync_backend_sql(@_) )
     {
-	$self->driver->do( sql => $statement );
+        $self->driver->do( sql => $statement );
     }
 
     $self->save_current_name;
@@ -835,21 +835,21 @@ sub delete
 
     my $dh = do { local *DH; };
     opendir $dh, $schema_dir
-	or system_exception "Unable to open $schema_dir directory: $!";
+        or system_exception "Unable to open $schema_dir directory: $!";
 
     foreach my $f (readdir $dh)
     {
-	my $file = File::Spec->catfile( $schema_dir, $f );
-	next unless -f $file;
+        my $file = File::Spec->catfile( $schema_dir, $f );
+        next unless -f $file;
 
-	unlink $file
-	    or system_exception "Unable to delete $file: $!";
+        unlink $file
+            or system_exception "Unable to delete $file: $!";
     }
     closedir $dh
         or system_exception "Unable to close $schema_dir: $!";
 
     rmdir $schema_dir
-	or system_exception "Unable to delete $schema_dir: $!";
+        or system_exception "Unable to delete $schema_dir: $!";
 }
 
 sub is_saved
@@ -872,53 +872,53 @@ sub save_to_file
     my $schema_dir = File::Spec->catdir( Alzabo::Config::schema_dir(), $self->{name} );
     unless (-e $schema_dir)
     {
-	mkdir $schema_dir, 0775
-	    or system_exception "Unable to make directory $schema_dir: $!";
+        mkdir $schema_dir, 0775
+            or system_exception "Unable to make directory $schema_dir: $!";
     }
 
     my $create_save_name = $self->_base_filename( $self->{name} ) . '.create.alz';
 
     my $fh = do { local *FH; };
     open $fh, ">$create_save_name"
-	or system_exception "Unable to write to $create_save_name: $!\n";
+        or system_exception "Unable to write to $create_save_name: $!\n";
 
     my $driver = delete $self->{driver};
     Storable::nstore_fd( $self, $fh )
-	or system_exception "Can't store to filehandle";
+        or system_exception "Can't store to filehandle";
 
     $self->{driver} = $driver;
     close $fh
-	or system_exception "Unable to close $create_save_name: $!";
+        or system_exception "Unable to close $create_save_name: $!";
 
     my $rdbms_save_name = $self->_base_filename( $self->{name} ) . '.rdbms';
 
     open $fh, ">$rdbms_save_name"
-	or system_exception "Unable to write to $rdbms_save_name: $!\n";
+        or system_exception "Unable to write to $rdbms_save_name: $!\n";
 
     print $fh $self->{driver}->driver_id
-	or system_exception "Can't write to $rdbms_save_name: $!";
+        or system_exception "Can't write to $rdbms_save_name: $!";
     close $fh
-	or system_exception "Unable to close $rdbms_save_name: $!";
+        or system_exception "Unable to close $rdbms_save_name: $!";
 
     my $version_save_name = $self->_base_filename( $self->{name} ) . '.version';
 
     open $fh, ">$version_save_name"
-	or system_exception "Unable to write to $version_save_name: $!\n";
+        or system_exception "Unable to write to $version_save_name: $!\n";
     print $fh $Alzabo::VERSION
-	or system_exception "Can't write to $version_save_name: $!";
+        or system_exception "Can't write to $version_save_name: $!";
     close $fh
-	or system_exception "Unable to close $version_save_name: $!";
+        or system_exception "Unable to close $version_save_name: $!";
 
     my $rt = $self->_make_runtime_clone;
 
     my $runtime_save_name = $self->_base_filename( $self->{name} ) . '.runtime.alz';
 
     open $fh, ">$runtime_save_name"
-	or system_exception "Unable to write to $runtime_save_name: $!\n";
+        or system_exception "Unable to write to $runtime_save_name: $!\n";
     Storable::nstore_fd( $rt, $fh )
-	or system_exception "Can't store to filehandle";
+        or system_exception "Can't store to filehandle";
     close $fh
-	or system_exception "Unable to close $runtime_save_name: $!";
+        or system_exception "Unable to close $runtime_save_name: $!";
 
     $self->_save_to_cache;
 }
@@ -936,7 +936,7 @@ sub clone
 
     $clone->{name} = $p{name};
     $clone->{driver} = Alzabo::Driver->new( rdbms => $self->{driver}->driver_id,
-					    schema => $clone );
+                                            schema => $clone );
 
     $clone->rules->validate_schema_name($clone);
     $clone->{original}{name} = $p{name} if $p{name};
@@ -957,33 +957,33 @@ sub _make_runtime_clone
 
     foreach my $f ( qw( original instantiated rules driver ) )
     {
-	delete $clone->{$f};
+        delete $clone->{$f};
     }
 
     foreach my $t ($clone->tables)
     {
-	foreach my $c ($t->columns)
-	{
-	    my $def = $c->definition;
-	    bless $def, 'Alzabo::Runtime::ColumnDefinition';
-	    bless $c, 'Alzabo::Runtime::Column';
+        foreach my $c ($t->columns)
+        {
+            my $def = $c->definition;
+            bless $def, 'Alzabo::Runtime::ColumnDefinition';
+            bless $c, 'Alzabo::Runtime::Column';
 
             delete $c->{last_instantiation_name};
-	}
+        }
 
-	foreach my $fk ($t->all_foreign_keys)
-	{
-	    bless $fk, 'Alzabo::Runtime::ForeignKey';
-	}
+        foreach my $fk ($t->all_foreign_keys)
+        {
+            bless $fk, 'Alzabo::Runtime::ForeignKey';
+        }
 
-	foreach my $i ($t->indexes)
-	{
-	    bless $i, 'Alzabo::Runtime::Index';
-	}
+        foreach my $i ($t->indexes)
+        {
+            bless $i, 'Alzabo::Runtime::Index';
+        }
 
         delete $t->{last_instantiation_name};
 
-	bless $t, 'Alzabo::Runtime::Table';
+        bless $t, 'Alzabo::Runtime::Table';
     }
     bless $clone, 'Alzabo::Runtime::Schema';
 

@@ -78,8 +78,8 @@ actually change your database.
 
 Alzabo will try to use transactions whenever appropriate.
 Unfortunately, there is no way to determine whether or not a given
-table supports transactions so Alzabo simply sets AutoCommit to 0,
-whether or not this will actually do anything.
+table supports transactions so Alzabo simply calls DBI's
+C<begin_work()> method, whether or not this will actually do anything.
 
 =back
 

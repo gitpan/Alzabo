@@ -283,6 +283,8 @@ sub make_mysql_schema
 				     { column => $emp_t->column('smell') },
 				   ] );
 
+    # Having a fulltext index tests handling of mysql fulltext index
+    # sub_part bug when reverse engineering
     $emp_t->make_index( columns => [ { column => $emp_t->column('name') } ],
 			fulltext => 1 );
 

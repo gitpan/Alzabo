@@ -50,21 +50,7 @@ foreach my $rdbms (@rdbms_names)
         my @diff = $s1->rules->schema_sql_diff( old => $s1,
                                                 new => $s2 );
 
-        my $sql;
-        if ( $s1->driver->driver_id eq 'MySQL' )
-        {
-            my @sql;
-            foreach (@diff)
-            {
-                push @sql, $_ unless /ALTER TABLE .* CHANGE COLUMN .* DEFAULT "0".*/;
-            }
-
-            $sql = join "\n", @sql;
-        }
-        else
-        {
-            $sql = join "\n", @diff;
-        }
+        my $sql = join "\n", @diff;
 
         is ( $sql, '',
              "Reverse engineered schema's SQL should be the same as the original's" );

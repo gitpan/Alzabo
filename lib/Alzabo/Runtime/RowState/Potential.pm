@@ -4,9 +4,6 @@ use strict;
 
 use Alzabo::Runtime;
 
-use Params::Validate qw( :all );
-Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
-
 use base qw(Alzabo::Runtime::RowState::Live);
 
 sub _init
@@ -19,22 +16,22 @@ sub _init
     # be update hooks that probably shouldn't be invoked here.
     foreach ( keys %{ $p{values} } )
     {
-	# This will throw an exception if the column doesn't exist.
-	my $c = $row->table->column($_);
+        # This will throw an exception if the column doesn't exist.
+        my $c = $row->table->column($_);
 
-	Alzabo::Exception::Params->throw( error => "Column " . $c->name . " cannot be null." )
-	    unless defined $p{values}->{$_} || $c->nullable || defined $c->default;
+        Alzabo::Exception::Params->throw( error => "Column " . $c->name . " cannot be null." )
+            unless defined $p{values}->{$_} || $c->nullable || defined $c->default;
 
-	$row->{data}{$_} = $p{values}->{$_};
+        $row->{data}{$_} = $p{values}->{$_};
     }
 
     foreach my $c ( $row->table->columns )
     {
-	if ( defined $c->default )
-	{
-	    my $name = $c->name;
-	    $row->{data}{$name} = $c->default unless defined $row->{data}{$name};
-	}
+        if ( defined $c->default )
+        {
+            my $name = $c->name;
+            $row->{data}{$name} = $c->default unless defined $row->{data}{$name};
+        }
     }
 
     return 1;
@@ -59,10 +56,10 @@ sub update
 
     foreach my $k (keys %data)
     {
-	# This will throw an exception if the column doesn't exist.
-	my $c = $row->table->column($k);
+        # This will throw an exception if the column doesn't exist.
+        my $c = $row->table->column($k);
 
-	Alzabo::Exception::NotNullable->throw
+        Alzabo::Exception::NotNullable->throw
             ( error => $c->name . " column in " . $row->table->name . " table cannot be null.",
               column_name => $c->name,
             )
@@ -87,6 +84,9 @@ sub is_potential { 1 }
 sub is_live { 0 }
 
 sub is_deleted { 0 }
+
+
+1;
 
 __END__
 

@@ -19,7 +19,7 @@ unless (@rdbms_names)
     exit;
 }
 
-my $tests_per_run = 324;
+my $tests_per_run = 332;
 my $test_count = $tests_per_run * @rdbms_names;
 
 my %SINGLE_RDBMS_TESTS = ( mysql => 23,
@@ -268,6 +268,20 @@ sub run_tests
 	    "Check that the single row returned has the name 'unit 2'" );
     }
 
+    {
+	my $row;
+	eval_ok( sub { $row =
+                           $emp_t->one_row
+                               ( where =>
+                                 [ $emp_t->column('employee_id'), '=', $emp2_id ],
+                                 quote_identifiers => 1,
+                               ) },
+		 "Retrieve 'unit 2' employee via one_row method with quote_identifiers" );
+
+	is( $row->select('name'), 'unit 2',
+	    "Check that the single row returned has the name 'unit 2'" );
+    }
+
     my %proj;
     $proj{extend} = $proj_t->insert( values => { name => 'Extend',
 						 department_id => $dep{borg}->select('department_id') } );
@@ -336,8 +350,10 @@ sub run_tests
                                      where    =>
                                      [ $emp_t->column('employee_id'), '=',
                                        $emp{bill}->select('employee_id') ],
-                                     order_by => $proj_t->column('project_id') ) },
-                 "Join employee, employee_project, and project tables where employee_id = bill's employee id" );
+                                     order_by => $proj_t->column('project_id'),
+                                     quote_identifiers => 1,
+                                   ) },
+                 "Join employee, employee_project, and project tables where employee_id = bill's employee id with quote_identifiers" );
 
         my @rows = $cursor->next;
 
@@ -764,6 +780,26 @@ sub run_tests
 	eval_ok ( sub { @emps = $emp_t->all_rows( order_by =>
 						  { columns => $emp_t->column('name') } )->all_rows },
 		  "Select all employee rows with hashref to order_by" );
+
+	is( scalar @emps, 4,
+	    "There should be 4 rows in the employee table" );
+	is( $emps[0]->select('name'), 'al',
+	    "First row name should be al" );
+	is( $emps[1]->select('name'), 'bob',
+	    "Second row name should be bob" );
+	is( $emps[2]->select('name'), 'rachel',
+	    "Third row name should be rachel" );
+	is( $emps[3]->select('name'), 'unit 2',
+	    "Fourth row name should be 'unit 2'" );
+    }
+
+    {
+	my @emps;
+	eval_ok ( sub { @emps = $emp_t->all_rows( order_by =>
+						  { columns => $emp_t->column('name') },
+                                                  quote_identifiers => 1,
+                                                )->all_rows },
+		  "Select all employee rows with hashref to order_by with quote_identifiers" );
 
 	is( scalar @emps, 4,
 	    "There should be 4 rows in the employee table" );

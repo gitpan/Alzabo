@@ -173,7 +173,7 @@ sub schema_sql
 
     foreach my $t ( $schema->tables )
     {
-	push @sql, $self->table_sql($t);
+        push @sql, $self->table_sql($t);
     }
 
     return @sql;
@@ -260,7 +260,7 @@ sub index_sql_diff
     my $self = shift;
 
     validate( @_, { new => { isa => 'Alzabo::Index' },
-		    old => { isa => 'Alzabo::Index' } } );
+                    old => { isa => 'Alzabo::Index' } } );
 
     my %p = @_;
 
@@ -269,8 +269,8 @@ sub index_sql_diff
     my @sql;
     if ( $new_sql ne $self->index_sql($p{old}) )
     {
-	push @sql, $self->drop_index_sql($p{old});
-	push @sql, $new_sql;
+        push @sql, $self->drop_index_sql( $p{old}, $p{new}->table->name );
+        push @sql, $new_sql;
     }
 
     return @sql;
@@ -317,9 +317,9 @@ sub reverse_engineer
 
     foreach my $table ( $dbh->tables )
     {
-	my $t = $schema->make_table( name => $table );
+        my $t = $schema->make_table( name => $table );
 
-	$self->reverse_engineer_table($t);
+        $self->reverse_engineer_table($t);
     }
 }
 
@@ -334,25 +334,25 @@ sub reverse_engineer_table
 
     while ( my $col_info = $sth->fetchrow_hashref )
     {
-	use Data::Dumper; warn Dumper $col_info;
-	my %attr = ( name     => $col_info->{COLUMN_NAME},
-		     type     => $col_info->{TYPE_NAME},
-		     nullable => $col_info->{NULLABLE} ? 1 : 0,
-		   );
+        use Data::Dumper; warn Dumper $col_info;
+        my %attr = ( name     => $col_info->{COLUMN_NAME},
+                     type     => $col_info->{TYPE_NAME},
+                     nullable => $col_info->{NULLABLE} ? 1 : 0,
+                   );
 
-	$attr{size} =
-	    $col_info->{COLUMN_SIZE} if $col_info->{COLUMN_SIZE};
+        $attr{size} =
+            $col_info->{COLUMN_SIZE} if $col_info->{COLUMN_SIZE};
 
-	$attr{precision} =
-	    $col_info->{DECIMAL_DIGITS} if $col_info->{DECIMAL_DIGITS};
+        $attr{precision} =
+            $col_info->{DECIMAL_DIGITS} if $col_info->{DECIMAL_DIGITS};
 
-	$attr{default} =
-	    $col_info->{COLUMN_DEF} if defined $col_info->{COLUMN_DEF};
+        $attr{default} =
+            $col_info->{COLUMN_DEF} if defined $col_info->{COLUMN_DEF};
 
-	$attr{comment} =
-	    $col_info->{REMARKS} if defined $col_info->{REMARKS};
+        $attr{comment} =
+            $col_info->{REMARKS} if defined $col_info->{REMARKS};
 
-	$table->make_column(%attr);
+        $table->make_column(%attr);
     }
 
     $self->reverse_engineer_table_primary_key($table);
@@ -369,7 +369,7 @@ sub reverse_engineer_table_primary_key
 
     while ( my $pk_info = $sth->fetchrow_hashref )
     {
-	$table->add_primary_key( $table->column( $pk_info->{COLUMN_NAME} ) );
+        $table->add_primary_key( $table->column( $pk_info->{COLUMN_NAME} ) );
     }
 }
 
@@ -385,7 +385,7 @@ sub schema_sql_diff
     my $self = shift;
 
     validate( @_, { new => { isa => 'Alzabo::Schema' },
-		    old => { isa => 'Alzabo::Schema' } } );
+                    old => { isa => 'Alzabo::Schema' } } );
 
     my %p = @_;
 
@@ -395,13 +395,21 @@ sub schema_sql_diff
     my %changed_name;
     foreach my $new_t ( $p{new}->tables )
     {
-        my $old_name = defined $new_t->former_name ? $new_t->former_name : $new_t->name;
+        # When syncing against an existing schema, the table may be
+        # present with its new name.
+        my $old_t;
+        if ( defined $new_t->former_name )
+        {
+            $old_t = eval { $p{old}->table( $new_t->former_name ) };
+        }
 
-	if ( my $old_t = eval { $p{old}->table($old_name) } )
-	{
-            if ( $old_name ne $new_t->name )
+        $old_t ||= eval { $p{old}->table( $new_t->name ) };
+
+        if ($old_t)
+        {
+            if ( $old_t->name ne $new_t->name )
             {
-                $changed_name{$old_name} = 1;
+                $changed_name{ $old_t->name } = 1;
 
                 if ( $self->can_alter_table_name )
                 {
@@ -421,7 +429,7 @@ sub schema_sql_diff
 
             push @sql, $self->table_sql_diff( new => $new_t,
                                               old => $old_t );
-	}
+        }
         else
         {
             push @sql, $self->table_sql($new_t);
@@ -430,11 +438,11 @@ sub schema_sql_diff
 
     foreach my $old_t ( $p{old}->tables )
     {
-	unless ( $changed_name{ $old_t->name } ||
+        unless ( $changed_name{ $old_t->name } ||
                  eval { $p{new}->table( $old_t->name ) } )
-	{
-	    push @sql, $self->drop_table_sql($old_t);
-	}
+        {
+            push @sql, $self->drop_table_sql($old_t);
+        }
     }
 
     return @sql;
@@ -445,18 +453,18 @@ sub table_sql_diff
     my $self = shift;
 
     validate( @_, { new => { isa => 'Alzabo::Table' },
-		    old => { isa => 'Alzabo::Table' } } );
+                    old => { isa => 'Alzabo::Table' } } );
 
     my %p = @_;
 
     my @sql;
     foreach my $old_i ( $p{old}->indexes )
     {
-	unless ( eval { $p{new}->index( $old_i->id ) } )
-	{
-	    push @sql, $self->drop_index_sql($old_i)
-		if eval { $p{new}->columns( map { $_->name } $old_i->columns ) } && ! $@;
-	}
+        unless ( eval { $p{new}->index( $old_i->id ) } )
+        {
+            push @sql, $self->drop_index_sql($old_i, $p{new}->name)
+                if eval { $p{new}->columns( map { $_->name } $old_i->columns ) } && ! $@;
+        }
     }
 
     my %changed_name;
@@ -468,22 +476,30 @@ sub table_sql_diff
 
     foreach my $old_c ( $p{old}->columns )
     {
-	unless ( $changed_name{ $old_c->name } ||
+        unless ( $changed_name{ $old_c->name } ||
                  ( my $new_c = eval { $p{new}->column( $old_c->name ) } )
                )
-	{
-	    push @sql, $self->drop_column_sql( new_table => $p{new},
-					       old => $old_c );
-	}
+        {
+            push @sql, $self->drop_column_sql( new_table => $p{new},
+                                               old => $old_c );
+        }
     }
 
     foreach my $new_c ( $p{new}->columns )
     {
-        my $old_name = defined $new_c->former_name ? $new_c->former_name : $new_c->name;
+        # When syncing against an existing schema, the column may be
+        # present with its new name.
+        my $old_c;
+        if ( defined $new_c->former_name )
+        {
+            $old_c = eval { $p{old}->column( $new_c->former_name ) };
+        }
 
-	if ( my $old_c = eval { $p{old}->column($old_name) } )
-	{
-            if ( $old_name ne $new_c->name )
+        $old_c ||= eval { $p{old}->column( $new_c->name ) };
+
+        if ($old_c)
+        {
+            if ( $old_c->name ne $new_c->name )
             {
                 if ( $self->can_alter_column_name )
                 {
@@ -499,42 +515,42 @@ sub table_sql_diff
                 }
             }
 
-	    push @sql, $self->column_sql_diff( new => $new_c,
-					       old => $old_c );
-	}
-	else
-	{
+            push @sql, $self->column_sql_diff( new => $new_c,
+                                               old => $old_c );
+        }
+        else
+        {
             push @sql, $self->column_sql_add($new_c);
-	}
+        }
     }
 
     foreach my $new_i ( $p{new}->indexes )
     {
-	if ( my $old_i = eval { $p{old}->index( $new_i->id ) } )
-	{
-	    push @sql, $self->index_sql_diff( new => $new_i,
-					      old => $old_i );
-	}
-	else
-	{
-	    push @sql, $self->index_sql($new_i)
-	}
+        if ( my $old_i = eval { $p{old}->index( $new_i->id ) } )
+        {
+            push @sql, $self->index_sql_diff( new => $new_i,
+                                              old => $old_i );
+        }
+        else
+        {
+            push @sql, $self->index_sql($new_i)
+        }
     }
 
     foreach my $new_fk ( $p{new}->all_foreign_keys )
     {
         unless ( grep { $new_fk->id eq $_->id } $p{old}->all_foreign_keys )
-	{
-	    push @sql, $self->foreign_key_sql($new_fk)
-	}
+        {
+            push @sql, $self->foreign_key_sql($new_fk)
+        }
     }
 
     foreach my $old_fk ( $p{old}->all_foreign_keys )
     {
         unless ( grep { $old_fk->id eq $_->id } $p{new}->all_foreign_keys )
-	{
-	    push @sql, $self->drop_foreign_key_sql($old_fk);
-	}
+        {
+            push @sql, $self->drop_foreign_key_sql($old_fk);
+        }
     }
 
     my $pk_changed;
@@ -548,7 +564,7 @@ sub table_sql_diff
             push @sql, $self->alter_primary_key_sql( new => $p{new},
                                                      old => $p{old} );
 
-	    $pk_changed = 1;
+            $pk_changed = 1;
             last;
         }
     }
@@ -613,7 +629,7 @@ sub _virtual
 
     my $sub = (caller(1))[3];
     Alzabo::Exception::VirtualMethod->throw( error =>
-					     "$sub is a virtual method and must be subclassed in " . ref $self );
+                                             "$sub is a virtual method and must be subclassed in " . ref $self );
 }
 
 __END__

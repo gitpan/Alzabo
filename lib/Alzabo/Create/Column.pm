@@ -40,7 +40,7 @@ sub _init
                         type  => { type => SCALAR,
                                    optional => 1 },
                         attributes => { type => ARRAYREF,
-                                        optional => 1 },
+                                        default => [] },
                         default    => { type => UNDEF | SCALAR,
                                         optional => 1 },
                         sequenced  => { optional => 1 },
@@ -52,7 +52,7 @@ sub _init
                                         optional => 1 },
                         comment => { type => UNDEF | SCALAR,
                                      default => '' },
-		  } );
+                  } );
 
     $self->set_table( $p{table} );
 
@@ -62,11 +62,11 @@ sub _init
 
     if ($p{definition})
     {
-	$self->set_definition( $p{definition} );
+        $self->set_definition( $p{definition} );
     }
     else
     {
-	$self->set_definition
+        $self->set_definition
             ( Alzabo::Create::ColumnDefinition->new
                   ( owner => $self,
                     type => $p{type},
@@ -81,9 +81,14 @@ sub _init
 
     $self->set_sequenced( $p{sequenced} || 0 );
 
-    $self->set_default( $p{default} );
+    $self->set_default( $p{default} )
+        if exists $p{default};
 
-    $self->set_length( length => $p{length}, precision => $p{precision} );
+    # We always set length, since not giving a length at all may be an
+    # error for some column types, unless we got a definition object,
+    # in which case it should contain the length & precision.
+    $self->set_length( length => $p{length}, precision => $p{precision} )
+        unless $p{definition};
 
     $self->set_comment( $p{comment} );
 }
@@ -111,18 +116,18 @@ sub set_name
 
     eval
     {
-	$self->table->schema->rules->validate_column_name($self);
+        $self->table->schema->rules->validate_column_name($self);
     };
     if ($@)
     {
-	$self->{name} = $old_name;
+        $self->{name} = $old_name;
 
         rethrow_exception($@);
     }
 
     $self->table->register_column_name_change( column => $self,
-					       old_name => $old_name )
-	if $old_name;
+                                               old_name => $old_name )
+        if $old_name;
 }
 
 sub set_nullable
@@ -133,10 +138,10 @@ sub set_nullable
     my $n = shift;
 
     params_exception "Invalid value for nullable attribute: $n"
-	unless $n eq '1' || $n eq '0';
+        unless $n eq '1' || $n eq '0';
 
     params_exception "Primary key column cannot be nullable"
-	if $n eq '1' && $self->is_primary_key;
+        if $n eq '1' && $self->is_primary_key;
 
     $self->{nullable} = $n;
 }
@@ -166,7 +171,7 @@ sub set_attributes
 
     foreach (@_)
     {
-	$self->add_attribute($_);
+        $self->add_attribute($_);
     }
 }
 
@@ -181,7 +186,7 @@ sub add_attribute
     $attr =~ s/\s+$//;
 
     $self->table->schema->rules->validate_column_attribute( column => $self,
-							    attribute => $attr );
+                                                            attribute => $attr );
 
     $self->{attributes}{$attr} = 1;
 }
@@ -194,7 +199,7 @@ sub delete_attribute
     my $attr = shift;
 
     params_exception "Column " . $self->name . " doesn't have attribute $attr"
-	unless exists $self->{attributes}{$attr};
+        unless exists $self->{attributes}{$attr};
 
     delete $self->{attributes}{$attr};
 }
@@ -209,8 +214,8 @@ sub alter
     # discarded.
     foreach ( $self->attributes )
     {
-	$self->delete_attribute($_);
-	eval { $self->add_attribute($_) };
+        $self->delete_attribute($_);
+        eval { $self->add_attribute($_) };
     }
 }
 
@@ -228,23 +233,23 @@ sub set_type
     # discarded.
     foreach ( $self->attributes )
     {
-	$self->delete_attribute($_);
-	eval { $self->add_attribute($_) };
+        $self->delete_attribute($_);
+        eval { $self->add_attribute($_) };
     }
 
     if ( $self->length )
     {
-	eval { $self->set_length( length => $self->length,
-				  precision => $self->precision ) };
-	if ($@)
-	{
-	    eval { $self->set_length( length => $self->length, precision => undef ) };
-	    if ($@)
-	    {
-		$self->set_length( length => undef,
-				   precision => undef );
-	    }
-	}
+        eval { $self->set_length( length => $self->length,
+                                  precision => $self->precision ) };
+        if ($@)
+        {
+            eval { $self->set_length( length => $self->length, precision => undef ) };
+            if ($@)
+            {
+                $self->set_length( length => undef,
+                                   precision => undef );
+            }
+        }
     }
 }
 
@@ -256,10 +261,10 @@ sub set_sequenced
     my $s = shift;
 
     params_exception "Invalid value for sequenced attribute: $s"
-	unless $s eq '1' || $s eq '0';
+        unless $s eq '1' || $s eq '0';
 
     $self->table->schema->rules->validate_sequenced_attribute($self)
-	if $s eq '1';
+        if $s eq '1';
 
     $self->{sequenced} = $s;
 }

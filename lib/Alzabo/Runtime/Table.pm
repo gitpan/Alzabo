@@ -22,12 +22,14 @@ sub insert
     my $self = shift;
 
     logic_exception "Can't make rows for tables without a primary key"
-	unless $self->primary_key;
+        unless $self->primary_key;
 
     my %p = @_;
     %p = validate( @_,
                    { ( map { $_ => { optional => 1 } } keys %p ),
                      values => { type => HASHREF, optional => 1 },
+                     quote_identifiers => { type => BOOLEAN,
+                                            optional => 1 },
                    },
                  );
 
@@ -38,78 +40,78 @@ sub insert
     my @pk = $self->primary_key;
     foreach my $pk (@pk)
     {
-	unless ( exists $vals->{ $pk->name } )
-	{
-	    if ($pk->sequenced)
-	    {
-		$vals->{ $pk->name } = $schema->driver->next_sequence_number($pk);
-	    }
-	    else
-	    {
-		params_exception
-		    ( "No value provided for primary key (" .
-		      $pk->name . ") and no sequence is available." );
-	    }
-	}
+        unless ( exists $vals->{ $pk->name } )
+        {
+            if ($pk->sequenced)
+            {
+                $vals->{ $pk->name } = $schema->driver->next_sequence_number($pk);
+            }
+            else
+            {
+                params_exception
+                    ( "No value provided for primary key (" .
+                      $pk->name . ") and no sequence is available." );
+            }
+        }
     }
 
     foreach my $c ($self->columns)
     {
-	next if $c->is_primary_key;
+        next if $c->is_primary_key;
 
-	unless ( defined $vals->{ $c->name } || $c->nullable || defined $c->default )
-	{
-	    not_nullable_exception
-		( error => $c->name . " column in " . $self->name . " table cannot be null.",
-		  column_name => $c->name,
-		  table_name  => $c->table->name,
-		  schema_name => $c->table->schema->name,
-		);
-	}
+        unless ( defined $vals->{ $c->name } || $c->nullable || defined $c->default )
+        {
+            not_nullable_exception
+                ( error => $c->name . " column in " . $self->name . " table cannot be null.",
+                  column_name => $c->name,
+                  table_name  => $c->table->name,
+                  schema_name => $c->table->schema->name,
+                );
+        }
 
-	delete $vals->{ $c->name }
-	    if ! defined $vals->{ $c->name } && defined $c->default;
+        delete $vals->{ $c->name }
+            if ! defined $vals->{ $c->name } && defined $c->default;
     }
 
     my @fk = $self->all_foreign_keys;
 
-    my $sql = ( $self->schema->sqlmaker->
-		insert->
-		into($self, $self->columns( sort keys %$vals ) )->
-		values( map { $self->column($_) => $vals->{$_} } sort keys %$vals ) );
+    my $sql = ( Alzabo::Runtime::sqlmaker( $self->schema, \%p )->
+                insert->
+                into($self, $self->columns( sort keys %$vals ) )->
+                values( map { $self->column($_) => $vals->{$_} } sort keys %$vals ) );
 
     my %id;
 
     $schema->begin_work if @fk;
     eval
     {
-	foreach my $fk (@fk)
-	{
-	    $fk->register_insert( map { $_->name => $vals->{ $_->name } } $fk->columns_from );
-	}
+        foreach my $fk (@fk)
+        {
+            $fk->register_insert( map { $_->name => $vals->{ $_->name } } $fk->columns_from );
+        }
 
         $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
         print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
-	$self->schema->driver->do( sql => $sql->sql,
-				   bind => $sql->bind );
+        $self->schema->driver->do( sql => $sql->sql,
+                                   bind => $sql->bind );
 
-	foreach my $pk (@pk)
-	{
-	    $id{ $pk->name } = ( defined $vals->{ $pk->name } ?
-				 $vals->{ $pk->name } :
-				 $schema->driver->get_last_id($self) );
-	}
+        foreach my $pk (@pk)
+        {
+            $id{ $pk->name } = ( defined $vals->{ $pk->name } ?
+                                 $vals->{ $pk->name } :
+                                 $schema->driver->get_last_id($self) );
+        }
 
-	# must come after call to ->get_last_id for MySQL because the
-	# id will no longer be available after the transaction ends.
-	$schema->commit if @fk;
+        # must come after call to ->get_last_id for MySQL because the
+        # id will no longer be available after the transaction ends.
+        $schema->commit if @fk;
     };
     if (my $e = $@)
     {
-	eval { $schema->rollback };
+        eval { $schema->rollback };
 
-	rethrow_exception $e;
+        rethrow_exception $e;
     }
 
     return unless defined wantarray || $p{potential_row};
@@ -122,13 +124,15 @@ sub insert_handle
     my $self = shift;
 
     logic_exception "Can't make rows for tables without a primary key"
-	unless $self->primary_key;
+        unless $self->primary_key;
 
     my %p = @_;
     %p = validate( @_,
                    { ( map { $_ => { optional => 1 } } keys %p ),
                      columns => { type => ARRAYREF, default => [] },
                      values  => { type => HASHREF, default => {} },
+                     quote_identifiers => { type => BOOLEAN,
+                                            optional => 1 },
                    },
                  );
 
@@ -177,25 +181,25 @@ sub insert_handle
 
     foreach my $c ( $self->columns )
     {
-	next if $c->is_primary_key  || $c->nullable || defined $c->default;
+        next if $c->is_primary_key  || $c->nullable || defined $c->default;
 
         unless ( $cols{ $c->name } )
-	{
-	    not_nullable_exception
-		( error => $c->name . " column in " . $self->name . " table cannot be null.",
-		  column_name => $c->name,
-		  table_name  => $c->table->name,
-		  schema_name => $c->table->schema->name,
-		);
-	}
+        {
+            not_nullable_exception
+                ( error => $c->name . " column in " . $self->name . " table cannot be null.",
+                  column_name => $c->name,
+                  table_name  => $c->table->name,
+                  schema_name => $c->table->schema->name,
+                );
+        }
     }
 
     my @columns = $self->columns( keys %vals );
 
-    my $sql = ( $self->schema->sqlmaker->
-		insert->
-		into( $self, @columns )->
-		values( map { $_ => $vals{ $_->name } } @columns ),
+    my $sql = ( Alzabo::Runtime::sqlmaker( $self->schema, \%p )->
+                insert->
+                into( $self, @columns )->
+                values( map { $_ => $vals{ $_->name } } @columns ),
               );
 
     return Alzabo::Runtime::InsertHandle->new( table => $self,
@@ -211,7 +215,7 @@ sub row_by_pk
     my $self = shift;
 
     logic_exception "Can't make rows for tables without a primary key"
-	unless $self->primary_key;
+        unless $self->primary_key;
 
     my %p = @_;
 
@@ -220,21 +224,21 @@ sub row_by_pk
     my @pk = $self->primary_key;
 
     params_exception
-	'Incorrect number of pk values provided.  ' . scalar @pk . ' are needed.'
-	    if ref $pk_val && @pk != scalar keys %$pk_val;
+        'Incorrect number of pk values provided.  ' . scalar @pk . ' are needed.'
+            if ref $pk_val && @pk != scalar keys %$pk_val;
 
     if (@pk > 1)
     {
-	params_exception
-	    ( 'Primary key for ' . $self->name . ' is more than one column.' .
-	      '  Please provide multiple key values as a hashref.' )
-		unless ref $pk_val;
+        params_exception
+            ( 'Primary key for ' . $self->name . ' is more than one column.' .
+              '  Please provide multiple key values as a hashref.' )
+                unless ref $pk_val;
 
-	foreach my $pk (@pk)
-	{
-	    params_exception 'No value provided for primary key ' . $pk->name . '.'
-		unless defined $pk_val->{ $pk->name };
-	}
+        foreach my $pk (@pk)
+        {
+            params_exception 'No value provided for primary key ' . $pk->name . '.'
+                unless defined $pk_val->{ $pk->name };
+        }
     }
 
     return $self->_make_row( %p,
@@ -259,7 +263,7 @@ sub row_by_id
     my $self = shift;
     my %p = @_;
     validate( @_, { row_id => { type => SCALAR },
-		    ( map { $_ => { optional => 1 } } keys %p ) } );
+                    ( map { $_ => { optional => 1 } } keys %p ) } );
 
     my (undef, undef, %pk) = split ';:;_;:;', delete $p{row_id};
 
@@ -271,7 +275,7 @@ sub rows_where
     my $self = shift;
     my %p = @_;
 
-    my $sql = $self->_make_sql;
+    my $sql = $self->_make_sql(%p);
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
 
@@ -286,7 +290,7 @@ sub one_row
     my $self = shift;
     my %p = @_;
 
-    my $sql = $self->_make_sql;
+    my $sql = $self->_make_sql(%p);
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
 
@@ -294,15 +298,15 @@ sub one_row
 
     if ( exists $p{limit} )
     {
-	$sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} );
+        $sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} );
     }
 
     $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
     print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
     my @return = $self->schema->driver->one_row( sql => $sql->sql,
-						 bind => $sql->bind )
-	or return;
+                                                 bind => $sql->bind )
+        or return;
 
     my @pk = $self->primary_key;
 
@@ -313,12 +317,12 @@ sub one_row
     # Must be some prefetch pieces
     if (@return)
     {
-	@prefetch{ $self->prefetch } = @return;
+        @prefetch{ $self->prefetch } = @return;
     }
 
     return $self->row_by_pk( pk => \%pk,
-			     prefetch => \%prefetch,
-			   );
+                             prefetch => \%prefetch,
+                           );
 }
 
 sub all_rows
@@ -336,14 +340,15 @@ sub all_rows
 sub _make_sql
 {
     my $self = shift;
+    my %p = @_;
 
     logic_exception "Can't make rows for tables without a primary key"
-	unless $self->primary_key;
+        unless $self->primary_key;
 
-    my $sql = ( $self->schema->sqlmaker->
-		select( $self->primary_key,
-			$self->prefetch ? $self->columns( $self->prefetch ) : () )->
-		from( $self ) );
+    my $sql = ( Alzabo::Runtime::sqlmaker( $self->schema, \%p )->
+                select( $self->primary_key,
+                        $self->prefetch ? $self->columns( $self->prefetch ) : () )->
+                from( $self ) );
 
     return $sql;
 }
@@ -354,25 +359,25 @@ sub _cursor_by_sql
 
     my %p = @_;
     validate( @_, { sql => { isa => 'Alzabo::SQLMaker' },
-		    order_by => { type => ARRAYREF | HASHREF | OBJECT,
-				  optional => 1 },
-		    limit => { type => SCALAR | ARRAYREF,
-			       optional => 1 },
-		    ( map { $_ => { optional => 1 } } keys %p ) } );
+                    order_by => { type => ARRAYREF | HASHREF | OBJECT,
+                                  optional => 1 },
+                    limit => { type => SCALAR | ARRAYREF,
+                               optional => 1 },
+                    ( map { $_ => { optional => 1 } } keys %p ) } );
 
     Alzabo::Runtime::process_order_by_clause( $p{sql}, $p{order_by} ) if exists $p{order_by};
 
     if ( exists $p{limit} )
     {
-	$p{sql}->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} );
+        $p{sql}->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} );
     }
 
     my $statement = $self->schema->driver->statement( sql => $p{sql}->sql,
-						      bind => $p{sql}->bind,
-						      limit => $p{sql}->get_limit );
+                                                      bind => $p{sql}->bind,
+                                                      limit => $p{sql}->get_limit );
 
     return Alzabo::Runtime::RowCursor->new( statement => $statement,
-					    table => $self,
+                                            table => $self,
                                           );
 }
 
@@ -382,7 +387,7 @@ sub potential_row
     my %p = @_;
 
     logic_exception "Can't make rows for tables without a primary key"
-	unless $self->primary_key;
+        unless $self->primary_key;
 
     my $class = $p{row_class} ? delete $p{row_class} : $self->_row_class;
 
@@ -395,9 +400,11 @@ sub potential_row
 sub row_count
 {
     my $self = shift;
+    my %p = @_;
 
-    return $self->function( select => $self->schema->sqlmaker->COUNT('*'),
-			    @_ );
+    my $count = Alzabo::Runtime::sqlmaker( $self->schema, \%p )->COUNT('*');
+
+    return $self->function( select => $count, %p );
 }
 
 sub function
@@ -414,7 +421,7 @@ sub function
     print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
     return $self->schema->driver->$method( sql => $sql->sql,
-					   bind => $sql->bind );
+                                           bind => $sql->bind );
 }
 
 sub select
@@ -427,29 +434,34 @@ sub select
     print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
     return $self->schema->driver->statement( sql => $sql->sql,
-					     bind => $sql->bind );
+                                             bind => $sql->bind );
 }
+
+use constant
+    _SELECT_SQL_SPEC => { select => { type => SCALAR | ARRAYREF | OBJECT },
+                          where  => { type => ARRAYREF | OBJECT,
+                                      optional => 1 },
+                          order_by => { type => ARRAYREF | HASHREF | OBJECT,
+                                        optional => 1 },
+                          group_by => { type => ARRAYREF | HASHREF | OBJECT,
+                                        optional => 1 },
+                          having   => { type => ARRAYREF,
+                                        optional => 1 },
+                          limit => { type => SCALAR | ARRAYREF,
+                                     optional => 1 },
+                          quote_identifiers => { type => BOOLEAN,
+                                                 optional => 1 },
+                        };
 
 sub _select_sql
 {
     my $self = shift;
 
-    my %p = validate( @_, { select => { type => SCALAR | ARRAYREF | OBJECT },
-			    where  => { type => ARRAYREF | OBJECT,
-					optional => 1 },
-			    order_by => { type => ARRAYREF | HASHREF | OBJECT,
-					  optional => 1 },
-			    group_by => { type => ARRAYREF | HASHREF | OBJECT,
-					  optional => 1 },
-                            having   => { type => ARRAYREF,
-                                          optional => 1 },
-			    limit => { type => SCALAR | ARRAYREF,
-				       optional => 1 },
-			  } );
+    my %p = validate( @_, _SELECT_SQL_SPEC );
 
     my @funcs = UNIVERSAL::isa( $p{select}, 'ARRAY' ) ? @{ $p{select} } : $p{select};
 
-    my $sql = $self->schema->sqlmaker->select(@funcs)->from($self);
+    my $sql = Alzabo::Runtime::sqlmaker( $self->schema, \%p )->select(@funcs)->from($self);
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where} )
             if exists $p{where};
@@ -483,8 +495,8 @@ sub _canonize_prefetch
 
     foreach my $c (@_)
     {
-	params_exception "Column " . $c->name . " doesn't exist in $self->{name}"
-	    unless $self->has_column( $c->name );
+        params_exception "Column " . $c->name . " doesn't exist in $self->{name}"
+            unless $self->has_column( $c->name );
     }
 
     return [ map { $_->name } grep { ! $_->is_primary_key } @_ ];
@@ -506,11 +518,11 @@ sub add_group
     my @names = map { $_->name } @_;
     foreach my $col (@_)
     {
-	params_exception "Column " . $col->name . " doesn't exist in $self->{name}"
-	    unless $self->has_column( $col->name );
+        params_exception "Column " . $col->name . " doesn't exist in $self->{name}"
+            unless $self->has_column( $col->name );
 
-	next if $col->is_primary_key;
-	$self->{groups}{ $col->name } = \@names;
+        next if $col->is_primary_key;
+        $self->{groups}{ $col->name } = \@names;
     }
 }
 
@@ -555,27 +567,27 @@ sub column
     # I'm an alias, make an alias column
     if ( $self->{alias_name} )
     {
-	my $name = shift;
-	my $col = $self->SUPER::column($name);
+        my $name = shift;
+        my $col = $self->SUPER::column($name);
 
-	# not previously cloned
-	unless ( $col->table eq $self )
-	{
-	    # replace our copy of this column with a clone
-	    $col = $col->alias_clone( table => $self );
-	    my $index = $self->{columns}->Indices($name);
-	    $self->{columns}->Replace( $index, $col, $name );
+        # not previously cloned
+        unless ( $col->table eq $self )
+        {
+            # replace our copy of this column with a clone
+            $col = $col->alias_clone( table => $self );
+            my $index = $self->{columns}->Indices($name);
+            $self->{columns}->Replace( $index, $col, $name );
 
             Scalar::Util::weaken( $col->{table} );
 
             delete $self->{pk_array} if $col->is_primary_key;
         }
 
-	return $col;
+        return $col;
     }
     else
     {
-	return $self->SUPER::column(@_);
+        return $self->SUPER::column(@_);
     }
 }
 

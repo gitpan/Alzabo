@@ -22,13 +22,13 @@ sub new
     my $class = ref $proto || $proto;
 
     validate( @_, { columns_from => { type => ARRAYREF | OBJECT },
-		    columns_to   => { type => ARRAYREF | OBJECT },
-		    cardinality  => { type => ARRAYREF },
-		    from_is_dependent => { type => SCALAR },
-		    to_is_dependent   => { type => SCALAR },
-		    comment => { type => UNDEF | SCALAR,
-				 default => '' },
-		  } );
+                    columns_to   => { type => ARRAYREF | OBJECT },
+                    cardinality  => { type => ARRAYREF },
+                    from_is_dependent => { type => SCALAR },
+                    to_is_dependent   => { type => SCALAR },
+                    comment => { type => UNDEF | SCALAR,
+                                 default => '' },
+                  } );
     my %p = @_;
 
     my $self = bless {}, $class;
@@ -54,7 +54,7 @@ sub set_columns_from
 
     if ( exists $self->{columns_to} )
     {
-	params_exception
+        params_exception
             "The number of columns in each part of the relationship must be the same"
                 unless @{ $self->{columns_to} } == @$c;
     }
@@ -71,7 +71,7 @@ sub set_columns_to
 
     if ( exists $self->{columns_from} )
     {
-	params_exception
+        params_exception
             "The number of columns in each part of the relationship must be the same"
                 unless @{ $self->{columns_from} } == @$c;
     }
@@ -86,16 +86,16 @@ sub set_cardinality
     my @card = @_;
 
     params_exception "Incorrect number of elements for cardinality"
-	unless scalar @card == 2;
+        unless scalar @card == 2;
 
     foreach my $c ( @card )
     {
-	params_exception "Invalid cardinality piece: $c"
-	    unless $c =~ /^[1n]$/i;
+        params_exception "Invalid cardinality piece: $c"
+            unless $c =~ /^[1n]$/i;
     }
 
     params_exception "Invalid cardinality: $card[0]..$card[1]"
-	if $card[0] eq 'n' && $card[1] eq 'n';
+        if $card[0] eq 'n' && $card[1] eq 'n';
 
     $self->{cardinality} = \@card;
 }

@@ -33,12 +33,14 @@ BEGIN
               my $table_name = $p{table}->name;
               return $CACHE{$table_name}{$id} if exists $CACHE{$table_name}{$id};
 
-	      my $row =
-		  $self->$real_make_row( %p,
-					 state => 'Alzabo::Runtime::RowState::InCache',
-				       );
+              my $row =
+                  $self->$real_make_row( %p,
+                                         state => 'Alzabo::Runtime::RowState::InCache',
+                                       );
 
-	      Alzabo::Runtime::UniqueRowCache->write_to_cache($row);
+              return unless $row;
+
+              Alzabo::Runtime::UniqueRowCache->write_to_cache($row);
 
               return $row;
           };

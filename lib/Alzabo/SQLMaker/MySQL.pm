@@ -8,9 +8,6 @@ use Alzabo::Exceptions;
 use Alzabo::SQLMaker;
 use base qw(Alzabo::SQLMaker);
 
-use Params::Validate qw( :all );
-Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
-
 $VERSION = 2.0;
 
 my $MADE_FUNCTIONS;
@@ -49,10 +46,10 @@ sub _make_functions
 	    )
     {
 	make_function( function => $_->[0],
-		      min => 0,
-		      max => 0,
-		      groups => $_->[1]
-		    );
+                       min => 0,
+                       max => 0,
+                       groups => $_->[1]
+                     );
     }
 
     foreach ( [ RAND => [ 'math' ] ],
@@ -61,11 +58,11 @@ sub _make_functions
 	    )
     {
 	make_function( function => $_->[0],
-		      min => 0,
-		      max => 1,
-		      quote => [0],
-		      groups => $_->[1]
-		    );
+                       min => 0,
+                       max => 1,
+                       quote => [0],
+                       groups => $_->[1]
+                     );
     }
 
     make_function( function => 'CHAR',
@@ -78,11 +75,11 @@ sub _make_functions
     foreach ( [ ENCRYPT => [1,1], [ 'misc' ] ] )
     {
 	make_function( function => $_->[0],
-		      min => 0,
-		      max => 1,
-		      quote => $_->[1],
-		      groups => $_->[2],
-		    );
+                       min => 0,
+                       max => 1,
+                       quote => $_->[1],
+                       groups => $_->[2],
+                     );
     }
 
     foreach ( [ MOD => [0,0], [ 'math' ] ],
@@ -121,11 +118,11 @@ sub _make_functions
 	    )
     {
 	make_function( function => $_->[0],
-		      min => 2,
-		      max => 2,
-		      quote => $_->[1],
-		      groups => $_->[2],
-		    );
+                       min => 2,
+                       max => 2,
+                       quote => $_->[1],
+                       groups => $_->[2],
+                     );
     }
 
     foreach ( [ LEAST => [1,1,1], [ 'string' ] ],
@@ -137,11 +134,11 @@ sub _make_functions
 	    )
     {
 	make_function( function => $_->[0],
-		      min => 2,
-		      max => undef,
-		      quote => $_->[1],
-		      groups => $_->[2],
-		    );
+                       min => 2,
+                       max => undef,
+                       quote => $_->[1],
+                       groups => $_->[2],
+                     );
     }
 
     foreach ( [ LOCATE => [1,1,0], [ 'string' ] ],
@@ -157,11 +154,11 @@ sub _make_functions
 	    )
     {
 	make_function( function => $_->[0],
-		      min => 3,
-		      max => 3,
-		      quote => $_->[1],
-		      groups => $_->[2],
-		    );
+                       min => 3,
+                       max => 3,
+                       quote => $_->[1],
+                       groups => $_->[2],
+                     );
     }
 
     foreach ( [ WEEK => [1,0], [ 'datetime' ] ],
@@ -169,33 +166,33 @@ sub _make_functions
 	    )
     {
 	make_function( function => $_->[0],
-		      min => 1,
-		      max => 2,
-		      quote => $_->[1],
-		      groups => $_->[2],
-		    );
+                       min => 1,
+                       max => 2,
+                       quote => $_->[1],
+                       groups => $_->[2],
+                     );
     }
 
     make_function( function => 'CONCAT_WS',
-		  min => 3,
-		  max => undef,
-		  quote => [1,1,1,1],
-		  groups => [ 'string' ],
-		);
+                   min => 3,
+                   max => undef,
+                   quote => [1,1,1,1],
+                   groups => [ 'string' ],
+                 );
 
     make_function( function => 'EXPORT_SET',
-		  min => 3,
-		  max => 5,
-		  quote => [0,1,1,1,0],
-		  groups => [ 'string' ],
-		);
+                   min => 3,
+                   max => 5,
+                   quote => [0,1,1,1,0],
+                   groups => [ 'string' ],
+                 );
 
     make_function( function => 'INSERT',
-		  min => 3,
-		  max => 5,
-		  quote => [1,0,0,1],
-		  groups => [ 'string' ],
-		);
+                   min => 3,
+                   max => 5,
+                   quote => [1,0,0,1],
+                   groups => [ 'string' ],
+                 );
 
     foreach ( [ ABS  => [0], [ 'math' ] ],
 	      [ SIGN  => [0], [ 'math' ] ],

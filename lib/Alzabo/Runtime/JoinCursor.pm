@@ -13,18 +13,20 @@ use base qw( Alzabo::Runtime::Cursor );
 
 $VERSION = 2.0;
 
+use constant NEW_SPEC => { statement => { isa => 'Alzabo::DriverStatement' },
+                           tables => { type => ARRAYREF },
+                         };
+
 sub new
 {
     my $proto = shift;
     my $class = ref $proto || $proto;
 
-    my %p = validate( @_, { statement => { isa => 'Alzabo::DriverStatement' },
-			    tables => { type => ARRAYREF },
-			  } );
+    my %p = validate( @_, NEW_SPEC );
 
     my $self = bless { %p,
-		       count => 0,
-		     }, $class;
+                       count => 0,
+                     }, $class;
 
     return $self;
 }
@@ -97,7 +99,7 @@ sub all_rows
     my @all;
     while ( my @rows = $self->next )
     {
-	push @all, [@rows];
+        push @all, [@rows];
     }
 
     $self->{count} = scalar @all;

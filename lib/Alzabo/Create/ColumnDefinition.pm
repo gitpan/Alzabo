@@ -33,19 +33,19 @@ sub _init
     my $self = shift;
 
     validate( @_, { owner => { isa => 'Alzabo::Create::Column' },
-		    type  => { type => SCALAR },
-		    length => { type => UNDEF | SCALAR,
-				optional => 1 },
-		    precision  => { type => UNDEF | SCALAR,
-				    optional => 1 },
-		  } );
+                    type  => { type => SCALAR },
+                    length => { type => UNDEF | SCALAR,
+                                optional => 1 },
+                    precision  => { type => UNDEF | SCALAR,
+                                    optional => 1 },
+                  } );
     my %p = @_;
 
     $p{type} =
-	$p{owner}->table->schema->rules->validate_column_type( $p{type}, $p{owner}->table );
+        $p{owner}->table->schema->rules->validate_column_type( $p{type}, $p{owner}->table );
     foreach ( qw( owner type ) )
     {
-	$self->{$_} = $p{$_} if exists $p{$_};
+        $self->{$_} = $p{$_} if exists $p{$_};
     }
 }
 
@@ -54,11 +54,11 @@ sub alter
     my $self = shift;
 
     validate( @_, { type  => { type => SCALAR },
-		    length => { type => UNDEF | SCALAR,
-				optional => 1 },
-		    precision  => { type => UNDEF | SCALAR,
-				    optional => 1 },
-		  } );
+                    length => { type => UNDEF | SCALAR,
+                                optional => 1 },
+                    precision  => { type => UNDEF | SCALAR,
+                                    optional => 1 },
+                  } );
     my %p = @_;
 
     my $old_type = $self->{type};
@@ -70,17 +70,17 @@ sub alter
 
     eval
     {
-	$self->{type} =
-	    $self->owner->table->schema->rules->validate_column_type($p{type}, $self->owner->table);
-	$self->owner->table->schema->rules->validate_primary_key($self->owner)
-	    if $self->owner->is_primary_key;
-	$self->owner->table->schema->rules->validate_column_length($self->owner);
+        $self->{type} =
+            $self->owner->table->schema->rules->validate_column_type($p{type}, $self->owner->table);
+        $self->owner->table->schema->rules->validate_primary_key($self->owner)
+            if $self->owner->is_primary_key;
+        $self->owner->table->schema->rules->validate_column_length($self->owner);
     };
     if ($@)
     {
-	$self->{type} = $old_type;
-	$self->{length} = $old_length;
-	$self->{precision} = $old_precision;
+        $self->{type} = $old_type;
+        $self->{length} = $old_length;
+        $self->{precision} = $old_precision;
 
         rethrow_exception($@);
     }
@@ -96,15 +96,15 @@ sub set_type
     my $old_type = $self->{type};
     eval
     {
-	$self->{type} =
-	    $self->owner->table->schema->rules->validate_column_type($type, $self->owner->table);
-	$self->owner->table->schema->rules->validate_primary_key($self->owner)
-	    if eval { $self->owner->is_primary_key };
-	# eval ^^ cause if we're creating the column its not in the table yet
+        $self->{type} =
+            $self->owner->table->schema->rules->validate_column_type($type, $self->owner->table);
+        $self->owner->table->schema->rules->validate_primary_key($self->owner)
+            if eval { $self->owner->is_primary_key };
+        # eval ^^ cause if we're creating the column its not in the table yet
     };
     if ($@)
     {
-	$self->{type} = $old_type;
+        $self->{type} = $old_type;
 
         rethrow_exception($@);
     }
@@ -115,8 +115,8 @@ sub set_length
     my $self = shift;
 
     validate( @_, { length => { type => UNDEF | SCALAR },
-		    precision => { type => UNDEF | SCALAR,
-				   optional => 1 } } );
+                    precision => { type => UNDEF | SCALAR,
+                                   optional => 1 } } );
     my %p = @_;
 
     my $old_length = $self->{length};
@@ -126,12 +126,12 @@ sub set_length
 
     eval
     {
-	$self->owner->table->schema->rules->validate_column_length($self->owner);
+        $self->owner->table->schema->rules->validate_column_length($self->owner);
     };
     if ($@)
     {
-	$self->{length} = $old_length;
-	$self->{precision} = $old_precision;
+        $self->{length} = $old_length;
+        $self->{precision} = $old_precision;
 
         rethrow_exception($@);
     }

@@ -5,9 +5,6 @@ use strict;
 use Alzabo::Exceptions;
 use Alzabo::Runtime;
 
-use Params::Validate qw( :all );
-Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
-
 sub _where
 {
     my $class = shift;
@@ -30,15 +27,15 @@ sub _init
 
     while ( my ($k, $v) = each %{ $row->{pk} } )
     {
-	$row->{data}{$k} = $v;
+        $row->{data}{$k} = $v;
     }
 
     if ( $p{prefetch} )
     {
-	while ( my ($k, $v) = each %{ $p{prefetch} } )
-	{
-	    $row->{data}{$k} = $v;
-	}
+        while ( my ($k, $v) = each %{ $p{prefetch} } )
+        {
+            $row->{data}{$k} = $v;
+        }
     }
     else
     {
@@ -54,18 +51,18 @@ sub _init
 
     unless ( keys %{ $row->{data} } > keys %{ $row->{pk} } )
     {
-	# Need to try to fetch something to confirm that this row exists!
-	my $sql = ( $row->schema->sqlmaker->
-		    select( ($row->table->primary_key)[0] )->
-		    from( $row->table ) );
+        # Need to try to fetch something to confirm that this row exists!
+        my $sql = ( $row->schema->sqlmaker->
+                    select( ($row->table->primary_key)[0] )->
+                    from( $row->table ) );
 
-	$class->_where($row, $sql);
+        $class->_where($row, $sql);
 
         $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
         print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
         return
-	    unless defined $row->schema->driver->one_row( sql => $sql->sql,
+            unless defined $row->schema->driver->one_row( sql => $sql->sql,
                                                           bind => $sql->bind );
     }
 
@@ -106,8 +103,8 @@ sub _get_data
     return %data unless @select;
 
     my $sql = ( $row->schema->sqlmaker->
-		select( $row->table->columns(@select) )->
-		from( $row->table ) );
+                select( $row->table->columns(@select) )->
+                from( $row->table ) );
     $class->_where($row, $sql);
 
     $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
@@ -176,11 +173,11 @@ sub update
     my $includes_pk = 0;
     foreach my $k ( sort keys %data )
     {
-	# This will throw an exception if the column doesn't exist.
-	my $c = $row->table->column($k);
+        # This will throw an exception if the column doesn't exist.
+        my $c = $row->table->column($k);
 
-	# Only make the change if the two values are different.  The
-	# convolutions are necessary to avoid a warning.
+        # Only make the change if the two values are different.  The
+        # convolutions are necessary to avoid a warning.
         if ( exists $row->{data}{$k} &&
              ( ( ! defined $data{$k} && ! defined $row->{data}{$k} ) ||
                ( defined $data{$k} &&
@@ -190,22 +187,22 @@ sub update
              )
            )
         {
-	    delete $data{$k};
-	    next;
-	}
+            delete $data{$k};
+            next;
+        }
 
-	$includes_pk = 1 if $c->is_primary_key;
+        $includes_pk = 1 if $c->is_primary_key;
 
-	Alzabo::Exception::NotNullable->throw
+        Alzabo::Exception::NotNullable->throw
             ( error => $c->name . " column in " . $row->table->name . " table cannot be null.",
               column_name => $c->name,
-	      table_name  => $c->table->name,
-	      schema_name => $schema->name,
+              table_name  => $c->table->name,
+              schema_name => $schema->name,
             )
                 unless defined $data{$k} || $c->nullable || defined $c->default;
 
-	push @fk, $row->table->foreign_keys_by_column($c)
-	    if $schema->referential_integrity;
+        push @fk, $row->table->foreign_keys_by_column($c)
+            if $schema->referential_integrity;
 
         push @set, $c => $data{$k};
     }
@@ -223,42 +220,42 @@ sub update
 
     eval
     {
-	foreach my $fk (@fk)
-	{
-	    $fk->register_update( map { $_->name => $data{ $_->name } } $fk->columns_from );
-	}
+        foreach my $fk (@fk)
+        {
+            $fk->register_update( map { $_->name => $data{ $_->name } } $fk->columns_from );
+        }
 
         $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
         print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
-	$schema->driver->do( sql  => $sql->sql,
-			     bind => $sql->bind );
+        $schema->driver->do( sql  => $sql->sql,
+                             bind => $sql->bind );
 
-	$schema->commit if @fk;
+        $schema->commit if @fk;
     };
 
     if (my $e = $@)
     {
-	eval { $schema->rollback };
+        eval { $schema->rollback };
 
         rethrow_exception $e;
     }
 
     while ( my( $k, $v ) = each %data )
     {
-	# These can't be stored until they're fetched from the database again
-	if ( defined $v && UNIVERSAL::isa( $v, 'Alzabo::SQLMaker::Function' ) )
-	{
-	    delete $row->{data}{$k};
-	    next;
-	}
+        # These can't be stored until they're fetched from the database again
+        if ( defined $v && UNIVERSAL::isa( $v, 'Alzabo::SQLMaker::Function' ) )
+        {
+            delete $row->{data}{$k};
+            next;
+        }
 
-	$row->{data}{$k} = $v;
+        $row->{data}{$k} = $v;
     }
 
     if ($includes_pk)
     {
-	$row->_update_pk_hash;
+        $row->_update_pk_hash;
     }
 }
 
@@ -282,34 +279,34 @@ sub delete
     my @fk;
     if ($schema->referential_integrity)
     {
-	@fk = $row->table->all_foreign_keys;
+        @fk = $row->table->all_foreign_keys;
     }
 
     my $sql = ( $schema->sqlmaker->
-		delete->from( $row->table ) );
+                delete->from( $row->table ) );
 
     $class->_where($row, $sql);
 
     $schema->begin_work if @fk;
     eval
     {
-	foreach my $fk (@fk)
-	{
-	    $fk->register_delete($row);
-	}
+        foreach my $fk (@fk)
+        {
+            $fk->register_delete($row);
+        }
 
         $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
         print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
-	$schema->driver->do( sql => $sql->sql,
-			     bind => $sql->bind );
+        $schema->driver->do( sql => $sql->sql,
+                             bind => $sql->bind );
 
-	$schema->commit if @fk;
+        $schema->commit if @fk;
     };
 
     if (my $e = $@)
     {
-	eval { $schema->rollback };
+        eval { $schema->rollback };
 
         rethrow_exception $e;
     }

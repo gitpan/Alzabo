@@ -22,11 +22,11 @@ sub new
     my $class = ref $proto || $proto;
 
     validate( @_, { table    => { isa => 'Alzabo::Create::Table' },
-		    columns  => { type => ARRAYREF },
-		    unique   => { type => BOOLEAN, default => 0 },
-		    fulltext => { type => BOOLEAN, default => 0 },
-		    function => { type => UNDEF | SCALAR,  default => undef },
-		  } );
+                    columns  => { type => ARRAYREF },
+                    unique   => { type => BOOLEAN, default => 0 },
+                    fulltext => { type => BOOLEAN, default => 0 },
+                    function => { type => UNDEF | SCALAR,  default => undef },
+                  } );
     my %p = @_;
 
     my $self = bless {}, $class;
@@ -40,8 +40,8 @@ sub new
 
     foreach my $c (@{ $p{columns} })
     {
-	my %p = UNIVERSAL::isa( $c, 'Alzabo::Column' ) ? ( column => $c ) : %$c;
-	$self->add_column(%p);
+        my %p = UNIVERSAL::isa( $c, 'Alzabo::Column' ) ? ( column => $c ) : %$c;
+        $self->add_column(%p);
     }
 
     $self->table->schema->rules->validate_index($self);
@@ -54,14 +54,14 @@ sub add_column
     my $self = shift;
 
     validate( @_, { column => { isa => 'Alzabo::Create::Column' },
-		    prefix => { type => SCALAR,
-				optional => 1 } } );
+                    prefix => { type => SCALAR,
+                                optional => 1 } } );
     my %p = @_;
 
     my $new_name = $p{column}->name;
 
     params_exception "Column $new_name already exists in index."
-	if $self->{columns}->EXISTS($new_name);
+        if $self->{columns}->EXISTS($new_name);
 
     $self->{columns}->STORE( $new_name, \%p );
 
@@ -69,7 +69,7 @@ sub add_column
 
     if ($@)
     {
-	$self->{columns}->DELETE($new_name);
+        $self->{columns}->DELETE($new_name);
 
         rethrow_exception($@);
     }
@@ -83,7 +83,7 @@ sub delete_column
     my $c = shift;
 
     params_exception "Column " . $c->name . " is not part of index."
-	unless $self->{columns}->EXISTS( $c->name );
+        unless $self->{columns}->EXISTS( $c->name );
 
     $self->{columns}->DELETE( $c->name );
 }
@@ -93,11 +93,11 @@ sub set_prefix
     my $self = shift;
 
     validate( @_, { column => { isa => 'Alzabo::Create::Column' },
-		    prefix => { type => SCALAR } } );
+                    prefix => { type => SCALAR } } );
     my %p = @_;
 
     params_exception "Column " . $p{column}->name . " is not part of index."
-	unless $self->{columns}->EXISTS( $p{column}->name );
+        unless $self->{columns}->EXISTS( $p{column}->name );
 
     my $col = $self->{columns}->FETCH( $p{column}->name );
     my $old_val = delete $col->{prefix};
@@ -107,14 +107,14 @@ sub set_prefix
 
     if ($@)
     {
-	if ($old_val)
-	{
-	    $col->{prefix} = $old_val;
-	}
-	else
-	{
-	    delete $col->{prefix};
-	}
+        if ($old_val)
+        {
+            $col->{prefix} = $old_val;
+        }
+        else
+        {
+            delete $col->{prefix};
+        }
 
         rethrow_exception($@);
     }
@@ -153,7 +153,7 @@ sub register_column_name_change
     my $self = shift;
 
     validate( @_, { column => { isa => 'Alzabo::Create::Column' },
-		    old_name => { type => SCALAR } } );
+                    old_name => { type => SCALAR } } );
     my %p = @_;
 
     return unless $self->{columns}->EXISTS( $p{old_name} );

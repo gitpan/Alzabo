@@ -20,7 +20,7 @@ This is a diagram of these inheritance relationships:
 
   Alzabo::* (::Schema, ::Table, ::Column, ::ColumnDefinition, ::ForeignKey, ::Index)
                    /   \
-	        is parent to
+                is parent to
                  /       \
  Alzabo::Create::*   Alzabo::Runtime::*
 
@@ -40,7 +40,7 @@ This a diagram of how objects contain other objects:
      (0 or more)       |
                     contains
                        |
-		  ColumnDefinition (1)
+                  ColumnDefinition (1)
 
 Note that more than one column I<may> share a single definition object
 (this is explained in the

@@ -27,45 +27,45 @@ $VERSION = 2.0;
 # version pair.
 #
 my @compat = ( [ 0, 0.64 ],
-	       [ 0.65, 0.70,
-		 \&add_comment_fields,
-	       ],
+               [ 0.65, 0.70,
+                 \&add_comment_fields,
+               ],
                [ 0.71, 0.73,
                  \&convert_pk_to_array,
                ],
                [ 0.79, $Alzabo::VERSION,
                  \&add_table_attributes,
                ],
-	     );
+             );
 
 sub update_schema
 {
     my %p = validate( @_, { name    => { type => SCALAR },
-			    version => { type => SCALAR },
-			  } );
+                            version => { type => SCALAR },
+                          } );
 
     my @cb;
     foreach my $c (@compat)
     {
-	return
-	    if ( ( $p{version} >= $c->[0] &&
-		   $p{version} <= $c->[1] ) &&
+        return
+            if ( ( $p{version} >= $c->[0] &&
+                   $p{version} <= $c->[1] ) &&
 
-		 ( $Alzabo::VERSION >= $c->[0] &&
-		   $Alzabo::VERSION <= $c->[1] )
-	       );
+                 ( $Alzabo::VERSION >= $c->[0] &&
+                   $Alzabo::VERSION <= $c->[1] )
+               );
 
-	if ( $p{version} < $c->[0] && @$c > 2 )
-	{
-	    push @cb, @{$c}[2..$#$c];
-	}
+        if ( $p{version} < $c->[0] && @$c > 2 )
+        {
+            push @cb, @{$c}[2..$#$c];
+        }
     }
 
     my $create_loaded;
     unless ( $Alzabo::Create::Schema::VERSION )
     {
-	require Alzabo::Create::Schema;
-	$create_loaded = 1;
+        require Alzabo::Create::Schema;
+        $create_loaded = 1;
     }
 
     my $v = $p{version} = 0 ? '0.64 or earlier' : $p{version};
@@ -73,7 +73,7 @@ sub update_schema
     my $c_file = Alzabo::Create::Schema->_schema_filename( $p{name} );
     unless ( -w $c_file )
     {
-	my $msg = <<"EOF";
+        my $msg = <<"EOF";
 
 The '$p{name}' schema was created by an older version of Alzabo
 ($v) than the one currently installed ($Alzabo::VERSION).
@@ -87,13 +87,13 @@ which can write to this file will cause the schema to be updated.
 
 EOF
 
-	die $msg;
+        die $msg;
     }
 
     my $dir = dirname($c_file);
     unless ( -w $dir )
     {
-	my $msg = <<"EOF";
+        my $msg = <<"EOF";
 
 The '$p{name}' schema was created by an older version of Alzabo
 ($v) than the one currently installed ($Alzabo::VERSION).
@@ -107,25 +107,25 @@ which can write to this file will cause the schema to be updated.
 
 EOF
 
-	die $msg;
+        die $msg;
     }
 
     foreach my $file ( glob("$dir/*.alz"),
-		       glob("$dir/*.rdbms"),
-		       glob("$dir/*.version") )
+                       glob("$dir/*.rdbms"),
+                       glob("$dir/*.version") )
     {
-	my $backup = "$file.bak.v$p{version}";
+        my $backup = "$file.bak.v$p{version}";
 
-	copy($file, $backup);
+        copy($file, $backup);
     }
 
     my $fh = do { local *FH; *FH };
     open $fh, "<$c_file"
-	or Alzabo::Exception::System->throw( error => "Unable to open $c_file: $!" );
+        or Alzabo::Exception::System->throw( error => "Unable to open $c_file: $!" );
     my $raw = Storable::fd_retrieve($fh)
         or Alzabo::Exception::System->throw( error => "Can't read filehandle" );
     close $fh
-	or Alzabo::Exception::System->throw( error => "Unable to close $c_file: $!" );
+        or Alzabo::Exception::System->throw( error => "Unable to close $c_file: $!" );
 
     foreach (@cb)
     {
@@ -134,28 +134,28 @@ EOF
     }
 
     open $fh, ">$c_file"
-	or Alzabo::Exception::System->throw( error => "Unable to write to $c_file: $!" );
+        or Alzabo::Exception::System->throw( error => "Unable to write to $c_file: $!" );
     Storable::nstore_fd( $raw, $fh )
-	or Alzabo::Exception::System->throw( error => "Can't store to filehandle" );
+        or Alzabo::Exception::System->throw( error => "Can't store to filehandle" );
     close $fh
-	or Alzabo::Exception::System->throw( error => "Unable to close $c_file: $!" );
+        or Alzabo::Exception::System->throw( error => "Unable to close $c_file: $!" );
 
     my $version_file =
-	File::Spec->catfile( Alzabo::Config::schema_dir(),
-			     $p{name}, "$p{name}.version" );
+        File::Spec->catfile( Alzabo::Config::schema_dir(),
+                             $p{name}, "$p{name}.version" );
 
     open $fh, ">$version_file"
-	or Alzabo::Exception::System->throw( error => "Unable to write to $version_file: $!" );
+        or Alzabo::Exception::System->throw( error => "Unable to write to $version_file: $!" );
     print $fh $Alzabo::VERSION
-	or Alzabo::Exception::System->throw( error => "Can't write to $version_file: $!" );
+        or Alzabo::Exception::System->throw( error => "Can't write to $version_file: $!" );
     close $fh
-	or Alzabo::Exception::System->throw( error => "Unable to close $version_file: $!" );
+        or Alzabo::Exception::System->throw( error => "Unable to close $version_file: $!" );
 
     Alzabo::Create::Schema->load_from_file( name => $p{name} )->save_to_file;
 
     if ($create_loaded)
     {
-	warn <<"EOF"
+        warn <<"EOF"
 
 Your schema, $p{name}, has been updated to be compatible with the
 installed version of Alzabo.  This required that the Alzabo::Create::*
@@ -174,13 +174,13 @@ sub add_comment_fields
 
     foreach my $table ( $s->{tables}->Values )
     {
-	$table->{comment} = '';
+        $table->{comment} = '';
 
-	foreach my $thing ( $table->{columns}->Values,
-			    values %{ $table->{fk} } )
-	{
-	    $table->{comment} = '';
-	}
+        foreach my $thing ( $table->{columns}->Values,
+                            values %{ $table->{fk} } )
+        {
+            $table->{comment} = '';
+        }
     }
 }
 

@@ -32,7 +32,7 @@ sub validate_schema_name
     $self->_check_name($name, 'schema');
 
     Alzabo::Exception::RDBMSRules->throw( error => "Schema name ($name) contains a single quote char (')" )
-	if index($name, "'") != -1;
+        if index($name, "'") != -1;
 }
 
 sub validate_table_name
@@ -55,11 +55,11 @@ sub _check_name
     my $name = shift;
 
     Alzabo::Exception::RDBMSRules->throw( error => "Name ($name) must be at least one character long" )
-	unless length $name;
+        unless length $name;
     Alzabo::Exception::RDBMSRules->throw( error => "Name ($name) is too long.  Names must be 31 characters or less." )
-	if length $name > 31;
+        if length $name > 31;
     Alzabo::Exception::RDBMSRules->throw( error => "Name ($name) must start with an alpha or underscore(_) and must contain only alphanumerics and underscores." )
-	unless $name =~ /\A[a-zA-Z]\w*\z/;
+        unless $name =~ /\A[a-zA-Z]\w*\z/;
 }
 
 sub validate_column_type
@@ -70,50 +70,50 @@ sub validate_column_type
 
     if ( $table->primary_key_size > 1 )
     {
-	return 'INT4' if $type =~ /^SERIAL4?$/;
-	return 'INT8' if $type eq 'BIGSERIAL' or $type eq 'SERIAL8';
+        return 'INT4' if $type =~ /^SERIAL4?$/;
+        return 'INT8' if $type eq 'BIGSERIAL' or $type eq 'SERIAL8';
     }
 
     my %simple_types = map { $_ => 1 } qw( ABSTIME
                                            BIT
                                            BIGINT
-					   BIGSERIAL
-					   BOOL
-					   BOOLEAN
-					   BOX
-					   BYTEA
-					   CHAR
-					   CHARACTER
-					   CIDR
-					   CIRCLE
-					   DATE
-					   DECIMAL
-					   FLOAT
-					   FLOAT4
-					   FLOAT8
-					   INET
-					   SMALLINT
-					   INT
-					   INTEGER
-					   INT2
-					   INT4
-					   INT8
-					   INTERVAL
-					   MACADDR
-					   MONEY
-					   NUMERIC
-					   OID
-					   RELTIME
-					   SERIAL
-					   SERIAL4
-					   SERIAL8
-					   TEXT
-					   TIME
-					   TIMESTAMP
-					   TIMESTAMPTZ
-					   TIMETZ
-					   VARBIT
-					   VARCHAR );
+                                           BIGSERIAL
+                                           BOOL
+                                           BOOLEAN
+                                           BOX
+                                           BYTEA
+                                           CHAR
+                                           CHARACTER
+                                           CIDR
+                                           CIRCLE
+                                           DATE
+                                           DECIMAL
+                                           FLOAT
+                                           FLOAT4
+                                           FLOAT8
+                                           INET
+                                           SMALLINT
+                                           INT
+                                           INTEGER
+                                           INT2
+                                           INT4
+                                           INT8
+                                           INTERVAL
+                                           MACADDR
+                                           MONEY
+                                           NUMERIC
+                                           OID
+                                           RELTIME
+                                           SERIAL
+                                           SERIAL4
+                                           SERIAL8
+                                           TEXT
+                                           TIME
+                                           TIMESTAMP
+                                           TIMESTAMPTZ
+                                           TIMETZ
+                                           VARBIT
+                                           VARCHAR );
 
     return 'INTEGER' if $type eq 'INT' || $type eq 'INT4';
     return 'SERIAL' if $type eq 'SERIAL4';
@@ -137,14 +137,14 @@ sub validate_column_length
 
     if ( defined $column->length )
     {
-	Alzabo::Exception::RDBMSRules->throw( error => "Length is not supported except for char, varchar, decimal, float, and numeric columns (" . $column->name . " column)" )
-	    unless $column->type =~ /\A(?:(?:VAR)?CHAR|CHARACTER|DECIMAL|FLOAT|NUMERIC|(?:VAR)?BIT|BIT VARYING)\z/i;
+        Alzabo::Exception::RDBMSRules->throw( error => "Length is not supported except for char, varchar, decimal, float, and numeric columns (" . $column->name . " column)" )
+            unless $column->type =~ /\A(?:(?:VAR)?CHAR|CHARACTER|DECIMAL|FLOAT|NUMERIC|(?:VAR)?BIT|BIT VARYING)\z/i;
     }
 
     if ( defined $column->precision )
     {
-	Alzabo::Exception::RDBMSRules->throw( error => "Precision is not supported except for decimal, float, and numeric columns" )
-	    unless $column->type =~ /\A(?:DECIMAL|FLOAT|NUMERIC)\z/i;
+        Alzabo::Exception::RDBMSRules->throw( error => "Precision is not supported except for decimal, float, and numeric columns" )
+            unless $column->type =~ /\A(?:DECIMAL|FLOAT|NUMERIC)\z/i;
     }
 }
 
@@ -174,11 +174,11 @@ sub validate_primary_key
 
     my $serial_col = (grep { $_->type =~ /^(?:SERIAL(?:4|8)?|BIGSERIAL)$/ } $col->table->primary_key)[0];
     if ( defined $serial_col &&
-	 $serial_col->name ne $col->name )
+         $serial_col->name ne $col->name )
     {
-	$serial_col->set_type( $serial_col->type =~ /^SERIAL4?$/
-			       ? 'INT4'
-			       : 'INT8' );
+        $serial_col->set_type( $serial_col->type =~ /^SERIAL4?$/
+                               ? 'INT4'
+                               : 'INT8' );
     }
 }
 
@@ -188,7 +188,7 @@ sub validate_sequenced_attribute
     my $col = shift;
 
     Alzabo::Exception::RDBMSRules->throw( error => 'Non-number columns cannot be sequenced' )
-	unless $col->is_integer || $col->is_floating_point;
+        unless $col->is_integer || $col->is_floating_point;
 }
 
 sub validate_index
@@ -198,12 +198,12 @@ sub validate_index
 
     foreach my $c ( $index->columns )
     {
-	Alzabo::Exception::RDBMSRules->throw( error => "PostgreSQL does not support index prefixes" )
-	    if defined $index->prefix($c)
+        Alzabo::Exception::RDBMSRules->throw( error => "PostgreSQL does not support index prefixes" )
+            if defined $index->prefix($c)
     }
 
     Alzabo::Exception::RDBMSRules->throw( error => "PostgreSQL does not support fulltext indexes" )
-	if $index->fulltext;
+        if $index->fulltext;
 }
 
 sub type_is_integer
@@ -213,13 +213,13 @@ sub type_is_integer
     my $type = uc $col->type;
 
     return 1 if $type =~ /\A(?:
-			     INT(?:2|4|8)?|
-			     SMALLINT|
-			     INTEGER|
-			     OID|
-			     SERIAL(?:4|8)?|
-			     BIGSERIAL
-			    )
+                             INT(?:2|4|8)?|
+                             SMALLINT|
+                             INTEGER|
+                             OID|
+                             SERIAL(?:4|8)?|
+                             BIGSERIAL
+                            )
                           \z
                          /x;
 }
@@ -232,9 +232,9 @@ sub type_is_floating_point
 
     return 1 if $type =~ /\A(?:
                              DECIMAL|
-			     FLOAT(?:4|8)?|
-			     MONEY|
-			     NUMERIC
+                             FLOAT(?:4|8)?|
+                             MONEY|
+                             NUMERIC
                             )
                           \z
                          /x;
@@ -255,7 +255,7 @@ sub type_is_date
     my $col  = shift;
     my $type = uc $col->type;
 
-    return 1 if $type eq 'DATE';
+    return 1 if $type eq 'DATE' || $self->type_is_datetime($col);
 }
 
 sub type_is_datetime
@@ -264,7 +264,7 @@ sub type_is_datetime
     my $col  = shift;
     my $type = uc $col->type;
 
-    return 1 if $type eq 'TIMESTAMP';
+    return 1 if $type =~ /^TIMESTAMP/;
 }
 
 sub type_is_time
@@ -299,38 +299,38 @@ sub blob_type { return 'BYTEA' }
 sub column_types
 {
     return ( qw( INTEGER
-		 INT2
-		 INT8
-		 NUMERIC
-		 FLOAT
-		 FLOAT4
+                 INT2
+                 INT8
+                 NUMERIC
+                 FLOAT
+                 FLOAT4
 
-		 CHAR
-		 VARCHAR
-		 TEXT
+                 CHAR
+                 VARCHAR
+                 TEXT
 
-		 BYTEA
+                 BYTEA
 
-		 DATE
-		 TIME
-		 TIMESTAMP
-		 INTERVAL
+                 DATE
+                 TIME
+                 TIMESTAMP
+                 INTERVAL
 
-		 BOOLEAN
+                 BOOLEAN
 
-		 BIT
-	       ),
-	       'BIT VARYING',
+                 BIT
+               ),
+               'BIT VARYING',
 
-	     qw( INET
-		 CIDR
-		 MACADDR ) );
+             qw( INET
+                 CIDR
+                 MACADDR ) );
 }
 
 my %features = map { $_ => 1 } qw ( extended_column_types
                                     constraints
                                     functional_indexes
-				  );
+                                  );
 sub feature
 {
     shift;
@@ -353,10 +353,10 @@ sub schema_sql
     # reference other tables.
     foreach my $t ( $schema->tables )
     {
-	foreach my $fk ( $t->all_foreign_keys )
-	{
-	    push @sql, $self->foreign_key_sql($fk);
-	}
+        foreach my $fk ( $t->all_foreign_keys )
+        {
+            push @sql, $self->foreign_key_sql($fk);
+        }
     }
 
     return @sql;
@@ -378,10 +378,10 @@ sub table_sql
 
     if (my @pk = $table->primary_key)
     {
-	$sql .= ",\n";
-	$sql .= '  PRIMARY KEY (';
-	$sql .= join ', ', map { '"' . $_->name . '"' } @pk;
-	$sql .= ")\n";
+        $sql .= ",\n";
+        $sql .= '  PRIMARY KEY (';
+        $sql .= join ', ', map { '"' . $_->name . '"' } @pk;
+        $sql .= ")\n";
     }
 
     my @att = $table->attributes;
@@ -394,15 +394,15 @@ sub table_sql
 
     foreach my $i ( $table->indexes )
     {
-	push @sql, $self->index_sql($i);
+        push @sql, $self->index_sql($i);
     }
 
     if ($create_sequence)
     {
         foreach my $c ( grep { $_->sequenced } $table->columns )
-	{
-	    push @sql, $self->_sequence_sql($c);
-	}
+        {
+            push @sql, $self->_sequence_sql($c);
+        }
     }
 
     if (@att)
@@ -446,35 +446,35 @@ sub column_sql
     my @default;
     if ( ! $p->{skip_default} && defined $col->default )
     {
-	my $def = ( $col->is_character ?
-		    do { my $d = $col->default; $d =~ s/"/""/g; qq|'$d'| } :
-		    $col->default );
-	@default = ( "DEFAULT $def" );
+        my $def = ( $col->is_character ?
+                    do { my $d = $col->default; $d =~ s/"/""/g; qq|'$d'| } :
+                    $col->default );
+        @default = ( "DEFAULT $def" );
     }
 
     my $type = $col->type;
     my @length;
     if ( defined $col->length )
     {
-	my $length = '(' . $col->length;
-	$length .= ', ' . $col->precision if defined $col->precision;
-	$length .= ')';
-	$type .= $length;
+        my $length = '(' . $col->length;
+        $length .= ', ' . $col->precision if defined $col->precision;
+        $length .= ')';
+        $type .= $length;
     }
 
     my @nullable;
     unless ( $p->{skip_nullable} )
     {
-	@nullable = $col->nullable ? 'NULL' : 'NOT NULL';
+        @nullable = $col->nullable ? 'NULL' : 'NOT NULL';
     }
 
     my @name = $p->{skip_name} ? () : '"' . $col->name . '"';
 
     my $sql .= join '  ', ( @name,
-			    $type,
-			    @default,
-			    @nullable,
-			    $col->attributes );
+                            $type,
+                            @default,
+                            @nullable,
+                            $col->attributes );
 
     return $sql;
 }
@@ -488,6 +488,8 @@ sub foreign_key_sql
     {
         return unless $fk->from_is_dependent;
     }
+
+    return () if $self->{state}{fk_sql}{ $fk->id };
 
     my $sql = 'ALTER TABLE "';
     $sql .= $fk->table_from->name;
@@ -504,20 +506,22 @@ sub foreign_key_sql
 
     if ( $fk->from_is_dependent )
     {
-	$sql .= 'CASCADE';
+        $sql .= 'CASCADE';
     }
     else
     {
-	my @from = $fk->columns_from;
-	unless ( ( grep { $_->nullable } @from ) == @from )
-	{
-	    $sql .= 'SET DEFAULT';
-	}
-	else
-	{
-	    $sql .= 'SET NULL';
-	}
+        my @from = $fk->columns_from;
+        unless ( ( grep { $_->nullable } @from ) == @from )
+        {
+            $sql .= 'SET DEFAULT';
+        }
+        else
+        {
+            $sql .= 'SET NULL';
+        }
     }
+
+    $self->{state}{fk_sql}{ $fk->id } = 1;
 
     return $sql;
 }
@@ -534,6 +538,8 @@ sub drop_table_sql
 
     if ($is_recreate)
     {
+        # We need to drop foreign keys referring to this table before
+        # we drop it.
         foreach my $fk ( $table->all_foreign_keys )
         {
             push @sql, $self->drop_foreign_key_sql( $fk->reverse );
@@ -544,12 +550,10 @@ sub drop_table_sql
 
     unless ($is_recreate)
     {
-	foreach my $c ( $table->columns )
-	{
-            # this is done automatically in 7.3, which probably will
-            # break this.
-	    push @sql, $self->_drop_sequence_sql($c) if $c->sequenced;
-	}
+        foreach my $c ( $table->columns )
+        {
+            push @sql, $self->_drop_sequence_sql($c) if $c->sequenced;
+        }
     }
 
     return @sql;
@@ -587,13 +591,13 @@ sub recreate_table_sql
     return () if $self->{state}{table_sql}{ $p{new}->name };
 
     return ( $self->_temp_table_sql( $p{new}, $p{old} ),
-	     $self->drop_table_sql( $p{old}, 1 ),
-	     # the 0 param indicates that we should not create sequences
-	     $self->table_sql( $p{new}, 0 ),
-	     $self->_restore_table_data_sql( $p{new}, $p{old} ),
+             $self->drop_table_sql( $p{old}, 1 ),
+             # the 0 param indicates that we should not create sequences
+             $self->table_sql( $p{new}, 0 ),
+             $self->_restore_table_data_sql( $p{new}, $p{old} ),
              $self->_restore_foreign_key_sql( $p{new} ),
-	     $self->_drop_temp_table( $p{new} ),
-	   );
+             $self->_drop_temp_table( $p{new} ),
+           );
 
 }
 
@@ -674,7 +678,12 @@ sub drop_foreign_key_sql
         return unless $fk->from_is_dependent;
     }
 
-    return 'ALTER TABLE "' . $fk->table_from->name . '" DROP CONSTRAINT ' . $self->_fk_name($fk);
+    return () if $self->{state}{drop_fk_sql}{ $fk->id };
+
+    $self->{state}{drop_fk_sql}{ $fk->id } = 1;
+
+    return 'ALTER TABLE "' . $fk->table_from->name . '" DROP CONSTRAINT '
+           . $self->_fk_name($fk);
 }
 
 sub drop_index_sql
@@ -697,19 +706,19 @@ sub column_sql_add
 
     # Add not null constraint if column is not nullable
     push @sql, ( 'ALTER TABLE "' . $col->table->name . '" ADD CONSTRAINT "' . $col->table->name . '_' . $col->name . '_not_null" CHECK ( "' . $col->name . '" IS NOT NULL )' )
-	unless $col->nullable;
+        unless $col->nullable;
 
     my $default;
     if ( $col->default )
     {
-  	my $def = ( $col->is_character ?
-  		    do { my $d = $col->default; $d =~ s/"/""/g; qq|'$d'| } :
-  		    $col->default );
-  	$default = "DEFAULT $def";
+        my $def = ( $col->is_character ?
+                    do { my $d = $col->default; $d =~ s/"/""/g; qq|'$d'| } :
+                    $col->default );
+        $default = "DEFAULT $def";
 
-  	push @sql,
-	    ( 'ALTER TABLE "' . $col->table->name . '" ALTER COLUMN "' .
-	      $col->name . qq|" SET $default| );
+        push @sql,
+            ( 'ALTER TABLE "' . $col->table->name . '" ALTER COLUMN "' .
+              $col->name . qq|" SET $default| );
     }
 
     return @sql;
@@ -724,8 +733,8 @@ sub column_sql_diff
     my $old_sql = $self->column_sql( $p{old}, { skip_name => 1 } );
 
     return $self->drop_column_sql( new_table => $p{new}->table,
-				   old => $p{old} )
-	if $new_sql ne $old_sql;
+                                   old => $p{old} )
+        if $new_sql ne $old_sql;
 
     return;
 }
@@ -740,10 +749,10 @@ sub alter_primary_key_sql
 
     if ( $p{new}->primary_key )
     {
-	push @sql, ( 'CREATE UNIQUE INDEX "' . $p{new}->name . '_pkey" ON "' .
-		     $p{new}->name . '" (' .
-		     ( join ', ',
-		       map { '"' . $_->name . '"' } $p{new}->primary_key ) . ')' );
+        push @sql, ( 'CREATE UNIQUE INDEX "' . $p{new}->name . '_pkey" ON "' .
+                     $p{new}->name . '" (' .
+                     ( join ', ',
+                       map { '"' . $_->name . '"' } $p{new}->primary_key ) . ')' );
     }
 
     return @sql;
@@ -786,21 +795,17 @@ sub reverse_engineer
 
     foreach my $table ( $driver->tables )
     {
-        # It seems that with DBD::Pg 1.31 & 1.32 you can't just the
-        # database's table, you also get the system tables back
-        next if $table =~ /^pg_catalog\./;
-
         $table =~ s/^[^\.]+\.//;
 
-	print STDERR "Adding table $table to schema\n"
-	    if Alzabo::Debug::REVERSE_ENGINEER;
+        print STDERR "Adding table $table to schema\n"
+            if Alzabo::Debug::REVERSE_ENGINEER;
 
-	my $t = $schema->make_table( name => $table );
+        my $t = $schema->make_table( name => $table );
 
-	my $t_oid = $driver->one_row( sql => 'SELECT oid FROM pg_class WHERE relname = ?',
-				      bind => $table );
+        my $t_oid = $driver->one_row( sql => 'SELECT oid FROM pg_class WHERE relname = ?',
+                                      bind => $table );
 
-	my $sql = <<'EOF';
+        my $sql = <<'EOF';
 SELECT a.attname, a.attnotnull, t.typname, a.attnum, a.atthasdef, a.atttypmod
 FROM pg_attribute a, pg_type t
 WHERE a.attrelid = ?
@@ -814,134 +819,123 @@ EOF
 
 
         my %cols_by_number;
-	foreach my $row ( $driver->rows( sql => $sql,
-					 bind => $t_oid ) )
-	{
-	    my %p;
+        foreach my $row ( $driver->rows( sql => $sql,
+                                         bind => $t_oid ) )
+        {
+            my %p;
 
-	    $p{type} = $row->[2];
+            $p{type} = $row->[2];
 
-	    # has default
-	    if ( $row->[4] )
-	    {
-		$p{default} =
-		    $driver->one_row( sql => 'SELECT adsrc FROM pg_attrdef WHERE adrelid = ? AND adnum = ?',
-				      bind => [ $t_oid, $row->[3] ] );
-		# strip quotes Postgres added
-		$p{default} =~ s/^'|'$//g;
+            # has default
+            if ( $row->[4] )
+            {
+                $p{default} =
+                    $driver->one_row
+                        ( sql => 'SELECT adsrc FROM pg_attrdef WHERE adrelid = ? AND adnum = ?',
+                          bind => [ $t_oid, $row->[3] ] );
+
+ 		# strip quotes (and type!) Postgres added
+ 		$p{'default'} =~ s/^'//; #'
+ 		if ( $driver->rdbms_version ge '7.4' )
+ 		{
+ 	            # 'grotesque' becomes 'grotesque'::character
+ 	            # varying. See src/backend/utils/adt/format_type.c
+
+ 		    # This is from src/backend/util/adt/format_type.c
+ 		    $p{default} =~ s/'(?:::[^']{3,})?$//;
+ 		}
+ 		else
+ 		{
+ 		    $p{'default'} =~ s/'$//;
+ 		}
 
                 if ( $p{default} =~ /^nextval\(/ )
                 {
                     $p{sequenced} = 1;
                     $p{type} =~ s/(?:int(?:eger)?|numeric)/serial/;
                 }
-	    }
+            }
 
-	    if ( $p{type} =~ /char/i )
-	    {
-		# The real length is the value of: a.atttypmod - ((int32) sizeof(int32))
-		#
-		# Sure wish I knew how to figure this out in Perl.
-		# Its provided as VARHDRSZ in postgres.h but I can't
-		# really get at it.  On my linux machine this is 4.  A
-		# better way of doing this would be welcome.
-		$p{length} = $row->[5] - 4;
-	    }
-	    if ( lc $p{type} eq 'numeric' )
-	    {
-		# see comment above.
-		my $num = $row->[5] - 4;
-		$p{length} = ($num >> 16) & 0xffff;
-		$p{precision} = $num & 0xffff;
-	    }
+            if ( $p{type} =~ /char/i )
+            {
+                # The real length is the value of: a.atttypmod - ((int32) sizeof(int32))
+                #
+                # Sure wish I knew how to figure this out in Perl.
+                # Its provided as VARHDRSZ in postgres.h but I can't
+                # really get at it.  On my linux machine this is 4.  A
+                # better way of doing this would be welcome.
+                $p{length} = $row->[5] - 4;
+            }
+            if ( lc $p{type} eq 'numeric' )
+            {
+                # see comment above.
+                my $num = $row->[5] - 4;
+                $p{length} = ($num >> 16) & 0xffff;
+                $p{precision} = $num & 0xffff;
+            }
 
-	    $p{type} = 'char' if lc $p{type} eq 'bpchar';
+            $p{type} = 'char' if lc $p{type} eq 'bpchar';
 
-	    print STDERR "Adding $row->[0] column to $table\n"
-		if Alzabo::Debug::REVERSE_ENGINEER;
+            print STDERR "Adding $row->[0] column to $table\n"
+                if Alzabo::Debug::REVERSE_ENGINEER;
 
-	    $t->make_column( name => $row->[0],
-			     nullable => ! $row->[1],
-			     %p
-			   );
+            $t->make_column( name => $row->[0],
+                             nullable => ! $row->[1],
+                             %p
+                           );
 
             $cols_by_number{ $row->[3] } = $row->[0];
-	}
+        }
 
 
-	$sql = <<'EOF';
-SELECT a.attname
-FROM pg_index i, pg_attribute a, pg_class c
-WHERE i.indrelid = ?
-AND i.indisprimary
-AND i.indexrelid = c.oid
-AND c.oid = a.attrelid
-AND a.attnum > 0
-ORDER BY a.attnum
+        $sql = <<'EOF';
+SELECT indkey
+FROM pg_index
+WHERE indisprimary
+AND indrelid = ?
 EOF
 
-	foreach my $col ( $driver->column( sql => $sql,
-					   bind => $t_oid ) )
-	{
-	    print STDERR "Setting $col as primary key for $table\n"
-		if Alzabo::Debug::REVERSE_ENGINEER;
+        foreach my $cols ( $driver->column( sql => $sql,
+                                           bind => $t_oid ) )
+        {
+	    my @cols = @cols_by_number{ split ' ', $cols };
+	    local $" = ", ";
 
-	    $t->add_primary_key( $t->column($col) );
-	}
+	    print STDERR "Setting @cols as primary key for $table\n"
+ 		if Alzabo::Debug::REVERSE_ENGINEER;
 
-	$sql = <<'EOF';
-SELECT c.oid, a.attname, i.indisunique, i.indproc, i.indkey
-FROM pg_index i, pg_attribute a, pg_class c
-WHERE i.indrelid = ?
-AND NOT i.indisprimary
-AND i.indexrelid = c.oid
-AND c.oid = a.attrelid
-AND a.attnum > 0
-ORDER BY a.attnum
-EOF
+	    $t->add_primary_key( $_ ) for $t->columns( @cols );
+        }
 
 	my %i;
-	foreach my $row ( $driver->rows( sql => $sql,
-					 bind => $t_oid ) )
+	if ( $driver->rdbms_version ge '7.4' )
 	{
-            my $col_name;
-
-            my $function;
-            if ( $row->[3] && $row->[3] =~ /\w/ && $row->[3] ne '-' )
-            {
-                # some function names come out as "pg_catalog.foo"
-                $row->[3] =~ s/\w+\.(\w+)/$1/;
-                $function = uc $row->[3];
-                $function .= '(';
-
-                $col_name = $cols_by_number{ $row->[4] };
-
-                $function .= $col_name;
-
-                $function .= ')';
-            }
-            else
-            {
-                $col_name = $row->[1];
-            }
-
-	    push @{ $i{ $row->[0] }{cols} }, $t->column($col_name);
-	    $i{ $row->[0] }{unique} = $row->[2];
-
-            $i{ $row->[0] }{function} = $function;
+            %i = $self->_74_indexes( $driver, $t, $t_oid, \%cols_by_number );
 	}
+        else
+        {
+            %i = $self->_pre_74_indexes( $driver, $t, $t_oid, \%cols_by_number );
+ 	}
 
-	foreach my $oid (keys %i)
-	{
-	    my @c = map { { column => $_ } } @{ $i{$oid}{cols} };
-	    $t->make_index( columns  => \@c,
-			    unique   => $i{$oid}{unique},
-                            function => $i{$oid}{function},
+	foreach my $idx (values %i)
+ 	{
+	    my @c = map { { column => $_ } } @{ $idx->{cols} };
+
+	    print STDERR "Adding index "
+		. ( defined $idx->{'function'}
+		    ? $idx->{'function'}
+		    : join(', ', map $_->name, @{$idx->{'cols'}} ) )
+		. " to $table\n"
+		if Alzabo::Debug::REVERSE_ENGINEER;
+
+ 	    $t->make_index( columns  => \@c,
+			    unique   => $idx->{unique},
+                            function => $idx->{function},
                           );
         }
 
-	$sql = <<'EOF';
-SELECT consrc, conkey
+        $sql = <<'EOF';
+SELECT consrc, array_to_string(conkey,' ')
 FROM pg_constraint
 WHERE conrelid = ?
 AND contype = 'c'
@@ -949,15 +943,16 @@ EOF
 
         my @att;
 
-	foreach my $row ( $driver->rows( sql => $sql,
+        foreach my $row ( $driver->rows( sql => $sql,
                                          bind => $t_oid ) )
-	{
+        {
             my ( $con, $cols ) = @$row;
 
             # this stuff is not needed
             $con =~ s/::(\w+)//g;
 
-            if ( $cols =~ /^\{(\d+)\}$/ )
+	    # If $cols ever covers more than one value then this will fail.
+            if ( $cols =~ /^\d+$/ )
             {
                 my $column = $cols_by_number{$1};
 
@@ -973,7 +968,7 @@ EOF
 
                 $t->add_attribute("CHECK $con");
             }
-	}
+        }
 
     }
 
@@ -984,13 +979,149 @@ EOF
         if $driver->rdbms_version ge '7.3';
 }
 
+sub _74_indexes
+{
+    my $self   = shift;
+    my $driver = shift;
+    my $table  = shift;
+    my $t_oid  = shift;
+    my $cols_by_number  = shift;
+
+    my $sql = <<'EOF';
+SELECT indexrelid, indisunique, indkey, indnatts
+FROM pg_index
+WHERE indrelid = ?
+AND NOT indisprimary
+EOF
+
+    my %i;
+   INDEX:
+    foreach my $row ( $driver->rows( sql => $sql,
+                                     bind => $t_oid ) )
+    {
+        my $function;
+        my @col_names;
+        my @col_numbers;
+
+        my @spi_exprs;
+        my $spi =
+            $driver->one_row
+                ( sql => "SELECT COALESCE(indexprs,'') FROM pg_index WHERE indexrelid = ?",
+                  bind => $row->[0] );
+
+        if ( $spi )
+        {
+          SPI_EXPRESSION:
+            while ( my $spi_expr = extract_bracketed( $spi, '{}', '[^{}]*' ) )
+            {
+                push( @spi_exprs,
+                      join( ' ',
+                            $spi_expr =~ /:varattno (\d+)/g ) );
+            }
+        }
+
+        if ( scalar( @spi_exprs ) > 1 )
+        {
+            # Index objects are not prepared to handle functional
+            # indexes that use more than one function.
+            die "Alzabo " . Alzabo->VERSION . " does not support functional"
+                . " indexes that are not strictly a single function."
+                . "  There are multiple functions on an index on the "
+                . $table->name . " table.";
+        }
+        elsif ( scalar( @spi_exprs ) == 1 )
+        {
+            # Pretend we are PostgreSQL 7.3 and functional indexes may
+            # only cover a single expression and that there's only one
+            # function per index.
+            if ( $row->[2] )
+            {
+                die "Alzabo " . Alzabo->VERSION . " does not support functional indexes that are not strictly a single function. You indexes some columns and a function on the $table table.";
+            }
+
+            $function =
+                $driver->one_row
+                    ( sql => 'SELECT pg_catalog.pg_get_indexdef( ?, 1, true)',
+                      bind => $row->[0] );
+
+            # A wanton lack of respect for boundaries. 'Parse' the
+            # PostgreSQL internal SPI language to find out what
+            # columns are being accessed.
+            @col_numbers = $spi_exprs[0] =~ /:varattno (\d+)/g;
+        }
+        else
+        {
+            # A regular index!
+            @col_numbers = split ' ', $row->[2];
+        }
+
+        @col_names = @{ $cols_by_number }{ @col_numbers };
+        push( @{ $i{ $row->[0] }{cols} },
+              $table->columns( @col_names ) );
+        $i{ $row->[0] }{function} = $function;
+        $i{ $row->[0] }{unique} = $row->[1];
+    }
+
+    return %i;
+}
+
+sub _pre_74_indexes
+{
+    my $self   = shift;
+    my $driver = shift;
+    my $table  = shift;
+    my $t_oid  = shift;
+    my $cols_by_number  = shift;
+
+    my $sql = <<'EOF';
+SELECT c.oid, a.attname, i.indisunique, i.indproc, i.indkey
+FROM pg_index i, pg_attribute a, pg_class c
+WHERE i.indrelid = ?
+AND NOT i.indisprimary
+AND i.indexrelid = c.oid
+AND c.oid = a.attrelid
+AND a.attnum > 0
+ORDER BY a.attnum
+EOF
+
+    my %i;
+    foreach my $row ( $driver->rows( sql => $sql,
+                                     bind => $t_oid ) )
+    {
+        my @col_names = @{ $cols_by_number }{ split ' ', $row->[4] };
+
+        my $function;
+        if ( $row->[3] && $row->[3] =~ /\w/ && $row->[3] ne '-' )
+        {
+            # some function names come out as "pg_catalog.foo"
+            $row->[3] =~ s/\w+\.(\w+)/$1/;
+            $function = uc $row->[3];
+            $function .= '(';
+
+            $function .= join ', ', @col_names;
+
+            $function .= ')';
+        }
+
+        push( @{ $i{ $row->[0] }{cols} },
+              $table->columns( @col_names ) );
+
+        $i{ $row->[0] }{unique} = $row->[2];
+        $i{ $row->[0] }{function} = $function;
+    }
+
+    return %i;
+}
+
 sub _foreign_keys_to_relationships
 {
     my ($self, $schema) = @_;
     my $driver = $schema->driver;
 
     my $constraint_sql = <<'EOF';
-SELECT conrelid, confrelid, conkey, confkey
+SELECT conrelid, confrelid,
+    array_to_string(conkey,' '),
+    array_to_string(confkey,' ')
 FROM pg_constraint
 WHERE contype = 'f'
 EOF
@@ -1010,42 +1141,42 @@ EOF
 
     foreach my $row ( $driver->rows( sql => $constraint_sql ) )
     {
-	my $from_table = $driver->one_row( sql => $table_sql,
-					   bind => $row->[0] );
-	my $to_table   = $driver->one_row( sql => $table_sql,
-					   bind => $row->[1] );
+        my $from_table = $driver->one_row( sql => $table_sql,
+                                           bind => $row->[0] );
+        my $to_table   = $driver->one_row( sql => $table_sql,
+                                           bind => $row->[1] );
 
-	# Column numbers are given as strings like "{3,5}"
-	my @from_cols = $row->[2] =~ m/(\d+),?/g
-	    or die "Weird column specification $row->[2]";
+	# Column numbers are given as strings like "3 5"
+	my @from_cols = split ' ', $row->[2]
+ 	    or die "Weird column specification $row->[2]";
 
-	my @to_cols   = $row->[3] =~ m/(\d+),?/g
-	    or die "Weird column specification $row->[3]";
+	my @to_cols   = split ' ', $row->[3]
+ 	    or die "Weird column specification $row->[3]";
 
-	# Convert column numbers to names
-	foreach (@from_cols)
+        # Convert column numbers to names
+        foreach (@from_cols)
         {
-	    $_ = $driver->one_row( sql => $column_sql,
-				   bind => [$row->[0], $_] );
-	}
-	foreach (@to_cols)
+            $_ = $driver->one_row( sql => $column_sql,
+                                   bind => [$row->[0], $_] );
+        }
+        foreach (@to_cols)
         {
-	    $_ = $driver->one_row( sql => $column_sql,
-				   bind => [$row->[1], $_] );
-	}
+            $_ = $driver->one_row( sql => $column_sql,
+                                   bind => [$row->[1], $_] );
+        }
 
-	print STDERR "Adding $from_table foreign key to $to_table\n"
-	    if Alzabo::Debug::REVERSE_ENGINEER;
+        print STDERR "Adding $from_table foreign key to $to_table\n"
+            if Alzabo::Debug::REVERSE_ENGINEER;
 
-	# Convert to Alzabo objects
-	$from_table = $schema->table($from_table);
-	$to_table   = $schema->table($to_table);
-	@from_cols = map { $from_table->column($_) } @from_cols;
-	@to_cols   = map {   $to_table->column($_) } @to_cols;
+        # Convert to Alzabo objects
+        $from_table = $schema->table($from_table);
+        $to_table   = $schema->table($to_table);
+        @from_cols = map { $from_table->column($_) } @from_cols;
+        @to_cols   = map {   $to_table->column($_) } @to_cols;
 
-	# If there's a unique constraint on the "from" columns, treat
-	# is as 1-to-1.  Otherwise treat it as n-to-1.
-	my $from_unique = 0;
+        # If there's a unique constraint on the "from" columns, treat
+        # is as 1-to-1.  Otherwise treat it as n-to-1.
+        my $from_unique = 0;
 
         # Only use PK as determination of uniqueness if the FK is from
         # the _whole_ PK to something else.  If the FK only includes
@@ -1080,14 +1211,14 @@ EOF
         my $to_is_dependent =
             ( grep { $_->nullable || $_->is_primary_key } @to_cols ) ? 0 : 1;
 
-	$schema->add_relationship( cardinality => [ $from_cardinality, '1' ],
+        $schema->add_relationship( cardinality => [ $from_cardinality, '1' ],
                                    table_from => $from_table,
                                    table_to   => $to_table,
                                    columns_from => \@from_cols,
                                    columns_to   => \@to_cols,
                                    from_is_dependent => $from_is_dependent,
                                    to_is_dependent => $to_is_dependent,
-				 );
+                                 );
     }
 }
 

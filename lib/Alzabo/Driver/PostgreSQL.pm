@@ -48,7 +48,7 @@ sub schemas
                             password => { type => SCALAR | UNDEF,
                                           optional => 1 },
                             host => { type => SCALAR | UNDEF,
-				   optional => 1 },
+                                   optional => 1 },
                             port => { type => SCALAR | UNDEF,
                                       optional => 1 },
                             options => { type => SCALAR | UNDEF,
@@ -78,6 +78,15 @@ sub schemas
 
     return @schemas;
 
+}
+
+sub tables
+{
+    my $self = shift;
+
+    # It seems that with DBD::Pg 1.31 & 1.32 you can't just the
+    # database's table, you also get the system tables back
+    return grep { ! /^(?:pg_catalog|information_schema)\./ } $self->SUPER::tables( @_ );
 }
 
 sub create_database
@@ -125,37 +134,37 @@ sub _make_dbh
     my %p = @_;
 
     %p = validate( @_, { name => { type => SCALAR },
-			 user => { type => SCALAR | UNDEF,
-				   optional => 1 },
-			 password => { type => SCALAR | UNDEF,
-				       optional => 1 },
-			 host => { type => SCALAR | UNDEF,
-				   optional => 1 },
-			 port => { type => SCALAR | UNDEF,
-				   optional => 1 },
-			 options => { type => SCALAR | UNDEF,
-				      optional => 1 },
-			 tty => { type => SCALAR | UNDEF,
-				  optional => 1 },
-		       } );
+                         user => { type => SCALAR | UNDEF,
+                                   optional => 1 },
+                         password => { type => SCALAR | UNDEF,
+                                       optional => 1 },
+                         host => { type => SCALAR | UNDEF,
+                                   optional => 1 },
+                         port => { type => SCALAR | UNDEF,
+                                   optional => 1 },
+                         options => { type => SCALAR | UNDEF,
+                                      optional => 1 },
+                         tty => { type => SCALAR | UNDEF,
+                                  optional => 1 },
+                       } );
 
     my $dsn = "dbi:Pg:dbname=$p{name}";
     foreach ( qw( host port options tty ) )
     {
-	$dsn .= ";$_=$p{$_}" if $p{$_};
+        $dsn .= ";$_=$p{$_}" if $p{$_};
     }
 
     my $dbh;
     eval
     {
-	$dbh = DBI->connect( $dsn,
-			     $p{user},
-			     $p{password},
-			     { RaiseError => 1,
-			       AutoCommit => 1,
-			       PrintError => 0,
-			     }
-			   );
+        $dbh = DBI->connect( $dsn,
+                             $p{user},
+                             $p{password},
+                             { RaiseError => 1,
+                               AutoCommit => 1,
+                               PrintError => 0,
+                             }
+                           );
     };
 
     Alzabo::Exception::Driver->throw( error => $@ ) if $@;
@@ -177,17 +186,17 @@ sub next_sequence_number
 
     my $seq_name;
 
-    if ( $col->type eq 'SERIAL' )
+    if ( $col->type =~ /SERIAL/ )
     {
-	$seq_name = join '_', $col->table->name, $col->name;
-	my $maxlen = $self->identifier_length;
-	$seq_name = substr( $seq_name, 0, $maxlen - 4 ) if length $seq_name > ($maxlen - 4);
+        $seq_name = join '_', $col->table->name, $col->name;
+        my $maxlen = $self->identifier_length;
+        $seq_name = substr( $seq_name, 0, $maxlen - 4 ) if length $seq_name > ($maxlen - 4);
 
-	$seq_name .= '_seq';
+        $seq_name .= '_seq';
     }
     else
     {
-	$seq_name = join '___', $col->table->name, $col->name;
+        $seq_name = join '___', $col->table->name, $col->name;
     }
 
     $self->{last_id} = $self->one_row( sql => "SELECT NEXTVAL('$seq_name')" );
@@ -217,7 +226,7 @@ sub rdbms_version
 
     my $version_string = $self->one_row( sql => 'SELECT version()' );
     my ($version) = $version_string =~ /^PostgreSQL ([\d.]+)/
-	or die "Couldn't determine version number from version string '$version_string'";
+        or die "Couldn't determine version number from version string '$version_string'";
 
     return $version;
 }
@@ -229,7 +238,7 @@ sub identifier_length
     return $self->{identifier_length} if $self->{identifier_length};
 
     return
-	$self->{identifier_length} = $self->rdbms_version ge '7.3' ? 63 : 31;
+        $self->{identifier_length} = $self->rdbms_version ge '7.3' ? 63 : 31;
 }
 
 1;

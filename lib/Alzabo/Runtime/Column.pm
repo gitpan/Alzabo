@@ -16,7 +16,7 @@ sub alias_clone
     my $self = shift;
 
     my %p = validate( @_, { table => { isa => 'Alzabo::Runtime::Table' },
-			  } );
+                          } );
 
     my $clone;
 

@@ -38,8 +38,8 @@ sub has_attribute
 {
     my $self = shift;
     my %p = validate( @_, { attribute => { type => SCALAR },
-			    case_sensitive => { type => SCALAR,
-						default => 0 } } );
+                            case_sensitive => { type => SCALAR,
+                                                default => 0 } } );
 
     if ( $p{case_sensitive} )
     {
@@ -121,7 +121,7 @@ sub is_time
     $_[0]->table->schema->rules->type_is_time($_[0]);
 }
 
-sub is_time_internval
+sub is_time_interval
 {
     $_[0]->table->schema->rules->type_is_time_interval($_[0]);
 }

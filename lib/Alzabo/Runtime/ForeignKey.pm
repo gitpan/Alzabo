@@ -36,39 +36,39 @@ sub _insert_or_update
 
     foreach my $pair ( $self->column_pairs )
     {
-	# if we're inserting into a table we don't check if its primary
-	# key exists elsewhere, no matter what the cardinality of the
-	# relation.  Otherwise, we end up in cycles where it is impossible
-	# to insert things into the table.
-	next if $type eq 'insert' && $pair->[0]->is_primary_key;
+        # if we're inserting into a table we don't check if its primary
+        # key exists elsewhere, no matter what the cardinality of the
+        # relation.  Otherwise, we end up in cycles where it is impossible
+        # to insert things into the table.
+        next if $type eq 'insert' && $pair->[0]->is_primary_key;
 
         # A table is always allowed to make updates to its own primary
         # key columns ...
-	if ( ( $type eq 'update' || $pair->[1]->is_primary_key )
+        if ( ( $type eq 'update' || $pair->[1]->is_primary_key )
              && ! $pair->[0]->is_primary_key )
-	{
-	    $self->_check_existence( $pair->[1] => $vals{ $pair->[0]->name } )
-		if defined $vals{ $pair->[0]->name };
-	}
+        {
+            $self->_check_existence( $pair->[1] => $vals{ $pair->[0]->name } )
+                if defined $vals{ $pair->[0]->name };
+        }
 
         # Except when the PK has a one-to-one relationship to some
         # other table, and the update would cause a duplication in the
         # other table.
-	if ( $self->is_one_to_one && ! $has_nulls )
-	{
-	    push @one_to_one_where, [ $pair->[0], '=', $vals{ $pair->[0]->name } ];
-	    push @one_to_one_vals, $pair->[0]->name . ' = ' . $vals{ $pair->[0]->name };
-	}
+        if ( $self->is_one_to_one && ! $has_nulls )
+        {
+            push @one_to_one_where, [ $pair->[0], '=', $vals{ $pair->[0]->name } ];
+            push @one_to_one_vals, $pair->[0]->name . ' = ' . $vals{ $pair->[0]->name };
+        }
     }
 
     if ( $self->is_one_to_one && ! $has_nulls )
     {
-	if ( @one_to_one_where &&
+        if ( @one_to_one_where &&
              $self->table_from->row_count( where => \@one_to_one_where ) )
-	{
-	    my $err = '(' . (join ', ', @one_to_one_vals) . ') already exists in the ' . $self->table_from->name . ' table';
-	    Alzabo::Exception::ReferentialIntegrity->throw( error => $err );
-	}
+        {
+            my $err = '(' . (join ', ', @one_to_one_vals) . ') already exists in the ' . $self->table_from->name . ' table';
+            Alzabo::Exception::ReferentialIntegrity->throw( error => $err );
+        }
     }
 }
 
@@ -79,7 +79,7 @@ sub _check_existence
 
     unless ( $self->table_to->row_count( where => [ $col, '=', $val ] ) )
     {
-	Alzabo::Exception::ReferentialIntegrity->throw( error => 'Foreign key must exist in foreign table.  No rows in ' . $self->table_to->name . ' where ' . $col->name . " = $val" );
+        Alzabo::Exception::ReferentialIntegrity->throw( error => 'Foreign key must exist in foreign table.  No rows in ' . $self->table_to->name . ' where ' . $col->name . " = $val" );
     }
 }
 
@@ -99,23 +99,23 @@ sub register_delete
 
     while ( my $related_row = $cursor->next )
     {
-	# This is a class variable so that multiple foreign key
-	# objects don't try to delete the same rows
-	next if $DELETED{ $related_row->id_as_string };
+        # This is a class variable so that multiple foreign key
+        # objects don't try to delete the same rows
+        next if $DELETED{ $related_row->id_as_string };
 
-	if ($self->to_is_dependent)
-	{
-	    local %DELETED = %DELETED;
-	    $DELETED{ $related_row->id_as_string } = 1;
-	    # dependent relationship so delete other row (may begin a
-	    # chain reaction!)
-	    $related_row->delete;
-	}
-	elsif (@update)
-	{
-	    # not dependent so set the column(s) to null
-	    $related_row->update( map { $_->name => undef } @update );
-	}
+        if ($self->to_is_dependent)
+        {
+            local %DELETED = %DELETED;
+            $DELETED{ $related_row->id_as_string } = 1;
+            # dependent relationship so delete other row (may begin a
+            # chain reaction!)
+            $related_row->delete;
+        }
+        elsif (@update)
+        {
+            # not dependent so set the column(s) to null
+            $related_row->update( map { $_->name => undef } @update );
+        }
     }
 }
 

@@ -24,12 +24,12 @@ sub new
     my $class = ref $proto || $proto;
 
     validate( @_, { schema => { isa => 'Alzabo::Create::Schema' },
-		    name => { type => SCALAR },
+                    name => { type => SCALAR },
                     attributes => { type => ARRAYREF,
                                     optional => 1 },
-		    comment => { type => UNDEF | SCALAR,
-				 default => '' },
-		  } );
+                    comment => { type => UNDEF | SCALAR,
+                                 default => '' },
+                  } );
     my %p = @_;
 
     my $self = bless {}, $class;
@@ -68,8 +68,8 @@ sub set_name
     my @i;
     if ($self->{indexes})
     {
-	@i = $self->indexes;
-	$self->delete_index($_) foreach @i;
+        @i = $self->indexes;
+        $self->delete_index($_) foreach @i;
     }
 
     my $old_name = $self->{name};
@@ -77,28 +77,28 @@ sub set_name
 
     eval
     {
-	$self->schema->rules->validate_table_name($self);
+        $self->schema->rules->validate_table_name($self);
     };
 
     $self->add_index($_) foreach @i;
 
     if ($@)
     {
-	$self->{name} = $old_name;
+        $self->{name} = $old_name;
 
         rethrow_exception($@);
     }
 
     if ( $old_name && eval { $self->schema->table($old_name) } )
     {
-	$self->schema->register_table_name_change( table => $self,
-						   old_name => $old_name );
+        $self->schema->register_table_name_change( table => $self,
+                                                   old_name => $old_name );
 
-	foreach my $fk ($self->all_foreign_keys)
-	{
-	    $fk->table_to->register_table_name_change( table => $self,
-						       old_name => $old_name );
-	}
+        foreach my $fk ($self->all_foreign_keys)
+        {
+            $fk->table_to->register_table_name_change( table => $self,
+                                                       old_name => $old_name );
+        }
     }
 }
 
@@ -112,11 +112,11 @@ sub make_column
     my %p2;
     foreach ( qw( before after ) )
     {
-	$p2{$_} = delete $p{$_} if exists $p{$_};
+        $p2{$_} = delete $p{$_} if exists $p{$_};
     }
     $self->add_column( column => Alzabo::Create::Column->new( table => $self,
-							      %p ),
-		       %p2 );
+                                                              %p ),
+                       %p2 );
 
     my $col = $self->column( $p{name} );
     $self->add_primary_key($col) if $is_pk;
@@ -129,14 +129,14 @@ sub add_column
     my $self = shift;
 
     validate( @_, { column => { isa => 'Alzabo::Create::Column' },
-		    before => { optional => 1 },
-		    after  => { optional => 1 } } );
+                    before => { optional => 1 },
+                    after  => { optional => 1 } } );
     my %p = @_;
 
     my $col = $p{column};
 
     params_exception "Column " . $col->name . " already exists in " . $self->name
-	if $self->{columns}->EXISTS( $col->name );
+        if $self->{columns}->EXISTS( $col->name );
 
     $col->set_table($self) unless $col->table eq $self;
 
@@ -144,12 +144,12 @@ sub add_column
 
     foreach ( qw( before after ) )
     {
-	if ( exists $p{$_} )
-	{
-	    $self->move_column( $_ => $p{$_},
-				column => $col );
-	    last;
-	}
+        if ( exists $p{$_} )
+        {
+            $self->move_column( $_ => $p{$_},
+                                column => $col );
+            last;
+        }
     }
 }
 
@@ -161,24 +161,24 @@ sub delete_column
     my $col = shift;
 
     params_exception"Column $col doesn't exist in $self->{name}"
-	unless $self->{columns}->EXISTS( $col->name );
+        unless $self->{columns}->EXISTS( $col->name );
 
     $self->delete_primary_key($col) if $col->is_primary_key;
 
     foreach my $fk ($self->foreign_keys_by_column($col))
     {
-	$self->delete_foreign_key($fk);
+        $self->delete_foreign_key($fk);
 
-	foreach my $other_fk ($fk->table_to->foreign_keys( table => $self,
+        foreach my $other_fk ($fk->table_to->foreign_keys( table => $self,
                                                            column => $fk->columns_to ) )
-	{
-	    $fk->table_to->delete_foreign_key( $other_fk );
-	}
+        {
+            $fk->table_to->delete_foreign_key( $other_fk );
+        }
     }
 
     foreach my $i ($self->indexes)
     {
-	$self->delete_index($i) if grep { $_ eq $col } $i->columns;
+        $self->delete_index($i) if grep { $_ eq $col } $i->columns;
     }
 
     $self->{columns}->DELETE( $col->name );
@@ -189,31 +189,31 @@ sub move_column
     my $self = shift;
 
     validate( @_, { column  => { isa => 'Alzabo::Create::Column' },
-		    before  => { isa => 'Alzabo::Create::Column',
-				 optional => 1 },
-		    after   => { isa => 'Alzabo::Create::Column',
-				 optional => 1 } } );
+                    before  => { isa => 'Alzabo::Create::Column',
+                                 optional => 1 },
+                    after   => { isa => 'Alzabo::Create::Column',
+                                 optional => 1 } } );
     my %p = @_;
 
     if ( exists $p{before} && exists $p{after} )
     {
-	params_exception
+        params_exception
             "move_column method cannot be called with both 'before' and 'after' parameters";
     }
 
     if ( exists $p{before} )
     {
-	params_exception "Column " . $p{before}->name . " doesn't exist in schema"
-	    unless $self->{columns}->EXISTS( $p{before}->name );
+        params_exception "Column " . $p{before}->name . " doesn't exist in schema"
+            unless $self->{columns}->EXISTS( $p{before}->name );
     }
     else
     {
-	params_exception "Column " . $p{after}->name . " doesn't exist in schema"
-	    unless $self->{columns}->EXISTS( $p{after}->name );
+        params_exception "Column " . $p{after}->name . " doesn't exist in schema"
+            unless $self->{columns}->EXISTS( $p{after}->name );
     }
 
     params_exception "Column " . $p{column}->name . " doesn't exist in schema"
-	unless $self->{columns}->EXISTS( $p{column}->name );
+        unless $self->{columns}->EXISTS( $p{column}->name );
 
     my @pk = $self->primary_key;
 
@@ -222,11 +222,11 @@ sub move_column
     my $index;
     if ( $p{before} )
     {
-	$index = $self->{columns}->Indices( $p{before}->name );
+        $index = $self->{columns}->Indices( $p{before}->name );
     }
     else
     {
-	$index = $self->{columns}->Indices( $p{after}->name ) + 1;
+        $index = $self->{columns}->Indices( $p{after}->name ) + 1;
     }
 
     $self->{columns}->Splice( $index, 0, $p{column}->name => $p{column} );
@@ -243,7 +243,7 @@ sub add_primary_key
 
     my $name = $col->name;
     params_exception "Column $name doesn't exist in $self->{name}"
-	unless $self->{columns}->EXISTS($name);
+        unless $self->{columns}->EXISTS($name);
 
     params_exception "Column $name is already a primary key"
         if $col->is_primary_key;
@@ -265,7 +265,7 @@ sub delete_primary_key
 
     my $name = $col->name;
     params_exception "Column $name doesn't exist in $self->{name}"
-	unless $self->{columns}->EXISTS($name);
+        unless $self->{columns}->EXISTS($name);
 
     params_exception "Column $name is not a primary key"
         unless $col->is_primary_key;
@@ -290,7 +290,7 @@ sub add_foreign_key
 
     foreach my $c ( $fk->columns_from )
     {
-	push @{ $self->{fk}{ $fk->table_to->name }{ $c->name } }, $fk;
+        push @{ $self->{fk}{ $fk->table_to->name }{ $c->name } }, $fk;
     }
 
     if ( ( $fk->is_one_to_one || $fk->is_one_to_many )
@@ -318,8 +318,8 @@ sub delete_foreign_key
 
     foreach my $c ( $fk->columns_from )
     {
-	params_exception "Column " . $c->name . " doesn't exist in $self->{name}"
-	    unless $self->{columns}->EXISTS( $c->name );
+        params_exception "Column " . $c->name . " doesn't exist in $self->{name}"
+            unless $self->{columns}->EXISTS( $c->name );
     }
 
     params_exception
@@ -329,31 +329,31 @@ sub delete_foreign_key
     my @new_fk;
     foreach my $c ( $fk->columns_from )
     {
-	params_exception
+        params_exception
             "Column " . $c->name . " is not a foreign key to " .
             $fk->table_to->name . " in $self->{name}"
                 unless exists $self->{fk}{ $fk->table_to->name }{ $c->name };
 
-	foreach my $current_fk ( @{ $self->{fk}{ $fk->table_to->name }{ $c->name } } )
-	{
-	    push @new_fk, $current_fk unless $current_fk eq $fk;
-	}
+        foreach my $current_fk ( @{ $self->{fk}{ $fk->table_to->name }{ $c->name } } )
+        {
+            push @new_fk, $current_fk unless $current_fk eq $fk;
+        }
     }
 
     foreach my $c ( $fk->columns_from )
     {
-	if (@new_fk)
-	{
-	    $self->{fk}{ $fk->table_to->name }{ $c->name } = \@new_fk;
-	}
-	else
-	{
-	    delete $self->{fk}{ $fk->table_to->name }{ $c->name };
-	}
+        if (@new_fk)
+        {
+            $self->{fk}{ $fk->table_to->name }{ $c->name } = \@new_fk;
+        }
+        else
+        {
+            delete $self->{fk}{ $fk->table_to->name }{ $c->name };
+        }
     }
 
     delete $self->{fk}{ $fk->table_to->name }
-	unless keys %{ $self->{fk}{ $fk->table_to->name } };
+        unless keys %{ $self->{fk}{ $fk->table_to->name } };
 }
 
 sub make_index
@@ -361,7 +361,7 @@ sub make_index
     my Alzabo::Table $self = shift;
 
     $self->add_index( Alzabo::Create::Index->new( table => $self,
-						  @_ ) );
+                                                  @_ ) );
 }
 
 sub add_index
@@ -373,7 +373,7 @@ sub add_index
 
     my $id = $i->id;
     params_exception "Index already exists (id $id)."
-	if $self->{indexes}->EXISTS($id);
+        if $self->{indexes}->EXISTS($id);
 
     $self->{indexes}->STORE( $id, $i );
 
@@ -388,7 +388,7 @@ sub delete_index
     my $i = shift;
 
     params_exception "Index does not exist."
-	unless $self->{indexes}->EXISTS( $i->id );
+        unless $self->{indexes}->EXISTS( $i->id );
 
     $self->{indexes}->DELETE( $i->id );
 }
@@ -398,11 +398,11 @@ sub register_table_name_change
     my $self = shift;
 
     validate( @_, { table => { isa => 'Alzabo::Create::Table' },
-		    old_name => { type => SCALAR } } );
+                    old_name => { type => SCALAR } } );
     my %p = @_;
 
     $self->{fk}{ $p{table}->name } = delete $self->{fk}{ $p{old_name} }
-	if exists $self->{fk}{ $p{old_name} };
+        if exists $self->{fk}{ $p{old_name} };
 }
 
 sub register_column_name_change
@@ -410,7 +410,7 @@ sub register_column_name_change
     my $self = shift;
 
     validate( @_, { column => { isa => 'Alzabo::Create::Column' },
-		    old_name => { type => SCALAR } } );
+                    old_name => { type => SCALAR } } );
     my %p = @_;
 
     my $new_name = $p{column}->name;
@@ -419,16 +419,16 @@ sub register_column_name_change
 
     foreach my $t ( keys %{ $self->{fk} } )
     {
-	$self->{fk}{$t}{$new_name} = delete $self->{fk}{$t}{ $p{old_name} }
-	    if exists $self->{fk}{$t}{ $p{old_name} };
+        $self->{fk}{$t}{$new_name} = delete $self->{fk}{$t}{ $p{old_name} }
+            if exists $self->{fk}{$t}{ $p{old_name} };
     }
 
     my @i = $self->{indexes}->Values;
     $self->{indexes} = Tie::IxHash->new;
     foreach my $i (@i)
     {
-	$i->register_column_name_change(%p);
-	$self->add_index($i);
+        $i->register_column_name_change(%p);
+        $self->add_index($i);
     }
 }
 
@@ -442,7 +442,7 @@ sub set_attributes
 
     foreach (@_)
     {
-	$self->add_attribute($_);
+        $self->add_attribute($_);
     }
 }
 
@@ -470,7 +470,7 @@ sub delete_attribute
     my $attr = shift;
 
     params_exception "Table " . $self->name . " doesn't have attribute $attr"
-	unless exists $self->{attributes}{$attr};
+        unless exists $self->{attributes}{$attr};
 
     delete $self->{attributes}{$attr};
 }

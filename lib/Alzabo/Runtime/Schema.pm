@@ -137,24 +137,28 @@ sub one_row
     return shift->join(@_)->next;
 }
 
+use constant JOIN_SPEC => { join => { type => ARRAYREF | OBJECT,
+                                      optional => 1 },
+                            tables => { type => ARRAYREF | OBJECT,
+                                        optional => 1 },
+                            select => { type => ARRAYREF | OBJECT,
+                                        optional => 1 },
+                            where => { type => ARRAYREF,
+                                       optional => 1 },
+                            order_by => { type => ARRAYREF | HASHREF | OBJECT,
+                                          optional => 1 },
+                            limit => { type => SCALAR | ARRAYREF,
+                                       optional => 1 },
+                            distinct => { type => ARRAYREF | OBJECT,
+                                          optional => 1 },
+                            quote_identifiers => { type => BOOLEAN,
+                                                   optional => 1 },
+                          };
+
 sub join
 {
     my $self = shift;
-    my %p = validate( @_, { join => { type => ARRAYREF | OBJECT,
-				      optional => 1 },
-			    tables => { type => ARRAYREF | OBJECT,
-					optional => 1 },
-			    select => { type => ARRAYREF | OBJECT,
-					optional => 1 },
-			    where => { type => ARRAYREF,
-				       optional => 1 },
-			    order_by => { type => ARRAYREF | HASHREF | OBJECT,
-					  optional => 1 },
-			    limit => { type => SCALAR | ARRAYREF,
-				       optional => 1 },
-			    distinct => { type => ARRAYREF | OBJECT,
-					  optional => 1 },
-			  } );
+    my %p = validate( @_, JOIN_SPEC );
 
     $p{join} ||= delete $p{tables};
     $p{join} = [ $p{join} ] unless UNIVERSAL::isa($p{join}, 'ARRAY');
@@ -163,15 +167,15 @@ sub join
 
     if ( UNIVERSAL::isa( $p{join}->[0], 'ARRAY' ) )
     {
-	# flattens the nested structure and produces a unique set of
-	# tables
-	@tables = values %{ { map { $_ => $_ }
-			      grep { UNIVERSAL::isa( $_, 'Alzabo::Table' ) }
-			      map { @$_ } @{ $p{join} } } };
+        # flattens the nested structure and produces a unique set of
+        # tables
+        @tables = values %{ { map { $_ => $_ }
+                              grep { UNIVERSAL::isa( $_, 'Alzabo::Table' ) }
+                              map { @$_ } @{ $p{join} } } };
     }
     else
     {
-	@tables = grep { UNIVERSAL::isa($_, 'Alzabo::Table') } @{ $p{join} };
+        @tables = grep { UNIVERSAL::isa($_, 'Alzabo::Table') } @{ $p{join} };
     }
 
     if ( $p{distinct} )
@@ -182,8 +186,8 @@ sub join
 
     # We go in this order:  $p{select}, $p{distinct}, @tables
     my @select_tables = ( $p{select} ?
-			  ( UNIVERSAL::isa( $p{select}, 'ARRAY' ) ?
-			    @{ $p{select} } : $p{select} ) :
+                          ( UNIVERSAL::isa( $p{select}, 'ARRAY' ) ?
+                            @{ $p{select} } : $p{select} ) :
                           $p{distinct} ?
                           @{ $p{distinct} } :
                           @tables );
@@ -195,27 +199,27 @@ sub join
 
         # hack so distinct is not treated as a function, just a
         # bareword in the SQL
-	@select_cols = ( 'DISTINCT',
-			 map { ( $_->primary_key,
+        @select_cols = ( 'DISTINCT',
+                         map { ( $_->primary_key,
                                  $_->prefetch ?
                                  $_->columns( $_->prefetch ) :
                                  () ) }
-			 @{ $p{distinct} }
-		       );
+                         @{ $p{distinct} }
+                       );
 
-	foreach my $t (@select_tables)
-	{
-	    next if $distinct{$t};
-	    push @select_cols, $t->primary_key;
+        foreach my $t (@select_tables)
+        {
+            next if $distinct{$t};
+            push @select_cols, $t->primary_key;
 
             push @select_cols, $t->columns( $t->prefetch ) if $t->prefetch;
-	}
+        }
 
-	@select_tables = ( @{ $p{distinct} }, grep { ! $p{distinct} } @select_tables );
+        @select_tables = ( @{ $p{distinct} }, grep { ! $p{distinct} } @select_tables );
     }
     else
     {
-	@select_cols =
+        @select_cols =
             ( map { ( $_->primary_key,
                       $_->prefetch ?
                       $_->columns( $_->prefetch ) :
@@ -223,11 +227,10 @@ sub join
               @select_tables );
     }
 
-    my $sql = ( $self->sqlmaker->
-		select(@select_cols) );
+    my $sql = Alzabo::Runtime::sqlmaker( $self, \%p )->select(@select_cols);
 
     $self->_join_all_tables( sql => $sql,
-			     join => $p{join} );
+                             join => $p{join} );
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
 
@@ -239,20 +242,20 @@ sub join
     print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
     my $statement = $self->driver->statement( sql => $sql->sql,
-					      bind => $sql->bind );
+                                              bind => $sql->bind );
 
     if (@select_tables == 1)
     {
-	return Alzabo::Runtime::RowCursor->new
-	           ( statement => $statement,
-		     table => $select_tables[0]->real_table,
+        return Alzabo::Runtime::RowCursor->new
+                   ( statement => $statement,
+                     table => $select_tables[0]->real_table,
                    );
     }
     else
     {
-	return Alzabo::Runtime::JoinCursor->new
-	           ( statement => $statement,
-		     tables => [ map { $_->real_table } @select_tables ],
+        return Alzabo::Runtime::JoinCursor->new
+                   ( statement => $statement,
+                     tables => [ map { $_->real_table } @select_tables ],
                    );
     }
 }
@@ -260,9 +263,11 @@ sub join
 sub row_count
 {
     my $self = shift;
+    my %p = @_;
 
-    return $self->function( select => $self->sqlmaker->COUNT('*'),
-			    @_ );
+    return $self->function( select => Alzabo::Runtime::sqlmaker( $self, \%p )->COUNT('*'),
+                            %p,
+                          );
 }
 
 sub function
@@ -279,7 +284,7 @@ sub function
     print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
     return $self->driver->$method( sql => $sql->sql,
-				   bind => $sql->bind );
+                                   bind => $sql->bind );
 }
 
 sub select
@@ -292,29 +297,33 @@ sub select
     print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
     return $self->driver->statement( sql => $sql->sql,
-				     bind => $sql->bind );
+                                     bind => $sql->bind );
 }
+
+use constant _SELECT_SQL_SPEC => { join => { type => ARRAYREF | OBJECT,
+                                             optional => 1 },
+                                   tables => { type => ARRAYREF | OBJECT,
+                                               optional => 1 },
+                                   select => { type => SCALAR | ARRAYREF | OBJECT,
+                                               optional => 1 },
+                                   where => { type => ARRAYREF,
+                                              optional => 1 },
+                                   group_by => { type => ARRAYREF | HASHREF | OBJECT,
+                                                 optional => 1 },
+                                   order_by => { type => ARRAYREF | HASHREF | OBJECT,
+                                                 optional => 1 },
+                                   having => { type => ARRAYREF,
+                                               optional => 1 },
+                                   limit => { type => SCALAR | ARRAYREF,
+                                              optional => 1 },
+                                   quote_identifiers => { type => BOOLEAN,
+                                                          optional => 1 },
+                                 };
 
 sub _select_sql
 {
     my $self = shift;
-    my %p = validate( @_, { join => { type => ARRAYREF | OBJECT,
-				      optional => 1 },
-			    tables => { type => ARRAYREF | OBJECT,
-					optional => 1 },
-			    select => { type => SCALAR | ARRAYREF | OBJECT,
-					optional => 1 },
-			    where => { type => ARRAYREF,
-				       optional => 1 },
-			    group_by => { type => ARRAYREF | HASHREF | OBJECT,
-					  optional => 1 },
-			    order_by => { type => ARRAYREF | HASHREF | OBJECT,
-					  optional => 1 },
-			    having => { type => ARRAYREF,
-                                        optional => 1 },
-			    limit => { type => SCALAR | ARRAYREF,
-				       optional => 1 },
-			  } );
+    my %p = validate( @_, _SELECT_SQL_SPEC );
 
     $p{join} ||= delete $p{tables};
     $p{join} = [ $p{join} ] unless UNIVERSAL::isa($p{join}, 'ARRAY');
@@ -323,24 +332,24 @@ sub _select_sql
 
     if ( UNIVERSAL::isa( $p{join}->[0], 'ARRAY' ) )
     {
-	# flattens the nested structure and produces a unique set of
-	# tables
-	@tables = values %{ { map { $_ => $_ }
-			      grep { UNIVERSAL::isa( 'Alzabo::Table', $_ ) }
-			      map { @$_ } @{ $p{join} } } };
+        # flattens the nested structure and produces a unique set of
+        # tables
+        @tables = values %{ { map { $_ => $_ }
+                              grep { UNIVERSAL::isa( 'Alzabo::Table', $_ ) }
+                              map { @$_ } @{ $p{join} } } };
     }
     else
     {
-	@tables = grep { UNIVERSAL::isa( 'Alzabo::Table', $_ ) } @{ $p{join} };
+        @tables = grep { UNIVERSAL::isa( 'Alzabo::Table', $_ ) } @{ $p{join} };
     }
 
     my @funcs = UNIVERSAL::isa( $p{select}, 'ARRAY' ) ? @{ $p{select} } : $p{select};
 
-    my $sql = ( $self->sqlmaker->
-		select(@funcs) );
+    my $sql = ( Alzabo::Runtime::sqlmaker( $self, \%p )->
+                select(@funcs) );
 
     $self->_join_all_tables( sql => $sql,
-			     join => $p{join} );
+                             join => $p{join} );
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where} )
         if exists $p{where};
@@ -359,11 +368,13 @@ sub _select_sql
     return $sql;
 }
 
+use constant _JOIN_ALL_TABLES_SPEC => { join => { type => ARRAYREF },
+                                        sql  => { isa => 'Alzabo::SQLMaker' } };
+
 sub _join_all_tables
 {
     my $self = shift;
-    my %p = validate( @_, { join => { type => ARRAYREF },
-			    sql  => { isa => 'Alzabo::SQLMaker' } } );
+    my %p = validate( @_, _JOIN_ALL_TABLES_SPEC );
 
     my @from;
     my @joins;
@@ -380,57 +391,57 @@ sub _join_all_tables
     #
     if ( UNIVERSAL::isa( $p{join}->[0], 'ARRAY' ) )
     {
-	my %map;
-	my %tables;
+        my %map;
+        my %tables;
 
-	foreach my $set ( @{ $p{join} } )
-	{
-	    # we take some care not to change the contents of $set,
-	    # because the caller may reuse the variable being
-	    # referenced, and changes here could break that.
+        foreach my $set ( @{ $p{join} } )
+        {
+            # we take some care not to change the contents of $set,
+            # because the caller may reuse the variable being
+            # referenced, and changes here could break that.
 
-	    # XXX - improve
+            # XXX - improve
             params_exception
                 'The table map must contain only two tables per array reference'
                     if @$set > 5;
 
-	    my @tables;
-	    if ( ! ref $set->[0] )
-	    {
-		$set->[0] =~ /^(right|left|full)_outer_join$/i
-		    or params_exception "Invalid join type; $set->[0]";
+            my @tables;
+            if ( ! ref $set->[0] )
+            {
+                $set->[0] =~ /^(right|left|full)_outer_join$/i
+                    or params_exception "Invalid join type; $set->[0]";
 
-	        @tables = @$set[1,2];
+                @tables = @$set[1,2];
 
-		push @from, [ $1, @tables, @$set[3, 4] ];
-	    }
-	    else
-	    {
+                push @from, [ $1, @tables, @$set[3, 4] ];
+            }
+            else
+            {
                 @tables = @$set[0,1];
 
-		push @from, grep { ! exists $tables{ $_->alias_name } } @tables;
-		push @joins, [ @tables, $set->[2] ];
-	    }
+                push @from, grep { ! exists $tables{ $_->alias_name } } @tables;
+                push @joins, [ @tables, $set->[2] ];
+            }
 
-	    # Track the tables we've seen
-	    @tables{ $tables[0]->alias_name, $tables[1]->alias_name } = (1, 1);
+            # Track the tables we've seen
+            @tables{ $tables[0]->alias_name, $tables[1]->alias_name } = (1, 1);
 
-	    # Track their relationships
-	    push @{ $map{ $tables[0]->alias_name } }, $tables[1]->alias_name;
-	    push @{ $map{ $tables[1]->alias_name } }, $tables[0]->alias_name;
-	}
+            # Track their relationships
+            push @{ $map{ $tables[0]->alias_name } }, $tables[1]->alias_name;
+            push @{ $map{ $tables[1]->alias_name } }, $tables[0]->alias_name;
+        }
 
         # just get one key to start with
-	my ($key) = (each %tables)[0];
-	delete $tables{$key};
-	my @t = @{ delete $map{$key} };
-	while (my $t = shift @t)
-	{
-	    delete $tables{$t};
-	    push @t, @{ delete $map{$t} } if $map{$t};
-	}
+        my ($key) = (each %tables)[0];
+        delete $tables{$key};
+        my @t = @{ delete $map{$key} };
+        while (my $t = shift @t)
+        {
+            delete $tables{$t};
+            push @t, @{ delete $map{$t} } if $map{$t};
+        }
 
-	logic_exception
+        logic_exception
             "The specified table parameter does not connect all the tables involved in the join"
                 if keys %tables;
     }
@@ -440,12 +451,12 @@ sub _join_all_tables
     #
     else
     {
-	for (my $x = 0; $x < @{ $p{join} } - 1; $x++)
-	{
-	    push @joins, [ $p{join}->[$x], $p{join}->[$x + 1] ];
-	}
+        for (my $x = 0; $x < @{ $p{join} } - 1; $x++)
+        {
+            push @joins, [ $p{join}->[$x], $p{join}->[$x + 1] ];
+        }
 
-	@from = @{ $p{join} };
+        @from = @{ $p{join} };
     }
 
     $p{sql}->from(@from);
@@ -454,7 +465,7 @@ sub _join_all_tables
 
     foreach my $join (@joins)
     {
-	$self->_join_two_tables( $p{sql}, @$join );
+        $self->_join_two_tables( $p{sql}, @$join );
     }
 
     $p{sql}->subgroup_end;
@@ -487,21 +498,21 @@ sub _join_two_tables
     }
     else
     {
-	my @fk = $table_1->foreign_keys_by_table($table_2);
+        my @fk = $table_1->foreign_keys_by_table($table_2);
 
-	logic_exception
+        logic_exception
             ( "The " . $table_1->name .
               " table has no foreign keys to the " .
               $table_2->name . " table" )
                 unless @fk;
 
-	logic_exception
+        logic_exception
             ( "The " . $table_1->name .
               " table has more than 1 foreign key to the " .
               $table_2->name . " table" )
                 if @fk > 1;
 
-	$fk = $fk[0];
+        $fk = $fk[0];
     }
 
     foreach my $cp ( $fk->column_pair_names )
@@ -517,7 +528,7 @@ sub _join_two_tables
         {
             $sql->$op( $table_1->column( $cp->[0] ), '=', $table_2->column( $cp->[1] ) );
         }
-	$op = 'and';
+        $op = 'and';
     }
 }
 

@@ -4,9 +4,6 @@ use strict;
 
 use Alzabo::Runtime;
 
-use Params::Validate qw( :all );
-Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
-
 BEGIN
 {
     no strict 'refs';

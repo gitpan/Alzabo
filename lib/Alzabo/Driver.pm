@@ -37,7 +37,7 @@ sub _check_dbh
 
     my $sub = (caller(1))[3];
     Alzabo::Exception::Driver->throw( error => "Cannot call $sub before calling connect." )
-	unless $self->{dbh};
+        unless $self->{dbh};
 }
 
 sub quote
@@ -71,19 +71,19 @@ sub rows
     my @data;
     eval
     {
-	my @row;
-	$sth->bind_columns( \ (@row[ 0..$#{ $sth->{NAME_lc} } ] ) );
+        my @row;
+        $sth->bind_columns( \ (@row[ 0..$#{ $sth->{NAME_lc} } ] ) );
 
-	push @data, [@row] while $sth->fetch;
+        push @data, [@row] while $sth->fetch;
 
-	$sth->finish;
+        $sth->finish;
     };
     if ($@)
     {
-	my @bind = exists $p{bind} ? ( ref $p{bind} ? $p{bind} : [$p{bind}] ) : ();
-	Alzabo::Exception::Driver->throw( error => $@,
-					  sql => $p{sql},
-					  bind => \@bind );
+        my @bind = exists $p{bind} ? ( ref $p{bind} ? $p{bind} : [$p{bind}] ) : ();
+        Alzabo::Exception::Driver->throw( error => $@,
+                                          sql => $p{sql},
+                                          bind => \@bind );
     }
 
     return wantarray ? @data : $data[0];
@@ -102,19 +102,19 @@ sub rows_hashref
 
     eval
     {
-	my %hash;
-	$sth->bind_columns( \ ( @hash{ @{ $sth->{NAME_uc} } } ) );
+        my %hash;
+        $sth->bind_columns( \ ( @hash{ @{ $sth->{NAME_uc} } } ) );
 
-	push @data, {%hash} while $sth->fetch;
+        push @data, {%hash} while $sth->fetch;
 
-	$sth->finish;
+        $sth->finish;
     };
     if ($@)
     {
-	my @bind = exists $p{bind} ? ( ref $p{bind} ? $p{bind} : [$p{bind}] ) : ();
-	Alzabo::Exception::Driver->throw( error => $@,
-					  sql => $p{sql},
-					  bind => \@bind );
+        my @bind = exists $p{bind} ? ( ref $p{bind} ? $p{bind} : [$p{bind}] ) : ();
+        Alzabo::Exception::Driver->throw( error => $@,
+                                          sql => $p{sql},
+                                          bind => \@bind );
     }
 
     return @data;
@@ -132,15 +132,15 @@ sub one_row
     my @row;
     eval
     {
-	@row = $sth->fetchrow_array;
-	$sth->finish;
+        @row = $sth->fetchrow_array;
+        $sth->finish;
     };
     if ($@)
     {
-	my @bind = exists $p{bind} ? ( ref $p{bind} ? $p{bind} : [$p{bind}] ) : ();
-	Alzabo::Exception::Driver->throw( error => $@,
-					  sql => $p{sql},
-					  bind => \@bind );
+        my @bind = exists $p{bind} ? ( ref $p{bind} ? $p{bind} : [$p{bind}] ) : ();
+        Alzabo::Exception::Driver->throw( error => $@,
+                                          sql => $p{sql},
+                                          bind => \@bind );
     }
 
     return wantarray ? @row : $row[0];
@@ -158,16 +158,16 @@ sub one_row_hash
     my %hash;
     eval
     {
-	my @row = $sth->fetchrow_array;
-	@hash{ @{ $sth->{NAME_uc} } } = @row if @row;
-	$sth->finish;
+        my @row = $sth->fetchrow_array;
+        @hash{ @{ $sth->{NAME_uc} } } = @row if @row;
+        $sth->finish;
     };
     if ($@)
     {
-	my @bind = exists $p{bind} ? ( ref $p{bind} ? $p{bind} : [$p{bind}] ) : ();
-	Alzabo::Exception::Driver->throw( error => $@,
-					  sql => $p{sql},
-					  bind => \@bind );
+        my @bind = exists $p{bind} ? ( ref $p{bind} ? $p{bind} : [$p{bind}] ) : ();
+        Alzabo::Exception::Driver->throw( error => $@,
+                                          sql => $p{sql},
+                                          bind => \@bind );
     }
 
     return %hash;
@@ -185,47 +185,50 @@ sub column
     my @data;
     eval
     {
-	my @row;
-	$sth->bind_columns( \ (@row[ 0..$#{ $sth->{NAME_lc} } ] ) );
-	push @data, $row[0] while ($sth->fetch);
-	$sth->finish;
+        my @row;
+        $sth->bind_columns( \ (@row[ 0..$#{ $sth->{NAME_lc} } ] ) );
+        push @data, $row[0] while ($sth->fetch);
+        $sth->finish;
     };
     if ($@)
     {
-	my @bind = exists $p{bind} ? ( ref $p{bind} ? $p{bind} : [$p{bind}] ) : ();
-	Alzabo::Exception::Driver->throw( error => $@,
-					  sql => $p{sql},
-					  bind => \@bind );
+        my @bind = exists $p{bind} ? ( ref $p{bind} ? $p{bind} : [$p{bind}] ) : ();
+        Alzabo::Exception::Driver->throw( error => $@,
+                                          sql => $p{sql},
+                                          bind => \@bind );
     }
 
     return wantarray ? @data : $data[0];
 }
 
+use constant _PREPARE_AND_EXECUTE_SPEC => { sql => { type => SCALAR },
+                                            bind => { type => UNDEF | SCALAR | ARRAYREF,
+                                                      optional => 1 },
+                                          };
+
 sub _prepare_and_execute
 {
     my $self = shift;
 
-    validate( @_, { sql => { type => SCALAR },
-		    bind => { type => UNDEF | SCALAR | ARRAYREF,
-			      optional => 1 } } );
+    validate( @_, _PREPARE_AND_EXECUTE_SPEC );
     my %p = @_;
 
     Alzabo::Exception::Driver->throw( error => "Attempt to access the database without database handle.  Was ->connect called?" )
-	unless $self->{dbh};
+        unless $self->{dbh};
 
     my @bind = exists $p{bind} ? ( ref $p{bind} ? @{ $p{bind} } : $p{bind} ) : ();
 
     my $sth;
     eval
     {
-	$sth = $self->{dbh}->prepare( $p{sql} );
-	$sth->execute(@bind);
+        $sth = $self->{dbh}->prepare( $p{sql} );
+        $sth->execute(@bind);
     };
     if ($@)
     {
-	Alzabo::Exception::Driver->throw( error => $@,
-					  sql => $p{sql},
-					  bind => \@bind );
+        Alzabo::Exception::Driver->throw( error => $@,
+                                          sql => $p{sql},
+                                          bind => \@bind );
     }
 
     return $sth;
@@ -243,15 +246,15 @@ sub do
     my $rows;
     eval
     {
-	$rows = $sth->rows;
-	$sth->finish;
+        $rows = $sth->rows;
+        $sth->finish;
     };
     if ($@)
     {
-	my @bind = exists $p{bind} ? ( ref $p{bind} ? $p{bind} : [$p{bind}] ) : ();
-	Alzabo::Exception::Driver->throw( error => $@,
-					  sql => $p{sql},
-					  bind => \@bind );
+        my @bind = exists $p{bind} ? ( ref $p{bind} ? $p{bind} : [$p{bind}] ) : ();
+        Alzabo::Exception::Driver->throw( error => $@,
+                                          sql => $p{sql},
+                                          bind => \@bind );
     }
 
     return $rows;
@@ -283,7 +286,7 @@ sub statement
     $self->_check_dbh;
 
     return Alzabo::DriverStatement->new( dbh => $self->{dbh},
-					 @_ );
+                                         @_ );
 }
 
 sub statement_no_execute
@@ -305,19 +308,19 @@ sub func
     my @r;
     eval
     {
-	if (wantarray)
-	{
-	    @r = $self->{dbh}->func(@_);
-	    return @r;
-	}
-	else
-	{
-	    $r[0] = $self->{dbh}->func(@_);
-	    return $r[0];
-	}
+        if (wantarray)
+        {
+            @r = $self->{dbh}->func(@_);
+            return @r;
+        }
+        else
+        {
+            $r[0] = $self->{dbh}->func(@_);
+            return $r[0];
+        }
     };
     Alzabo::Exception::Driver->throw( error => $self->{dbh}->errstr )
-	if $self->{dbh}->errstr;
+        if $self->{dbh}->errstr;
 }
 
 sub DESTROY
@@ -339,8 +342,8 @@ sub handle
 
     if (@_)
     {
-	validate_pos( @_, { isa => 'DBI::db' } );
-	$self->{dbh} = shift;
+        validate_pos( @_, { isa => 'DBI::db' } );
+        $self->{dbh} = shift;
     }
 
     return $self->{dbh};
@@ -415,12 +418,12 @@ sub commit
     # More commits than begin_tran.  Not correct.
     if ( defined $self->{tran_count} )
     {
-	$self->{tran_count}--;
+        $self->{tran_count}--;
     }
     else
     {
-	my $caller = (caller(1))[3];
-	require Carp;
+        my $caller = (caller(1))[3];
+        require Carp;
         Carp::cluck( "$caller called commit without corresponding begin_work call\n" );
     }
 
@@ -452,7 +455,7 @@ sub _virtual
 
     my $sub = (caller(1))[3];
     Alzabo::Exception::VirtualMethod->throw( error =>
-					     "$sub is a virtual method and must be subclassed in " . ref $self );
+                                             "$sub is a virtual method and must be subclassed in " . ref $self );
 }
 
 package Alzabo::DriverStatement;
@@ -478,17 +481,20 @@ sub new
     return $self;
 }
 
+use constant NEW_NO_EXECUTE_SPEC => { dbh   => { can => 'prepare' },
+                                      sql   => { type => SCALAR },
+                                      bind  => { type => SCALAR | ARRAYREF,
+                                                 optional => 1 },
+                                      limit => { type => UNDEF | ARRAYREF,
+                                                 optional => 1 },
+                                    };
+
 sub new_no_execute
 {
     my $proto = shift;
     my $class = ref $proto || $proto;
 
-    my %p = validate( @_, { dbh   => { can => 'prepare' },
-			    sql   => { type => SCALAR },
-			    bind  => { type => SCALAR | ARRAYREF,
-				       optional => 1 },
-			    limit => { type => UNDEF | ARRAYREF,
-				       optional => 1 } } );
+    my %p = validate( @_, NEW_NO_EXECUTE_SPEC );
 
     my $self = bless {}, $class;
 
@@ -498,14 +504,14 @@ sub new_no_execute
 
     eval
     {
-	$self->{sth} = $p{dbh}->prepare( $p{sql} );
+        $self->{sth} = $p{dbh}->prepare( $p{sql} );
 
-	$self->{bind} = exists $p{bind} ? ( ref $p{bind} ? $p{bind} : [ $p{bind} ] ) : [];
+        $self->{bind} = exists $p{bind} ? ( ref $p{bind} ? $p{bind} : [ $p{bind} ] ) : [];
     };
 
     Alzabo::Exception::Driver->throw( error => $@,
-				      sql => $p{sql},
-				      bind => $self->{bind} ) if $@;
+                                      sql => $p{sql},
+                                      bind => $self->{bind} ) if $@;
 
     return $self;
 }
@@ -516,9 +522,9 @@ sub execute
 
     eval
     {
-	$self->{sth}->finish if $self->{sth}->{Active};
-	$self->{rows_fetched} = 0;
-	$self->{sth}->execute( @_ ? @_ : @{ $self->{bind} } );
+        $self->{sth}->finish if $self->{sth}->{Active};
+        $self->{rows_fetched} = 0;
+        $self->{sth}->execute( @_ ? @_ : @{ $self->{bind} } );
 
         $self->{result} = [];
         $self->{count} = 0;
@@ -527,8 +533,8 @@ sub execute
             ( \ ( @{ $self->{result} }[ 0..$#{ $self->{sth}->{NAME_lc} } ] ) );
     };
     Alzabo::Exception::Driver->throw( error => $@,
-				      sql => $self->{sth}{Statement},
-				      bind => $self->{bind} ) if $@;
+                                      sql => $self->{sth}{Statement},
+                                      bind => $self->{bind} ) if $@;
 }
 
 sub execute_no_result
@@ -537,11 +543,11 @@ sub execute_no_result
 
     eval
     {
-	$self->{sth}->execute(@_);
+        $self->{sth}->execute(@_);
     };
     Alzabo::Exception::Driver->throw( error => $@,
-				      sql => $self->{sth}{Statement},
-				      bind => $self->{bind} ) if $@;
+                                      sql => $self->{sth}{Statement},
+                                      bind => $self->{bind} ) if $@;
 }
 
 sub next
@@ -554,15 +560,15 @@ sub next
     my $active;
     eval
     {
-	do
-	{
-	    $active = $self->{sth}->fetch;
-	} while ( $active && $self->{rows_fetched}++ < $self->{offset} );
+        do
+        {
+            $active = $self->{sth}->fetch;
+        } while ( $active && $self->{rows_fetched}++ < $self->{offset} );
     };
 
     Alzabo::Exception::Driver->throw( error => $@,
-				      sql => $self->{sth}{Statement},
-				      bind => $self->{bind} ) if $@;
+                                      sql => $self->{sth}{Statement},
+                                      bind => $self->{bind} ) if $@;
 
     return unless $active;
 
@@ -580,14 +586,14 @@ sub next_as_hash
     my $active;
     eval
     {
-	do
-	{
-	    $active = $self->{sth}->fetch;
-	} while ( $active && $self->{rows_fetched}++ < $self->{offset} );
+        do
+        {
+            $active = $self->{sth}->fetch;
+        } while ( $active && $self->{rows_fetched}++ < $self->{offset} );
     };
     Alzabo::Exception::Driver->throw( error => $@,
-				      sql => $self->{sth}{Statement},
-				      bind => $self->{bind} ) if $@;
+                                      sql => $self->{sth}{Statement},
+                                      bind => $self->{bind} ) if $@;
 
     return unless $active;
 
@@ -608,7 +614,7 @@ sub all_rows
 
     while (my @row = $self->next)
     {
-	push @rows, @row > 1 ? \@row : $row[0];
+        push @rows, @row > 1 ? \@row : $row[0];
     }
 
     $self->{count} = scalar @rows;
@@ -624,7 +630,7 @@ sub all_rows_hash
 
     while (my %h = $self->next_as_hash)
     {
-	push @rows, \%h;
+        push @rows, \%h;
     }
 
     $self->{count} = scalar @rows;

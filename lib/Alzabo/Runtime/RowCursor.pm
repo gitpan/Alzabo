@@ -13,20 +13,20 @@ use base qw( Alzabo::Runtime::Cursor );
 
 $VERSION = 2.0;
 
-1;
+use constant NEW_SPEC => { statement => { isa => 'Alzabo::DriverStatement' },
+                           table => { isa => 'Alzabo::Runtime::Table' },
+                         };
 
 sub new
 {
     my $proto = shift;
     my $class = ref $proto || $proto;
 
-    my %p = validate( @_, { statement => { isa => 'Alzabo::DriverStatement' },
-			    table => { isa => 'Alzabo::Runtime::Table' },
-			  } );
+    my %p = validate( @_, NEW_SPEC );
 
     my $self = bless { %p,
-		       count => 0,
-		     }, $class;
+                       count => 0,
+                     }, $class;
 
     return $self;
 }
@@ -48,21 +48,21 @@ sub next
     # If they really want to know we do save the exception.
     until ( defined $row )
     {
-	my @row = $self->{statement}->next;
+        my @row = $self->{statement}->next;
 
-	last unless @row && grep { defined } @row;
+        last unless @row && grep { defined } @row;
 
-	my %hash;
-	my @pk = $self->{table}->primary_key;
-	@hash{ map { $_->name } @pk } = @row[0..$#pk];
+        my %hash;
+        my @pk = $self->{table}->primary_key;
+        @hash{ map { $_->name } @pk } = @row[0..$#pk];
 
-	my %prefetch;
-	if ( (my @pre = $self->{table}->prefetch) && @row > @pk )
-	{
-	    @prefetch{@pre} = @row[$#pk + 1 .. $#row];
-	}
+        my %prefetch;
+        if ( (my @pre = $self->{table}->prefetch) && @row > @pk )
+        {
+            @prefetch{@pre} = @row[$#pk + 1 .. $#row];
+        }
 
-	$row = $self->{table}->row_by_pk( @_,
+        $row = $self->{table}->row_by_pk( @_,
                                           pk => \%hash,
                                           prefetch => \%prefetch,
                                           %{ $self->{row_params} },
@@ -82,7 +82,7 @@ sub all_rows
     my @rows;
     while ( my $row = $self->next )
     {
-	push @rows, $row;
+        push @rows, $row;
     }
 
 
@@ -90,6 +90,9 @@ sub all_rows
 
     return @rows;
 }
+
+
+1;
 
 __END__
 

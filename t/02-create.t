@@ -18,7 +18,7 @@ use Alzabo::Config;
 my @db;
 my $tests = 0;
 
-my $shared_tests = 148;
+my $shared_tests = 150;
 my $mysql_only_tests = 7;
 my $pg_only_tests = 8;
 
@@ -675,6 +675,40 @@ foreach my $db (@db)
         my @fk = $t2->all_foreign_keys;
         is( scalar @fk, 1,
             "t2 should still have one foreign key" );
+    }
+
+    # test for bug when creating a relationship between two tables,
+    # where one table has a VARCHAR/CHAR PK.  bug caused length of
+    # created column to be undef.
+    {
+        my $s2 = Alzabo::Create::Schema->new( name => "foo_$db",
+                                              rdbms => $db,
+                                            );
+
+        my $t1 = $s2->make_table( name => 't1' );
+        my $t2 = $s2->make_table( name => 't2' );
+        my $t3 = $s2->make_table( name => 't3' );
+
+        $t1->make_column( name   => 't1_pk',
+                          type   => 'varchar',
+                          length => 50,
+                          primary_key => 1 );
+
+        $t2->make_column( name => 't2_pk',
+                          type => 'integer',
+                          primary_key => 1 );
+
+
+        eval_ok( sub { $s2->add_relationship( table_from  => $t1,
+                                              table_to    => $t2,
+                                              cardinality => [ '1', 'n' ],
+                                              from_is_dependent => 0,
+                                              to_is_dependent   => 0,
+                                            ) },
+                 'Add a relationship between two columns where one has a VARCHAR pk',
+               );
+
+        ok( $t2->column('t1_pk'), 't2 now has a column called t1_pk' );
     }
 
     {

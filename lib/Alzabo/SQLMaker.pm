@@ -129,14 +129,15 @@ sub init
     1;
 }
 
+use constant NEW_SPEC => { driver => { isa => 'Alzabo::Driver' },
+                           quote_identifiers  => { type => BOOLEAN,
+                                                   default => 0 },
+                         };
+
 sub new
 {
     my $class = shift;
-    my %p = validate( @_, { driver => { isa => 'Alzabo::Driver' },
-                            quote_identifiers  => { type => BOOLEAN,
-                                                    default => 0 },
-                          },
-                    );
+    my %p = validate( @_, NEW_SPEC );
 
     return bless { last_op => undef,
 		   expect => undef,
@@ -339,17 +340,18 @@ sub from
     return $self;
 }
 
+use constant _OUTER_JOIN_SPEC => ( { type => SCALAR },
+                                   ( { can => 'alias_name' } ) x 2,
+                                   { type => UNDEF | ARRAYREF | OBJECT, optional => 1 },
+                                   { type => UNDEF | ARRAYREF, optional => 1 },
+                                 );
+
 sub _outer_join
 {
     my $self = shift;
 
     my $tables = @_ - 1;
-    validate_pos( @_,
-		  { type => SCALAR },
-		  ( { can => 'alias_name' } ) x 2,
-		  { type => UNDEF | ARRAYREF | OBJECT, optional => 1 },
-		  { type => UNDEF | ARRAYREF, optional => 1 },
-                );
+    validate_pos( @_, _OUTER_JOIN_SPEC );
 
     my $type = uc shift;
 
@@ -554,7 +556,7 @@ sub condition
 
     $self->{last_op} = 'condition';
 
-    if ( $lhs->can('table') )
+    if ( $lhs->can('table') && $lhs->can('name') )
     {
 	unless ( $self->{tables}{ $lhs->table } )
 	{
@@ -926,11 +928,13 @@ sub values
     return $self;
 }
 
+use constant UPDATE_SPEC => { can => 'alias_name' };
+
 sub update
 {
     my $self = shift;
 
-    validate_pos( @_, { can => 'alias_name' } );
+    validate_pos( @_, UPDATE_SPEC );
 
     my $table = shift;
 
@@ -1013,15 +1017,17 @@ sub _assert_last_op
     }
 }
 
+use constant _BIND_VAL_FOR_INSERT_SPEC => ( { isa => 'Alzabo::Runtime::Column' },
+                                            { type => UNDEF | SCALAR | OBJECT }
+                                          );
+
+
 sub _bind_val_for_insert
 {
     my $self = shift;
 
     my ( $col, $val ) =
-        validate_pos( @_,
-                      { isa => 'Alzabo::Runtime::Column' },
-                      { type => UNDEF | SCALAR | OBJECT }
-                    );
+        validate_pos( @_, _BIND_VAL_FOR_INSERT_SPEC );
 
     if ( defined $val && $val eq $placeholder )
     {
@@ -1034,13 +1040,13 @@ sub _bind_val_for_insert
     }
 }
 
+use constant _BIND_VAL_SPEC => { type => UNDEF | SCALAR | OBJECT };
+
 sub _bind_val
 {
     my $self = shift;
 
-    validate_pos( @_,
-                  { type => UNDEF | SCALAR | OBJECT }
-                );
+    validate_pos( @_, _BIND_VAL_SPEC );
 
     return $_[0]->as_string( $self->{driver}, $self->{quote_identifiers} )
         if UNIVERSAL::isa( $_[0], 'Alzabo::SQLMaker::Function' );
@@ -1110,19 +1116,21 @@ sub debug
 
     foreach my $b ( @{ $self->bind } )
     {
-        if ( defined $b )
+        my $out = $b;
+
+        if ( defined $out )
         {
-            if ( length $b > 75 )
+            if ( length $out > 75 )
             {
-                $b = substr( $b, 0, 71 ) . ' ...';
+                $out = substr( $out, 0, 71 ) . ' ...';
             }
         }
         else
         {
-            $b = 'NULL';
+            $out = 'NULL';
         }
 
-        print $fh " - [$b]\n";
+        print $fh " - [$out]\n";
     }
 }
 

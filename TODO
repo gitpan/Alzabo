@@ -2,6 +2,10 @@ To Do List
 
 Short term:
 
+- Make RDBMSRules query driver for more stuff (max identifier length,
+reverse engineering, etc.).  This will require an active driver when a
+new schema is created, however.
+
 - Overhaul foreign key objects so that one relationship has one such
   object, shared by two tables.
 

@@ -14,30 +14,30 @@ $VERSION = 2.0;
 # types of methods that can be made - only ones that haven't been
 # deprecated
 my @options = qw( foreign_keys
-		  linking_tables
-		  lookup_columns
-		  row_columns
-		  self_relations
+                  linking_tables
+                  lookup_columns
+                  row_columns
+                  self_relations
 
-		  tables
-		  table_columns
+                  tables
+                  table_columns
 
                   insert_hooks
-		  update_hooks
-		  select_hooks
-		  delete_hooks
-		);
+                  update_hooks
+                  select_hooks
+                  delete_hooks
+                );
 
 sub import
 {
     my $class = shift;
 
     validate( @_, { schema     => { type => SCALAR },
-		    class_root => { type => SCALAR,
-				    optional => 1 },
-		    name_maker => { type => CODEREF,
-				    optional => 1 },
-		    ( map { $_ => { optional => 1 } } 'all', @options ) } );
+                    class_root => { type => SCALAR,
+                                    optional => 1 },
+                    name_maker => { type => CODEREF,
+                                    optional => 1 },
+                    ( map { $_ => { optional => 1 } } 'all', @options ) } );
     my %p = @_;
 
     return unless exists $p{schema};
@@ -55,10 +55,10 @@ sub new
 
     if ( delete $p{all} )
     {
-	foreach (@options)
-	{
-	    $p{$_} = 1 unless exists $p{$_} && ! $p{$_};
-	}
+        foreach (@options)
+        {
+            $p{$_} = 1 unless exists $p{$_} && ! $p{$_};
+        }
     }
 
     my $s = Alzabo::Runtime::Schema->load_from_file( name => delete $p{schema} );
@@ -66,16 +66,16 @@ sub new
     my $class_root;
     if ( $p{class_root} )
     {
-	$class_root = $p{class_root};
+        $class_root = $p{class_root};
     }
     else
     {
-	my $x = 0;
-	do
-	{
-	    $class_root = caller($x++);
-	    die "No base class could be determined\n" unless $class_root;
-	} while ( $class_root->isa(__PACKAGE__) );
+        my $x = 0;
+        do
+        {
+            $class_root = caller($x++);
+            die "No base class could be determined\n" unless $class_root;
+        } while ( $class_root->isa(__PACKAGE__) );
     }
 
     my $self;
@@ -83,9 +83,9 @@ sub new
     $p{name_maker} = sub { $self->name(@_) } unless ref $p{name_maker};
 
     $self = bless { opts => \%p,
-		    class_root => $class_root,
-		    schema => $s,
-		  }, $class;
+                    class_root => $class_root,
+                    schema => $s,
+                  }, $class;
 
     return $self;
 }
@@ -112,45 +112,45 @@ sub make
 
     foreach my $t ( sort { $a->name cmp $b->name  } $self->{schema}->tables )
     {
-	$self->{table_class} = join '::', $self->{class_root}, 'Table', $t->name;
-	$self->{row_class} = join '::', $self->{class_root}, 'Row', $t->name;
+        $self->{table_class} = join '::', $self->{class_root}, 'Table', $t->name;
+        $self->{row_class} = join '::', $self->{class_root}, 'Row', $t->name;
 
-	bless $t, $self->{table_class};
-	$self->eval_table_class;
-	$self->{schema}->add_contained_class( table => $self->{table_class} );
+        bless $t, $self->{table_class};
+        $self->eval_table_class;
+        $self->{schema}->add_contained_class( table => $self->{table_class} );
 
-	$self->eval_row_class;
-	$t->add_contained_class( row => $self->{row_class} );
+        $self->eval_row_class;
+        $t->add_contained_class( row => $self->{row_class} );
 
-	if ( $self->{opts}{tables} )
-	{
-	    $self->make_table_method($t);
-	}
+        if ( $self->{opts}{tables} )
+        {
+            $self->make_table_method($t);
+        }
 
-	$self->load_class( $self->{table_class} );
-	$self->load_class( $self->{row_class} );
+        $self->load_class( $self->{table_class} );
+        $self->load_class( $self->{row_class} );
 
-	if ( $self->{opts}{table_columns} )
-	{
-	    $self->make_table_column_methods($t);
-	}
+        if ( $self->{opts}{table_columns} )
+        {
+            $self->make_table_column_methods($t);
+        }
 
-	if ( $self->{opts}{row_columns} )
-	{
-	    $self->make_row_column_methods($t);
-	}
-	if ( grep { $self->{opts}{$_} } qw( foreign_keys linking_tables lookup_columns ) )
-	{
-	    $self->make_foreign_key_methods($t);
-	}
+        if ( $self->{opts}{row_columns} )
+        {
+            $self->make_row_column_methods($t);
+        }
+        if ( grep { $self->{opts}{$_} } qw( foreign_keys linking_tables lookup_columns ) )
+        {
+            $self->make_foreign_key_methods($t);
+        }
 
-	foreach ( qw( insert update select delete ) )
-	{
-	    if ( $self->{opts}{"$_\_hooks"} )
-	    {
-		$self->make_hooks($t, $_);
-	    }
-	}
+        foreach ( qw( insert update select delete ) )
+        {
+            if ( $self->{opts}{"$_\_hooks"} )
+            {
+                $self->make_hooks($t, $_);
+            }
+        }
     }
 }
 
@@ -206,19 +206,19 @@ sub make_table_method
     my $t = shift;
 
     my $name = $self->_make_method
-	( type => 'table',
-	  class => $self->{schema_class},
-	  returns => 'table object',
-	  code =>  sub { return $t; },
-	  table => $t,
-	) or return;
+        ( type => 'table',
+          class => $self->{schema_class},
+          returns => 'table object',
+          code =>  sub { return $t; },
+          table => $t,
+        ) or return;
 
     $self->{schema_class}->add_method_docs
-	( Alzabo::MethodDocs->new
-	  ( name  => $name,
-	    group => 'Methods that return table objects',
-	    description => "returns the " . $t->name . " table object",
-	  ) );
+        ( Alzabo::MethodDocs->new
+          ( name  => $name,
+            group => 'Methods that return table objects',
+            description => "returns the " . $t->name . " table object",
+          ) );
 }
 
 sub load_class
@@ -238,26 +238,26 @@ sub make_table_column_methods
 
     foreach my $c ( sort { $a->name cmp $b->name  } $t->columns )
     {
-	my $col_name = $c->name;
+        my $col_name = $c->name;
 
-	my $name = $self->_make_method
-	    ( type => 'table_column',
-	      class => $self->{table_class},
-	      returns => 'column_object',
+        my $name = $self->_make_method
+            ( type => 'table_column',
+              class => $self->{table_class},
+              returns => 'column_object',
 
-	      # We can't just return $c because we may need to go
-	      # through the alias bits.  And we need to use $_[0] for
-	      # the same reason.
-	      code => sub { return $_[0]->column($col_name) },
-	      column => $c,
-	    ) or next;
+              # We can't just return $c because we may need to go
+              # through the alias bits.  And we need to use $_[0] for
+              # the same reason.
+              code => sub { return $_[0]->column($col_name) },
+              column => $c,
+            ) or next;
 
-	$self->{table_class}->add_method_docs
-	    ( Alzabo::MethodDocs->new
-	      ( name  => $name,
-		group => 'Methods that return column objects',
-		description => "returns the " . $c->name . " column object",
-	      ) );
+        $self->{table_class}->add_method_docs
+            ( Alzabo::MethodDocs->new
+              ( name  => $name,
+                group => 'Methods that return column objects',
+                description => "returns the " . $c->name . " column object",
+              ) );
     }
 }
 
@@ -268,29 +268,29 @@ sub make_row_column_methods
 
     foreach my $c ( sort { $a->name cmp $b->name  } $t->columns )
     {
-	my $col_name = $c->name;
+        my $col_name = $c->name;
 
-	my $name = $self->_make_method
-	    ( type => 'row_column',
-	      class => $self->{row_class},
-	      returns => 'scalar value/takes new value',
-	      code => sub { my $self = shift;
-			    if (@_)
-			    {
-				$self->update( $col_name => $_[0] );
-			    }
-			    return $self->select($col_name); },
-	      column => $c,
-	    ) or next;
+        my $name = $self->_make_method
+            ( type => 'row_column',
+              class => $self->{row_class},
+              returns => 'scalar value/takes new value',
+              code => sub { my $self = shift;
+                            if (@_)
+                            {
+                                $self->update( $col_name => $_[0] );
+                            }
+                            return $self->select($col_name); },
+              column => $c,
+            ) or next;
 
-	$self->{row_class}->add_method_docs
-	    ( Alzabo::MethodDocs->new
-	      ( name  => $name,
-		group => 'Methods that update/return a column value',
-		spec  => [ { type => SCALAR } ],
-		description =>
-		"returns the value of the " . $c->name . " column for a row.  Given a value, it will also update the row first.",
-	      ) );
+        $self->{row_class}->add_method_docs
+            ( Alzabo::MethodDocs->new
+              ( name  => $name,
+                group => 'Methods that update/return a column value',
+                spec  => [ { type => SCALAR } ],
+                description =>
+                "returns the value of the " . $c->name . " column for a row.  Given a value, it will also update the row first.",
+              ) );
     }
 }
 
@@ -301,23 +301,23 @@ sub make_foreign_key_methods
 
     foreach my $other_t ( sort { $a->name cmp $b->name  } $t->schema->tables )
     {
-	my @fk = $t->foreign_keys_by_table($other_t)
-	    or next;
+        my @fk = $t->foreign_keys_by_table($other_t)
+            or next;
 
-	if ( @fk == 2 && $fk[0]->table_from eq $fk[0]->table_to &&
-	     $fk[1]->table_from eq $fk[1]->table_to )
-	{
-	    unless ($fk[0]->is_one_to_one)
-	    {
-		$self->make_self_relation($fk[0]) if $self->{opts}{self_relations};
-	    }
-	    next;
-	}
-
-	foreach my $fk (@fk)
+        if ( @fk == 2 && $fk[0]->table_from eq $fk[0]->table_to &&
+             $fk[1]->table_from eq $fk[1]->table_to )
         {
-	    $self->_make_fk_method($fk);
-	}
+            unless ($fk[0]->is_one_to_one)
+            {
+                $self->make_self_relation($fk[0]) if $self->{opts}{self_relations};
+            }
+            next;
+        }
+
+        foreach my $fk (@fk)
+        {
+            $self->_make_fk_method($fk);
+        }
     }
 }
 
@@ -325,42 +325,42 @@ sub _make_method
 {
     my $self = shift;
     my %p = validate @_, { type => { type => SCALAR },
-			   class => { type => SCALAR },
-			   returns => { type => SCALAR, optional => 1 },
-			   code => { type => CODEREF },
+                           class => { type => SCALAR },
+                           returns => { type => SCALAR, optional => 1 },
+                           code => { type => CODEREF },
 
-			   # Stuff we can pass through to name_maker
-			   foreign_key => { optional => 1 },
-			   foreign_key_2 => { optional => 1 },
-			   column => { optional => 1 },
-			   table => { optional => 1 },
-			   parent => { optional => 1 },
-			   plural => { optional => 1 },
-			 };
+                           # Stuff we can pass through to name_maker
+                           foreign_key => { optional => 1 },
+                           foreign_key_2 => { optional => 1 },
+                           column => { optional => 1 },
+                           table => { optional => 1 },
+                           parent => { optional => 1 },
+                           plural => { optional => 1 },
+                         };
 
     my $name = $self->{opts}{name_maker}->( %p )
-	or return;
+        or return;
 
     my ($code_name, $debug_name) = ("$p{class}::$name",
-				    "$p{class}\->$name");
+                                    "$p{class}\->$name");
 
     no strict 'refs';  # We use symbolic references here
     if ( defined &$code_name )
     {
-	# This should probably always be shown to the user, not just
-	# when debugging mode is turned on, because name clashes can
-	# cause confusion - whichever subroutine happens first will
-	# arbitrarily win.
+        # This should probably always be shown to the user, not just
+        # when debugging mode is turned on, because name clashes can
+        # cause confusion - whichever subroutine happens first will
+        # arbitrarily win.
 
         print STDERR "MethodMaker: skipping $p{type} method $debug_name, subroutine already exists\n";
-	return;
+        return;
     }
 
     if (Alzabo::Debug::METHODMAKER)
     {
-	my $message = "Making $p{type} method $debug_name";
-	$message .= ": returns $p{returns}" if $p{returns};
-	print STDERR "$message\n";
+        my $message = "Making $p{type} method $debug_name";
+        $message .= ": returns $p{returns}" if $p{returns};
+        print STDERR "$message\n";
     }
 
     *$code_name = $p{code};
@@ -377,55 +377,55 @@ sub _make_fk_method
     # supposed to make that kind of method we will and then we'll
     # skip to the next foreign table.
     $self->make_linking_table_method($fk)
-	if $self->{opts}{linking_tables};
+        if $self->{opts}{linking_tables};
 
     $self->make_lookup_columns_methods($fk)
-	if $self->{opts}{lookup_columns};
+        if $self->{opts}{lookup_columns};
 
     return unless $self->{opts}{foreign_keys};
 
     if ($fk->is_one_to_many)
     {
-	my $name = $self->_make_method
-	    ( type => 'foreign_key',
-	      class => $self->{row_class},
-	      returns => 'row cursor',
-	      code => sub { my $self = shift;
-			    return $self->rows_by_foreign_key( foreign_key => $fk, @_ ); },
-	      foreign_key => $fk,
-	      plural => 1,
-	    ) or return;
+        my $name = $self->_make_method
+            ( type => 'foreign_key',
+              class => $self->{row_class},
+              returns => 'row cursor',
+              code => sub { my $self = shift;
+                            return $self->rows_by_foreign_key( foreign_key => $fk, @_ ); },
+              foreign_key => $fk,
+              plural => 1,
+            ) or return;
 
-	$self->{row_class}->add_method_docs
-	    ( Alzabo::MethodDocs->new
-	      ( name  => $name,
-		group => 'Methods that return cursors for foreign keys',
-		description =>
-		"returns a cursor containing related rows from the " . $fk->table_to->name . " table",
-		spec  => 'same as Alzabo::Runtime::Table->rows_where',
-	      ) );
+        $self->{row_class}->add_method_docs
+            ( Alzabo::MethodDocs->new
+              ( name  => $name,
+                group => 'Methods that return cursors for foreign keys',
+                description =>
+                "returns a cursor containing related rows from the " . $fk->table_to->name . " table",
+                spec  => 'same as Alzabo::Runtime::Table->rows_where',
+              ) );
     }
     # Singular method name
     else
     {
-	my $name = $self->_make_method
-	    ( type => 'foreign_key',
-	      class => $self->{row_class},
-	      returns => 'single row',
-	      code => sub { my $self = shift;
-			    return $self->rows_by_foreign_key( foreign_key => $fk, @_ ); },
-	      foreign_key => $fk,
-	      plural => 0,
-	    ) or return;
+        my $name = $self->_make_method
+            ( type => 'foreign_key',
+              class => $self->{row_class},
+              returns => 'single row',
+              code => sub { my $self = shift;
+                            return $self->rows_by_foreign_key( foreign_key => $fk, @_ ); },
+              foreign_key => $fk,
+              plural => 0,
+            ) or return;
 
-	$self->{row_class}->add_method_docs
-	    ( Alzabo::MethodDocs->new
-	      ( name  => $name,
-		group => 'Methods that return a single row for foreign keys',
-		description =>
-		"returns a single related row from the " . $fk->table_to->name . " table",
-		spec  => 'same as Alzabo::Runtime::Table->one_row',
-	      ) );
+        $self->{row_class}->add_method_docs
+            ( Alzabo::MethodDocs->new
+              ( name  => $name,
+                group => 'Methods that return a single row for foreign keys',
+                description =>
+                "returns a single related row from the " . $fk->table_to->name . " table",
+                spec  => 'same as Alzabo::Runtime::Table->one_row',
+              ) );
     }
 }
 
@@ -437,45 +437,45 @@ sub make_self_relation
     my (@pairs, @reverse_pairs);
     if ($fk->is_one_to_many)
     {
-	@pairs = map { [ $_->[0], $_->[1]->name ] } $fk->column_pairs;
-	@reverse_pairs = map { [ $_->[1], $_->[0]->name ] } $fk->column_pairs;
+        @pairs = map { [ $_->[0], $_->[1]->name ] } $fk->column_pairs;
+        @reverse_pairs = map { [ $_->[1], $_->[0]->name ] } $fk->column_pairs;
     }
     else
     {
-	@pairs = map { [ $_->[1], $_->[0]->name ] } $fk->column_pairs;
-	@reverse_pairs = map { [ $_->[0], $_->[1]->name ] } $fk->column_pairs;
+        @pairs = map { [ $_->[1], $_->[0]->name ] } $fk->column_pairs;
+        @reverse_pairs = map { [ $_->[0], $_->[1]->name ] } $fk->column_pairs;
     }
 
     my $table = $fk->table_from;
 
     my $name = $self->_make_method
-	( type => 'self_relation',
-	  class => $self->{row_class},
-	  returns => 'single row',
-	  code => sub { my $self = shift;
-			my @where = map { [ $_->[0], '=', $self->select( $_->[1] ) ] } @pairs;
-			return $table->one_row( where => \@where, @_ ); },
-	  foreign_key => $fk,
-	  parent => 1,
-	) or last;
+        ( type => 'self_relation',
+          class => $self->{row_class},
+          returns => 'single row',
+          code => sub { my $self = shift;
+                        my @where = map { [ $_->[0], '=', $self->select( $_->[1] ) ] } @pairs;
+                        return $table->one_row( where => \@where, @_ ); },
+          foreign_key => $fk,
+          parent => 1,
+        ) or last;
 
     if ($name)
     {
-	$self->{row_class}->add_method_docs
-	    ( Alzabo::MethodDocs->new
-	      ( name  => $name,
-		group => 'Methods that return a parent row',
-		description =>
-		"a single parent row from the same table",
-		spec  => 'same as Alzabo::Runtime::Table->one_row',
-	      ) );
+        $self->{row_class}->add_method_docs
+            ( Alzabo::MethodDocs->new
+              ( name  => $name,
+                group => 'Methods that return a parent row',
+                description =>
+                "a single parent row from the same table",
+                spec  => 'same as Alzabo::Runtime::Table->one_row',
+              ) );
     }
 
     $name = $self->_make_method
-	( type => 'self_relation',
-	  class => $self->{row_class},
-	  returns => 'row cursor',
-	  code =>
+        ( type => 'self_relation',
+          class => $self->{row_class},
+          returns => 'row cursor',
+          code =>
           sub { my $self = shift;
                 my %p = @_;
                 my @where = map { [ $_->[0], '=', $self->select( $_->[1] ) ] } @reverse_pairs;
@@ -490,18 +490,18 @@ sub make_self_relation
                 }
                 return $table->rows_where( where => \@where,
                                            %p ); },
-	  foreign_key => $fk,
-	  parent => 0,
-	) or return;
+          foreign_key => $fk,
+          parent => 0,
+        ) or return;
 
     $self->{row_class}->add_method_docs
-	( Alzabo::MethodDocs->new
-	  ( name  => $name,
-	    group => 'Methods that return child rows',
-	    description =>
-	    "a row cursor of child rows from the same table",
-	    spec  => 'same as Alzabo::Runtime::Table->rows_where',
-	  ) );
+        ( Alzabo::MethodDocs->new
+          ( name  => $name,
+            group => 'Methods that return child rows',
+            description =>
+            "a row cursor of child rows from the same table",
+            spec  => 'same as Alzabo::Runtime::Table->rows_where',
+          ) );
 }
 
 sub make_linking_table_method
@@ -514,11 +514,11 @@ sub make_linking_table_method
     # Find the foreign key from the linking table to the _other_ table
     my $fk_2;
     {
- 	my @fk = $fk->table_to->all_foreign_keys;
- 	return unless @fk == 2;
+        my @fk = $fk->table_to->all_foreign_keys;
+        return unless @fk == 2;
 
         # Get the foreign key that's not the one we already have
- 	$fk_2 = $fk[0]->is_same_relationship_as($fk) ? $fk[1] : $fk[0];
+        $fk_2 = $fk[0]->is_same_relationship_as($fk) ? $fk[1] : $fk[0];
     }
 
     return unless $fk_2;
@@ -530,17 +530,17 @@ sub make_linking_table_method
     # Not a linking table unless the PK in the middle table is the
     # same size as the sum of the two table's PK sizes
     return unless ( $fk->table_to->primary_key_size ==
-		    ( $fk->table_from->primary_key_size + $fk_2->table_to->primary_key_size ) );
+                    ( $fk->table_from->primary_key_size + $fk_2->table_to->primary_key_size ) );
 
     my $s = $fk->table_to->schema;
     my @t = ( $fk->table_to, $fk_2->table_to );
     my $select = [ $t[1] ];
 
     my $name = $self->_make_method
-	( type => 'linking_table',
-	  class => $self->{row_class},
-	  returns => 'row cursor',
-	  code =>
+        ( type => 'linking_table',
+          class => $self->{row_class},
+          returns => 'row cursor',
+          code =>
           sub { my $self = shift;
                 my %p = @_;
                 if ( $p{where} )
@@ -555,19 +555,19 @@ sub make_linking_table_method
                 return $s->join( tables => [[@t, $fk_2]],
                                  select => $select,
                                  %p ); },
-	  foreign_key => $fk,
-	  foreign_key_2 => $fk_2,
-	) or return;
+          foreign_key => $fk,
+          foreign_key_2 => $fk_2,
+        ) or return;
 
     $self->{row_class}->add_method_docs
-	( Alzabo::MethodDocs->new
-	  ( name  => $name,
-	    group => 'Methods that follow a linking table',
-	    description =>
-	    "a row cursor of related rows from the " . $fk_2->table_to->name . " table, " .
-	    "via the " . $fk->table_to->name . " linking table",
-	    spec  => 'same as Alzabo::Runtime::Table->rows_where',
-	  ) );
+        ( Alzabo::MethodDocs->new
+          ( name  => $name,
+            group => 'Methods that follow a linking table',
+            description =>
+            "a row cursor of related rows from the " . $fk_2->table_to->name . " table, " .
+            "via the " . $fk->table_to->name . " linking table",
+            spec  => 'same as Alzabo::Runtime::Table->rows_where',
+          ) );
 }
 
 sub make_lookup_columns_methods
@@ -580,35 +580,35 @@ sub make_lookup_columns_methods
     # Make sure the relationship is to the foreign table's primary key
     my @to = $fk->columns_to;
     return unless ( ( scalar grep { $_->is_primary_key } @to ) == @to &&
-		    ( $fk->table_to->primary_key_size == @to ) );
+                    ( $fk->table_to->primary_key_size == @to ) );
 
     foreach ( sort { $a->name cmp $b->name  } $fk->table_to->columns )
     {
         next if $_->is_primary_key;
 
-	my $col_name = $_->name;
+        my $col_name = $_->name;
 
-	my $name = $self->_make_method
-	    ( type => 'lookup_columns',
-	      class => $self->{row_class},
-	      returns => 'scalar value of column',
-	      code =>
+        my $name = $self->_make_method
+            ( type => 'lookup_columns',
+              class => $self->{row_class},
+              returns => 'scalar value of column',
+              code =>
               sub { my $self = shift;
                     my $row = $self->rows_by_foreign_key( foreign_key => $fk, @_ );
                     return unless $row;
                     return $row->select($col_name) },
-	      foreign_key => $fk,
-	      column => $_,
-	    ) or next;
+              foreign_key => $fk,
+              column => $_,
+            ) or next;
 
-	$self->{row_class}->add_method_docs
-	    ( Alzabo::MethodDocs->new
-	      ( name  => $name,
-		group => 'Methods that follow a lookup table',
-		description =>
-		"returns the value of " . (join '.', $fk->table_to->name, $col_name) . " for the given row by following the foreign key relationship",
-		spec  => 'same as Alzabo::Runtime::Table->rows_where',
-	      ) );
+        $self->{row_class}->add_method_docs
+            ( Alzabo::MethodDocs->new
+              ( name  => $name,
+                group => 'Methods that follow a lookup table',
+                description =>
+                "returns the value of " . (join '.', $fk->table_to->name, $col_name) . " for the given row by following the foreign key relationship",
+                spec  => 'same as Alzabo::Runtime::Table->rows_where',
+              ) );
     }
 }
 
@@ -628,8 +628,8 @@ sub make_hooks
     my $method = join '::', $class, $type;
 
     {
-	no strict 'refs';
-	return if *{$method}{CODE};
+        no strict 'refs';
+        return if *{$method}{CODE};
     }
 
     print STDERR "Making $type hooks method $class\->$type\n"
@@ -669,13 +669,13 @@ EOF
     Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 
     my $hooks =
-	$self->_hooks_doc_string( $self->{table_class}, 'pre_insert', 'post_insert' );
+        $self->_hooks_doc_string( $self->{table_class}, 'pre_insert', 'post_insert' );
 
     $self->{table_class}->add_class_docs
-	( Alzabo::ClassDocs->new
-	  ( group => 'Hooks',
-	    description => "$hooks",
-	  ) );
+        ( Alzabo::ClassDocs->new
+          ( group => 'Hooks',
+            description => "$hooks",
+          ) );
 }
 
 sub _hooks_doc_string
@@ -725,13 +725,13 @@ EOF
     Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 
     my $hooks =
-	$self->_hooks_doc_string( $self->{row_class}, 'pre_update', 'post_update' );
+        $self->_hooks_doc_string( $self->{row_class}, 'pre_update', 'post_update' );
 
     $self->{row_class}->add_class_docs
-	( Alzabo::ClassDocs->new
-	  ( group => 'Hooks',
-	    description => "$hooks",
-	  ) );
+        ( Alzabo::ClassDocs->new
+          ( group => 'Hooks',
+            description => "$hooks",
+          ) );
 }
 
 sub make_select_hooks
@@ -796,13 +796,13 @@ EOF
     Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 
     my $hooks =
-	$self->_hooks_doc_string( $self->{row_class}, 'pre_select', 'post_select' );
+        $self->_hooks_doc_string( $self->{row_class}, 'pre_select', 'post_select' );
 
     $self->{row_class}->add_class_docs
-	( Alzabo::ClassDocs->new
-	  ( group => 'Hooks',
-	    description => "$hooks",
-	  ) );
+        ( Alzabo::ClassDocs->new
+          ( group => 'Hooks',
+            description => "$hooks",
+          ) );
 }
 
 sub make_delete_hooks
@@ -832,13 +832,13 @@ EOF
     Alzabo::Exception::Eval->throw( error => $@ ) if $@;
 
     my $hooks =
-	$self->_hooks_doc_string( $self->{row_class}, 'pre_delete', 'post_delete' );
+        $self->_hooks_doc_string( $self->{row_class}, 'pre_delete', 'post_delete' );
 
     $self->{row_class}->add_class_docs
-	( Alzabo::ClassDocs->new
-	  ( group => 'Hooks',
-	    description => "$hooks",
-	  ) );
+        ( Alzabo::ClassDocs->new
+          ( group => 'Hooks',
+            description => "$hooks",
+          ) );
 }
 
 sub name
@@ -859,21 +859,21 @@ sub name
 
     if ( $p{type} eq 'linking_table' )
     {
-	my $method = $p{foreign_key}->table_to->name;
-	my $tname = $p{foreign_key}->table_from->name;
-	$method =~ s/^$tname\_?//;
-	$method =~ s/_?$tname$//;
+        my $method = $p{foreign_key}->table_to->name;
+        my $tname = $p{foreign_key}->table_from->name;
+        $method =~ s/^$tname\_?//;
+        $method =~ s/_?$tname$//;
 
-	return $method;
+        return $method;
     }
 
     return join '_', map { lc $_->name } $p{foreign_key}->table_to, $p{column}
-	if $p{type} eq 'lookup_columns';
+        if $p{type} eq 'lookup_columns';
 
     return $p{column}->name if $p{type} eq 'lookup_columns';
 
     return $p{parent} ? 'parent' : 'children'
-	if $p{type} eq 'self_relation';
+        if $p{type} eq 'self_relation';
 
     die "unknown type in call to naming sub: $p{type}\n";
 }
@@ -972,7 +972,7 @@ sub methods_by_group
     my $group = shift;
 
     return $store->{methods}{by_group}{$group}->Values
-	if exists $store->{methods}{by_group}{$group};
+        if exists $store->{methods}{by_group}{$group};
 }
 
 sub class_groups
@@ -993,7 +993,7 @@ sub class_docs_by_group
     my $group = shift;
 
     return @{ $store->{class}{by_name}{$group} }
-	if exists $store->{class}{by_name}{$group};
+        if exists $store->{class}{by_name}{$group};
 }
 
 sub class_docs
@@ -1005,7 +1005,7 @@ sub class_docs
     my $group = shift;
 
     return map { @{ $store->{class}{by_group}{$_} } }
-	keys %{ $store->{class}{by_group} };
+        keys %{ $store->{class}{by_group} };
 }
 
 sub contained_classes
@@ -1015,7 +1015,7 @@ sub contained_classes
     my $store = $class->_get_store($class);
 
     return @{ $store->{contained_classes}{by_name} }
-	if exists $store->{contained_classes}{by_name};
+        if exists $store->{contained_classes}{by_name};
 
     return;
 }
@@ -1029,7 +1029,7 @@ sub method
     my $name = shift;
 
     return $store->{methods}{by_name}->FETCH($name)
-	if exists $store->{methods}{by_name};
+        if exists $store->{methods}{by_name};
 }
 
 sub docs_as_pod
@@ -1048,17 +1048,17 @@ sub docs_as_pod
 
     foreach my $class_doc ( $class->class_docs )
     {
-	$pod .= $class_doc->as_pod;
+        $pod .= $class_doc->as_pod;
     }
 
     foreach my $group ( $class->method_groups )
     {
-	$pod .= "=head2 $group\n\n";
+        $pod .= "=head2 $group\n\n";
 
-	foreach my $method ( $class->methods_by_group($group) )
-	{
-	    $pod .= $method->as_pod;
-	}
+        foreach my $method ( $class->methods_by_group($group) )
+        {
+            $pod .= $method->as_pod;
+        }
     }
 
     $pod .= $_ foreach $self->contained_docs;
@@ -1097,18 +1097,18 @@ sub description { shift->{description} }
     sub _typemask_to_strings
     {
         shift;
-	my $mask = shift;
+        my $mask = shift;
 
-	my @types;
-	foreach ( Params::Validate::SCALAR, Params::Validate::ARRAYREF,
+        my @types;
+        foreach ( Params::Validate::SCALAR, Params::Validate::ARRAYREF,
                   Params::Validate::HASHREF, Params::Validate::CODEREF,
                   Params::Validate::GLOB, Params::Validate::GLOBREF,
                   Params::Validate::SCALARREF, Params::Validate::UNDEF,
                   Params::Validate::OBJECT )
-	{
-	    push @types, $type_to_string{$_} if $mask & $_;
-	}
-	return @types ? @types : ('unknown');
+        {
+            push @types, $type_to_string{$_} if $mask & $_;
+        }
+        return @types ? @types : ('unknown');
     }
 }
 
@@ -1122,11 +1122,11 @@ sub new
 {
     my $class = shift;
     my %p = validate( @_, { name    => { type => SCALAR },
-			    group   => { type => SCALAR },
-			    description => { type => SCALAR },
-			    spec    => { type => SCALAR | ARRAYREF | HASHREF,
-					 default => undef },
-			  } );
+                            group   => { type => SCALAR },
+                            description => { type => SCALAR },
+                            spec    => { type => SCALAR | ARRAYREF | HASHREF,
+                                         default => undef },
+                          } );
 
     return bless \%p, $class;
 }
@@ -1145,48 +1145,48 @@ sub as_pod
     my $params;
     if ( defined $spec )
     {
-	if ( UNIVERSAL::isa( $spec, 'ARRAY' ) )
-	{
-	    $params = "=over 4\n\n";
+        if ( UNIVERSAL::isa( $spec, 'ARRAY' ) )
+        {
+            $params = "=over 4\n\n";
 
-	    foreach my $p (@$spec)
-	    {
-		$params .= "=item * ";
-		if ( exists $p->{type} )
-		{
-		    # hack!
-		    my $types =
-			join ', ', $self->_typemask_to_strings( $p->{type} );
-		    $params .= "($types)";
-		}
-		$params .= "\n\n";
-	    }
+            foreach my $p (@$spec)
+            {
+                $params .= "=item * ";
+                if ( exists $p->{type} )
+                {
+                    # hack!
+                    my $types =
+                        join ', ', $self->_typemask_to_strings( $p->{type} );
+                    $params .= "($types)";
+                }
+                $params .= "\n\n";
+            }
 
-	    $params .= "=back\n\n";
-	}
-	elsif ( UNIVERSAL::isa( $spec, 'HASH' ) )
-	{
-	    $params = "=over 4\n\n";
+            $params .= "=back\n\n";
+        }
+        elsif ( UNIVERSAL::isa( $spec, 'HASH' ) )
+        {
+            $params = "=over 4\n\n";
 
-	    while ( my ($name, $p) = each %$spec )
-	    {
-		$params .= "=item * $name ";
-		if ( exists $p->{type} )
-		{
-		    # hack!
-		    my $types =
-			join ', ', $self->_typemask_to_strings( $p->{type} );
-		    $params .= "($types)";
-		}
-		$params .= "\n\n";
-	    }
+            while ( my ($name, $p) = each %$spec )
+            {
+                $params .= "=item * $name ";
+                if ( exists $p->{type} )
+                {
+                    # hack!
+                    my $types =
+                        join ', ', $self->_typemask_to_strings( $p->{type} );
+                    $params .= "($types)";
+                }
+                $params .= "\n\n";
+            }
 
-	    $params .= "=back\n\n";
-	}
-	else
-	{
-	    $params = "Parameters: $spec\n\n";
-	}
+            $params .= "=back\n\n";
+        }
+        else
+        {
+            $params = "Parameters: $spec\n\n";
+        }
     }
 
     my $pod = <<"EOF";
@@ -1211,8 +1211,8 @@ sub new
 {
     my $class = shift;
     my %p = validate( @_, { group   => { type => SCALAR },
-			    description => { type => SCALAR },
-			  } );
+                            description => { type => SCALAR },
+                          } );
 
     return bless \%p, $class;
 }
@@ -1751,18 +1751,18 @@ Here is an example that covers all of the possible options:
      # cursor of rows from the UserRating table.
      if ( $p{type} eq 'foreign_key' )
      {
-       	 my $name = $p{foreign_key}->table_to->name;
-	 my $from = $p{foreign_key}->table_from->name;
-	 $name =~ s/$from//;
+         my $name = $p{foreign_key}->table_to->name;
+         my $from = $p{foreign_key}->table_from->name;
+         $name =~ s/$from//;
 
-	 if ($p{plural})
-	 {
+         if ($p{plural})
+         {
              return my_PL( $name );
-	 }
+         }
          else
-	 {
+         {
              return $name;
-	 }
+         }
      }
 
      # This is very similar to how foreign keys are handled.  Assume
@@ -1776,11 +1776,11 @@ Here is an example that covers all of the possible options:
      # that links a table to itself.
      if ( $p{type} eq 'linking_table' )
      {
-     	 my $method = $p{foreign_key}->table_to->name;
-	 my $tname = $p{foreign_key}->table_from->name;
-	 $method =~ s/$tname//;
+         my $method = $p{foreign_key}->table_to->name;
+         my $tname = $p{foreign_key}->table_from->name;
+         $method =~ s/$tname//;
 
-	 return my_PL($method);
+         return my_PL($method);
      }
 
      # Lookup columns are columns if foreign tables for which there
@@ -1802,7 +1802,7 @@ Here is an example that covers all of the possible options:
 
      # This should be fairly self-explanatory.
      return $p{parent} ? 'parent' : 'children'
-	 if $p{type} eq 'self_relation';
+         if $p{type} eq 'self_relation';
 
      # And just to make sure that nothing slips by us we do this.
      die "unknown type in call to naming sub: $p{type}\n";

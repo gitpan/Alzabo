@@ -38,12 +38,12 @@ sub connect
 
     foreach ( $self->rows( sql => 'SHOW VARIABLES' ) )
     {
-	if ( $_->[0] eq 'sql_mode' )
-	{
-	    # some versions of mysql may return '' for sql_mode
-	    $self->{mysql_ansi_mode} = ( $_->[1] ? $_->[1] : 0 ) & 4;
-	    last;
-	}
+        if ( $_->[0] eq 'sql_mode' )
+        {
+            # some versions of mysql may return '' for sql_mode
+            $self->{mysql_ansi_mode} = ( $_->[1] ? $_->[1] : 0 ) & 4;
+            last;
+        }
     }
 }
 
@@ -56,9 +56,9 @@ sub quote_identifier
 
     foreach (@ids)
     {
-	next unless defined;
-	s/$quote/$quote$quote/g;
-	$_ = "$quote$_$quote";
+        next unless defined;
+        s/$quote/$quote$quote/g;
+        $_ = "$quote$_$quote";
     }
 
     return join '.', @ids;
@@ -72,11 +72,11 @@ sub supports_referential_integrity
 
     if ( $maj == 3 )
     {
-	return 0 if $min < 23;
+        return 0 if $min < 23;
 
-	# 3.23.50 && 4.0.2 are the first versions where InnoDB
-	# actually honored CASCADE, SET NULL, and SET DEFAULT
-	return 0 if $p < 50;
+        # 3.23.50 && 4.0.2 are the first versions where InnoDB
+        # actually honored CASCADE, SET NULL, and SET DEFAULT
+        return 0 if $p < 50;
     }
 
     # same deal
@@ -84,7 +84,7 @@ sub supports_referential_integrity
 
     foreach my $row ( $self->rows_hashref( sql => 'SHOW TABLE STATUS' ) )
     {
-	return 0 if $row->{TYPE} !~ /innodb/i;
+        return 0 if $row->{TYPE} !~ /innodb/i;
     }
 }
 
@@ -113,7 +113,7 @@ sub schemas
     my $self = shift;
 
     my $dbh = $self->_make_dbh( name => '',
-				@_ );
+                                @_ );
 
     my @schemas = $dbh->func('_ListDBs');
 
@@ -130,11 +130,11 @@ sub create_database
     my $db = $self->{schema}->name;
 
     my $dbh = $self->_make_dbh( name => '',
-				@_ );
+                                @_ );
 
     $dbh->func( 'createdb', $db, 'admin' );
     Alzabo::Exception::Driver->throw( error => $dbh->errstr )
-	if $dbh->errstr;
+        if $dbh->errstr;
 
     $dbh->disconnect;
 }
@@ -146,11 +146,11 @@ sub drop_database
     my $db = $self->{schema}->name;
 
     my $dbh = $self->_make_dbh( name => '',
-				@_ );
+                                @_ );
 
     $dbh->func( 'dropdb', $db, 'admin' );
     Alzabo::Exception::Driver->throw( error => $dbh->errstr )
-	if $dbh->errstr;
+        if $dbh->errstr;
 
     $dbh->disconnect;
 }
@@ -162,16 +162,16 @@ sub _make_dbh
     my %p = @_;
 
     %p = validate( @_, { name => { type => SCALAR },
-			 user => { type => SCALAR | UNDEF,
-				   optional => 1 },
-			 password => { type => SCALAR | UNDEF,
-				       optional => 1 },
-			 host => { type => SCALAR | UNDEF,
-				   optional => 1 },
-			 port => { type => SCALAR | UNDEF,
-				   optional => 1 },
-			 map { $_ => 0 } grep { /^mysql_/ } keys %p,
-		       } );
+                         user => { type => SCALAR | UNDEF,
+                                   optional => 1 },
+                         password => { type => SCALAR | UNDEF,
+                                       optional => 1 },
+                         host => { type => SCALAR | UNDEF,
+                                   optional => 1 },
+                         port => { type => SCALAR | UNDEF,
+                                   optional => 1 },
+                         map { $_ => 0 } grep { /^mysql_/ } keys %p,
+                       } );
 
     my $dsn = "DBI:mysql:$p{name}";
     $dsn .= ";host=$p{host}" if $p{host};
@@ -179,20 +179,20 @@ sub _make_dbh
 
     foreach my $k ( grep { /^mysql/ } keys %p )
     {
-	$dsn .= ";$k=$p{$k}";
+        $dsn .= ";$k=$p{$k}";
     }
 
     my $dbh;
     eval
     {
-	$dbh = DBI->connect( $dsn,
-			     $p{user},
-			     $p{password},
-			     { RaiseError => 1,
-			       AutoCommit => 1,
-			       PrintError => 0,
-			     }
-			   );
+        $dbh = DBI->connect( $dsn,
+                             $p{user},
+                             $p{password},
+                             { RaiseError => 1,
+                               AutoCommit => 1,
+                               PrintError => 0,
+                             }
+                           );
     };
 
     Alzabo::Exception::Driver->throw( error => $@ ) if $@;
@@ -216,17 +216,17 @@ sub rollback
 
     if ($@)
     {
-	unless ( $@->error =~ /Some non-transactional changed tables/ )
-	{
-	    if ( UNIVERSAL::can( $@, 'rethrow' ) )
-	    {
-		$@->rethrow;
-	    }
-	    else
-	    {
-		Alzabo::Exception->throw( error => $@ );
-	    }
-	}
+        unless ( $@->error =~ /Some non-transactional changed tables/ )
+        {
+            if ( UNIVERSAL::can( $@, 'rethrow' ) )
+            {
+                $@->rethrow;
+            }
+            else
+            {
+                Alzabo::Exception->throw( error => $@ );
+            }
+        }
     }
 }
 

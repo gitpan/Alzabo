@@ -13,7 +13,7 @@ use Alzabo::Runtime::RowState::Deleted;
 use Alzabo::Runtime::RowState::Live;
 use Alzabo::Runtime::RowState::Potential;
 
-use Params::Validate qw( validate UNDEF SCALAR HASHREF BOOLEAN );
+use Params::Validate qw( validate validate_with UNDEF SCALAR HASHREF BOOLEAN );
 Params::Validate::validation_options
     ( on_fail => sub { params_exception join '', @_ } );
 
@@ -33,32 +33,32 @@ BEGIN
     }
 }
 
+use constant NEW_SPEC => { table => { isa => 'Alzabo::Runtime::Table' },
+                           pk    => { type => SCALAR | HASHREF,
+                                      optional => 1,
+                                    },
+                           prefetch => { type => UNDEF | HASHREF,
+                                         optional => 1,
+                                       },
+                           state => { type => SCALAR,
+                                      default => 'Alzabo::Runtime::RowState::Live',
+                                    },
+                           potential_row => { isa => 'Alzabo::Runtime::Row',
+                                              optional => 1,
+                                            },
+                           values => { type => HASHREF,
+                                       default => {},
+                                     },
+                           no_cache => { type => BOOLEAN, default => 0 },
+                         };
+
 sub new
 {
     my $proto = shift;
     my $class = ref $proto || $proto;
 
     my %p =
-        validate( @_,
-                  { table => { isa => 'Alzabo::Runtime::Table' },
-                    pk    => { type => SCALAR | HASHREF,
-                               optional => 1,
-                             },
-                    prefetch => { type => UNDEF | HASHREF,
-                                  optional => 1,
-                                },
-                    state => { type => SCALAR,
-                               default => 'Alzabo::Runtime::RowState::Live',
-                             },
-                    potential_row => { isa => 'Alzabo::Runtime::Row',
-                                       optional => 1,
-                                     },
-                    values => { type => HASHREF,
-                                default => {},
-                              },
-                    no_cache => { type => BOOLEAN, default => 0 },
-                  }
-                );
+        validate( @_, NEW_SPEC );
 
     my $self = $p{potential_row} ? $p{potential_row} : {};
 
@@ -88,21 +88,25 @@ sub schema
 
 sub set_state { $_[0]->{state} = $_[1] };
 
+use constant ROWS_BY_FOREIGN_KEY_SPEC => { foreign_key => { isa => 'Alzabo::ForeignKey' } };
+
 sub rows_by_foreign_key
 {
     my $self = shift;
-
-    my %p = @_;
+    my %p = validate_with( params => \@_,
+                           spec   => ROWS_BY_FOREIGN_KEY_SPEC,
+                           allow_extra => 1,
+                         );
 
     my $fk = delete $p{foreign_key};
 
     if ($p{where})
     {
-	$p{where} = [ $p{where} ] unless UNIVERSAL::isa( $p{where}[0], 'ARRAY' );
+        $p{where} = [ $p{where} ] unless UNIVERSAL::isa( $p{where}[0], 'ARRAY' );
     }
 
     push @{ $p{where} },
-	map { [ $_->[1], '=', $self->select( $_->[0]->name ) ] } $fk->column_pairs;
+        map { [ $_->[1], '=', $self->select( $_->[0]->name ) ] } $fk->column_pairs;
 
     # if the relationship is not 1..n, then only one row can be
     # returned (or referential integrity has been hosed in the
@@ -151,26 +155,26 @@ sub make_live
     my $self = shift;
 
     logic_exception "Can only call make_live on potential rows"
-	unless $self->{state}->is_potential;
+        unless $self->{state}->is_potential;
 
     my %p = @_;
 
     my %values;
     foreach ( $self->table->columns )
     {
-	next unless exists $p{values}->{ $_->name } || exists $self->{data}->{ $_->name };
-	$values{ $_->name } = ( exists $p{values}->{ $_->name } ?
-				$p{values}->{ $_->name } :
-				$self->{data}->{ $_->name } );
+        next unless exists $p{values}->{ $_->name } || exists $self->{data}->{ $_->name };
+        $values{ $_->name } = ( exists $p{values}->{ $_->name } ?
+                                $p{values}->{ $_->name } :
+                                $self->{data}->{ $_->name } );
     }
 
     my $table = $self->table;
     delete @{ $self }{keys %$self}; # clear out everything
 
     $table->insert( @_,
-		    potential_row => $self,
-		    %values ? ( values => \%values ) : (),
-		  );
+                    potential_row => $self,
+                    %values ? ( values => \%values ) : (),
+                  );
 }
 
 sub _no_such_row_error
@@ -181,9 +185,9 @@ sub _no_such_row_error
     my @vals;
     while ( my( $k, $v ) = each %{ $self->{pk} } )
     {
-	$v = '<NULL>' unless defined $v;
-	my $val = "$k = $v";
-	push @vals, $val;
+        $v = '<NULL>' unless defined $v;
+        my $val = "$k = $v";
+        push @vals, $val;
     }
     $err .= join ', ', @vals;
 
@@ -228,12 +232,12 @@ sub STORABLE_thaw
     # Requires a patched Storable (at least for now)
     if ( Alzabo::Runtime::UniqueRowCache->can('row_in_cache') )
     {
-	if ( my $row =
-	     Alzabo::Runtime::UniqueRowCache->row_in_cache
-	         ( $self->table->name, $self->id_as_string ) )
-	{
+        if ( my $row =
+             Alzabo::Runtime::UniqueRowCache->row_in_cache
+                 ( $self->table->name, $self->id_as_string ) )
+        {
             $_[0] = $row;
-	}
+        }
     }
 }
 
@@ -247,11 +251,11 @@ BEGIN
     # we'll just _force_ it do it once right away.
     if ( $Storable::VERSION >= 2 && $Storable::VERSION <= 2.03 )
     {
-	eval <<'EOF';
-	{ package ___name; sub name { 'foo' } }
-	{ package ___table;  @table::ISA = '___name'; sub schema { bless {}, '___name' } }
-	my $row = bless { table => bless {}, '___table' }, __PACKAGE__;
-	Storable::thaw(Storable::nfreeze($row));
+        eval <<'EOF';
+        { package ___name; sub name { 'foo' } }
+        { package ___table;  @table::ISA = '___name'; sub schema { bless {}, '___name' } }
+        my $row = bless { table => bless {}, '___table' }, __PACKAGE__;
+        Storable::thaw(Storable::nfreeze($row));
 EOF
     }
 }
