@@ -159,7 +159,7 @@ sub run_tests
 				     } ); };
 
     $e = $@;
-    isa_ok( $e, 'Alzabo::Exception::Params',
+    isa_ok( $e, 'Alzabo::Exception::NotNullable',
 	    "Exception thrown from inserting a non-nullable column as NULL" );
 
     {
@@ -198,7 +198,7 @@ sub run_tests
 
     eval { $emp{bill}->update( name => undef ) };
     $e = $@;
-    isa_ok( $e, 'Alzabo::Exception::Params',
+    isa_ok( $e, 'Alzabo::Exception::NotNullable',
 	    "Exception thrown from attempt to update a non-nullable column to NULL" );
 
     eval_ok( sub { $dep{borg}->update( manager_id => $emp{bill}->select('employee_id') ) },
@@ -375,7 +375,9 @@ sub run_tests
 	eval_ok( sub { $cursor =
                            $s->join( join     => [ $e_alias, $emp_proj_t, $p_alias ],
                                      where    => [ $e_alias->column('employee_id'), '=', 1 ],
-                                     order_by => $p_alias->column('project_id') ) },
+                                     order_by => $p_alias->column('project_id'),
+                                     no_cache => 1,
+                                   ) },
 		 "Join employee, employee_project, and project tables where" .
                  " employee_id = 1 using aliases" );
 
@@ -1574,7 +1576,7 @@ sub run_tests
 
     eval { $p_emp->update( name => undef ) };
     $e = $@;
-    isa_ok( $e, 'Alzabo::Exception::Params',
+    isa_ok( $e, 'Alzabo::Exception::NotNullable',
 	    "Exception thrown from attempt to update a non-NULLable column in a potential row to null" );
 
     eval { $p_emp->delete };
@@ -1724,7 +1726,10 @@ sub run_sync_tests
     select( ( select($c_write), $| = 1 )[0] );
     select( ( select($p_write), $| = 1 )[0] );
 
-    local $SIG{ALRM} = sub { die "sync tests were taking way too long (" . ($pid ? 'parent' : 'child') . ')' };
+    local $SIG{ALRM} =
+        sub { die "sync tests were taking way too long (" .
+                  ($pid ? 'parent' : 'child') . ')' };
+
     alarm(60);
 
     if ( $pid = fork() )
@@ -1736,9 +1741,9 @@ sub run_sync_tests
 	child($s);
     }
 
-    alarm(0);
-
     waitpid($pid, 0);
+
+    alarm(0);
 }
 
 sub parent
@@ -2076,7 +2081,9 @@ sub get_pipe_data
 {
     my $fh = shift;
 
-    local $SIG{ALRM} = sub { die "sync test pipe read was taking way too long (" . ($pid ? 'parent' : 'child') . ')' }; 
+    local $SIG{ALRM} =
+        sub { die "sync test pipe read was taking way too long (" .
+                  ($pid ? 'parent' : 'child') . ')' };
     alarm(7);
 
     my $data = <$fh>;

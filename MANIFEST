@@ -63,6 +63,7 @@ lib/Alzabo/Create/ForeignKey.pm
 lib/Alzabo/Create/Index.pm
 lib/Alzabo/Create/Schema.pm
 lib/Alzabo/Create/Table.pm
+lib/Alzabo/Debug.pm
 lib/Alzabo/Driver.pm
 lib/Alzabo/Driver/MySQL.pm
 lib/Alzabo/Driver/PostgreSQL.pm

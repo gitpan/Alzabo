@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Column);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.37 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.38 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -97,6 +97,10 @@ sub set_name
 
     validate_pos( @_, { type => SCALAR } );
     my $name = shift;
+
+    Alzabo::Exception::Params->throw
+        ( error => "Column $name already exists in table" )
+            if $self->table->has_column($name);
 
     my $old_name = $self->{name};
     $self->{name} = $name;

@@ -9,7 +9,7 @@ use Class::Factory::Util;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.55 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.57 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -533,7 +533,7 @@ sub condition
     else
     {
         Alzabo::Exception::SQL->throw
-            ( error => "Cannot use " . ref $lhs . " object as part of condition" );
+            ( error => "Cannot use " . (ref $lhs) . " object as part of condition" );
     }
 
     if ( $comp eq 'BETWEEN' )
@@ -965,7 +965,7 @@ sub _bind_val
         if UNIVERSAL::isa( $_[0], 'Alzabo::SQLMaker::Function' );
 
     Alzabo::Exception::Params->throw
-        ( error => "Cannot pass a " . ref $_[0] . " object to _bind_val" );
+        ( error => "Cannot pass a " . (ref $_[0]) . " object to _bind_val" );
 }
 
 sub sql
@@ -1007,6 +1007,33 @@ sub _virtual
     $sub =~ s/.*::(.*?)$/$1/;
     Alzabo::Exception::VirtualMethod->throw( error =>
 					     "$sub is a virtual method and must be subclassed in " . ref $self );
+}
+
+sub debug
+{
+    my $self = shift;
+    my $fh = shift;
+
+    print $fh '-' x 75 . "\n";
+    print $fh "SQL\n - " . $self->sql . "\n";
+    print $fh "Bound values\n";
+
+    foreach my $b ( @{ $self->bind } )
+    {
+        if ( defined $b )
+        {
+            if ( length $b > 75 )
+            {
+                $b = substr( $b, 0, 71 ) . ' ...';
+            }
+        }
+        else
+        {
+            $b = 'NULL';
+        }
+
+        print $fh " - [$b]\n";
+    }
 }
 
 package Alzabo::SQLMaker::Function;

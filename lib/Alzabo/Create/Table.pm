@@ -12,7 +12,7 @@ use Tie::IxHash;
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.50 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.51 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -52,6 +52,10 @@ sub set_name
 
     validate_pos( @_, { type => SCALAR } );
     my $name = shift;
+
+    Alzabo::Exception::Params->throw
+        ( error => "Table $name already exists in schema" )
+            if $self->schema->has_table($name);
 
     my @i;
     if ($self->{indexes})

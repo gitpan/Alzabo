@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use base qw(Alzabo::Schema);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.77 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.80 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -149,6 +149,7 @@ sub join
 				       optional => 1 },
 			    distinct => { type => ARRAYREF | OBJECT,
 					  optional => 1 },
+                            no_cache => { default => 0 },
 			  } );
 
     $p{join} ||= delete $p{tables};
@@ -230,6 +231,9 @@ sub join
 
     $sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} ) if $p{limit};
 
+    $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
+    print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
+
     my $statement = $self->driver->statement( sql => $sql->sql,
 					      bind => $sql->bind );
 
@@ -237,13 +241,17 @@ sub join
     {
 	return Alzabo::Runtime::RowCursor->new
 	           ( statement => $statement,
-		     table => $select_tables[0]->real_table );
+		     table => $select_tables[0]->real_table,
+                     no_cache => $p{no_cache},
+                   );
     }
     else
     {
 	return Alzabo::Runtime::JoinCursor->new
 	           ( statement => $statement,
-		     tables => [ map { $_->real_table } @select_tables ] );
+		     tables => [ map { $_->real_table } @select_tables ],
+                     no_cache => $p{no_cache},
+                   );
     }
 }
 
@@ -265,6 +273,9 @@ sub function
     my $method =
         UNIVERSAL::isa( $p{select}, 'ARRAY' ) && @{ $p{select} } > 1 ? 'rows' : 'column';
 
+    $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
+    print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
+
     return $self->driver->$method( sql => $sql->sql,
 				   bind => $sql->bind );
 }
@@ -274,6 +285,9 @@ sub select
     my $self = shift;
 
     my $sql = $self->_select_sql(@_);
+
+    $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
+    print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
     return $self->driver->statement( sql => $sql->sql,
 				     bind => $sql->bind );

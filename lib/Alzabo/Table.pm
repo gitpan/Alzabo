@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use Tie::IxHash;
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.44 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.45 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -80,6 +80,8 @@ sub columns
 sub primary_key
 {
     my $self = shift;
+
+    return unless $self->{pk}->Values;
 
     return ( wantarray ?
              $self->columns( map { $_->name } $self->{pk}->Values ) :

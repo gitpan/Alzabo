@@ -12,7 +12,7 @@ require 'base.pl';
 
 my @db;
 my $tests = 0;
-my $shared_tests = 142;
+my $shared_tests = 146;
 my $mysql_only_tests = 2;
 my $pg_only_tests = 1;
 if (eval { require DBD::mysql } && ! $@ )
@@ -501,6 +501,10 @@ foreach my $db (@db)
     eval_ok( sub { $t1->set_name('newt1') },
 	     "Change footab's name to newt1" );
 
+    eval{ $t1->set_name('bartab') };
+    like( $@, qr/Table bartab already exists/,
+          "Make sure two tables cannot have the same name" );
+
     my $index2;
     eval_ok( sub { $index2 = $t1->index($index->id) },
 	     "Retrieve index object from table based on \$index->id" );
@@ -587,6 +591,10 @@ foreach my $db (@db)
     eval_ok( sub { $tbi->set_name('newname') },
 	     "Set tbi column name to newname" );
 
+    eval{ $tbi->set_name('foo_pk') };
+    like( $@, qr/Column foo_pk already exists/,
+          "Make sure two column cannot have the same name" );
+
     eval_ok( sub { $s->make_table( name => 'YAtable',
 				   before => scalar $s->table('other') ) },
 	     "Call the make_table method on the schema with a before parameter" );
@@ -656,5 +664,20 @@ foreach my $db (@db)
         my @fk = $t2->all_foreign_keys;
         is( scalar @fk, 1,
             "t2 should still have one foreign key" );
+    }
+
+    {
+        my $t = $s->make_table( name => 'no_pk_table' );
+
+        $t->make_column( name => 'not_a_pk',
+                         type => 'integer',
+                       );
+
+        eval_ok( sub { my $pk = $t->primary_key },
+                 "Calling primary_key on a table without a primary key should not fail" );
+
+        my @pk = $t->primary_key;
+        is( scalar @pk, 0,
+            "Return val from primary_key on a table without a primary key should be an empty list" );
     }
 }

@@ -10,7 +10,7 @@ use DBI;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.73 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.74 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -409,7 +409,8 @@ sub commit
     else
     {
 	my $caller = (caller(1))[3];
-	warn "$caller called commit without corresponding begin_work call\n";
+	require Carp;
+        Carp::cluck( "$caller called commit without corresponding begin_work call\n" );
     }
 
     # Don't actually commit until we reach 'uber-commit'

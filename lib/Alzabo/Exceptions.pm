@@ -3,7 +3,7 @@ package Alzabo::Exceptions;
 use strict;
 use vars qw($VERSION);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.25 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.27 $ =~ /(\d+)\.(\d+)/;
 
 my %e;
 
@@ -44,6 +44,12 @@ BEGIN
 	   'Alzabo::Exception::Params' =>
 	   { description => 'An exception generated when there is an error in the parameters passed in a method of function call',
 	     isa => 'Alzabo::Exception' },
+
+	   'Alzabo::Exception::NotNullable' =>
+	   { description => 'An exception generated when there is an attempt is made to set a non-nullable column to NULL',
+	     isa => 'Alzabo::Exception::Params',
+             fields => [ 'column_name' ],
+           },
 
 	   'Alzabo::Exception::Panic' =>
 	   { description => 'An exception generated when something totally unexpected happens',
@@ -181,9 +187,7 @@ Alzabo::Exceptions - Creates all exception subclasses used in Alzabo.
 =head1 DESCRIPTION
 
 Using this class creates all the exceptions classes used by Alzabo
-(via the L<C<Exception::Class>|Exception::Class> class).  If the
-environment variable 'ALZABO_DEBUG' is true, then it will turn on
-stacktrace generation for all the exception classes.
+(via the L<C<Exception::Class>|Exception::Class> class).
 
 See L<C<Exception::Class>|Exception::Class> for more information on
 how this is done.

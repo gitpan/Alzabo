@@ -10,12 +10,13 @@ use Alzabo::Schema;
 use Alzabo::Table;
 
 use Alzabo::Config;
+use Alzabo::Debug;
 
 use vars qw($VERSION);
 
 use 5.005;
 
-$VERSION = '0.69';
+$VERSION = '0.70';
 
 1;
 

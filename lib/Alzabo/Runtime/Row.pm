@@ -10,7 +10,7 @@ Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params
 
 use Storable ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.88 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.91 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -80,6 +80,9 @@ sub _init
 
 	$self->_where($sql);
 
+        $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
+        print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
+
 	$self->_no_such_row_error
 	    unless defined $self->schema->driver->one_row( sql => $sql->sql,
 							   bind => $sql->bind );
@@ -104,6 +107,9 @@ sub _get_data
 		select( $self->table->columns(@_) )->
 		from( $self->table ) );
     $self->_where($sql);
+
+    $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
+    print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
     my @row = $self->schema->driver->one_row( sql => $sql->sql,
 					      bind => $sql->bind )
@@ -168,8 +174,11 @@ sub update
 	    next;
 	}
 
-	Alzabo::Exception::Params->throw( error => "Column " . $c->name . " cannot be null." )
-	    unless defined $data{$k} || $c->nullable || defined $c->default;
+	Alzabo::Exception::NotNullable->throw
+            ( error => $c->name . " column in " . $self->table->name . " table cannot be null.",
+              column_name => $c->name,
+            )
+                unless defined $data{$k} || $c->nullable || defined $c->default;
 
 	push @fk, $self->table->foreign_keys_by_column($c)
 	    if $self->schema->referential_integrity;
@@ -192,6 +201,9 @@ sub update
 	{
 	    $fk->register_update( map { $_->name => $data{ $_->name } } $fk->columns_from );
 	}
+
+        $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
+        print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
 	$schema->driver->do( sql => $sql->sql,
 			     bind => $sql->bind );
@@ -237,6 +249,9 @@ sub delete
 	{
 	    $fk->register_delete($self);
 	}
+
+        $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
+        print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
 	$schema->driver->do( sql => $sql->sql,
 			     bind => $sql->bind );
@@ -399,8 +414,12 @@ sub STORABLE_thaw
 
     if ( $Alzabo::ObjectCache::VERSION && $self->can('cache_id') )
     {
+        # look for cached version first and return it
+
 	$self->{cache} = Alzabo::ObjectCache->new;
 	$self->{cache}->store_object( $self, delete $self->{sync_time} );
+
+        # check cache here?
     }
 
     return $self;

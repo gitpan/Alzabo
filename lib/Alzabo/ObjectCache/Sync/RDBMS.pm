@@ -9,7 +9,7 @@ use base qw(Alzabo::ObjectCache::Sync);
 
 use Digest::MD5 ();
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.13 $ =~ /(\d+)\.(\d+)/;
 
 sub import
 {
@@ -89,6 +89,7 @@ sub import
 	$sync_table->make_column( name   => 'sync_time',
 				  type   => 'varchar',
 				  length => 40,
+                                  nullable => 1,
 				);
 
 	$create->create(%CONNECT_PARAMS);
@@ -179,6 +180,8 @@ sub update
 
 	$self->{driver}->commit;
     };
+
+    $self->{driver}->rollback if $@;
 }
 
 

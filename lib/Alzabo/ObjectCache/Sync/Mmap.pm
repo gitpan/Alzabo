@@ -9,7 +9,7 @@ use vars qw($VERSION $CACHE);
 use Alzabo::ObjectCache::Sync;
 use base qw( Alzabo::ObjectCache::Sync );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/;
 
 1;
 
@@ -66,25 +66,20 @@ __END__
 
 =head1 NAME
 
-Alzabo::ObjectCache::Sync::IPC - Uses a IPC file to sync object caches
+Alzabo::ObjectCache::Sync::Mmap - Uses a Mmap file to sync object caches
 
 =head1 SYNOPSIS
 
   use Alzabo::ObjectCache
       ( store => 'Alzabo::ObjectCache::Store::Memory',
-        sync  => 'Alzabo::ObjectCache::Sync::IPC',
+        sync  => 'Alzabo::ObjectCache::Sync::Mmap',
         clear_on_startup => 1 );
 
 =head1 DESCRIPTION
 
 This class implements object cache syncing between multiple processes
-using IPC to handle data storage.  The C<IPC::Shareable> module which
-it uses handles locking issues.
-
-In normal circumstances, the IPC segment used by this module is
-deleted when the process that first loaded the module ends.  If the
-program is aborted abnormally (via certain signals, for example) then
-this cleanup will probably not occur.
+using Mmap to handle data storage.  The C<Cache::Mmap> module handles
+locking.
 
 =head1 AUTHOR
 

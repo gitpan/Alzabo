@@ -1,5 +1,5 @@
 <pre>
-<% join "\n\n", map {"$_;"} @sql %>
+<% join "\n\n", map {"$_;"} @sql | h %>
 </pre>
 % if (@sql) {
 <table width="50%">

@@ -1,7 +1,7 @@
 package Alzabo::MethodMaker;
 
 use strict;
-use vars qw($VERSION $DEBUG);
+use vars qw($VERSION);
 
 use Alzabo::Exceptions;
 use Alzabo::Runtime;
@@ -9,9 +9,7 @@ use Alzabo::Runtime;
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.63 $ =~ /(\d+)\.(\d+)/;
-
-$DEBUG = $ENV{ALZABO_DEBUG} || 0;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.66 $ =~ /(\d+)\.(\d+)/;
 
 # types of methods that can be made - only ones that haven't been
 # deprecated
@@ -274,7 +272,8 @@ sub make_table_method
 
     my $method = join '::', $self->{schema_class}, $name;
 
-    warn "Making table access method $method: returns table\n" if $DEBUG;
+    print STDERR "Making table access method $method: returns table\n"
+        if Alzabo::Debug::METHODMAKER;
     {
 	no strict 'refs';
 	*{$method} = sub { return $t; };
@@ -314,7 +313,8 @@ sub make_table_column_methods
 
 	my $col_name = $c->name;
 
-	warn "Making column object $method: returns column object\n" if $DEBUG;
+	print STDERR "Making column object $method: returns column object\n"
+            if Alzabo::Debug::METHODMAKER;
 	{
 	    no strict 'refs';
 	    # We can't just return $c because we may need to go
@@ -348,7 +348,8 @@ sub make_row_column_methods
 
 	my $col_name = $c->name;
 
-	warn "Making column access $method: returns scalar value/takes new value\n" if $DEBUG;
+	print STDERR "Making column access $method: returns scalar value/takes new value\n"
+            if Alzabo::Debug::METHODMAKER;
 	{
 	    no strict 'refs';
 	    *{$method} = sub { my $self = shift;
@@ -426,7 +427,8 @@ sub make_foreign_key_methods
 
 	    my $method = join '::', $self->{row_class}, $name;
 
-	    warn "Making foreign key $method: returns row cursor\n" if $DEBUG;
+	    print STDERR "Making foreign key $method: returns row cursor\n"
+                if Alzabo::Debug::METHODMAKER;
 	    {
 		no strict 'refs';
 		*{$method} =
@@ -454,7 +456,8 @@ sub make_foreign_key_methods
 
 	    my $method = join '::', $self->{row_class}, $name;
 
-	    warn "Making foreign key $method: returns single row\n" if $DEBUG;
+	    print STDERR "Making foreign key $method: returns single row\n"
+                if Alzabo::Debug::METHODMAKER;
 	    {
 		no strict 'refs';
 		*{$method} =
@@ -500,13 +503,14 @@ sub make_self_relation
     {
 	my $parent = join '::', $self->{row_class}, $name;
 
-	warn "Making self-relationship method $parent: returns single row\n" if $DEBUG;
+	print STDERR "Making self-relationship method $parent: returns single row\n"
+            if Alzabo::Debug::METHODMAKER;
 	{
 	    no strict 'refs';
 	    *{$parent} =
 		sub { my $self = shift;
 		      my @where = map { [ $_->[0], '=', $self->select( $_->[1] ) ] } @pairs;
-		      return $table->one_row( where => \@where, @_ ) };
+                      return $table->one_row( where => \@where, @_ ); };
 	}
 
 	$self->{row_class}->add_method_docs
@@ -527,14 +531,25 @@ sub make_self_relation
 
     my $children = join '::', $self->{row_class}, $name;
 
-    warn "Making self-relationship method $children: returns row cursor\n" if $DEBUG;
+    print STDERR "Making self-relationship method $children: returns row cursor\n"
+        if Alzabo::Debug::METHODMAKER;
     {
 	no strict 'refs';
 	*{$children} =
 	    sub { my $self = shift;
+                  my %p = @_;
 		  my @where = map { [ $_->[0], '=', $self->select( $_->[1] ) ] } @reverse_pairs;
+                  if ( $p{where} )
+                  {
+                      @where = ( '(', @where, ')' );
+
+                      push @where,
+                          ref $p{where}->[0] eq 'ARRAY' ? @{ $p{where} } : $p{where};
+
+                      delete $p{where};
+                  }
 		  return $table->rows_where( where => \@where,
-					     @_ ); };
+					     %p ); };
     }
 
     $self->{row_class}->add_method_docs
@@ -588,7 +603,8 @@ sub make_linking_table_method
     my @t = ( $fk->table_to, $fk_2->table_to );
     my $select = [ $t[1] ];
 
-    warn "Making linking table method $method: returns row cursor\n" if $DEBUG;
+    print STDERR "Making linking table method $method: returns row cursor\n"
+        if Alzabo::Debug::METHODMAKER;
     {
 	no strict 'refs';
 	*{$method} =
@@ -638,7 +654,8 @@ sub make_lookup_columns_methods
 
 	my $method = join '::', $self->{row_class}, $name;
 	my $col_name = $_->name;
-	warn "Making lookup columns $method: returns scalar value of column\n" if $DEBUG;
+	print STDERR "Making lookup columns $method: returns scalar value of column\n"
+            if Alzabo::Debug::METHODMAKER;
 	{
 	    no strict 'refs';
 	    *{$method} =
@@ -679,7 +696,8 @@ sub make_hooks
 	return if *{$method}{CODE};
     }
 
-    warn "Making $type hooks method $method\n" if $DEBUG;
+    print STDERR "Making $type hooks method $method\n"
+        if Alzabo::Debug::METHODMAKER;
 
     my $meth = "make_$type\_hooks";
     $self->$meth($table);
@@ -1007,7 +1025,8 @@ sub make_lookup_table_method
     my $method = join '::', $self->{row_class}, $name;
 
     my $non_pk_name = (grep { ! $_->is_primary_key } $fk->table_to->columns)[0]->name;
-    warn "Making lookup table $method: returns scalar value of column\n" if $DEBUG;
+    print STDERR "Making lookup table $method: returns scalar value of column\n"
+        if Alzabo::Debug::METHODMAKER;
     {
 	no strict 'refs';
 	*{$method} =
@@ -1033,7 +1052,9 @@ sub make_insert_method
 	return if *{$method}{CODE};
     }
 
-    warn "Making insert method $method\n" if $DEBUG;
+    print STDERR "Making insert method $method\n"
+        if Alzabo::Debug::METHODMAKER;
+
     eval <<"EOF";
 {
     package $self->{table_class};
@@ -1063,7 +1084,8 @@ sub make_update_method
 	goto UNCACHED if *{$method}{CODE};
     }
 
-    warn "Making update method $method\n" if $DEBUG;
+    print STDERR "Making update method $method\n"
+        if Alzabo::Debug::METHODMAKER;
 
     eval <<"EOF";
 {
@@ -1089,7 +1111,8 @@ EOF
 	return if *{$method}{CODE};
     }
 
-    warn "Making update method $method\n" if $DEBUG;
+    print STDERR "Making update method $method\n"
+        if Alzabo::Debug::METHODMAKER;
 
     eval <<"EOF";
 {
@@ -1574,7 +1597,7 @@ Look for hooks to wrap around the C<insert> method in
 L<C<Alzabo::Runtime::Table>|Alzabo::Runtime::Table>.  See L<Loading
 Classes> for more details.  You have to define either a C<pre_insert>
 or C<post_insert> method (or both) for the generated table class or
-this parameter will not do anything.  See the L<HOOK|/"HOOKS"> section
+this parameter will not do anything.  See the L<HOOKS|/"HOOKS"> section
 for more details.
 
 =head2 Row object methods
@@ -1591,7 +1614,7 @@ Look for hooks to wrap around the C<update> method in
 L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>.  See L<Loading
 Classes> for more details.  You have to define either a C<pre_update>
 or C<post_update> method (or both) for the generated row class or this
-parameter will not do anything.  See the L<HOOK|/"HOOKS"> section for
+parameter will not do anything.  See the L<HOOKS|/"HOOKS"> section for
 more details.
 
 =head3 select_hooks => $bool
@@ -1600,7 +1623,7 @@ Look for hooks to wrap around the C<select> method in
 L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>.  See L<Loading
 Classes> for more details.  You have to define either a C<pre_select>
 or C<post_select> method (or both) for the generated row class or this
-parameter will not do anything.  See the L<HOOK|/"HOOKS"> section for
+parameter will not do anything.  See the L<HOOKS|/"HOOKS"> section for
 more details.
 
 =head3 delete_hooks => $bool
@@ -1609,7 +1632,7 @@ Look for hooks to wrap around the C<delete> method in
 L<C<Alzabo::Runtime::Row>|Alzabo::Runtime::Row>.  See L<Loading
 Classes> for more details.  You have to define either a C<pre_delete>
 or C<post_delete> method (or both) for the generated row class or this
-parameter will not do anything.  See the L<HOOK|/"HOOKS"> section for
+parameter will not do anything.  See the L<HOOKS|/"HOOKS"> section for
 more details.
 
 =head3 foreign_keys => $bool

@@ -13,7 +13,7 @@ use Time::HiRes qw(time);
 
 use base qw(Alzabo::Table);
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.90 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.95 $ =~ /(\d+)\.(\d+)/;
 
 sub insert
 {
@@ -50,8 +50,11 @@ sub insert
     {
 	next if $c->is_primary_key;
 
-	Alzabo::Exception::Params->throw( error => $c->name . " column in " . $self->name . " table cannot be null." )
-	    unless defined $vals->{ $c->name } || $c->nullable || defined $c->default;
+	Alzabo::Exception::NotNullable->throw
+            ( error => $c->name . " column in " . $self->name . " table cannot be null.",
+              column_name => $c->name,
+            )
+                unless defined $vals->{ $c->name } || $c->nullable || defined $c->default;
 
 	delete $vals->{ $c->name }
 	    if ! defined $vals->{ $c->name } && defined $c->default;
@@ -73,6 +76,9 @@ sub insert
 	{
 	    $fk->register_insert( map { $_->name => $vals->{ $_->name } } $fk->columns_from );
 	}
+
+        $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
+        print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
 	$self->schema->driver->do( sql => $sql->sql,
 				   bind => $sql->bind );
@@ -150,6 +156,7 @@ sub row_by_pk
 	}
     }
 
+    return unless $row;
     return $row;
 }
 
@@ -174,6 +181,9 @@ sub rows_where
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
 
+    $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
+    print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
+
     return $self->_cursor_by_sql( %p, sql => $sql );
 }
 
@@ -192,6 +202,9 @@ sub one_row
     {
 	$sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} );
     }
+
+    $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
+    print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
     my @return = $self->schema->driver->one_row( sql => $sql->sql,
 						 bind => $sql->bind )
@@ -224,6 +237,9 @@ sub all_rows
     my $self = shift;
 
     my $sql = $self->_make_sql;
+
+    $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
+    print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
     return $self->_cursor_by_sql( @_, sql => $sql );
 }
@@ -293,7 +309,11 @@ sub function
 
     my $sql = $self->_select_sql(%p);
 
-    my $method = UNIVERSAL::isa( $p{select}, 'ARRAY' ) && @{ $p{select} } > 1 ? 'rows' : 'column';
+    my $method =
+        UNIVERSAL::isa( $p{select}, 'ARRAY' ) && @{ $p{select} } > 1 ? 'rows' : 'column';
+
+    $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
+    print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
     return $self->schema->driver->$method( sql => $sql->sql,
 					   bind => $sql->bind );
@@ -304,6 +324,9 @@ sub select
     my $self = shift;
 
     my $sql = $self->_select_sql(@_);
+
+    $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
+    print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
 
     return $self->schema->driver->statement( sql => $sql->sql,
 					     bind => $sql->bind );

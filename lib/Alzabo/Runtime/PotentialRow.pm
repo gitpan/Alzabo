@@ -10,7 +10,7 @@ use base qw(Alzabo::Runtime::Row);
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
 
-$VERSION = sprintf '%2d.%02d', q$Revision: 1.10 $ =~ /(\d+)\.(\d+)/;
+$VERSION = sprintf '%2d.%02d', q$Revision: 1.11 $ =~ /(\d+)\.(\d+)/;
 
 sub new
 {
@@ -68,8 +68,11 @@ sub update
 	# This will throw an exception if the column doesn't exist.
 	my $c = $self->table->column($k);
 
-	Alzabo::Exception::Params->throw( error => "Column " . $c->name . " cannot be null." )
-	    unless defined $data{$k} || $c->nullable || defined $c->default;
+	Alzabo::Exception::NotNullable->throw
+            ( error => $c->name . " column in " . $self->table->name . " table cannot be null.",
+              column_name => $c->name,
+            )
+                unless defined $data{$k} || $c->nullable || defined $c->default;
     }
 
     @{ $self->{data} }{keys %data} = values %data;
