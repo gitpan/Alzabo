@@ -1,3 +1,19 @@
+0.85  October 12, 2004
+
+BUG FIXES:
+
+- The DECIMAL and NUMERIC column types in MySQL were not being treated
+as numeric types.  This meant that you couldn't give such a column the
+UNSIGNED attribute, among other problems.  Reported by Bob Sidebotham.
+
+- If a column had CHECK constraints, the Postgres reverse engineering
+failed.  Reported by Ken Miller, fixed by Joshua Jore.
+
+- Insert handles did not include sequenced Postgres columns, causing
+17-insert-handle.t to fail when run against Postgres.  Reported by
+Eric Schwartz.
+
+
 0.84  September 4, 2004
 
 ENHANCEMENTS:
@@ -8,7 +24,7 @@ you override the table class's name() method with one that returns a
 column object.
 
 
-BUG FIXES
+BUG FIXES:
 
 - Make Alzabo::Create::Schema->delete work under taint mode.  Reported
 by Dana Hudes.

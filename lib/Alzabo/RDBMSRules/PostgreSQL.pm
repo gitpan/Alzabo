@@ -952,7 +952,7 @@ EOF
             $con =~ s/::(\w+)//g;
 
 	    # If $cols ever covers more than one value then this will fail.
-            if ( $cols =~ /^\d+$/ )
+            if ( $cols =~ /^(\d+)$/ )
             {
                 my $column = $cols_by_number{$1};
 

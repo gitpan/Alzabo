@@ -160,7 +160,7 @@ sub insert_handle
     my %cols;
     my %vals;
     # Get the unique set of columns and associated values
-    foreach my $col ( @{ $p{columns} } )
+    foreach my $col ( @{ $p{columns} }, $self->primary_key )
     {
         $vals{ $col->name } = $placeholder;
         $cols{ $col->name } = 1;
@@ -633,7 +633,7 @@ Alzabo::Runtime::Table - Table objects
   my $row_cursor =
       $table->rows_where
           ( where =>
-            [ Alzabo::Column object, '=', 5 } );
+            [ Alzabo::Column object, '=', 5 ] );
 
 =head1 DESCRIPTION
 

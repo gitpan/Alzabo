@@ -25,8 +25,7 @@ require DBD::Pg;
 require Alzabo::Driver::PostgreSQL;
 
 
-plan tests => 28;
-
+plan tests => 29;
 
 Alzabo::Test::Utils->remove_schema('pg');
 
@@ -35,12 +34,14 @@ my $schema_name = delete $config->{schema_name};
 delete $config->{rdbms};
 
 {
+    # This seems to help avoid those damn 'source database "template1"
+    # is being accessed by other users' errors.  Freaking Postgres!
+    sleep 1;
+
     # We create a couple of tables *without* using Alzabo, then see
     # whether it can reverse-engineer them and preserve foreign key
     # relationships.
-
     my $dbh = Alzabo::Driver::PostgreSQL->_make_dbh( %$config, name => 'template1' );
-    eval {$dbh->do("DROP DATABASE $schema_name")};
     $dbh->do("CREATE DATABASE $schema_name");
     $dbh->disconnect;
 
@@ -87,6 +88,7 @@ delete $config->{rdbms};
                 (
                  person_id INTEGER NOT NULL,
                  cat_id    INTEGER NOT NULL,
+                 has_check CHAR(1)  CHECK (has_check = 'Q'  OR  has_check = 'P'),
                  FOREIGN KEY (person_id) REFERENCES foo_people (id),
                  FOREIGN KEY (cat_id)    REFERENCES foo_cats   (id),
                  PRIMARY KEY (person_id, cat_id)
@@ -129,6 +131,10 @@ ok( $schema, 'schema was created via reverse engineering' );
     ok( ! $dog_fk->from_is_dependent, 'from is not dependent' );
 }
 
+{
+    my $att = join '', $schema->table('cat_owner')->column('has_check')->attributes;
+    like( $att, qr/CHECK/, 'cat_owner.has_check has a constraint' );
+}
 {
     my @fk = $schema->table('foo_dogs')->all_foreign_keys;
     @fk = grep $_->from_is_dependent, @fk;

@@ -323,7 +323,7 @@ sub type_is_floating_point
     my $col  = shift;
     my $type = uc $col->type;
 
-    return 1 if $type =~ /\A(?:FLOAT|DOUBLE|REAL)\z/;
+    return 1 if $type =~ /\A(?:DECIMAL|NUMERIC|FLOAT|DOUBLE|REAL)\z/;
 }
 
 sub type_is_char

@@ -20,7 +20,7 @@ unless ( eval { require DBD::mysql } && ! $@ )
     exit;
 }
 
-plan tests => 11;
+plan tests => 21;
 
 
 my $new_schema;
@@ -95,5 +95,17 @@ my $table;
                                      );
 
         ok( $col->is_datetime, "$type is date" );
+    };
+}
+
+{
+    foreach my $type ( qw( DECIMAL NUMERIC FLOAT DOUBLE REAL ) )
+    {
+        my $col = $table->make_column( name => "col2_$type",
+                                       type => $type,
+                                     );
+
+        ok( $col->is_numeric, "$type is numeric" );
+        ok( $col->is_floating_point, "$type is floating point" );
     };
 }
