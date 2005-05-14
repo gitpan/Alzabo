@@ -7,6 +7,8 @@ use Alzabo::RDBMSRules;
 
 use Digest::MD5;
 
+use Text::Balanced ();
+
 use base qw(Alzabo::RDBMSRules);
 
 use Params::Validate qw( validate_pos );
@@ -316,6 +318,9 @@ sub column_types
                  TIMESTAMP
                  INTERVAL
 
+                 SERIAL
+                 BIGSERIAL
+
                  BOOLEAN
 
                  BIT
@@ -339,6 +344,8 @@ sub feature
 
 sub quote_identifiers { 1 }
 
+sub quote_identifiers_character { '"' }
+
 sub schema_sql
 {
     my $self = shift;
@@ -353,6 +360,12 @@ sub schema_sql
     # reference other tables.
     foreach my $t ( $schema->tables )
     {
+        foreach my $con ( grep { /\s*(?:check|constraint)/i } $t->attributes )
+        {
+            push @sql, $self->table_constraint_sql($t);
+        }
+
+
         foreach my $fk ( $t->all_foreign_keys )
         {
             push @sql, $self->foreign_key_sql($fk);
@@ -376,6 +389,8 @@ sub table_sql
 
     $sql .= join ",\n  ", map { $self->column_sql($_) } $table->columns;
 
+    my @att = $table->attributes;
+
     if (my @pk = $table->primary_key)
     {
         $sql .= ",\n";
@@ -383,10 +398,6 @@ sub table_sql
         $sql .= join ', ', map { '"' . $_->name . '"' } @pk;
         $sql .= ")\n";
     }
-
-    my @att = $table->attributes;
-
-    $sql .= join ",\n", grep { /\s*(?:check|constraint)/i } @att;
 
     $sql .= ")\n";
 
@@ -527,6 +538,14 @@ sub foreign_key_sql
 }
 
 sub _fk_name { 'fk_' . Digest::MD5::md5_hex( $_[1]->id ) }
+
+sub table_constraint_sql
+{
+    my $self = shift;
+    my $table = shift;
+
+    return map { 'ALTER TABLE "' . $table->name . '" ADD ' . $_ } $table->attributes;
+}
 
 sub drop_table_sql
 {
@@ -781,7 +800,7 @@ sub alter_column_name_sql
     my $column = shift;
 
     return
-        ( 'ALTER TABLE ' . $column->table->name . ' RENAME COLUMN ' .
+        ( 'ALTER TABLE "' . $column->table->name . '" RENAME COLUMN ' .
           $column->former_name . ' TO ' . $column->name
         );
 }
@@ -796,6 +815,7 @@ sub reverse_engineer
     foreach my $table ( $driver->tables )
     {
         $table =~ s/^[^\.]+\.//;
+        $table =~ s/^\"|\"$//g;
 
         print STDERR "Adding table $table to schema\n"
             if Alzabo::Debug::REVERSE_ENGINEER;
@@ -1012,7 +1032,8 @@ EOF
         if ( $spi )
         {
           SPI_EXPRESSION:
-            while ( my $spi_expr = extract_bracketed( $spi, '{}', '[^{}]*' ) )
+            while ( my $spi_expr =
+                    Text::Balanced::extract_bracketed( $spi, '{}', '[^{}]*' ) )
             {
                 push( @spi_exprs,
                       join( ' ',

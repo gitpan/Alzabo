@@ -137,7 +137,10 @@ sub features
           },
 
           { phrase     => 'to use the PostgreSQL driver',
-            requires   => { 'DBD::Pg' => 1.13 },
+            requires   => { 'DBD::Pg' => 1.13,
+                            'Text::Balanced' => 0,
+                            'Digest::MD5' => 0,
+                          },
             test   => 'pg',
           },
 

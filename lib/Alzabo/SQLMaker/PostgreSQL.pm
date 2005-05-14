@@ -128,6 +128,7 @@ sub _make_functions
 
 	      [ DATE_PART => [1,1], [ 'datetime' ] ],
 	      [ EXTRACT => [0,1], [ 'datetime' ], '%s FROM %s' ],
+	      [ DATE_TRUNC => [1,1], [ 'datetime' ] ],
 
 	      [ NULLIF => [0,0], [ 'control' ] ],
 	    )

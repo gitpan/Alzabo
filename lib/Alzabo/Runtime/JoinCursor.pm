@@ -120,7 +120,7 @@ Alzabo::Runtime::JoinCursor - Cursor that returns arrays of C<Alzabo::Runtime::R
   use Alzabo::Runtime::JoinCursor;
 
   my $cursor = $schema->join( tables => [ $foo, $bar ],
-                              where => [ $foo->column('foo_id') => 1 ] );
+                              where => [ $foo->column('foo_id'), '=', 1 ] );
 
   while ( my @rows = $cursor->next )
   {
@@ -130,11 +130,12 @@ Alzabo::Runtime::JoinCursor - Cursor that returns arrays of C<Alzabo::Runtime::R
 
 =head1 DESCRIPTION
 
-Objects in this class are used to return arrays Alzabo::Runtime::Row
-objects when requested.  The cursor does not preload objects but
-rather creates them on demand, which is much more efficient.  For more
-details on the rational please see L<the RATIONALE FOR CURSORS section
-in Alzabo::Design|Alzabo::Design/RATIONALE FOR CURSORS>.
+Objects in this class are used to return arrays of
+Alzabo::Runtime::Row objects when requested.  The cursor does not
+preload objects but rather creates them on demand, which is much more
+efficient.  For more details on the rational please see L<the
+RATIONALE FOR CURSORS section in
+Alzabo::Design|Alzabo::Design/RATIONALE FOR CURSORS>.
 
 =head1 INHERITS FROM
 

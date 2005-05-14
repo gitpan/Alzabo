@@ -73,7 +73,9 @@ sub insert
             if ! defined $vals->{ $c->name } && defined $c->default;
     }
 
-    my @fk = $self->all_foreign_keys;
+    my @fk;
+    @fk = $self->all_foreign_keys
+        if $schema->referential_integrity;
 
     my $sql = ( Alzabo::Runtime::sqlmaker( $self->schema, \%p )->
                 insert->

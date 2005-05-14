@@ -252,6 +252,8 @@ sub rules
     return $self->{rules};
 }
 
+sub quote_identifiers { $_[0]->{quote_identifiers} }
+
 sub sqlmaker
 {
     my $self = shift;

@@ -177,7 +177,7 @@ sub _make_dbh
     $dsn .= ";host=$p{host}" if $p{host};
     $dsn .= ";port=$p{port}" if $p{port};
 
-    foreach my $k ( grep { /^mysql/ } keys %p )
+    foreach my $k ( grep { /^mysql_/ } keys %p )
     {
         $dsn .= ";$k=$p{$k}";
     }

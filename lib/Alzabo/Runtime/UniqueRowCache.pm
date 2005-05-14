@@ -103,8 +103,8 @@ This clears the entire cache
 
 =item * clear_table( $table_object )
 
-Given a table object, this method clear all the rows associated with
-that table.
+Given a table object, this method clears all the cached rows from that
+table.
 
 =item * row_in_cache( $table_name, $row_id )
 

@@ -144,6 +144,8 @@ sub feature
 
 sub quote_identifiers { 0 }
 
+sub quote_identifiers_character { '' }
+
 sub schema_attributes
 {
     shift()->_virtual;
@@ -195,11 +197,15 @@ sub index_sql
     my $index = shift;
 
     my $index_name = $index->id;
-    $index_name = qq|"$index_name"| if $self->quote_identifiers;
+    $index_name = $self->quote_identifiers_character . $index_name . $self->quote_identifiers_character;
 
     my $sql = 'CREATE';
     $sql .= ' UNIQUE' if $index->unique;
-    $sql .= " INDEX $index_name ON " . $index->table->name . ' ( ';
+    $sql .= " INDEX $index_name ON ";
+    $sql .= $self->quote_identifiers_character;
+    $sql .= $index->table->name;
+    $sql .= $self->quote_identifiers_character;
+    $sql .= ' ( ';
 
     if ( defined $index->function )
     {
@@ -207,7 +213,11 @@ sub index_sql
     }
     else
     {
-        $sql .= join ', ', map { $_->name } $index->columns;
+        $sql .=
+            ( join ', ',
+              map { $self->quote_identifiers_character . $_->name . $self->quote_identifiers_character }
+              $index->columns
+            );
     }
 
     $sql .= ' )';
@@ -225,7 +235,7 @@ sub drop_table_sql
     my $self = shift;
 
     my $name = shift->name;
-    $name = qq|"$name"| if $self->quote_identifiers;
+    $name = $self->quote_identifiers_character . $name . $self->quote_identifiers_character;
 
     return "DROP TABLE $name";
 }

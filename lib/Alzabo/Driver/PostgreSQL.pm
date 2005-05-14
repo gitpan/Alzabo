@@ -66,7 +66,7 @@ sub schemas
 
     my @schemas = ( map { if ( defined )
                           {
-                              /dbi:\w+:dbname=(\w+)/i;
+                              /dbi:\w+:dbname="?(\w+)"?/i;
                               $1 ? $1 : ();
                           }
                           else
@@ -98,7 +98,7 @@ sub create_database
     # connect to something else.  "template1" should always be there.
     my $dbh = $self->_make_dbh( @_, name => 'template1' );
 
-    eval { $dbh->do( "CREATE DATABASE " . $self->{schema}->db_schema_name ); };
+    eval { $dbh->do( "CREATE DATABASE " . $dbh->quote_identifier( $self->{schema}->db_schema_name ) ); };
 
     my $e = $@;
 
@@ -118,7 +118,7 @@ sub drop_database
 
     my $dbh = $self->_make_dbh( @_, name => 'template1' );
 
-    eval { $dbh->do( "DROP DATABASE " . $self->{schema}->db_schema_name ); };
+    eval { $dbh->do( "DROP DATABASE " . $dbh->quote_identifier( $self->{schema}->db_schema_name ) ); };
     my $e = $@;
 
     eval { $dbh->disconnect; };
@@ -146,13 +146,20 @@ sub _make_dbh
                                       optional => 1 },
                          tty => { type => SCALAR | UNDEF,
                                   optional => 1 },
+                         service => { type => SCALAR | UNDEF,
+                                      optional => 1 },
+                         sslmode => { type => SCALAR | UNDEF,
+                                      optional => 1 },
+                         map { $_ => 0 } grep { /^pg_/ } keys %p,
                        } );
 
     my $dsn = "dbi:Pg:dbname=$p{name}";
-    foreach ( qw( host port options tty ) )
+    foreach ( qw( host port options tty service sslmode ) )
     {
-        $dsn .= ";$_=$p{$_}" if $p{$_};
+        $dsn .= ";$_=$p{$_}" if grep { defined && length } $p{$_};
     }
+
+    my %pg_keys = map { $_ => $p{$_} } grep { /^pg_/ } keys %p;
 
     my $dbh;
     eval
@@ -163,6 +170,7 @@ sub _make_dbh
                              { RaiseError => 1,
                                AutoCommit => 1,
                                PrintError => 0,
+                               %pg_keys,
                              }
                            );
     };
@@ -198,6 +206,9 @@ sub next_sequence_number
     {
         $seq_name = join '___', $col->table->name, $col->name;
     }
+
+    $seq_name = $self->{dbh}->quote_identifier($seq_name)
+        if $self->{schema}->quote_identifiers;
 
     $self->{last_id} = $self->one_row( sql => "SELECT NEXTVAL('$seq_name')" );
 

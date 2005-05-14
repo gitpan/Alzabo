@@ -39,7 +39,10 @@ foreach my $rdbms (@rdbms_names)
     eval_ok( sub { $s->create(%$config) },
              "call create() for $rdbms with name parameter" );
 
-    my %schemas = map { $_ => 1  } $s->driver->schemas;
+    my %schemas =
+        ( map { $_ => 1  }
+          $s->driver->schemas( Alzabo::Test::Utils->connect_params_for($rdbms) )
+        );
     ok( $schemas{$name},
         "schema with new name ($name) was created for $rdbms" );
 

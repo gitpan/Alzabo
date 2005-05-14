@@ -259,6 +259,8 @@ sub STORABLE_thaw
             $_[0] = $row;
         }
     }
+
+    return $self;
 }
 
 BEGIN

@@ -1,3 +1,47 @@
+0.87  May 14, 2005
+
+BUG FIXES:
+
+- Table names in CREATE INDEX statements for Postgres were not quoted.
+
+- Database names in CREATE/DROP DATABASE statements for Postgres were
+not quoted.
+
+- Postgres database names with upper case characters were never being
+detected as being instantiated, which meant Alzabo always tried to
+recreate the schema from scratch.
+
+- ALTER TABLE statements for Postgres left the table name unquoted
+when renaming a column.
+
+- Even if Alzabo::Runtime::Schema->referential_integrity was false,
+Alzabo was still doing referential integrity checking on inserts.
+Reported by Michal Jurosz.
+
+- 19-schema-name.t did not use the user-supplied connection parameters
+and could fail because of this.  Reported by Daniel Puro.
+
+- Handle quotes in table names returned by Postgres when reverse
+engineering.
+
+- Reverse engineering a Postgres schema that contained indexes on
+functions could fail because the Alzabo::RDBMSRules::PostgreSQL code
+used a function from Text::Balanced without loading it first (or
+making it a prereq for the distro).  Reported by an anonymous user via
+rt.cpan.org.
+
+- When getting the next sequence number from a Postgres schema, Alzabo
+was not quoting the sequence name even if the schema's
+quote_identifiers attribute was true.  Reported by "Martin" via
+rt.cpan.org.
+
+ENHANCEMENTS:
+
+- Allow any key starting with "pg_" when connecting a Postgres
+database.  This allows you to pass attributes like "pg_enable_utf8" or
+"pg_bool_tf".  Prompted by a discussion with Boris Shomodjvarac.
+
+
 0.86  December 22, 2004
 
 BUG FIXES:
