@@ -941,7 +941,7 @@ sub save_to_file
     close $fh
         or system_exception "Unable to close $version_save_name: $!";
 
-    my $rt = $self->_make_runtime_clone;
+    my $rt = $self->runtime_clone;
 
     my $runtime_save_name = $self->_base_filename( $self->{name} ) . '.runtime.alz';
 
@@ -978,7 +978,7 @@ sub clone
     return $clone;
 }
 
-sub _make_runtime_clone
+sub runtime_clone
 {
     my $self = shift;
 
@@ -1465,6 +1465,11 @@ L<C<Alzabo::Exception::RDBMSRules>|Alzabo::Exceptions>
 Saves the schema to a file on disk.
 
 Throws: L<C<Alzabo::Exception::System>|Alzabo::Exceptions>
+
+=head2 runtime_clone
+
+Returns a new C<Alzabo::Runtime::Schema> object based on the current
+schema.
 
 =head2 is_saved
 

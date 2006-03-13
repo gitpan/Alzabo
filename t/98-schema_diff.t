@@ -82,9 +82,8 @@ foreach my $rdbms (@rdbms_names)
     eval_ok( sub { $s->create(%connect) },
 	     "Create schema (via diff) with one column (null and with a default) added" );
 
-    my $dbh = $s->driver->handle;
-    $dbh->do( 'INSERT INTO cruft (cruft_id, cruftiness) VALUES (1, 2)' );
-    $dbh->do( 'INSERT INTO cruft (cruft_id, cruftiness) VALUES (2, 4)' );
+    $s->driver->handle->do( 'INSERT INTO cruft (cruft_id, cruftiness) VALUES (1, 2)' );
+    $s->driver->handle->do( 'INSERT INTO cruft (cruft_id, cruftiness) VALUES (2, 4)' );
 
     my $float_type = $rdbms eq 'pg' ? 'float8' : 'float';
     $s->table('cruft')->column('cruftiness')->set_type($float_type);
@@ -94,7 +93,7 @@ foreach my $rdbms (@rdbms_names)
 	     "Create schema (via diff) with a table name change and column type change" );
 
     my ($val) =
-        $dbh->selectrow_array( 'SELECT cruftiness FROM new_cruft WHERE cruft_id = 2' );
+        $s->driver->handle->selectrow_array( 'SELECT cruftiness FROM new_cruft WHERE cruft_id = 2' );
     is( $val, 4,
         "Data should be preserved across table name change" );
 
@@ -104,7 +103,7 @@ foreach my $rdbms (@rdbms_names)
 	     "Create schema (via diff) with a column name change" );
 
     ($val) =
-        $dbh->selectrow_array( 'SELECT cruftiness FROM new_cruft WHERE new_cruft_id = 2' );
+        $s->driver->handle->selectrow_array( 'SELECT cruftiness FROM new_cruft WHERE new_cruft_id = 2' );
     is( $val, 4,
         "Data should be preserved across column name change" );
 

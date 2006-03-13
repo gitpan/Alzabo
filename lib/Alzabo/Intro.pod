@@ -170,6 +170,29 @@ L<C<Alzabo::MethodMaker>|Alzabo::MethodMaker>:
       print '  ', $job->job, "\n";
   }
 
+=head2 Updating data
+
+Updates are done by calling the C<update()> method on a row object:
+
+  $movie->update( title => 'Chungking Express',
+                  year  => 1994 );
+
+If you are using C<Alzabo::MethodMaker>, the per-column accessors it
+generates for row objects can be used to set a column's value:
+
+  $movie->title('Chungking Express');
+
+Be careful with this, though, because updates are done immediately
+against the RDBMS, meaning each call to a setter method issues an
+C<UPDATE> query.  It's much more efficient to call the C<update()>
+method once with multiple values.
+
+=head2 Deleting data
+
+To delete a row, just call it's C<delete()> method:
+
+  $movie->delete;
+
 =head2 Validating data
 
 Let's assume that we've been passed a hash of values representing an

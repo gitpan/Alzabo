@@ -2,6 +2,10 @@ To Do List
 
 Short term:
 
+- Track multiple historical versions of a schema like VMWare's
+snapshot/clone system.  Store each copy separately on disk for
+efficiency.
+
 - Make RDBMSRules query driver for more stuff (max identifier length,
 reverse engineering, etc.).  This will require an active driver when a
 new schema is created, however.

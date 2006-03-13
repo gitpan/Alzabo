@@ -29,8 +29,6 @@ sub connect
 {
     my $self = shift;
 
-    return if $self->{dbh} && $self->{dbh}->ping;
-
     $self->disconnect if $self->{dbh};
     $self->{dbh} = $self->_make_dbh( @_,
                                      name => $self->{schema}->db_schema_name
@@ -98,7 +96,7 @@ sub rdbms_version
 {
     my $self = shift;
 
-    $self->_check_dbh;
+    $self->_ensure_valid_dbh;
     my $version = $self->{dbh}{mysql_serverinfo};
 
     $version =~ s/[^\d\.]//g;
@@ -155,7 +153,7 @@ sub drop_database
     $dbh->disconnect;
 }
 
-sub _make_dbh
+sub _connect_params
 {
     my $self = shift;
 
@@ -182,23 +180,12 @@ sub _make_dbh
         $dsn .= ";$k=$p{$k}";
     }
 
-    my $dbh;
-    eval
-    {
-        $dbh = DBI->connect( $dsn,
-                             $p{user},
-                             $p{password},
-                             { RaiseError => 1,
-                               AutoCommit => 1,
-                               PrintError => 0,
-                             }
-                           );
-    };
-
-    Alzabo::Exception::Driver->throw( error => $@ ) if $@;
-    Alzabo::Exception::Driver->throw( error => "Unable to connect to database\n" ) unless $dbh;
-
-    return $dbh;
+    return [ $dsn, $p{user}, $p{password},
+             { RaiseError => 1,
+               AutoCommit => 1,
+               PrintError => 0,
+             }
+           ];
 }
 
 sub next_sequence_number

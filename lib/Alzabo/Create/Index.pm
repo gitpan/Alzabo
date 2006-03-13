@@ -218,6 +218,15 @@ Indicates whether or not this is a unique index.
 
 Indicates whether or not this is a fulltext index.
 
+=item * function => $string
+
+This can be used to create a function index where supported. The value
+of this parameter should be the full function, with column names, such
+as C<LCASE( username )>.
+
+The "columns" parameter should include all the columns used in the
+function.
+
 =back
 
 Returns a new C<Alzabo::Create::Index> object.

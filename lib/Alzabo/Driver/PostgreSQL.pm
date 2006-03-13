@@ -26,15 +26,14 @@ sub new
 sub connect
 {
     my $self = shift;
-    my %p = @_;
 
     $self->{tran_count} = undef;
 
-    return if $self->{dbh} && $self->{dbh}->ping;
-
     # This database handle is stale or nonexistent, so we need to (re)connect
-    $self->disconnect;
-    $self->{dbh} = $self->_make_dbh( %p, name => $self->{schema}->db_schema_name );
+    $self->disconnect if $self->{dbh};
+    $self->{dbh} = $self->_make_dbh( @_,
+                                     name => $self->{schema}->db_schema_name
+                                   );
 }
 
 sub supports_referential_integrity { 1 }
@@ -122,15 +121,14 @@ sub drop_database
     my $e = $@;
 
     eval { $dbh->disconnect; };
+    $e ||= $@;
 
     Alzabo::Exception::Driver->throw( error => $e ) if $e;
-    Alzabo::Exception::Driver->throw( error => $@ ) if $@;
 }
 
-sub _make_dbh
+sub _connect_params
 {
     my $self = shift;
-
     my %p = @_;
 
     %p = validate( @_, { name => { type => SCALAR },
@@ -161,24 +159,13 @@ sub _make_dbh
 
     my %pg_keys = map { $_ => $p{$_} } grep { /^pg_/ } keys %p;
 
-    my $dbh;
-    eval
-    {
-        $dbh = DBI->connect( $dsn,
-                             $p{user},
-                             $p{password},
-                             { RaiseError => 1,
-                               AutoCommit => 1,
-                               PrintError => 0,
-                               %pg_keys,
-                             }
-                           );
-    };
-
-    Alzabo::Exception::Driver->throw( error => $@ ) if $@;
-    Alzabo::Exception::Driver->throw( error => "Unable to connect to database\n" ) unless $dbh;
-
-    return $dbh;
+    return [ $dsn, $p{user}, $p{password},
+             { RaiseError => 1,
+               AutoCommit => 1,
+               PrintError => 0,
+               %pg_keys,
+             },
+           ];
 }
 
 sub next_sequence_number
@@ -186,7 +173,7 @@ sub next_sequence_number
     my $self = shift;
     my $col = shift;
 
-    $self->_check_dbh;
+    $self->_ensure_valid_dbh;
 
     Alzabo::Exception::Params->throw
         ( error => "This column (" . $col->name . ") is not sequenced" )

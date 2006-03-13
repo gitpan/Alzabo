@@ -39,7 +39,10 @@ sub available_schemas
     foreach my $e (readdir DIR)
     {
         next if $e eq $curdir || $e eq $updir;
-        push @s, $e if -d File::Spec->catdir( $dirname, $e ) && -r _;
+
+        my $dir = File::Spec->catdir( $dirname, $e );
+        push @s, $e
+            if -d $dir && -r _ && glob "$dir/*.alz";
     }
 
     closedir DIR

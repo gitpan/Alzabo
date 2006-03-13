@@ -11,25 +11,54 @@ use Alzabo::Build;
 
 use Getopt::Long;
 my %opts;
-GetOptions( \%opts, 'dist' );
+GetOptions( 'dist'   => \$opts{dist},
+            'root:s' => \$opts{root},
+            'pg!'    => \$opts{pg},
+            'mysql!' => \$opts{mysql},
+            'automated' => \$opts{automated},
+            'help'   => \$opts{help},
+          );
+
+if ( $opts{help} )
+{
+    print <<'EOF';
+
+  perl Build.PL [--automated] [--pg] [--mysql]
+
+This script accepts several options:
+
+  --automated         Run without prompts
+
+  --pg                Include prereqs for PostgreSQL support
+
+  --mysql             Include prereqs for MySQL support
+
+  --root              Root dir for storing Alzabos schemas
+
+  --help              What you are reading
+
+EOF
+
+    exit;
+}
 
 {
-    my ( $config, $prereq, $tests );
+    my ( $config, $prereqs, $tests );
     unless ( $opts{dist} )
     {
-        ( $config, $prereq, $tests ) = config();
+        ( $config, $prereqs, $tests ) = config();
         write_config_module($config);
     }
     else
     {
-        $prereq = dist_prereq();
+        $prereqs = dist_prereqs();
         $config = {};
     }
 
     my $build =
         Alzabo::Build->new( module_name => 'Alzabo',
                             license => 'perl',
-                            %$prereq,
+                            %$prereqs,
                             sign => 1,
                           );
 
@@ -74,23 +103,32 @@ EOF
 
     $config{root_dir} = root_dir();
 
-    my ( $prereq, $tests ) = features();
+    my ( $prereqs, $tests ) = features();
 
     my $test_config = test_config($tests);
 
-    return \%config, $prereq, $test_config;
+    return \%config, $prereqs, $test_config;
 }
 
 sub root_dir
 {
+    my $root_dir =
+        ( $opts{root}
+          ? $opts{root}
+          : %Alzabo::Config::CONFIG
+          ? Alzabo::Config::root_dir()
+          : find_possible_root()
+        );
+
+    return $root_dir if $opts{automated};
+
     print <<'EOF';
 
 Please select a root directory for Alzabo (schema files will be stored
 under this root.
 EOF
 
-    my $root_dir = Alzabo::Config::root_dir() if %Alzabo::Config::CONFIG;
-    return Module::Build->prompt( '  Alzabo root?', $root_dir || find_possible_root() );
+    return Module::Build->prompt( '  Alzabo root?', $root_dir );
 }
 
 sub find_possible_root
@@ -107,7 +145,7 @@ sub find_possible_root
     }
     else
     {
-	@dirs = qw( /usr/local );
+	@dirs = qw( /var/lib /usr/local );
     }
 
     unshift @dirs, '/opt' if $^O =~ /solaris/i;
@@ -125,30 +163,36 @@ sub find_possible_root
 sub features
 {
     # These are always needed
-    my %prereq = default_prereq();
+    my %prereqs = default_prereqs();
 
     my ( %tests );
 
     # extra prereqs for certain features
-    my @features =
-        ( { phrase   => 'to use the MySQL driver',
-            requires => { 'DBD::mysql' => 2.1017 },
-            test     => 'mysql',
-          },
+    my %features =
+        ( mysql => { phrase   => 'to use the MySQL driver',
+                     requires => { 'DBD::mysql' => 2.1017 },
+                     test     => 'mysql',
+                   },
 
-          { phrase     => 'to use the PostgreSQL driver',
-            requires   => { 'DBD::Pg' => 1.13,
-                            'Text::Balanced' => 0,
-                            'Digest::MD5' => 0,
-                          },
-            test   => 'pg',
-          },
-
-#           { phrase => 'to use Oracle driver',
-#             requires => { 'DBD::Oracle' => 0 },
-#             test   => 'oracle',
-#           },
+          pg    => { phrase     => 'to use the PostgreSQL driver',
+                     requires   => { 'DBD::Pg' => 1.13,
+                                     'Text::Balanced' => 0,
+                                     'Digest::MD5' => 0,
+                                   },
+                     test   => 'pg',
+                   },
         );
+
+    if ( $opts{automated} )
+    {
+        for my $k ( grep { $opts{$_} } keys %features )
+        {
+            _add_to_prereqs( \%prereqs, $features{$k} );
+            $tests{$k} = 1;
+        }
+
+        return \%prereqs, \%tests;
+    }
 
     print <<'EOF';
 
@@ -158,7 +202,7 @@ to perform.
 
 EOF
 
-    foreach my $feature (@features)
+    foreach my $feature ( map { $features{$_} } sort keys %features )
     {
 	print "\n";
 
@@ -190,23 +234,29 @@ EOF
 
 	if ($wanted)
 	{
-            foreach my $type ( qw( requires recommends ) )
-            {
-                $prereq{$type} =
-                    { %{ $prereq{$type} },
-                      %{ $feature->{$type} },
-                    }
-                        if $feature->{$type};
-            }
+            _add_to_prereqs( \%prereqs, $feature );
 
 	    $tests{ $feature->{test} } = 1 if exists $feature->{test};
 	}
     }
 
-    return \%prereq, \%tests;
+    return \%prereqs, \%tests;
 }
 
-sub default_prereq
+sub _add_to_prereqs
+{
+    my $prereqs = shift;
+    my $feature = shift;
+
+    foreach my $type ( grep { $feature->{$_} } qw( requires recommends ) )
+    {
+        $prereqs->{$type} = { %{ $prereqs->{$type} },
+                              %{ $feature->{$type} },
+                            };
+    }
+}
+
+sub default_prereqs
 {
     return
         ( requires =>
@@ -228,16 +278,16 @@ sub default_prereq
         );
 }
 
-sub dist_prereq
+sub dist_prereqs
 {
-    my %prereq = default_prereq();
+    my %prereqs = default_prereqs();
 
-    $prereq{requires}{DBI} = 1.21;
+    $prereqs{requires}{DBI} = 1.21;
 
-    $prereq{recommends}{'DBD::mysql'} = 2.1017;
-    $prereq{recommends}{'DBD::Pg'} = 1.13;
+    $prereqs{recommends}{'DBD::mysql'} = 2.1017;
+    $prereqs{recommends}{'DBD::Pg'} = 1.13;
 
-    return \%prereq;
+    return \%prereqs;
 }
 
 sub minimum_dbi_version
@@ -259,8 +309,7 @@ sub write_config_module
     my $config = shift;
 
     # config items that the config module cares about
-    my @keys =
-        qw( mason_web_dir mason_extension root_dir );
+    my @keys = qw( root_dir );
 
     my $file = File::Spec->catfile( 'inc', 'Alzabo', 'Config.pm.tmpl' );
     local *MOD;
@@ -301,6 +350,8 @@ sub write_config_module
 sub test_config
 {
     my $tests = shift;
+
+    return if $opts{automated};
 
     my @config;
 

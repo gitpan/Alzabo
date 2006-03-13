@@ -28,6 +28,7 @@ sub make_function
 		    is_modifier => { type => SCALAR, default => 0 },
 		    has_spaces => { type => SCALAR, default => 0 },
 		    allows_alias => { type => SCALAR, default => 1 },
+		    no_parens => { type => SCALAR, default => 0 },
 		  } );
 
     my $valid = '';
@@ -68,19 +69,12 @@ sub make_function
 	push @args, $quote;
     }
 
-    if ( $p{is_modifier} )
+    for my $k ( qw( is_modifier has_spaces allows_alias no_parens ) )
     {
-	push @args, '                                      is_modifier => 1';
-    }
-
-    if ( $p{has_spaces} )
-    {
-	push @args, '                                      has_spaces => 1';
-    }
-
-    if ( $p{allows_alias} )
-    {
-	push @args, '                                      allows_alias => 1';
+        if ( $p{$k} )
+        {
+            push @args, "                                      $k => 1";
+        }
     }
 
     my $args = join ",\n", @args;
@@ -1192,7 +1186,8 @@ sub as_string
 
     return $sql if $self->{is_modifier};
 
-    $sql .= '(';
+    $sql .= '('
+        unless $self->{no_parens};
 
     if ( $self->{format} )
     {
@@ -1203,7 +1198,8 @@ sub as_string
 	$sql .= join ', ', @args;
     }
 
-    $sql .= ')';
+    $sql .= ')'
+        unless $self->{no_parens};
 
     return $sql;
 }

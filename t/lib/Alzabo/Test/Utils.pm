@@ -478,6 +478,9 @@ sub make_pg_schema
 		       );
 
     $emp_t->make_index( columns => [ { column => $emp_t->column('name') } ] );
+    $emp_t->make_index( columns => [ { column => $emp_t->column('smell') } ],
+                        function => 'lower(smell)',
+                      );
 
     $s->make_table( name => 'department');
     my $dep_t = $s->table('department');

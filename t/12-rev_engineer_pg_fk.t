@@ -20,6 +20,13 @@ unless ( keys %$config )
     exit;
 }
 
+{
+    package FakeSchema;
+
+    sub new { return bless { name => $_[1] }, $_[0] }
+
+    sub db_schema_name { $_[0]->{name} }
+}
 
 require DBD::Pg;
 require Alzabo::Driver::PostgreSQL;
@@ -41,13 +48,22 @@ delete $config->{rdbms};
     # We create a couple of tables *without* using Alzabo, then see
     # whether it can reverse-engineer them and preserve foreign key
     # relationships.
-    my $dbh = Alzabo::Driver::PostgreSQL->_make_dbh( %$config, name => 'template1' );
+    my $driver = Alzabo::Driver->new( rdbms  => 'PostgreSQL',
+                                      schema => FakeSchema->new('template1'),
+                                    );
+    $driver->connect( %$config );
+    my $dbh = $driver->handle;
+
     $dbh->do("CREATE DATABASE $schema_name");
     $dbh->disconnect;
 
     ok( 1, 'drop and create database' );
 
-    $dbh = Alzabo::Driver::PostgreSQL->_make_dbh( %$config, name => $schema_name );
+    $driver = Alzabo::Driver->new( rdbms  => 'PostgreSQL',
+                                   schema => FakeSchema->new($schema_name),
+                                 );
+    $driver->connect( %$config );
+    $dbh = $driver->handle;
 
     $dbh->do( q{CREATE TABLE foo_people  -- one-column primary key
                 (

@@ -28,9 +28,9 @@ sub _make_functions
     local *make_function = \&Alzabo::SQLMaker::make_function;
 
     foreach ( [ NOW => [ 'datetime', 'common' ] ],
-	      [ CURRENT_DATE => [ 'datetime' ] ],
-	      [ CURRENT_TIME => [ 'datetime' ] ],
-	      [ CURRENT_TIMESTAMP => [ 'datetime' ] ],
+	      [ CURRENT_DATE => [ 'datetime' ], { no_parens => 1 } ],
+	      [ CURRENT_TIME => [ 'datetime' ], { no_parens => 1 } ],
+	      [ CURRENT_TIMESTAMP => [ 'datetime' ], { no_parens => 1 } ],
 	      [ TIMEOFDAY => [ 'datetime' ] ],
 
 	      [ PI => [ 'math' ] ],
@@ -45,6 +45,7 @@ sub _make_functions
 		       min => 0,
 		       max => 0,
 		       groups => $_->[1],
+                       $_->[2] ? %{ $_->[2] } : (),
 		     );
     }
 
@@ -322,6 +323,7 @@ functions (organized by tag) are:
  TIMESTAMP
  TO_CHAR
  DATE_PART
+ DATE_TRUNC
  EXTRACT
  OVERLAPS
 

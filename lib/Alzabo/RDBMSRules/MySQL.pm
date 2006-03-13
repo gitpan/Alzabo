@@ -190,9 +190,9 @@ sub validate_column_length
         return;
     }
 
-    if ( $column->type =~ /\A(?:(?:NATIONAL\s+)?VAR)?CHAR/i )
+    if ( $column->type =~ /\A(?:(?:NATIONAL\s+)?VAR)?(?:CHAR|BINARY)/i )
     {
-        Alzabo::Exception::RDBMSRules->throw( error => "CHAR and VARCHAR columns must have a length provided." )
+        Alzabo::Exception::RDBMSRules->throw( error => "(VAR)CHAR and (VAR)BINARY columns must have a length provided." )
             unless defined $column->length && $column->length > 0;
         Alzabo::Exception::RDBMSRules->throw( error => "Max display value is too long.  Maximum allowed value is 255." )
             if $column->length > 255;
@@ -286,7 +286,7 @@ sub validate_index
                 unless $prefix =~ /\d+/ && $prefix > 0;
 
             Alzabo::Exception::RDBMSRules->throw( error => 'Non-character/blob columns cannot have an index prefix' )
-                unless $c->is_blob || $c->is_character;
+                unless $c->is_blob || $c->is_character || $c->type =~ /^(?:VAR)BINARY$/i;
         }
 
         if ( $c->is_blob )
@@ -298,7 +298,7 @@ sub validate_index
         if ( $index->fulltext )
         {
             Alzabo::Exception::RDBMSRules->throw( error => 'A fulltext index can only include text or char columns' )
-                unless $c->is_character || $c->type =~ /\A(?:TINY|MEDIUM|LONG)?TEXT\z/i;
+                unless $c->is_character;
         }
     }
 
@@ -425,6 +425,7 @@ sub column_types
 my %features = map { $_ => 1 } qw ( extended_column_types
                                     index_prefix
                                     fulltext_index
+                                    allows_raw_default
                                   );
 sub feature
 {
@@ -511,10 +512,9 @@ sub column_sql
     my @default;
     if ( defined $col->default )
     {
-        my $def = ( $col->is_numeric ? $col->default :
-                    do { my $d = $col->default; $d =~ s/"/""/g; $d } );
+        my $def = $self->_default_for_column($col);
 
-        @default = ( qq|DEFAULT "$def"| );
+        @default = ( qq|DEFAULT $def| );
     }
 
     my $type = $col->type;
@@ -559,6 +559,18 @@ sub index_sql
     $sql .= ' )';
 
     return $sql;
+}
+
+sub _default_for_column
+{
+    my $self = shift;
+    my $col = shift;
+
+    return $col->default if $col->is_numeric || $col->default_is_raw;
+
+    my $d = $col->default;
+    $d =~ s/"/""/g;
+    return qq|"$d"|;
 }
 
 sub _make_index_name

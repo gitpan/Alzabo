@@ -20,7 +20,7 @@ unless ( eval { require DBD::Pg } && ! $@ )
     exit;
 }
 
-plan tests => 10;
+plan tests => 13;
 
 
 my $new_schema;
@@ -84,4 +84,33 @@ my $table = $new_schema->make_table( name => 'quux' );
                                  );
 
     ok( $col->is_time_interval, 'INTERVAL is a time interval' );
+}
+
+{
+    my $col = $table->make_column( name => 'int1',
+                                   type => 'integer',
+                                   default => 27,
+                                 );
+
+    is( $new_schema->rules->_default_for_column($col), 27, 'default is 27' );
+}
+
+{
+    my $col = $table->make_column( name => 'vc1',
+                                   type => 'varchar',
+                                   length => 20,
+                                   default => 'hello',
+                                 );
+
+    is( $new_schema->rules->_default_for_column($col), q|'hello'|, "default is 'hello' (with quotes)" );
+}
+
+{
+    my $col = $table->make_column( name => 'dt1',
+                                   type => 'timestamp',
+                                   default => 'NOW()',
+                                   default_is_raw => 1,
+                                 );
+
+    is( $new_schema->rules->_default_for_column($col), q|NOW()|, 'default is NOW()' );
 }

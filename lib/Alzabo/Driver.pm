@@ -31,20 +31,25 @@ sub new
 
 sub available { __PACKAGE__->subclasses }
 
-sub _check_dbh
+sub _ensure_valid_dbh
 {
     my $self = shift;
 
-    my $sub = (caller(1))[3];
-    Alzabo::Exception::Driver->throw( error => "Cannot call $sub before calling connect." )
-        unless $self->{dbh};
+    unless ( $self->{dbh} )
+    {
+        my $sub = (caller(1))[3];
+        Alzabo::Exception::Driver->throw( error => "Cannot call $sub before calling connect." );
+    }
+
+    $self->{dbh} = $self->_dbi_connect( $self->{connect_params} )
+        if $$ != $self->{connect_pid};
 }
 
 sub quote
 {
     my $self = shift;
 
-    $self->_check_dbh;
+    $self->_ensure_valid_dbh;
 
     return $self->{dbh}->quote(@_);
 }
@@ -53,7 +58,7 @@ sub quote_identifier
 {
     my $self = shift;
 
-    $self->_check_dbh;
+    $self->_ensure_valid_dbh;
 
     return $self->{dbh}->quote_identifier(@_);
 }
@@ -62,7 +67,7 @@ sub rows
 {
     my $self = shift;
 
-    $self->_check_dbh;
+    $self->_ensure_valid_dbh;
 
     my %p = @_;
 
@@ -94,7 +99,7 @@ sub rows_hashref
     my $self = shift;
     my %p = @_;
 
-    $self->_check_dbh;
+    $self->_ensure_valid_dbh;
 
     my $sth = $self->_prepare_and_execute(%p);
 
@@ -125,7 +130,7 @@ sub one_row
     my $self = shift;
     my %p = @_;
 
-    $self->_check_dbh;
+    $self->_ensure_valid_dbh;
 
     my $sth = $self->_prepare_and_execute(%p);
 
@@ -151,7 +156,7 @@ sub one_row_hash
     my $self = shift;
     my %p = @_;
 
-    $self->_check_dbh;
+    $self->_ensure_valid_dbh;
 
     my $sth = $self->_prepare_and_execute(%p);
 
@@ -178,7 +183,7 @@ sub column
     my $self = shift;
     my %p = @_;
 
-    $self->_check_dbh;
+    $self->_ensure_valid_dbh;
 
     my $sth = $self->_prepare_and_execute(%p);
 
@@ -239,7 +244,7 @@ sub do
     my $self = shift;
     my %p = @_;
 
-    $self->_check_dbh;
+    $self->_ensure_valid_dbh;
 
     my $sth = $self->_prepare_and_execute(%p);
 
@@ -264,7 +269,7 @@ sub tables
 {
     my $self = shift;
 
-    $self->_check_dbh;
+    $self->_ensure_valid_dbh;
 
     my @t = eval {  $self->{dbh}->tables( '', '', '%', 'table' ); };
     Alzabo::Exception::Driver->throw( error => $@ ) if $@;
@@ -279,11 +284,34 @@ sub schemas
     shift()->_virtual;
 }
 
+sub _make_dbh
+{
+    my $self = shift;
+
+    return $self->_dbi_connect( $self->_connect_params(@_) );
+}
+
+sub _dbi_connect
+{
+    my $self = shift;
+    my $connect = shift;
+
+    my $dbh = eval { DBI->connect(@$connect) };
+
+    Alzabo::Exception::Driver->throw( error => $@ ) if $@;
+    Alzabo::Exception::Driver->throw( error => "Unable to connect to database\n" ) unless $dbh;
+
+    $self->{connect_params} = $connect;
+    $self->{connect_pid} = $$;
+
+    return $dbh;
+}
+
 sub statement
 {
     my $self = shift;
 
-    $self->_check_dbh;
+    $self->_ensure_valid_dbh;
 
     return Alzabo::DriverStatement->new( dbh => $self->{dbh},
                                          @_ );
@@ -293,7 +321,7 @@ sub statement_no_execute
 {
     my $self = shift;
 
-    $self->_check_dbh;
+    $self->_ensure_valid_dbh;
 
     return Alzabo::DriverStatement->new_no_execute( dbh => $self->{dbh},
                                                     @_ );
@@ -303,7 +331,7 @@ sub func
 {
     my $self = shift;
 
-    $self->_check_dbh;
+    $self->_ensure_valid_dbh;
 
     my @r;
     eval
@@ -383,7 +411,7 @@ sub begin_work
 {
     my $self = shift;
 
-    $self->_check_dbh;
+    $self->_ensure_valid_dbh;
 
     $self->{tran_count} = 0 unless defined $self->{tran_count};
 
@@ -396,7 +424,7 @@ sub rollback
 {
     my $self = shift;
 
-    $self->_check_dbh;
+    $self->_ensure_valid_dbh;
 
     $self->{tran_count} = undef;
 
@@ -411,7 +439,7 @@ sub commit
 {
     my $self = shift;
 
-    $self->_check_dbh;
+    $self->_ensure_valid_dbh;
 
     my $callee = (caller(1))[3];
 

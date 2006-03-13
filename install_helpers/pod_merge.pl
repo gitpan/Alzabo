@@ -7,7 +7,7 @@ use File::Copy;
 use File::Path;
 use File::Spec;
 
-my ($sourcedir, $libdir) = @ARGV;
+my ($sourcedir, $libdir, $verbose) = @ARGV;
 
 foreach ($sourcedir, $libdir) { s,/$,,; }
 
@@ -75,7 +75,7 @@ sub merge
 
     for ( $file, $t_out ) { s,^.*(?=Alzabo),,; s/\.pm$//; s,[\\/],::,g; }
 
-    print STDERR "merged $file docs into $t_out\n";
+    print "merged $file docs into $t_out\n" if $verbose;
 }
 
 sub find_chunk

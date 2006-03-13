@@ -163,16 +163,19 @@ sub foreign_keys_by_table
     my $name = shift->name;
 
     my $fk = $self->{fk};
-    my @fk;
+
+    my %fk;
     if ( exists $fk->{$name} )
     {
         foreach my $c ( keys %{ $fk->{$name} } )
         {
-            push @fk, @{ $fk->{$name}{$c} };
+            return $fk->{$name}{$c}[0] unless wantarray;
+
+            $fk{$_} = $_ for @{ $fk->{$name}{$c} };
         }
     }
 
-    return wantarray ? @fk : $fk[0];
+    return values %fk;
 }
 
 use constant FOREIGN_KEYS_BY_COLUMN_SPEC => { isa => 'Alzabo::Column' };
@@ -186,17 +189,20 @@ sub foreign_keys_by_column
     Alzabo::Exception::Params->throw( error => "Column " . $col->name . " doesn't exist in $self->{name}" )
         unless $self->{columns}->EXISTS( $col->name );
 
-    my @fk;
     my $fk = $self->{fk};
+
+    my %fk;
     foreach my $t (keys %$fk)
     {
         if ( exists $fk->{$t}{ $col->name } )
         {
-            push @fk, @{ $fk->{$t}{ $col->name } };
+            return $fk->{$t}{ $col->name }[0] unless wantarray;
+
+            $fk{$_} = $_ for @{ $fk->{$t}{ $col->name } };
         }
     }
 
-    return wantarray ? @fk : $fk[0];
+    return values %fk;
 }
 
 sub all_foreign_keys

@@ -20,7 +20,7 @@ unless ( eval { require DBD::mysql } && ! $@ )
     exit;
 }
 
-plan tests => 21;
+plan tests => 26;
 
 
 my $new_schema;
@@ -108,4 +108,50 @@ my $table;
         ok( $col->is_numeric, "$type is numeric" );
         ok( $col->is_floating_point, "$type is floating point" );
     };
+}
+
+{
+    my $col = $table->make_column( name => 'int1',
+                                   type => 'integer',
+                                   default => 27,
+                                 );
+
+    is( $new_schema->rules->_default_for_column($col), 27, 'default is 27' );
+}
+
+{
+    my $col = $table->make_column( name => 'vc1',
+                                   type => 'varchar',
+                                   length => 20,
+                                   default => 'hello',
+                                 );
+
+    is( $new_schema->rules->_default_for_column($col), q|"hello"|, 'default is "hello" (with quotes)' );
+}
+
+{
+    my $col = $table->make_column( name => 'dt1',
+                                   type => 'datetime',
+                                   default => 'NOW()',
+                                   default_is_raw => 1,
+                                 );
+
+    is( $new_schema->rules->_default_for_column($col), q|NOW()|, 'default is NOW()' );
+}
+
+{
+    my $col = eval { $table->make_column( name => 'vb1',
+                                          type => 'varbinary',
+                                        ) };
+
+    like( $@, qr/must have a length/, 'length is required for (var)binary' );
+}
+
+{
+    my $col = $table->make_column( name   => 'vb2',
+                                   type   => 'varbinary',
+                                   length => 10,
+                                 );
+
+    is( $col->length, 10, 'column length is 10' );
 }

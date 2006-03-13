@@ -1591,7 +1591,9 @@ sub run_tests
 
 	eval_ok( sub { @rows = $emp_t->all_rows( order_by => [ IF( 'employee_id < 100',
 								   $emp_t->column('employee_id'),
-								   $emp_t->column('smell'), ) ],
+								   $emp_t->column('smell') ),
+                                                               $emp_t->column('employee_id'),
+                                                             ],
 					       )->all_rows },
 		 "Order by IF() function" );
 	is( @rows, 16,

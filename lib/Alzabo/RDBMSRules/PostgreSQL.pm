@@ -335,6 +335,7 @@ sub column_types
 my %features = map { $_ => 1 } qw ( extended_column_types
                                     constraints
                                     functional_indexes
+                                    allows_raw_default
                                   );
 sub feature
 {
@@ -457,9 +458,8 @@ sub column_sql
     my @default;
     if ( ! $p->{skip_default} && defined $col->default )
     {
-        my $def = ( $col->is_character ?
-                    do { my $d = $col->default; $d =~ s/"/""/g; qq|'$d'| } :
-                    $col->default );
+        my $def = $self->_default_for_column($col);
+
         @default = ( "DEFAULT $def" );
     }
 
@@ -488,6 +488,18 @@ sub column_sql
                             $col->attributes );
 
     return $sql;
+}
+
+sub _default_for_column
+{
+    my $self = shift;
+    my $col = shift;
+
+    return
+        ( $col->is_character && ! $col->default_is_raw
+          ? do { my $d = $col->default; $d =~ s/"/""/g; qq|'$d'| }
+          : $col->default
+        );
 }
 
 sub foreign_key_sql
@@ -537,7 +549,16 @@ sub foreign_key_sql
     return $sql;
 }
 
-sub _fk_name { 'fk_' . Digest::MD5::md5_hex( $_[1]->id ) }
+sub _fk_name
+{
+    my $id = $_[1]->id;
+
+    return
+        ( length $id > 64
+          ? 'fk_' . Digest::MD5::md5_hex( $_[1]->id )
+          : $id
+        );
+}
 
 sub table_constraint_sql
 {
@@ -730,9 +751,8 @@ sub column_sql_add
     my $default;
     if ( $col->default )
     {
-        my $def = ( $col->is_character ?
-                    do { my $d = $col->default; $d =~ s/"/""/g; qq|'$d'| } :
-                    $col->default );
+        my $def = $self->_default_for_column($col);
+
         $default = "DEFAULT $def";
 
         push @sql,
@@ -1023,7 +1043,6 @@ EOF
         my @col_names;
         my @col_numbers;
 
-        my @spi_exprs;
         my $spi =
             $driver->one_row
                 ( sql => "SELECT COALESCE(indexprs,'') FROM pg_index WHERE indexrelid = ?",
@@ -1035,13 +1054,16 @@ EOF
             while ( my $spi_expr =
                     Text::Balanced::extract_bracketed( $spi, '{}', '[^{}]*' ) )
             {
-                push( @spi_exprs,
+                # A wanton lack of respect for boundaries. 'Parse' the
+                # PostgreSQL internal SPI language to find out what
+                # columns are being accessed.
+                push( @col_numbers,
                       join( ' ',
                             $spi_expr =~ /:varattno (\d+)/g ) );
             }
         }
 
-        if ( scalar( @spi_exprs ) > 1 )
+        if ( scalar( @col_numbers ) > 1 )
         {
             # Index objects are not prepared to handle functional
             # indexes that use more than one function.
@@ -1050,7 +1072,7 @@ EOF
                 . "  There are multiple functions on an index on the "
                 . $table->name . " table.";
         }
-        elsif ( scalar( @spi_exprs ) == 1 )
+        elsif ( scalar( @col_numbers ) == 1 )
         {
             # Pretend we are PostgreSQL 7.3 and functional indexes may
             # only cover a single expression and that there's only one
@@ -1065,10 +1087,9 @@ EOF
                     ( sql => 'SELECT pg_catalog.pg_get_indexdef( ?, 1, true)',
                       bind => $row->[0] );
 
-            # A wanton lack of respect for boundaries. 'Parse' the
-            # PostgreSQL internal SPI language to find out what
-            # columns are being accessed.
-            @col_numbers = $spi_exprs[0] =~ /:varattno (\d+)/g;
+            # XXX - not sure if this is a good idea but it makes the
+            # rev-eng tests pass
+            $function =~ s/\b(\w+)::\w+\b/$1/g;
         }
         else
         {

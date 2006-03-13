@@ -41,16 +41,18 @@ sub _init
                                    optional => 1 },
                         attributes => { type => ARRAYREF,
                                         default => [] },
-                        default    => { type => UNDEF | SCALAR,
+                        default    => { type => BOOLEAN,
                                         optional => 1 },
+                        default_is_raw => { type => BOOLEAN,
+                                            default => 0 },
                         sequenced  => { optional => 1 },
-                        length => { type => UNDEF | SCALAR,
+                        length => { type => BOOLEAN,
                                     optional => 1 },
-                        precision  => { type => UNDEF | SCALAR,
+                        precision  => { type => BOOLEAN,
                                         optional => 1 },
                         definition => { isa => 'Alzabo::Create::ColumnDefinition',
                                         optional => 1 },
-                        comment => { type => UNDEF | SCALAR,
+                        comment => { type => BOOLEAN,
                                      default => '' },
                   } );
 
@@ -83,6 +85,7 @@ sub _init
 
     $self->set_default( $p{default} )
         if exists $p{default};
+    $self->set_default_is_raw( $p{default_is_raw} );
 
     # We always set length, since not giving a length at all may be an
     # error for some column types, unless we got a definition object,
@@ -150,8 +153,16 @@ sub set_default
 {
     my $self = shift;
 
-    validate_pos( @_, { type => UNDEF | SCALAR } );
+    validate_pos( @_, { type => BOOLEAN } );
     $self->{default} = shift;
+}
+
+sub set_default_is_raw
+{
+    my $self = shift;
+
+    validate_pos( @_, { type => BOOLEAN } );
+    $self->{default_is_raw} = shift;
 }
 
 sub set_length
@@ -336,6 +347,12 @@ Defaults to false.
 Defaults to false.
 
 =item * default => $default (optional)
+
+=item * default_is_raw => $boolean (optional)
+
+If "default_is_raw" is true, then it will not be quoted when passed to
+the DBMS in SQL statements. This should be used to allow a default
+which is a function, like C<NOW()>.
 
 =item * attributes => \@attributes (optional)
 

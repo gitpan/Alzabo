@@ -440,7 +440,7 @@ sub set_attributes
 
     %{ $self->{attributes} } = ();
 
-    foreach (@_)
+    foreach ( grep { defined && length } @_ )
     {
         $self->add_attribute($_);
     }

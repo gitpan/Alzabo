@@ -1078,7 +1078,7 @@ sub contained_docs
 {
     my $self = shift;
 
-    return map { $_->docs_as_pod } $self->contained_classes;
+    return map { $_->docs_as_pod(1) } $self->contained_classes;
 }
 
 package Alzabo::Docs;
@@ -1305,6 +1305,10 @@ methods they contain.
 
 The L<NAMING SUB PARAMETERS|"NAMING SUB PARAMETERS"> section contains
 the details of what parameters are passed to this callback.
+
+I<Please note> that if you have a large complex schema you will almost
+certainly need to provide a custom naming subroutine to avoid name
+conflicts.
 
 =back
 

@@ -66,6 +66,11 @@ sub default
     $_[0]->{default};
 }
 
+sub default_is_raw
+{
+    $_[0]->{default_is_raw};
+}
+
 sub length
 {
     $_[0]->definition->length;
@@ -230,6 +235,11 @@ sequenced.
 
 Returns the default value of the column as a string, or undef if there
 is no default.
+
+=head2 default_is_raw
+
+Returns true if the default is intended to be provided to the DBMS
+as-is, without quoting, fore example C<NOW()> or C<current_timestamp>.
 
 =head2 length
 
