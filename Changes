@@ -1,3 +1,11 @@
+0.8801  Mar 13, 2006
+
+BUG FIXES:
+
+- Quoting of PostgreSQL column defaults in DDL SQL was completely
+broken.
+
+
 0.88  Mar 13, 2006
 
 ENHANCEMENTS:

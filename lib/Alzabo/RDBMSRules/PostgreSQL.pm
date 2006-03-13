@@ -495,11 +495,11 @@ sub _default_for_column
     my $self = shift;
     my $col = shift;
 
-    return
-        ( $col->is_character && ! $col->default_is_raw
-          ? do { my $d = $col->default; $d =~ s/"/""/g; qq|'$d'| }
-          : $col->default
-        );
+    return $col->default if $col->is_numeric || $col->default_is_raw;
+
+    my $d = $col->default;
+    $d =~ s/'/''/g;
+    qq|'$d'|;
 }
 
 sub foreign_key_sql
