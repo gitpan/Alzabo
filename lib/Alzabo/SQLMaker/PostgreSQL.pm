@@ -226,6 +226,8 @@ sub get_limit
     return undef;
 }
 
+sub distinct_requires_order_by_in_select { 1 }
+
 sub sqlmaker_id
 {
     return 'PostgreSQL';

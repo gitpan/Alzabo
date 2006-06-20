@@ -3,7 +3,7 @@ package Alzabo::RDBMSRules;
 use strict;
 use vars qw($VERSION);
 
-use Alzabo::Exceptions;
+use Alzabo::Exceptions ( abbr => [ 'recreate_table_exception' ] );
 
 use Class::Factory::Util;
 use Params::Validate qw( validate validate_pos );
@@ -178,7 +178,7 @@ sub schema_sql
         push @sql, $self->table_sql($t);
     }
 
-    return @sql;
+    return @sql, @{ $self->{state}{deferred_sql} || [] };
 }
 
 sub table_sql
@@ -430,6 +430,9 @@ sub schema_sql_diff
                     push @sql, $self->recreate_table_sql( new => $new_t,
                                                           old => $old_t,
                                                         );
+                    push @sql, $self->rename_sequences( new => $new_t,
+                                                        old => $old_t,
+                                                      );
 
                     # no need to do more because table will be
                     # recreated from scratch
@@ -437,12 +440,28 @@ sub schema_sql_diff
                 }
             }
 
-            push @sql, $self->table_sql_diff( new => $new_t,
-                                              old => $old_t );
+            push @sql,
+                eval { $self->table_sql_diff( new => $new_t,
+                                              old => $old_t ) };
+
+            if ( my $e = Exception::Class->caught('Alzabo::Exception::RDBMSRules::RecreateTable' ) )
+            {
+                push @sql, $self->recreate_table_sql( new => $new_t,
+                                                      old => $old_t,
+                                                    );
+            }
+            elsif ( $e = $@ )
+            {
+                die $e;
+            }
         }
         else
         {
             push @sql, $self->table_sql($new_t);
+            foreach my $fk ( $new_t->all_foreign_keys )
+            {
+                push @{ $self->{state}{deferred_sql} }, $self->foreign_key_sql($fk);
+            }
         }
     }
 
@@ -455,7 +474,7 @@ sub schema_sql_diff
         }
     }
 
-    return @sql;
+    return @sql, @{ $self->{state}{deferred_sql} || [] };
 }
 
 sub table_sql_diff
@@ -466,7 +485,6 @@ sub table_sql_diff
                     old => { isa => 'Alzabo::Table' } } );
 
     my %p = @_;
-
     my @sql;
     foreach my $old_i ( $p{old}->indexes )
     {
@@ -519,14 +537,13 @@ sub table_sql_diff
                 {
                     # no need to do more because table will be
                     # recreated from scratch
-                    return $self->recreate_table_sql( new => $new_c->table,
-                                                      old => $old_c->table,
-                                                    );
+                    recreate_table_exception();
                 }
             }
 
             push @sql, $self->column_sql_diff( new => $new_c,
-                                               old => $old_c );
+                                               old => $old_c,
+                                             );
         }
         else
         {
@@ -551,7 +568,7 @@ sub table_sql_diff
     {
         unless ( grep { $new_fk->id eq $_->id } $p{old}->all_foreign_keys )
         {
-            push @sql, $self->foreign_key_sql($new_fk)
+            push @{ $self->{state}{deferred_sql} }, $self->foreign_key_sql($new_fk)
         }
     }
 

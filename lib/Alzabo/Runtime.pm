@@ -162,17 +162,6 @@ sub _process_by_clause
     {
         @items = @$by;
     }
-    else
-    {
-        Alzabo::Exception::Params->throw( error => "No columns provided for order by" )
-                unless $by->{columns};
-
-        push @items, ( UNIVERSAL::isa( $by->{columns}, 'ARRAY' ) ?
-                       @{ $by->{columns} } :
-                       $by->{columns} );
-
-        push @items, lc $by->{sort} if exists $by->{sort};
-    }
 
     my $method = "${type}_by";
     $sql->$method(@items);

@@ -3,6 +3,7 @@ package Alzabo::RDBMSRules::PostgreSQL;
 use strict;
 use vars qw($VERSION);
 
+use Alzabo::Exceptions ( abbr => [ 'recreate_table_exception' ] );
 use Alzabo::RDBMSRules;
 
 use Digest::MD5;
@@ -437,7 +438,7 @@ sub _sequence_sql
 
     my $seq_name = $self->_sequence_name($col);
 
-    return "CREATE SEQUENCE $seq_name;\n";
+    return qq|CREATE SEQUENCE "$seq_name";\n|;
 }
 
 sub _sequence_name
@@ -445,8 +446,7 @@ sub _sequence_name
     my $self = shift;
     my $col = shift;
 
-    my $name = join '___', $col->table->name, $col->name;
-    return qq|"$name"|;
+    return join '___', $col->table->name, $col->name;
 }
 
 sub column_sql
@@ -494,6 +494,8 @@ sub _default_for_column
 {
     my $self = shift;
     my $col = shift;
+
+    return unless defined $col->default;
 
     return $col->default if $col->is_numeric || $col->default_is_raw;
 
@@ -554,7 +556,7 @@ sub _fk_name
     my $id = $_[1]->id;
 
     return
-        ( length $id > 64
+        ( length $id > 63
           ? 'fk_' . Digest::MD5::md5_hex( $_[1]->id )
           : $id
         );
@@ -608,7 +610,7 @@ sub _drop_sequence_sql
 
     my $seq_name = $self->_sequence_name($col);
 
-    return "DROP SEQUENCE $seq_name;\n";
+    return qq|DROP SEQUENCE "$seq_name";\n|;
 }
 
 sub drop_column_sql
@@ -616,9 +618,7 @@ sub drop_column_sql
     my $self = shift;
     my %p = @_;
 
-    return $self->recreate_table_sql( new => $p{new_table},
-                                      old => $p{old}->table,
-                                    );
+    recreate_table_exception();
 }
 
 sub recreate_table_sql
@@ -630,12 +630,14 @@ sub recreate_table_sql
     # times (which would be pointless)
     return () if $self->{state}{table_sql}{ $p{new}->name };
 
+    push @{ $self->{state}{deferred_sql} },
+        $self->_restore_foreign_key_sql( $p{new} );
+
     return ( $self->_temp_table_sql( $p{new}, $p{old} ),
              $self->drop_table_sql( $p{old}, 1 ),
              # the 0 param indicates that we should not create sequences
              $self->table_sql( $p{new}, 0 ),
              $self->_restore_table_data_sql( $p{new}, $p{old} ),
-             $self->_restore_foreign_key_sql( $p{new} ),
              $self->_drop_temp_table( $p{new} ),
            );
 
@@ -708,6 +710,32 @@ sub _restore_foreign_key_sql
     return @sql;
 }
 
+sub rename_sequences
+{
+    my $self = shift;
+    my %p = @_;
+
+    return () if $self->{state}{rename_sequence_sql}{ $p{new}->name };
+
+    my @sql;
+
+    for my $old_col ( grep { $_->sequenced } $p{old}->columns )
+    {
+        my $new_col = $p{new}->column( $old_col->name )
+            or next;
+
+        my $old_seq = $self->_sequence_name($old_col);
+        my $new_seq = $self->_sequence_name($new_col);
+
+        push @sql,
+            qq|ALTER TABLE "$old_seq" RENAME TO "$new_seq";\n|;
+    }
+
+    $self->{state}{rename_sequence_sql}{ $p{new}->name } = 1;
+
+    return @sql;
+}
+
 sub drop_foreign_key_sql
 {
     my $self = shift;
@@ -744,20 +772,28 @@ sub column_sql_add
     # Skip default and not null while adding column
     my @sql = 'ALTER TABLE "' . $col->table->name . '" ADD COLUMN ' . $self->column_sql($col, { skip_default => 1, skip_nullable => 1 });
 
-    # Add not null constraint if column is not nullable
-    push @sql, ( 'ALTER TABLE "' . $col->table->name . '" ADD CONSTRAINT "' . $col->table->name . '_' . $col->name . '_not_null" CHECK ( "' . $col->name . '" IS NOT NULL )' )
-        unless $col->nullable;
-
-    my $default;
-    if ( $col->default )
+    my $def = $self->_default_for_column($col);
+    if ($def)
     {
-        my $def = $self->_default_for_column($col);
-
-        $default = "DEFAULT $def";
-
         push @sql,
             ( 'ALTER TABLE "' . $col->table->name . '" ALTER COLUMN "' .
-              $col->name . qq|" SET $default| );
+              $col->name . qq|" SET DEFAULT $def| );
+    }
+
+    if ( ! $col->nullable )
+    {
+        push @sql,
+            ( 'UPDATE "' . $col->table->name
+              . '" SET "' . $col->name . qq|" = $def WHERE "|
+              . $col->name . '" IS NULL'
+            );
+
+        push @sql,
+            ( 'ALTER TABLE "' . $col->table->name
+              . '" ADD CONSTRAINT "'
+              . $col->table->name . '_' . $col->name . '_not_null" CHECK ( "'
+              . $col->name . '" IS NOT NULL )'
+            );
     }
 
     return @sql;
@@ -768,14 +804,102 @@ sub column_sql_diff
     my $self = shift;
     my %p = @_;
 
-    my $new_sql = $self->column_sql( $p{new}, { skip_name => 1 } );
-    my $old_sql = $self->column_sql( $p{old}, { skip_name => 1 } );
-
     return $self->drop_column_sql( new_table => $p{new}->table,
                                    old => $p{old} )
-        if $new_sql ne $old_sql;
+        unless $self->_columns_are_equivalent( $p{new}, $p{old} );
 
     return;
+}
+
+sub _columns_are_equivalent
+{
+    my $self = shift;
+    my $new = shift;
+    my $old = shift;
+
+    return 0 unless $self->_types_are_equivalent( $new, $old );
+
+    return 0 unless $self->_defaults_are_equivalent( $new, $old );
+
+    return 0 unless $new->sequenced == $old->sequenced;
+
+    my $new_att = join "\0", sort $new->attributes;
+    $new_att ||= '';
+
+    my $old_att = join "\0", sort $old->attributes;
+    $old_att ||= '';
+
+    return 0 unless $new_att eq $old_att;
+
+    return 1;
+}
+
+{
+    my %CanonicalTypes =
+        ( BOOL    => 'BOOLEAN',
+          INT     => 'INTEGER',
+          INT4    => 'INTEGER',
+          INT2    => 'SMALLINT',
+          INT8    => 'BIGINT',
+          VARBIT  => 'BIT VARYING',
+          VARCHAR => 'CHARACTER VARYING',
+          CHAR    => 'CHARACTER',
+          FLOAT   => 'DOUBLE PRECISION',
+          FLOAT8  => 'DOUBLE PRECISION',
+          FLOAT4  => 'REAL',
+          DECIMAL => 'NUMERIC',
+        );
+
+    sub _types_are_equivalent
+    {
+        shift;
+        my $col1 = shift;
+        my $col2 = shift;
+
+        my $type1 = $col1->type;
+        $type1 = $CanonicalTypes{ uc $type1 } if $CanonicalTypes{ uc $type1 };
+
+        my $type2 = $col2->type;
+        $type2 = $CanonicalTypes{ uc $type2 } if $CanonicalTypes{ uc $type2 };
+
+        $type1 .= join '-', grep { defined && length } $col1->length, $col1->precision;
+        $type2 .= join '-', grep { defined && length } $col1->length, $col1->precision;
+
+        return 1 if $type1 eq $type2;
+    }
+}
+
+sub _defaults_are_equivalent
+{
+    my $self = shift;
+    my $col1 = shift;
+    my $col2 = shift;
+
+    return 1 if ! defined $col1->default && ! defined $col2->default;
+    return 0 if defined $col1->default && ! defined $col2->default;
+    return 0 if ! defined $col1->default && defined $col2->default;
+
+    if ( $col1->type =~ /^bool/i )
+    {
+        return 1
+            if lc substr( $col1->default, 0, 1 ) eq lc substr( $col2->default, 0, 1 );
+        return 0;
+    }
+    elsif ( $col1->is_date
+            && $col1->default_is_raw
+            && $col2->default_is_raw )
+    {
+        my $d1 = $col1->default;
+        my $d2 = $col2->default;
+
+        my $re = qr/^(?:current_timestamp|localtime|localtimestamp|now\(\))$/i;
+        return 1
+            if $col1->default =~ /$re/
+            && $col2->default =~ /$re/;
+    }
+
+    return 1 if
+        $self->_default_for_column($col1) eq $self->_default_for_column($col2);
 }
 
 sub alter_primary_key_sql
@@ -811,7 +935,7 @@ sub alter_table_attributes_sql
 {
     my $self = shift;
 
-    return $self->recreate_table_sql(@_);
+    recreate_table_exception();
 }
 
 sub alter_column_name_sql
@@ -889,6 +1013,11 @@ EOF
  		    $p{'default'} =~ s/'$//;
  		}
 
+                if ( $p{default} =~ /\([^\)]*\)/ )
+                {
+                    $p{default_is_raw} = 1;
+                }
+
                 if ( $p{default} =~ /^nextval\(/ )
                 {
                     $p{sequenced} = 1;
@@ -919,10 +1048,18 @@ EOF
             print STDERR "Adding $row->[0] column to $table\n"
                 if Alzabo::Debug::REVERSE_ENGINEER;
 
-            $t->make_column( name => $row->[0],
-                             nullable => ! $row->[1],
-                             %p
-                           );
+            my $col = $t->make_column( name => $row->[0],
+                                       nullable => ! $row->[1],
+                                       %p
+                                     );
+
+            if ( $col->is_integer )
+            {
+                if ( $self->_re_sequence_exists( $driver, $col ) )
+                {
+                    $col->set_sequenced(1);
+                }
+            }
 
             $cols_by_number{ $row->[3] } = $row->[0];
         }
@@ -1017,6 +1154,26 @@ EOF
     # higher, but that's a little iffy)
     $self->_foreign_keys_to_relationships($schema)
         if $driver->rdbms_version ge '7.3';
+}
+
+sub _re_sequence_exists
+{
+    my $self = shift;
+    my $driver = shift;
+    my $col = shift;
+
+    my $seq_name = $self->_sequence_name($col);
+
+    my $sql = <<'EOF';
+SELECT 1
+  FROM pg_class
+ WHERE relname = ?
+   AND relkind = ?
+EOF
+
+    return $driver->one_row( sql  => $sql,
+                             bind => [ $seq_name, 'S' ],
+                           );
 }
 
 sub _74_indexes
@@ -1249,7 +1406,7 @@ EOF
         my $from_cardinality = $from_unique ? '1' : 'n';
 
         my $from_is_dependent =
-            ( grep { $_->nullable } @from_cols ) ? 0 : 1;
+            ( grep { $_->nullable || defined $_->default } @from_cols ) ? 0 : 1;
         my $to_is_dependent =
             ( grep { $_->nullable || $_->is_primary_key } @to_cols ) ? 0 : 1;
 

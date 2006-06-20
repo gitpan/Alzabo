@@ -19,7 +19,7 @@ unless (@rdbms_names)
     exit;
 }
 
-my $tests_per_run = 336;
+my $tests_per_run = 340;
 my $test_count = $tests_per_run * @rdbms_names;
 
 my %SINGLE_RDBMS_TESTS = ( mysql => 23,
@@ -475,8 +475,7 @@ sub run_tests
 
     $cursor = $s->join( join     => [ $emp_t, $emp_proj_t, $proj_t ],
 			where    => [ $emp_t->column('employee_id'), '=', 1 ],
-			order_by => { columns => $proj_t->column('project_id'),
-				      sort => 'desc' } );
+			order_by => [ $proj_t->column('project_id'), 'desc' ] );
     @rows = $cursor->next;
     my $first_proj_id = $rows[2]->select('project_id');
     @rows = $cursor->next;
@@ -788,8 +787,8 @@ sub run_tests
     {
 	my @emps;
 	eval_ok ( sub { @emps = $emp_t->all_rows( order_by =>
-						  { columns => $emp_t->column('name') } )->all_rows },
-		  "Select all employee rows with hashref to order_by" );
+						  [ $emp_t->column('name') ] )->all_rows },
+		  "Select all employee rows with arrayref to order_by" );
 
 	is( scalar @emps, 4,
 	    "There should be 4 rows in the employee table" );
@@ -806,10 +805,10 @@ sub run_tests
     {
 	my @emps;
 	eval_ok ( sub { @emps = $emp_t->all_rows( order_by =>
-						  { columns => $emp_t->column('name') },
+						  [ $emp_t->column('name') ],
                                                   quote_identifiers => 1,
                                                 )->all_rows },
-		  "Select all employee rows with hashref to order_by with quote_identifiers" );
+		  "Select all employee rows with arrayref to order_by with quote_identifiers" );
 
 	is( scalar @emps, 4,
 	    "There should be 4 rows in the employee table" );
@@ -860,8 +859,8 @@ sub run_tests
     {
 	my @emps;
 	eval_ok( sub { @emps = $emp_t->all_rows( order_by =>
-						 { columns => $emp_t->column('smell') } )->all_rows },
-		 "Select all employee rows with hashref to order_by (by smell)" );
+						 [ $emp_t->column('smell') ] )->all_rows },
+		 "Select all employee rows with arrayref to order_by (by smell)" );
 
 	is( scalar @emps, 4,
 	    "There should be 4 rows in the employee table" );
@@ -877,8 +876,8 @@ sub run_tests
 
     {
 	my @emps;
-	eval_ok( sub { @emps = $emp_t->all_rows( order_by => { columns => $emp_t->column('smell'),
-							       sort => 'desc' } )->all_rows },
+	eval_ok( sub { @emps = $emp_t->all_rows( order_by =>
+                                                 [ $emp_t->column('smell'), 'desc' ] )->all_rows },
 		 "Select all employee rows order by smell (descending)" );
 
 	is( $emps[0]->select('name'), 'rachel',
@@ -936,8 +935,8 @@ sub run_tests
 
     {
 	my @emps;
-	eval_ok( sub { @emps = $emp_t->all_rows( order_by => { columns => $emp_t->column('smell'),
-							       sort => 'desc' },
+	eval_ok( sub { @emps = $emp_t->all_rows( order_by =>
+                                                 [ $emp_t->column('smell'), 'desc' ],
 						 limit => 2 )->all_rows },
 		 "Get all employee rows with ORDER BY and LIMIT" );
 
@@ -952,8 +951,8 @@ sub run_tests
 
     {
 	my @emps;
-	eval_ok( sub { @emps = $emp_t->all_rows( order_by => { columns => $emp_t->column('smell'),
-							       sort => 'desc' },
+	eval_ok( sub { @emps = $emp_t->all_rows( order_by =>
+                                                 [ $emp_t->column('smell'), 'desc' ],
 						 limit => [2, 2] )->all_rows },
 		 "Get all employee rows with ORDER BY and LIMIT (with offset)" );
 
@@ -980,8 +979,8 @@ sub run_tests
 	"employee table should have 4 rows" );
 
     {
-	my @emps = $emp_t->all_rows( order_by => { columns => $emp_t->column('smell'),
-						   sort => 'desc' },
+	my @emps = $emp_t->all_rows( order_by =>
+                                     [ $emp_t->column('smell'), 'desc' ],
 				     limit => [2, 2] )->all_rows;
 
 	my $smell = $emps[0]->select('smell');
@@ -1127,7 +1126,7 @@ sub run_tests
     {
 	my @emps;
 	eval_ok( sub { @emps = $emp_t->rows_where( where => [ LENGTH( $emp_t->column('smell') ), '=', 1 ],
-						   order_by => { columns => $emp_t->column('smell') },
+						   order_by => $emp_t->column('smell'),
 						   limit => 2 )->all_rows },
 		 "Select all employee rows with WHERE, ORDER BY, and LIMIT" );
 
@@ -1445,6 +1444,35 @@ sub run_tests
 
 	ok( ( grep { $_->[0]->select('employee_id') == 9001 } @rows ),
 	    "Returned rows should include employee_id 9001" );
+    }
+
+    {
+        $proj_t->insert( values => { name => 'P99',
+                                     department_id => $dep{lying}->select('department_id'),
+                                   } );
+
+        eval_ok( sub { $cursor = $s->join( distinct => $dep_t,
+                                           join     => [ $dep_t, $proj_t ],
+                                           order_by => $proj_t->column('name'),
+                                         ) },
+                 "Do a join with distinct and order_by not in select" );
+
+        @rows = $cursor->all_rows;
+
+        if ( $rdbms eq 'pg' )
+        {
+            is( scalar @rows, 5, "distinct should cause only five rows to be returned" );
+        }
+        else
+        {
+            is( scalar @rows, 2, "distinct should cause only two rows to be returned" );
+        }
+
+        is( $rows[0]->select('department_id'), $dep{borg}->select('department_id'),
+            'first row is borg department' );
+
+        is( $rows[-1]->select('department_id'), $dep{lying}->select('department_id'),
+            'last row is lying department' );
     }
 
     # insert rows used to test order by with multiple columns

@@ -141,8 +141,9 @@ foreach my $rdbms (@rdbms_names)
         # generated when comparing this schema to a live DB with the
         # rename already done.
         my $sql = join "\n", $s->sync_backend_sql(%connect);
+        $sql ||= '';
 
-        ok( ! $sql,
+        is( $sql, '',
             'No SQL should be generated when syncing to a backend after instantiating'
             . ' with a renamed table'
           );

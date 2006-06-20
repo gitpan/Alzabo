@@ -1,3 +1,40 @@
+0.89  Jun 20, 2006
+
+ENHANCEMENTS:
+
+- Improved schema diffs for Postgres, particularly in the area of
+comparing two columns. Now we attempt to determine if two columns are
+logically equivalent, even if they might have minor variations (INT vs
+INTEGER type name, 'f' versus 'false' for BOOLEAN default, etc.).
+
+- Added Alzabo::SQLMaker->distinct_requires_order_by_in_select for the
+benefit of Pg, which requires that anything in the ORDER BY clause
+show up in the SELECT when you SELECT DISTINCT. This change is
+experimental, and may go away in future versions.
+
+- Removed support for passing order_by and group_by as a hash
+reference. This was deprecated in 0.59.
+
+BUG FIXES:
+
+- When reverse engineering a Postgres schema, Alzabo did not look for
+its own sequences to determine if a column should be marked as
+sequenced.
+
+- Defer FK creation until all other DDL has been executed. This
+ensures that the table to which we're referring will be available.
+
+- When recreating a table during a SQL diff, make this an exception so
+we don't do other column diff/add/drop operations on the same table.
+
+- Fixed a test failure in 07-methodmaker.t when testing with
+Postgres. This failure may not have showed up often because it came
+from a test that depended on the DBMS returning rows in a speific
+order by without specifying an ORDER BY.
+
+- When a Postgres table is renamed, its sequences are also renamed.
+
+
 0.8801  Mar 13, 2006
 
 BUG FIXES:

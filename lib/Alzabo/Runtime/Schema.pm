@@ -178,7 +178,7 @@ sub join
         # tables
         @tables = values %{ { map { $_ => $_ }
                               grep { UNIVERSAL::isa( $_, 'Alzabo::Table' ) }
-                              map { @$_ } @{ $p{join} } } };
+                             map { @$_ } @{ $p{join} } } };
     }
     else
     {
@@ -191,6 +191,16 @@ sub join
             UNIVERSAL::isa( $p{distinct}, 'ARRAY' ) ? $p{distinct} : [ $p{distinct} ];
     }
 
+    if ( $p{order_by} )
+    {
+        $p{order_by} =
+            UNIVERSAL::isa( $p{order_by}, 'ARRAY' )
+            ? $p{order_by}
+            : $p{order_by}
+            ? [ $p{order_by} ]
+            : undef;
+    }
+
     # We go in this order:  $p{select}, $p{distinct}, @tables
     my @select_tables = ( $p{select} ?
                           ( UNIVERSAL::isa( $p{select}, 'ARRAY' ) ?
@@ -198,6 +208,8 @@ sub join
                           $p{distinct} ?
                           @{ $p{distinct} } :
                           @tables );
+
+    my $sql = Alzabo::Runtime::sqlmaker( $self, \%p );
 
     my @select_cols;
     if ( $p{distinct} )
@@ -222,7 +234,13 @@ sub join
             push @select_cols, $t->columns( $t->prefetch ) if $t->prefetch;
         }
 
-        @select_tables = ( @{ $p{distinct} }, grep { ! $p{distinct} } @select_tables );
+        if ( $p{order_by} && $sql->distinct_requires_order_by_in_select )
+        {
+            my %select_cols = map { $_ => 1 } @select_cols;
+            push @select_cols, grep { ref } @{ $p{order_by} };
+        }
+
+        @select_tables = ( @{ $p{distinct} }, grep { ! $distinct{$_} } @select_tables );
     }
     else
     {
@@ -234,14 +252,15 @@ sub join
               @select_tables );
     }
 
-    my $sql = Alzabo::Runtime::sqlmaker( $self, \%p )->select(@select_cols);
+    $sql->select(@select_cols);
 
     $self->_join_all_tables( sql => $sql,
                              join => $p{join} );
 
     Alzabo::Runtime::process_where_clause( $sql, $p{where} ) if exists $p{where};
 
-    Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} ) if exists $p{order_by};
+    Alzabo::Runtime::process_order_by_clause( $sql, $p{order_by} )
+        if $p{order_by};
 
     $sql->limit( ref $p{limit} ? @{ $p{limit} } : $p{limit} ) if $p{limit};
 
@@ -416,7 +435,7 @@ sub _join_all_tables
             if ( ! ref $set->[0] )
             {
                 $set->[0] =~ /^(right|left|full)_outer_join$/i
-                    or params_exception "Invalid join type; $set->[0]";
+                    or params_exception "Invalid join type: $set->[0]";
 
                 @tables = @$set[1,2];
 
@@ -804,6 +823,16 @@ should never contain repeated rows.
 This can be used in place of the "select" parameter to indicate from
 which tables you want rows returned.  The "select" parameter, if
 given, supercedes this parameter.
+
+For some databases (notably Postgres), if you want to do a "SELECT
+DISTINCT" query then all of the columns mentioned in your "ORDER BY"
+clause must also be in your SELECT clause. Alzabo will make sure this
+is the case, but it may cause more rows to be returned than you
+expected, though this depends on the query.
+
+B<NOTE:> The adding of columns to the SELECT clause from the ORDER BY
+clause is considered experimental, because it can change the expected
+results in some cases.
 
 =item * where (optional)
 

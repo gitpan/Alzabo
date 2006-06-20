@@ -4,12 +4,38 @@ use strict;
 use vars qw( $VERSION %DELETED );
 
 use Alzabo::Runtime;
+use Alzabo::Exceptions ( abbr => 'params_exception' );
+
+use Params::Validate qw( validate ARRAYREF OBJECT );
+Params::Validate::validation_options
+    ( on_fail => sub { params_exception join '', @_ } );
 
 use base qw(Alzabo::ForeignKey);
 
 $VERSION = 2.0;
 
 1;
+
+# FIXME - needs docs
+sub new
+{
+    my $proto = shift;
+    my $class = ref $proto || $proto;
+
+    validate( @_, { columns_from => { type => ARRAYREF | OBJECT },
+                    columns_to   => { type => ARRAYREF | OBJECT },
+                  } );
+    my %p = @_;
+
+    my $self = bless {}, $class;
+
+    # XXX - needs a little more validation, like that both "sides"
+    # have the same number of columns
+    $self->{columns_from} = $p{columns_from};
+    $self->{columns_to}   = $p{columns_to};
+
+    return $self;
+}
 
 sub register_insert
 {

@@ -1,6 +1,6 @@
 ---
 name: Alzabo
-version: 0.8801
+version: 0.89
 author:
   - 'Dave Rolsky, <autarch@urth.org>'
 abstract: A data modelling tool and RDBMS-OO mapper
@@ -20,15 +20,15 @@ requires:
   Tie::IxHash: 0
   Time::HiRes: 0
   perl: 5.006
+build_requires:
+  Pod::Man: 1.14
 recommends:
   DBD::Pg: 1.13
   DBD::mysql: 2.1017
-build_requires:
-  Pod::Man: 1.14
 provides:
   Alzabo:
     file: lib/Alzabo.pm
-    version: 0.8801
+    version: 0.89
   Alzabo::BackCompat:
     file: lib/Alzabo/BackCompat.pm
     version: 2
@@ -169,4 +169,7 @@ provides:
   Alzabo::Table:
     file: lib/Alzabo/Table.pm
     version: 2
-generated_by: Module::Build version 0.2703
+generated_by: Module::Build version 0.2801
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.2.html
+  version: 1.2

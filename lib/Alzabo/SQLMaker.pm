@@ -376,7 +376,11 @@ sub _outer_join
               $self->{driver}->quote_identifier( $join_from->name ) :
               $join_from->name );
 
-        $sql .= ' AS ' . $join_from->alias_name;
+        $sql .= ' AS ';
+        $sql .=
+            ( $self->{quote_identifiers} ?
+              $self->{driver}->quote_identifier( $join_from->alias_name ) :
+              $join_from->alias_name );
     }
 
     $sql .= " $type OUTER JOIN ";
@@ -385,7 +389,12 @@ sub _outer_join
               $self->{driver}->quote_identifier( $join_on->name ) :
               $join_on->name );
 
-    $sql .= ' AS ' . $join_on->alias_name;
+    $sql .= ' AS ';
+
+    $sql .=
+        ( $self->{quote_identifiers} ?
+          $self->{driver}->quote_identifier( $join_on->alias_name ) :
+          $join_on->alias_name );
 
     $sql .= ' ON ';
 
@@ -1088,6 +1097,8 @@ sub sqlmaker_id
 {
     shift()->_virtual;
 }
+
+sub distinct_requires_order_by_in_select { 0 }
 
 sub _virtual
 {

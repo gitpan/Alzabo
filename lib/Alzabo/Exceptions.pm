@@ -66,6 +66,13 @@ BEGIN
              alias => 'rdbms_rules_exception',
            },
 
+           'Alzabo::Exception::RDBMSRules::RecreateTable' =>
+           { description =>
+             'An exception generated to indicate the a table needs to be recreated as part of a schema SQL diff',
+             isa => 'Alzabo::Exception',
+             alias => 'recreate_table_exception',
+           },
+
            'Alzabo::Exception::ReferentialIntegrity' =>
            { description =>
              'An operation was attempted that would violate referential integrity',

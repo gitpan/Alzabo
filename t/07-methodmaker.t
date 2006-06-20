@@ -111,7 +111,7 @@ isa_ok( $s->Toilet_t, 'Alzabo::MM::Test::Table' );
     ok( ! defined $loc1->parent,
 	"First location should not have a parent" );
 
-    my @c = $loc1->children( order_by => { columns => $s->Location_t->location_id_c } ) ->all_rows;
+    my @c = $loc1->children( order_by => $s->Location_t->location_id_c ) ->all_rows;
     is( scalar @c, 2,
 	"First location should have 2 children" );
 
@@ -237,7 +237,7 @@ isa_ok( $s->Toilet_t, 'Alzabo::MM::Test::Table' );
     is( $t[0]->toilet_id, 1,
 	"Location's toilet id should be 1" );
 
-    my @tl = $t->ToiletLocations->all_rows;
+    my @tl = $t->ToiletLocations( order_by => $s->ToiletLocation_t->location_id_c )->all_rows;
 
     is( scalar @tl, 2,
 	"The toilet should have two ToiletLocation rows" );
@@ -432,7 +432,7 @@ sub make_methodmaker_schema
                            type => 'int',
                            primary_key => 1 );
 
-    # linking table between Toilet & Toiler (self-linking)
+    # linking table between Toilet & Toilet (self-linking)
     $s->add_relationship( columns_from => $toi->column('toilet_id'),
                           columns_to   => $toi_toi->column('toilet_id'),
                           cardinality  => [ '1', 'n' ],
