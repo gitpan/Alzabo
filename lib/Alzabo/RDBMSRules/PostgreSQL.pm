@@ -1007,16 +1007,20 @@ EOF
 
  		    # This is from src/backend/util/adt/format_type.c
  		    $p{default} =~ s/'(?:::[^']{3,})?$//;
+                    $p{default} =~ s/\('(\w+)$/$1/;
  		}
  		else
  		{
  		    $p{'default'} =~ s/'$//;
  		}
 
-                if ( $p{default} =~ /\([^\)]*\)/ )
+                if ( $p{default} =~ /\([^\)]*\)/
+                     || $p{default} =~ /^(?:current_timestamp|localtime|localtimestamp|now)$/i )
                 {
                     $p{default_is_raw} = 1;
                 }
+
+                $p{default} = 'now()' if $p{default} eq 'now';
 
                 if ( $p{default} =~ /^nextval\(/ )
                 {
