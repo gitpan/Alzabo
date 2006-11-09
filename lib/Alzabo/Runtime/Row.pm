@@ -12,6 +12,7 @@ use Alzabo::Runtime;
 use Alzabo::Runtime::RowState::Deleted;
 use Alzabo::Runtime::RowState::Live;
 use Alzabo::Runtime::RowState::Potential;
+use Alzabo::Utils;
 
 use Params::Validate qw( validate validate_with UNDEF SCALAR HASHREF BOOLEAN );
 Params::Validate::validation_options
@@ -102,7 +103,7 @@ sub rows_by_foreign_key
 
     if ($p{where})
     {
-        $p{where} = [ $p{where} ] unless UNIVERSAL::isa( $p{where}[0], 'ARRAY' );
+        $p{where} = [ $p{where} ] unless eval { @{ $p{where}[0] } };
     }
 
     push @{ $p{where} },
@@ -245,20 +246,6 @@ sub STORABLE_thaw
 
     my $s = Alzabo::Runtime::Schema->load_from_file( name => delete $self->{schema} );
     $self->{table} = $s->table( delete $self->{table_name} );
-
-    # If the caching system is loaded we want to return the existing
-    # reference, not a copy.
-    #
-    # Requires a patched Storable (at least for now)
-    if ( Alzabo::Runtime::UniqueRowCache->can('row_in_cache') )
-    {
-        if ( my $row =
-             Alzabo::Runtime::UniqueRowCache->row_in_cache
-                 ( $self->table->name, $self->id_as_string ) )
-        {
-            $_[0] = $row;
-        }
-    }
 
     return $self;
 }

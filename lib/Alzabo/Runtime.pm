@@ -14,7 +14,7 @@ use Alzabo::Runtime::Row;
 use Alzabo::Runtime::RowCursor;
 use Alzabo::Runtime::Schema;
 use Alzabo::Runtime::Table;
-
+use Alzabo::Utils;
 
 use vars qw($VERSION);
 
@@ -48,7 +48,7 @@ sub process_where_clause
     my ($sql, $where) = @_;
 
     $where = [ $where ]
-        unless UNIVERSAL::isa( $where->[0], 'ARRAY' ) || $where->[0] eq '(';
+        unless eval { @{ $where->[0] } } || $where->[0] eq '(';
 
     my $has_where =
         ( $sql->last_op eq 'where' || $sql->last_op eq 'condition' ) ? 1 : 0;
@@ -61,7 +61,7 @@ sub process_having_clause
     my ($sql, $having) = @_;
 
     $having = [ $having ]
-        unless UNIVERSAL::isa( $having->[0], 'ARRAY' ) || $having->[0] eq '(';
+        unless eval { @{ $having->[0] } } || $having->[0] eq '(';
 
     my $has_having =
         ( $sql->last_op eq 'having' || $sql->last_op eq 'condition' ) ? 1 : 0;
@@ -93,7 +93,7 @@ sub _process_conditions
         {
             Alzabo::Exception::Params->throw
                 ( error => "Individual where clause components must be array references" )
-                    unless UNIVERSAL::isa( $clause, 'ARRAY' );
+                    unless eval { @$clause };
 
             Alzabo::Exception::Params->throw
                 ( error => "Individual where clause components cannot be empty" )
@@ -154,11 +154,11 @@ sub _process_by_clause
     my ($sql, $by, $type) = @_;
 
     my @items;
-    if ( UNIVERSAL::isa( $by, 'Alzabo::Column' ) || UNIVERSAL::isa( $by, 'Alzabo::SQLMaker::Function' ) )
+    if ( Alzabo::Utils::safe_isa( $by, 'Alzabo::Column' ) || Alzabo::Utils::safe_isa( $by, 'Alzabo::SQLMaker::Function' ) )
     {
         @items = $by;
     }
-    elsif ( UNIVERSAL::isa( $by, 'ARRAY' ) )
+    elsif ( eval { @$by } )
     {
         @items = @$by;
     }

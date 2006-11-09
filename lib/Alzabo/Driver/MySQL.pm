@@ -4,12 +4,14 @@ use strict;
 use vars qw($VERSION);
 
 use Alzabo::Driver;
+use Alzabo::Utils;
 
 use DBD::mysql;
 use DBI;
 
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
+
 
 $VERSION = 2.0;
 
@@ -201,17 +203,17 @@ sub rollback
 
     eval { $self->SUPER::rollback };
 
-    if ($@)
+    if ( my $e = $@ )
     {
-        unless ( $@->error =~ /Some non-transactional changed tables/ )
+        unless ( $e->error =~ /Some non-transactional changed tables/ )
         {
-            if ( UNIVERSAL::can( $@, 'rethrow' ) )
+            if ( Alzabo::Utils::safe_can( $e, 'rethrow' ) )
             {
-                $@->rethrow;
+                $e->rethrow;
             }
             else
             {
-                Alzabo::Exception->throw( error => $@ );
+                Alzabo::Exception->throw( error => $e );
             }
         }
     }

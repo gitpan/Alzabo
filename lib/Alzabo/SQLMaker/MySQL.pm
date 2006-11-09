@@ -4,6 +4,7 @@ use strict;
 use vars qw($VERSION $AUTOLOAD @EXPORT_OK %EXPORT_TAGS);
 
 use Alzabo::Exceptions;
+use Alzabo::Utils;
 
 use Alzabo::SQLMaker;
 use base qw(Alzabo::SQLMaker);
@@ -326,7 +327,7 @@ sub select
     #
     for ( my $i = 0; $i <= $#_; $i++ )
     {
-	if ( UNIVERSAL::isa( $_[$i], 'Alzabo::SQLMaker::Function' ) &&
+	if ( Alzabo::Utils::safe_isa( $_[$i], 'Alzabo::SQLMaker::Function' ) &&
 	     $_[$i]->as_string( $self->{driver}, $self->{quote_identifiers} ) =~ /^\s*MATCH/i )
 	{
 	    $_[$i] = $_[$i]->as_string( $self->{driver}, $self->{quote_identifiers} );
@@ -336,7 +337,7 @@ sub select
 	    splice @_, $i + 1, 1;
 
 	    if ( defined $_[ $i + 1 ] &&
-		 UNIVERSAL::isa( $_[ $i + 1 ], 'Alzabo::SQLMaker::Function' ) &&
+		 Alzabo::Utils::safe_isa( $_[ $i + 1 ], 'Alzabo::SQLMaker::Function' ) &&
 		 $_[ $i + 1 ]->as_string( $self->{driver}, $self->{quote_identifiers} ) =~
                  /^\s*IN BOOLEAN MODE/i )
 	    {
@@ -357,7 +358,7 @@ sub condition
     # Special check for [ MATCH( $foo_col, $bar_col ), AGAINST('foo bar') ]
     # IN_BOOLEAN_MODE is optional
     #
-    if ( UNIVERSAL::isa( $_[0], 'Alzabo::SQLMaker::Function' ) &&
+    if ( Alzabo::Utils::safe_isa( $_[0], 'Alzabo::SQLMaker::Function' ) &&
 	 $_[0]->as_string( $self->{driver}, $self->{quote_identifiers} ) =~ /^\s*MATCH/i )
     {
 	$self->{last_op} = 'condition';

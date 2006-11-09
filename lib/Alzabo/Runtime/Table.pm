@@ -6,6 +6,7 @@ use vars qw($VERSION);
 use Alzabo::Exceptions ( abbr => [ qw( logic_exception not_nullable_exception
                                        params_exception ) ] );
 use Alzabo::Runtime;
+use Alzabo::Utils;
 
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { params_exception join '', @_ } );
@@ -146,7 +147,7 @@ sub insert_handle
         my $v = delete $p{values};
         while ( my ( $name, $val ) = each %$v )
         {
-            if ( defined $val && UNIVERSAL::isa( $val, 'Alzabo::SQLMaker::Function' ) )
+            if ( Alzabo::Utils::safe_isa( $val, 'Alzabo::SQLMaker::Function' ) )
             {
                 $func_vals{$name} = $val;
             }
@@ -417,7 +418,7 @@ sub function
     my $sql = $self->_select_sql(%p);
 
     my $method =
-        UNIVERSAL::isa( $p{select}, 'ARRAY' ) && @{ $p{select} } > 1 ? 'rows' : 'column';
+        eval { @{ $p{select} } } && @{ $p{select} } > 1 ? 'rows' : 'column';
 
     $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
     print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
@@ -461,7 +462,7 @@ sub _select_sql
 
     my %p = validate( @_, _SELECT_SQL_SPEC );
 
-    my @funcs = UNIVERSAL::isa( $p{select}, 'ARRAY' ) ? @{ $p{select} } : $p{select};
+    my @funcs = eval { @{ $p{select} } } ? @{ $p{select} } : $p{select};
 
     my $sql = Alzabo::Runtime::sqlmaker( $self->schema, \%p )->select(@funcs)->from($self);
 

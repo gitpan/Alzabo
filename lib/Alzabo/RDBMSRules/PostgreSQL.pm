@@ -998,34 +998,38 @@ EOF
                         ( sql => 'SELECT adsrc FROM pg_attrdef WHERE adrelid = ? AND adnum = ?',
                           bind => [ $t_oid, $row->[3] ] );
 
- 		# strip quotes (and type!) Postgres added
- 		$p{'default'} =~ s/^'//; #'
- 		if ( $driver->rdbms_version ge '7.4' )
- 		{
- 	            # 'grotesque' becomes 'grotesque'::character
- 	            # varying. See src/backend/utils/adt/format_type.c
-
- 		    # This is from src/backend/util/adt/format_type.c
- 		    $p{default} =~ s/'(?:::[^']{3,})?$//;
-                    $p{default} =~ s/\('(\w+)$/$1/;
- 		}
- 		else
- 		{
- 		    $p{'default'} =~ s/'$//;
- 		}
-
-                if ( $p{default} =~ /\([^\)]*\)/
-                     || $p{default} =~ /^(?:current_timestamp|localtime|localtimestamp|now)$/i )
-                {
-                    $p{default_is_raw} = 1;
-                }
-
-                $p{default} = 'now()' if $p{default} eq 'now';
-
                 if ( $p{default} =~ /^nextval\(/ )
                 {
                     $p{sequenced} = 1;
                     $p{type} =~ s/(?:int(?:eger)?|numeric)/serial/;
+                }
+                else
+                {
+                    # strip quotes (and type!) Postgres added
+                    $p{default} =~ s/^'//; #'
+                    if ( $driver->rdbms_version ge '7.4' )
+                    {
+                        # 'grotesque' becomes 'grotesque'::character
+                        # varying. See
+                        # src/backend/utils/adt/format_type.c
+
+                        # This is from
+                        # src/backend/util/adt/format_type.c
+                        $p{default} =~ s/'(?:::[^']{3,})?$//;
+                        $p{default} =~ s/\('(\w+)$/$1/;
+                    }
+                    else
+                    {
+                        $p{'default'} =~ s/'$//;
+                    }
+
+                    if ( $p{default} =~ /\([^\)]*\)/
+                         || $p{default} =~ /^(?:current_timestamp|localtime|localtimestamp|now)$/i )
+                    {
+                        $p{default_is_raw} = 1;
+                    }
+
+                    $p{default} = 'now()' if $p{default} eq 'now';
                 }
             }
 

@@ -5,6 +5,7 @@ use vars qw($VERSION);
 
 use Alzabo::Exceptions;
 use Alzabo::Runtime;
+use Alzabo::Utils;
 
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { Alzabo::Exception::Params->throw( error => join '', @_ ) } );
@@ -490,7 +491,7 @@ sub make_self_relation
                     @where = ( '(', @where, ')' );
 
                     push @where,
-                        ref $p{where}->[0] eq 'ARRAY' ? @{ $p{where} } : $p{where};
+                        eval { @{ $p{where}->[0] } } ? @{ $p{where} } : $p{where};
 
                     delete $p{where};
                 }
@@ -551,7 +552,7 @@ sub make_linking_table_method
                 my %p = @_;
                 if ( $p{where} )
                 {
-                    $p{where} = [ $p{where} ] unless UNIVERSAL::isa( $p{where}[0], 'ARRAY' );
+                    $p{where} = [ $p{where} ] unless eval { @{ $p{where}[0] } };
                 }
                 foreach my $pair ( $fk->column_pairs )
                 {
@@ -1151,7 +1152,7 @@ sub as_pod
     my $params;
     if ( defined $spec )
     {
-        if ( UNIVERSAL::isa( $spec, 'ARRAY' ) )
+        if ( eval { @$spec } )
         {
             $params = "=over 4\n\n";
 
@@ -1170,7 +1171,7 @@ sub as_pod
 
             $params .= "=back\n\n";
         }
-        elsif ( UNIVERSAL::isa( $spec, 'HASH' ) )
+        elsif ( eval { %$spec } )
         {
             $params = "=over 4\n\n";
 

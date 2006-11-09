@@ -4,6 +4,7 @@ use strict;
 
 use Alzabo::Exceptions;
 use Alzabo::Runtime;
+use Alzabo::Utils;
 
 sub _where
 {
@@ -235,7 +236,7 @@ sub update
     while ( my( $k, $v ) = each %data )
     {
         # These can't be stored until they're fetched from the database again
-        if ( defined $v && UNIVERSAL::isa( $v, 'Alzabo::SQLMaker::Function' ) )
+        if ( Alzabo::Utils::safe_isa( $v, 'Alzabo::SQLMaker::Function' ) )
         {
             delete $row->{data}{$k};
             next;

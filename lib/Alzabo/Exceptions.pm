@@ -3,6 +3,9 @@ package Alzabo::Exceptions;
 use strict;
 use vars qw($VERSION);
 
+use Alzabo::Utils;
+
+
 $VERSION = 2.0;
 
 my %e;
@@ -149,11 +152,11 @@ sub isa_alzabo_exception
                 unless defined(${"${class}::VERSION"});
         }
 
-        return UNIVERSAL::isa($err, $class);
+        return Alzabo::Utils::safe_isa($err, $class);
     }
     else
     {
-        return UNIVERSAL::isa($err, "Alzabo::Exception");
+        return Alzabo::Utils::safe_isa($err, "Alzabo::Exception");
     }
 }
 
@@ -163,7 +166,7 @@ sub rethrow_exception
 
     return unless $err;
 
-    if ( UNIVERSAL::can( $err, 'rethrow' ) )
+    if ( Alzabo::Utils::safe_can( $err, 'rethrow' ) )
     {
         $err->rethrow;
     }

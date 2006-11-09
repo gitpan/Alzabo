@@ -4,6 +4,7 @@ use strict;
 use vars qw($VERSION $AUTOLOAD);
 
 use Alzabo::Exceptions;
+use Alzabo::Utils;
 
 use Class::Factory::Util;
 use Params::Validate qw( :all );
@@ -82,7 +83,7 @@ sub make_function
     my $code = <<"EOF";
 sub ${class}::$p{function}
 {
-    shift if defined \$_[0] && UNIVERSAL::isa( \$_[0], 'Alzabo::SQLMaker' );
+    shift if defined \$_[0] && Alzabo::Utils::safe_isa( \$_[0], 'Alzabo::SQLMaker' );
     $valid
     return Alzabo::SQLMaker::Function->new( $args );
 }
@@ -173,7 +174,7 @@ sub select
     my @sql;
     foreach my $elt (@_)
     {
-	if ( UNIVERSAL::can( $elt, 'table' ) )
+	if ( Alzabo::Utils::safe_can( $elt, 'table' ) )
 	{
             my $table = $elt->table;
 
@@ -192,7 +193,7 @@ sub select
 
 	    push @sql, $sql;
 	}
-	elsif ( UNIVERSAL::can( $elt, 'columns' ) )
+	elsif ( Alzabo::Utils::safe_can( $elt, 'columns' ) )
 	{
 	    $self->{column_tables}{"$elt"} = 1;
 
@@ -216,7 +217,7 @@ sub select
 
 	    push @sql, join ', ', @cols;
 	}
-	elsif ( UNIVERSAL::isa( $elt, 'Alzabo::SQLMaker::Function' ) )
+	elsif ( Alzabo::Utils::safe_isa( $elt, 'Alzabo::SQLMaker::Function' ) )
 	{
 	    my $string = $elt->as_string( $self->{driver}, $self->{quote_identifiers} );
 
@@ -282,7 +283,7 @@ sub from
         my @plain;
 	foreach my $elt (@_)
 	{
-	    if ( UNIVERSAL::isa( $elt, 'ARRAY' ) )
+	    if ( eval { @$elt } )
 	    {
 		$sql .= ' ' if $sql;
 
@@ -352,7 +353,7 @@ sub _outer_join
     my $join_from = shift;
     my $join_on = shift;
     my $fk;
-    $fk = shift if $_[0] && UNIVERSAL::isa( $_[0], 'Alzabo::ForeignKey' );
+    $fk = shift if $_[0] && Alzabo::Utils::safe_isa( $_[0], 'Alzabo::ForeignKey' );
     my $where = shift;
 
     unless ($fk)
@@ -606,7 +607,7 @@ sub condition
 
 	Alzabo::Exception::SQL->throw
 	    ( error => "The BETWEEN comparison operator cannot accept a subselect" )
-		if grep { UNIVERSAL::isa( $_, 'Alzabo::SQLMaker' ) } $rhs, $rhs2;
+		if grep { Alzabo::Utils::safe_isa( $_, 'Alzabo::SQLMaker' ) } $rhs, $rhs2;
 
 	$self->{sql} .= ' BETWEEN ';
 	$self->{sql} .= $self->_rhs($rhs);
@@ -620,7 +621,7 @@ sub condition
     {
 	$self->{sql} .= " $comp (";
 	$self->{sql} .=
-	    join ', ', map { ( UNIVERSAL::isa( $_, 'Alzabo::SQLMaker' ) ?
+	    join ', ', map { ( Alzabo::Utils::safe_isa( $_, 'Alzabo::SQLMaker' ) ?
 			       '(' . $self->_subselect($_) . ')' :
 			       $self->_rhs($_) ) } $rhs, @_;
 	$self->{sql} .= ')';
@@ -674,7 +675,7 @@ sub _rhs
     my $self = shift;
     my $rhs = shift;
 
-    if ( UNIVERSAL::can( $rhs, 'table' ) )
+    if ( Alzabo::Utils::safe_can( $rhs, 'table' ) )
     {
 	unless ( $self->{tables}{ $rhs->table } )
 	{
@@ -719,8 +720,8 @@ sub order_by
     validate_pos( @_, ( { type => SCALAR | OBJECT,
 			  callbacks =>
 			  { 'column_or_function_or_sort' =>
-			    sub { UNIVERSAL::can( $_[0], 'table' ) ||
-				  UNIVERSAL::isa( $_[0], 'Alzabo::SQLMaker::Function' ) ||
+			    sub { Alzabo::Utils::safe_can( $_[0], 'table' ) ||
+				  Alzabo::Utils::safe_isa( $_[0], 'Alzabo::SQLMaker::Function' ) ||
 				  $_[0] =~ /^(?:ASC|DESC)$/i } } }
 		      ) x @_ );
 
@@ -730,7 +731,7 @@ sub order_by
     my $last = '';
     foreach my $i (@_)
     {
-	if ( UNIVERSAL::can( $i, 'table' ) )
+	if ( Alzabo::Utils::safe_can( $i, 'table' ) )
 	{
 	    unless ( $self->{tables}{ $i->table } )
 	    {
@@ -749,7 +750,7 @@ sub order_by
 
 	    $last = 'column';
 	}
-	elsif ( UNIVERSAL::isa( $i, 'Alzabo::SQLMaker::Function' ) )
+	elsif ( Alzabo::Utils::safe_isa( $i, 'Alzabo::SQLMaker::Function' ) )
 	{
 	    my $string = $i->as_string( $self->{driver}, $self->{quote_identifiers} );
 	    if ( exists $self->{functions}{$string} )
@@ -1052,7 +1053,7 @@ sub _bind_val
     validate_pos( @_, _BIND_VAL_SPEC );
 
     return $_[0]->as_string( $self->{driver}, $self->{quote_identifiers} )
-        if UNIVERSAL::isa( $_[0], 'Alzabo::SQLMaker::Function' );
+        if Alzabo::Utils::safe_isa( $_[0], 'Alzabo::SQLMaker::Function' );
 
     push @{ $self->{bind} }, $_[0];
     return '?';
@@ -1166,7 +1167,7 @@ sub as_string
     my @args;
     foreach ( 0..$#{ $self->{args} } )
     {
-	if ( UNIVERSAL::can( $self->{args}[$_], 'table' ) )
+	if ( Alzabo::Utils::safe_can( $self->{args}[$_], 'table' ) )
 	{
 	    push @args,
 		( $quote ?
@@ -1176,7 +1177,7 @@ sub as_string
                   $self->{args}[$_]->name );
 	    next;
 	}
-	elsif ( UNIVERSAL::isa( $self->{args}[$_], 'Alzabo::SQLMaker::Function' ) )
+	elsif ( Alzabo::Utils::safe_isa( $self->{args}[$_], 'Alzabo::SQLMaker::Function' ) )
 	{
 	    push @args, $self->{args}[$_]->as_string( $driver, $quote );
 	    next;

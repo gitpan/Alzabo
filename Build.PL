@@ -338,13 +338,13 @@ sub write_config_module
 
     $mod =~ s/"'CONFIG'"/$c/;
 
-    my $config = File::Spec->catfile( 'lib', 'Alzabo', 'Config.pm' );
-    open MOD, ">$config"
-	or die "can't write to $config: $!\n";
+    my $config_pm = File::Spec->catfile( 'lib', 'Alzabo', 'Config.pm' );
+    open MOD, '>', $config_pm
+	or die "can't write to $config_pm: $!\n";
     print MOD $mod
-	or die "can't write to $config: $!\n";
+	or die "can't write to $config_pm: $!\n";
     close MOD
-	or die "can't close $config: $!\n";
+	or die "can't close $config_pm: $!\n";
 }
 
 sub test_config

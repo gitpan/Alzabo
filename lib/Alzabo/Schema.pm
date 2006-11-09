@@ -9,6 +9,7 @@ use Alzabo::Driver;
 use Alzabo::Exceptions ( abbr => 'params_exception' );
 use Alzabo::RDBMSRules;
 use Alzabo::SQLMaker;
+use Alzabo::Utils;
 
 use File::Spec;
 
@@ -223,7 +224,7 @@ sub run_in_transaction
     if (my $e = $@)
     {
         eval { $self->rollback };
-        if ( UNIVERSAL::can( $e, 'rethrow' ) )
+        if ( Alzabo::Utils::safe_can( $e, 'rethrow' ) )
         {
             $e->rethrow;
         }

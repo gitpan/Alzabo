@@ -1,6 +1,6 @@
 ---
 name: Alzabo
-version: 0.8901
+version: 0.8902
 author:
   - 'Dave Rolsky, <autarch@urth.org>'
 abstract: A data modelling tool and RDBMS-OO mapper
@@ -28,7 +28,7 @@ recommends:
 provides:
   Alzabo:
     file: lib/Alzabo.pm
-    version: 0.8901
+    version: 0.8902
   Alzabo::BackCompat:
     file: lib/Alzabo/BackCompat.pm
     version: 2
@@ -169,6 +169,8 @@ provides:
   Alzabo::Table:
     file: lib/Alzabo/Table.pm
     version: 2
+  Alzabo::Utils:
+    file: lib/Alzabo/Utils.pm
 generated_by: Module::Build version 0.2801
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.2.html

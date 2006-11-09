@@ -1473,6 +1473,10 @@ sub run_tests
 
         is( $rows[-1]->select('department_id'), $dep{lying}->select('department_id'),
             'last row is lying department' );
+
+        # Prevents a warning later about destroying a DBI handle with
+        # active statement handles.
+        undef $cursor;
     }
 
     # insert rows used to test order by with multiple columns

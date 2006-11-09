@@ -5,6 +5,7 @@ use vars qw($VERSION);
 
 use Alzabo::Create;
 use Alzabo::Exceptions ( abbr => 'params_exception' );
+use Alzabo::Utils;
 
 use Params::Validate qw( :all );
 Params::Validate::validation_options
@@ -40,7 +41,7 @@ sub new
 
     foreach my $c (@{ $p{columns} })
     {
-        my %p = UNIVERSAL::isa( $c, 'Alzabo::Column' ) ? ( column => $c ) : %$c;
+        my %p = Alzabo::Utils::safe_isa( $c, 'Alzabo::Column' ) ? ( column => $c ) : %$c;
         $self->add_column(%p);
     }
 

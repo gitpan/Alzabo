@@ -5,6 +5,7 @@ use vars qw($VERSION);
 
 use Alzabo::Create;
 use Alzabo::Exceptions ( abbr => 'params_exception' );
+use Alzabo::Utils;
 
 use Params::Validate qw( :all );
 Params::Validate::validation_options
@@ -49,7 +50,7 @@ sub set_columns_from
 {
     my $self = shift;
 
-    my $c = UNIVERSAL::isa( $_[0], 'ARRAY' ) ? shift : [ shift ];
+    my $c = eval { @{ $_[0] } } ? shift : [ shift ];
     validate_pos( @$c, ( { isa => 'Alzabo::Create::Column' } ) x @$c );
 
     if ( exists $self->{columns_to} )
@@ -66,7 +67,7 @@ sub set_columns_to
 {
     my $self = shift;
 
-    my $c = UNIVERSAL::isa( $_[0], 'ARRAY' ) ? shift : [ shift ];
+    my $c = eval { @{ $_[0] } } ? shift : [ shift ];
     validate_pos( @$c, ( { isa => 'Alzabo::Create::Column' } ) x @$c );
 
     if ( exists $self->{columns_from} )

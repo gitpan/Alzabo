@@ -12,6 +12,7 @@ use Alzabo::Exceptions
 use Alzabo::RDBMSRules;
 use Alzabo::Runtime;
 use Alzabo::SQLMaker;
+use Alzabo::Utils;
 
 use File::Spec;
 
@@ -277,14 +278,14 @@ sub add_relationship
 
     $p{columns_from} =
         ( defined $p{columns_from} ?
-          ( UNIVERSAL::isa( $p{columns_from}, 'ARRAY') ?
+          ( eval { @{ $p{columns_from} } } ?
             $p{columns_from} :
             [ $p{columns_from} ] ) :
           undef );
 
     $p{columns_to} =
         ( defined $p{columns_to} ?
-          ( UNIVERSAL::isa( $p{columns_to}, 'ARRAY') ?
+          ( eval { @{ $p{columns_to} } } ?
             $p{columns_to} :
             [ $p{columns_to} ] ) :
           undef );

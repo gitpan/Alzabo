@@ -5,6 +5,7 @@ use vars qw($VERSION);
 
 use Alzabo::Exceptions ( abbr => [ qw( logic_exception params_exception ) ] );
 use Alzabo::Runtime;
+use Alzabo::Utils;
 
 use Params::Validate qw( :all );
 Params::Validate::validation_options( on_fail => sub { params_exception join '', @_ } );
@@ -168,33 +169,33 @@ sub join
     my %p = validate( @_, JOIN_SPEC );
 
     $p{join} ||= delete $p{tables};
-    $p{join} = [ $p{join} ] unless UNIVERSAL::isa($p{join}, 'ARRAY');
+    $p{join} = [ $p{join} ] unless eval { @{ $p{join} } };
 
     my @tables;
 
-    if ( UNIVERSAL::isa( $p{join}->[0], 'ARRAY' ) )
+    if ( eval { @{ $p{join}->[0] } } )
     {
         # flattens the nested structure and produces a unique set of
         # tables
         @tables = values %{ { map { $_ => $_ }
-                              grep { UNIVERSAL::isa( $_, 'Alzabo::Table' ) }
+                              grep { Alzabo::Utils::safe_isa( $_, 'Alzabo::Table' ) }
                              map { @$_ } @{ $p{join} } } };
     }
     else
     {
-        @tables = grep { UNIVERSAL::isa($_, 'Alzabo::Table') } @{ $p{join} };
+        @tables = grep { Alzabo::Utils::safe_isa($_, 'Alzabo::Table') } @{ $p{join} };
     }
 
     if ( $p{distinct} )
     {
         $p{distinct} =
-            UNIVERSAL::isa( $p{distinct}, 'ARRAY' ) ? $p{distinct} : [ $p{distinct} ];
+            eval { @{ $p{distinct} } } ? $p{distinct} : [ $p{distinct} ];
     }
 
     if ( $p{order_by} )
     {
         $p{order_by} =
-            UNIVERSAL::isa( $p{order_by}, 'ARRAY' )
+            eval { @{ $p{order_by} } }
             ? $p{order_by}
             : $p{order_by}
             ? [ $p{order_by} ]
@@ -203,7 +204,7 @@ sub join
 
     # We go in this order:  $p{select}, $p{distinct}, @tables
     my @select_tables = ( $p{select} ?
-                          ( UNIVERSAL::isa( $p{select}, 'ARRAY' ) ?
+                          ( eval { @{ $p{select} } } ?
                             @{ $p{select} } : $p{select} ) :
                           $p{distinct} ?
                           @{ $p{distinct} } :
@@ -304,7 +305,7 @@ sub function
     my $sql = $self->_select_sql(%p);
 
     my $method =
-        UNIVERSAL::isa( $p{select}, 'ARRAY' ) && @{ $p{select} } > 1 ? 'rows' : 'column';
+        eval { @{ $p{select} } } && @{ $p{select} } > 1 ? 'rows' : 'column';
 
     $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
     print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
@@ -352,24 +353,24 @@ sub _select_sql
     my %p = validate( @_, _SELECT_SQL_SPEC );
 
     $p{join} ||= delete $p{tables};
-    $p{join} = [ $p{join} ] unless UNIVERSAL::isa($p{join}, 'ARRAY');
+    $p{join} = [ $p{join} ] unless eval { @{ $p{join} } };
 
     my @tables;
 
-    if ( UNIVERSAL::isa( $p{join}->[0], 'ARRAY' ) )
+    if ( eval { @{ $p{join}->[0] } } )
     {
         # flattens the nested structure and produces a unique set of
         # tables
         @tables = values %{ { map { $_ => $_ }
-                              grep { UNIVERSAL::isa( 'Alzabo::Table', $_ ) }
+                              grep { Alzabo::Utils::safe_isa( 'Alzabo::Table', $_ ) }
                               map { @$_ } @{ $p{join} } } };
     }
     else
     {
-        @tables = grep { UNIVERSAL::isa( 'Alzabo::Table', $_ ) } @{ $p{join} };
+        @tables = grep { Alzabo::Utils::safe_isa( 'Alzabo::Table', $_ ) } @{ $p{join} };
     }
 
-    my @funcs = UNIVERSAL::isa( $p{select}, 'ARRAY' ) ? @{ $p{select} } : $p{select};
+    my @funcs = eval { @{ $p{select} } } ? @{ $p{select} } : $p{select};
 
     my $sql = ( Alzabo::Runtime::sqlmaker( $self, \%p )->
                 select(@funcs) );
@@ -415,7 +416,7 @@ sub _join_all_tables
     #   [ left_outer_join => $t_3 => $t_4 ],
     #   [ left_outer_join => $t_3 => $t_5, undef, [ $where_clause ] ]
     #
-    if ( UNIVERSAL::isa( $p{join}->[0], 'ARRAY' ) )
+    if ( eval { @{ $p{join}->[0] } } )
     {
         my %map;
         my %tables;
