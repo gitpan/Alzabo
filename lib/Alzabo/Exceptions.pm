@@ -142,22 +142,20 @@ sub isa_alzabo_exception
     my ($err, $name) = @_;
     return unless defined $err;
 
-    if ($name)
-    {
-        my $class = "Alzabo::Exception::$name";
+    my $class =
+        ! $name
+          ? 'Alzabo::Exception'
+          : $name =~ /^Alzabo::Exception/
+          ? $name
+          : "Alzabo::Exception::$name";
 
-        {
-            no strict 'refs';
-            die "no such exception class $class"
-                unless defined(${"${class}::VERSION"});
-        }
-
-        return Alzabo::Utils::safe_isa($err, $class);
-    }
-    else
     {
-        return Alzabo::Utils::safe_isa($err, "Alzabo::Exception");
+        no strict 'refs';
+        die "no such exception class $class"
+            unless defined(${"${class}::VERSION"});
     }
+
+    return Alzabo::Utils::safe_isa($err, $class);
 }
 
 sub rethrow_exception

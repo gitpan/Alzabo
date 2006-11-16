@@ -44,7 +44,7 @@ sub _init
 
         if ( my $e = $@ )
         {
-            return if isa_alzabo_exception('Alzabo::Exception::NoSuchRow');
+            return if isa_alzabo_exception( $e, 'Alzabo::Exception::NoSuchRow' );
 
             rethrow_exception $e;
         }

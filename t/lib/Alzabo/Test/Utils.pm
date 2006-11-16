@@ -225,6 +225,30 @@ sub _load_or_create
     return Alzabo::Create::Schema->new(%p);
 }
 
+sub any_connected_runtime_schema
+{
+    my $class = shift;
+
+    my $rdbms = ( $class->rdbms_names )[0];
+    my $s = $class->make_schema($rdbms);
+
+    my $r = Alzabo::Runtime::Schema->load_from_file( name => $s->name );
+
+    $r->connect( $class->connect_params_for($rdbms) );
+
+    return $r;
+}
+
+sub any_schema_name
+{
+    my $class = shift;
+
+    my $rdbms = ( $class->rdbms_names )[0];
+    my $s = $class->make_schema($rdbms);
+
+    return $s->name;
+}
+
 sub make_schema
 {
     my $class = shift;

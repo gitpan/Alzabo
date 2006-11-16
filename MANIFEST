@@ -88,6 +88,7 @@ t/17-insert-handle.t
 t/18-debug-null-bug.t
 t/19-schema-name.t
 t/20-rev-engineer-pg-now.t
+t/21-row_by_pk-exception.t
 t/98-schema-diff.t
 t/99-cleanup.t
 t/99-pod.t
