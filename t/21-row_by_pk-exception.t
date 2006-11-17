@@ -9,12 +9,21 @@ use lib '.', File::Spec->catdir( File::Spec->curdir, 't', 'lib' );
 use Alzabo::Runtime;
 use Alzabo::Test::Utils;
 
-use Test::More tests => 2;
-
+use Test::More;
 
 Alzabo::Test::Utils->remove_all_schemas;
 
 my $schema = Alzabo::Test::Utils->any_connected_runtime_schema;
+
+if ($schema)
+{
+    plan tests => 2;
+}
+else
+{
+    plan skip_all => 'no test config provided';
+    exit;
+}
 
 my $emp_t = $schema->table('employee');
 

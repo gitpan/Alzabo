@@ -230,6 +230,9 @@ sub any_connected_runtime_schema
     my $class = shift;
 
     my $rdbms = ( $class->rdbms_names )[0];
+
+    return unless $rdbms;
+
     my $s = $class->make_schema($rdbms);
 
     my $r = Alzabo::Runtime::Schema->load_from_file( name => $s->name );
