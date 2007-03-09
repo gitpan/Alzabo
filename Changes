@@ -1,3 +1,25 @@
+0.90  Mar 9, 2007
+
+ENHANCEMENTS:
+
+- Added handling of multi-column indexes which include one function
+  when reverse-engineering Pg schemas.
+
+
+BUG FIXES:
+
+- When a row was deleted, it was not being deleted from the cache. If
+  you then inserted a row with the same primary key, you got back the
+  row from the cache, which was marked as deleted, insead of the new
+  row.
+
+- Newer versions of MySQL may return fully qualified and quoted table
+  names (`Schema`.`Table`) from $dbh->tables. This broke
+  reverse-engineering.
+
+- The Alzabo::Column->is_time() method was totally broken for MySQL.
+
+
 0.8904  Nov 17, 2006
 
 BUG FIXES:

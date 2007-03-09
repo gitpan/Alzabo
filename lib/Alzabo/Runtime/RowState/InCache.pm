@@ -7,7 +7,7 @@ use base qw(Alzabo::Runtime::RowState::Live);
 BEGIN
 {
     no strict 'refs';
-    foreach my $meth ( qw( select select_hash delete ) )
+    foreach my $meth ( qw( select select_hash ) )
     {
         my $super = "SUPER::$meth";
         *{__PACKAGE__ . "::$meth"} =
@@ -38,6 +38,18 @@ sub update
     Alzabo::Runtime::UniqueRowCache->write_to_cache($row);
 
     return $changed;
+}
+
+sub delete
+{
+    my $class = shift;
+    my $row = shift;
+
+    my $old_id = $row->id_as_string;
+
+    $class->SUPER::delete( $row, @_ );
+
+    Alzabo::Runtime::UniqueRowCache->delete_from_cache( $row->table->name, $old_id );
 }
 
 sub refresh

@@ -25,7 +25,7 @@ unless (@rdbms_names)
     exit;
 }
 
-plan tests => 11;
+plan tests => 12;
 
 
 Alzabo::Test::Utils->remove_all_schemas;
@@ -44,8 +44,10 @@ $s->connect( Alzabo::Test::Utils->connect_params_for($rdbms)  );
 
 {
     my $dep1 = $s->table('department')->insert( values => { name => 'dep1' } );
+    my $pk = $dep1->select('department_id');
+
     my $dep1_copy =
-        $s->table('department')->row_by_pk( pk => $dep1->select('department_id') );
+        $s->table('department')->row_by_pk( pk => $pk );
 
     is( "$dep1", "$dep1_copy",
         "There should only be one reference for a given row" );
@@ -54,6 +56,10 @@ $s->connect( Alzabo::Test::Utils->connect_params_for($rdbms)  );
     ok( $dep1->is_deleted, 'copy is deleted' );
     ok( $dep1_copy->is_deleted, 'copy is deleted' );
 
+    my $new_dep1 = $s->table('department')
+        ->insert( values => { department_id => $pk, name => 'a new dep1' } );
+
+    ok( ! $new_dep1->is_deleted, 'new dep1 is not deleted' );
 }
 
 {

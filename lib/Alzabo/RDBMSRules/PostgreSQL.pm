@@ -1205,7 +1205,6 @@ EOF
                                      bind => $t_oid ) )
     {
         my $function;
-        my @col_names;
         my @col_numbers;
 
         my $spi =
@@ -1235,36 +1234,45 @@ EOF
             die "Alzabo " . Alzabo->VERSION . " does not support functional"
                 . " indexes that are not strictly a single function."
                 . "  There are multiple functions on an index on the "
-                . $table->name . " table.";
+                . $table->name() . " table.\n";
         }
         elsif ( scalar( @col_numbers ) == 1 )
         {
-            # Pretend we are PostgreSQL 7.3 and functional indexes may
-            # only cover a single expression and that there's only one
-            # function per index.
-            if ( $row->[2] )
-            {
-                die "Alzabo " . Alzabo->VERSION . " does not support functional indexes that are not strictly a single function. You indexes some columns and a function on the $table table.";
-            }
-
-            $function =
+            my $func =
                 $driver->one_row
                     ( sql => 'SELECT pg_catalog.pg_get_indexdef( ?, 1, true)',
                       bind => $row->[0] );
 
             # XXX - not sure if this is a good idea but it makes the
             # rev-eng tests pass
-            $function =~ s/\b(\w+)::\w+\b/$1/g;
+            $func =~ s/\b(\w+)::\w+\b/$1/g;
+            my $col_in_func = $1;
+
+            my @function;
+            for my $num ( split / +/, $row->[2] )
+            {
+                if ( $num == 0 )
+                {
+                    push @function, $func;
+                }
+                else
+                {
+                    push @function, $cols_by_number->{$num};
+                    push @col_numbers, $num;
+                }
+            }
+
+            $function = join ', ', @function;
         }
         else
         {
             # A regular index!
-            @col_numbers = split ' ', $row->[2];
+            @col_numbers = split / +/, $row->[2];
         }
 
-        @col_names = @{ $cols_by_number }{ @col_numbers };
         push( @{ $i{ $row->[0] }{cols} },
-              $table->columns( @col_names ) );
+              $table->columns( @{ $cols_by_number }{ @col_numbers } ) );
+
         $i{ $row->[0] }{function} = $function;
         $i{ $row->[0] }{unique} = $row->[1];
     }

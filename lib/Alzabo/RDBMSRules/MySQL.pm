@@ -372,7 +372,7 @@ sub type_is_time
         return $col->length > 8;
     }
 
-    return 1 if $type eq /\A(?:DATETIME|TIME)\z/;
+    return 1 if $type =~ /\A(?:DATETIME|TIME)\z/;
 }
 
 sub type_is_time_interval { 0 }
@@ -440,7 +440,7 @@ sub schema_sql
 
     my @sql;
 
-    foreach my $t ( $schema->tables )
+    foreach my $t ( map { $self->_clean_table_name($_) } $schema->tables )
     {
         push @sql, $self->table_sql($t);
     }
@@ -456,6 +456,16 @@ sub schema_sql
     }
 
     return @sql;
+}
+
+sub _clean_table_name
+{
+    if ( $_[1] =~ /`\w+`\.`(\w+)`/ )
+    {
+        return $1;
+    }
+
+    return $_[1];
 }
 
 sub table_sql
@@ -829,7 +839,7 @@ sub reverse_engineer
 
     foreach my $table ( $driver->tables )
     {
-        ( my $table_name = $table ) =~ s/^[`"]|[`"]$//g;
+        my $table_name = $self->_clean_table_name($table);
 
         my $t = $schema->make_table( name => $table_name );
 
