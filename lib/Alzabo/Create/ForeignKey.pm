@@ -50,7 +50,7 @@ sub set_columns_from
 {
     my $self = shift;
 
-    my $c = eval { @{ $_[0] } } ? shift : [ shift ];
+    my $c = Alzabo::Utils::is_arrayref( $_[0] ) ? shift : [ shift ];
     validate_pos( @$c, ( { isa => 'Alzabo::Create::Column' } ) x @$c );
 
     if ( exists $self->{columns_to} )
@@ -67,7 +67,7 @@ sub set_columns_to
 {
     my $self = shift;
 
-    my $c = eval { @{ $_[0] } } ? shift : [ shift ];
+    my $c = Alzabo::Utils::is_arrayref( $_[0] ) ? shift : [ shift ];
     validate_pos( @$c, ( { isa => 'Alzabo::Create::Column' } ) x @$c );
 
     if ( exists $self->{columns_from} )

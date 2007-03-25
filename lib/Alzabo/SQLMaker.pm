@@ -283,7 +283,7 @@ sub from
         my @plain;
 	foreach my $elt (@_)
 	{
-	    if ( eval { @$elt } )
+	    if ( Alzabo::Utils::is_arrayref($elt) )
 	    {
 		$sql .= ' ' if $sql;
 

@@ -1,3 +1,17 @@
+0.91  Mar 25, 2007
+
+BUG FIXES:
+
+- Alzabo checked whether a particular variable was an array reference
+  with a construct like this "eval { @$thing } ? @$thing :
+  $thing". Under most circumstances, this is ok, but Mason installs a
+  $SIG{__DIE__} handler that turns all string exceptions into
+  exception objects. This meant that under Mason, for any eval where
+  the reference in question was _not_ an array reference, a string
+  exception was caught and turned into a full-blown exception
+  object. This could cause a massive performance hit in some cases.
+
+
 0.90  Mar 9, 2007
 
 ENHANCEMENTS:
@@ -10,7 +24,7 @@ BUG FIXES:
 
 - When a row was deleted, it was not being deleted from the cache. If
   you then inserted a row with the same primary key, you got back the
-  row from the cache, which was marked as deleted, insead of the new
+  row from the cache, which was marked as deleted, instead of the new
   row.
 
 - Newer versions of MySQL may return fully qualified and quoted table

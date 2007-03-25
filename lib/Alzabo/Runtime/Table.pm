@@ -418,7 +418,7 @@ sub function
     my $sql = $self->_select_sql(%p);
 
     my $method =
-        eval { @{ $p{select} } } && @{ $p{select} } > 1 ? 'rows' : 'column';
+        Alzabo::Utils::is_arrayref( $p{select} ) && @{ $p{select} } > 1 ? 'rows' : 'column';
 
     $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
     print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
@@ -462,7 +462,7 @@ sub _select_sql
 
     my %p = validate( @_, _SELECT_SQL_SPEC );
 
-    my @funcs = eval { @{ $p{select} } } ? @{ $p{select} } : $p{select};
+    my @funcs = Alzabo::Utils::is_arrayref( $p{select} ) ? @{ $p{select} } : $p{select};
 
     my $sql = Alzabo::Runtime::sqlmaker( $self->schema, \%p )->select(@funcs)->from($self);
 

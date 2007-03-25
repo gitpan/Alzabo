@@ -491,7 +491,7 @@ sub make_self_relation
                     @where = ( '(', @where, ')' );
 
                     push @where,
-                        eval { @{ $p{where}->[0] } } ? @{ $p{where} } : $p{where};
+                        Alzabo::Utils::is_arrayref( $p{where}->[0] ) ? @{ $p{where} } : $p{where};
 
                     delete $p{where};
                 }
@@ -552,7 +552,7 @@ sub make_linking_table_method
                 my %p = @_;
                 if ( $p{where} )
                 {
-                    $p{where} = [ $p{where} ] unless eval { @{ $p{where}[0] } };
+                    $p{where} = [ $p{where} ] unless Alzabo::Utils::is_arrayref( $p{where}[0] );
                 }
                 foreach my $pair ( $fk->column_pairs )
                 {
@@ -1152,7 +1152,7 @@ sub as_pod
     my $params;
     if ( defined $spec )
     {
-        if ( eval { @$spec } )
+        if ( Alzabo::Utils::is_arrayref( $spec ) )
         {
             $params = "=over 4\n\n";
 
@@ -1171,7 +1171,7 @@ sub as_pod
 
             $params .= "=back\n\n";
         }
-        elsif ( eval { %$spec } )
+        elsif ( Alzabo::Utils::is_hashref($spec) )
         {
             $params = "=over 4\n\n";
 

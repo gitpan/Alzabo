@@ -278,14 +278,14 @@ sub add_relationship
 
     $p{columns_from} =
         ( defined $p{columns_from} ?
-          ( eval { @{ $p{columns_from} } } ?
+          ( Alzabo::Utils::is_arrayref( $p{columns_from} ) ?
             $p{columns_from} :
             [ $p{columns_from} ] ) :
           undef );
 
     $p{columns_to} =
         ( defined $p{columns_to} ?
-          ( eval { @{ $p{columns_to} } } ?
+          ( Alzabo::Utils::is_arrayref( $p{columns_to} ) ?
             $p{columns_to} :
             [ $p{columns_to} ] ) :
           undef );

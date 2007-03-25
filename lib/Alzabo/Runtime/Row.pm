@@ -103,7 +103,7 @@ sub rows_by_foreign_key
 
     if ($p{where})
     {
-        $p{where} = [ $p{where} ] unless eval { @{ $p{where}[0] } };
+        $p{where} = [ $p{where} ] unless Alzabo::Utils::is_arrayref( $p{where}[0] );
     }
 
     push @{ $p{where} },

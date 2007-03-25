@@ -2,7 +2,7 @@ package Alzabo::Utils;
 
 use strict;
 
-use Scalar::Util qw( blessed );
+use Scalar::Util qw( blessed reftype );
 
 
 sub safe_can
@@ -13,6 +13,16 @@ sub safe_can
 sub safe_isa
 {
     return blessed( $_[0] ) && $_[0]->isa( $_[1] );
+}
+
+sub is_arrayref
+{
+    return defined $_[0] && ref $_[0] && reftype $_[0] eq 'ARRAY';
+}
+
+sub is_hashref
+{
+    return defined $_[0] && ref $_[0] && ( ! blessed $_[0] ) && reftype $_[0] eq 'HASH';
 }
 
 

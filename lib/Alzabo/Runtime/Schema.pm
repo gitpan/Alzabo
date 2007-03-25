@@ -169,11 +169,11 @@ sub join
     my %p = validate( @_, JOIN_SPEC );
 
     $p{join} ||= delete $p{tables};
-    $p{join} = [ $p{join} ] unless eval { @{ $p{join} } };
+    $p{join} = [ $p{join} ] unless Alzabo::Utils::is_arrayref( $p{join} );
 
     my @tables;
 
-    if ( eval { @{ $p{join}->[0] } } )
+    if ( Alzabo::Utils::is_arrayref( $p{join}->[0] ) )
     {
         # flattens the nested structure and produces a unique set of
         # tables
@@ -189,13 +189,13 @@ sub join
     if ( $p{distinct} )
     {
         $p{distinct} =
-            eval { @{ $p{distinct} } } ? $p{distinct} : [ $p{distinct} ];
+            Alzabo::Utils::is_arrayref( $p{distinct} ) ? $p{distinct} : [ $p{distinct} ];
     }
 
     if ( $p{order_by} )
     {
         $p{order_by} =
-            eval { @{ $p{order_by} } }
+            Alzabo::Utils::is_arrayref( $p{order_by} )
             ? $p{order_by}
             : $p{order_by}
             ? [ $p{order_by} ]
@@ -204,7 +204,7 @@ sub join
 
     # We go in this order:  $p{select}, $p{distinct}, @tables
     my @select_tables = ( $p{select} ?
-                          ( eval { @{ $p{select} } } ?
+                          ( Alzabo::Utils::is_arrayref( $p{select} ) ?
                             @{ $p{select} } : $p{select} ) :
                           $p{distinct} ?
                           @{ $p{distinct} } :
@@ -305,7 +305,7 @@ sub function
     my $sql = $self->_select_sql(%p);
 
     my $method =
-        eval { @{ $p{select} } } && @{ $p{select} } > 1 ? 'rows' : 'column';
+        Alzabo::Utils::is_arrayref( $p{select} ) && @{ $p{select} } > 1 ? 'rows' : 'column';
 
     $sql->debug(\*STDERR) if Alzabo::Debug::SQL;
     print STDERR Devel::StackTrace->new if Alzabo::Debug::TRACE;
@@ -353,11 +353,11 @@ sub _select_sql
     my %p = validate( @_, _SELECT_SQL_SPEC );
 
     $p{join} ||= delete $p{tables};
-    $p{join} = [ $p{join} ] unless eval { @{ $p{join} } };
+    $p{join} = [ $p{join} ] unless Alzabo::Utils::is_arrayref( $p{join} );
 
     my @tables;
 
-    if ( eval { @{ $p{join}->[0] } } )
+    if ( Alzabo::Utils::is_arrayref( $p{join}->[0] ) )
     {
         # flattens the nested structure and produces a unique set of
         # tables
@@ -370,7 +370,7 @@ sub _select_sql
         @tables = grep { Alzabo::Utils::safe_isa( 'Alzabo::Table', $_ ) } @{ $p{join} };
     }
 
-    my @funcs = eval { @{ $p{select} } } ? @{ $p{select} } : $p{select};
+    my @funcs = Alzabo::Utils::is_arrayref( $p{select} ) ? @{ $p{select} } : $p{select};
 
     my $sql = ( Alzabo::Runtime::sqlmaker( $self, \%p )->
                 select(@funcs) );
@@ -416,7 +416,7 @@ sub _join_all_tables
     #   [ left_outer_join => $t_3 => $t_4 ],
     #   [ left_outer_join => $t_3 => $t_5, undef, [ $where_clause ] ]
     #
-    if ( eval { @{ $p{join}->[0] } } )
+    if ( Alzabo::Utils::is_arrayref( $p{join}->[0] ) )
     {
         my %map;
         my %tables;

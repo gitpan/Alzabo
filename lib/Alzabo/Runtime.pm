@@ -48,7 +48,7 @@ sub process_where_clause
     my ($sql, $where) = @_;
 
     $where = [ $where ]
-        unless eval { @{ $where->[0] } } || $where->[0] eq '(';
+        unless Alzabo::Utils::is_arrayref( $where->[0] ) || $where->[0] eq '(';
 
     my $has_where =
         ( $sql->last_op eq 'where' || $sql->last_op eq 'condition' ) ? 1 : 0;
@@ -61,7 +61,7 @@ sub process_having_clause
     my ($sql, $having) = @_;
 
     $having = [ $having ]
-        unless eval { @{ $having->[0] } } || $having->[0] eq '(';
+        unless Alzabo::Utils::is_arrayref( $having->[0] ) || $having->[0] eq '(';
 
     my $has_having =
         ( $sql->last_op eq 'having' || $sql->last_op eq 'condition' ) ? 1 : 0;
@@ -93,7 +93,7 @@ sub _process_conditions
         {
             Alzabo::Exception::Params->throw
                 ( error => "Individual where clause components must be array references" )
-                    unless eval { @$clause };
+                    unless Alzabo::Utils::is_arrayref($clause);
 
             Alzabo::Exception::Params->throw
                 ( error => "Individual where clause components cannot be empty" )
@@ -158,7 +158,7 @@ sub _process_by_clause
     {
         @items = $by;
     }
-    elsif ( eval { @$by } )
+    elsif ( Alzabo::Utils::is_arrayref($by) )
     {
         @items = @$by;
     }
