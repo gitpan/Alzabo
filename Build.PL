@@ -9,7 +9,8 @@ use lib 'inc';
 
 use Alzabo::Build;
 
-use Getopt::Long;
+use Getopt::Long qw( :config pass_through );
+
 my %opts;
 GetOptions( 'dist'   => \$opts{dist},
             'root:s' => \$opts{root},

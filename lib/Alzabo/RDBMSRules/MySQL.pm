@@ -460,7 +460,7 @@ sub schema_sql
 
 sub _clean_table_name
 {
-    if ( $_[1] =~ /`\w+`\.`(\w+)`/ )
+    if ( $_[1] =~ /(?:`\w+`\.)?`(\w+)`/ )
     {
         return $1;
     }

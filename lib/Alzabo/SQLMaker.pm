@@ -620,10 +620,11 @@ sub condition
     if ( $comp eq 'IN' || $comp eq 'NOT IN' )
     {
 	$self->{sql} .= " $comp (";
+
 	$self->{sql} .=
-	    join ', ', map { ( Alzabo::Utils::safe_isa( $_, 'Alzabo::SQLMaker' ) ?
-			       '(' . $self->_subselect($_) . ')' :
-			       $self->_rhs($_) ) } $rhs, @_;
+	    join ', ', map { Alzabo::Utils::safe_isa( $_, 'Alzabo::SQLMaker' )
+			     ?  '(' . $self->_subselect($_) . ')'
+                             : $self->_rhs($_) } $rhs, @_;
 	$self->{sql} .= ')';
 
 	return;

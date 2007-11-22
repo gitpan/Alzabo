@@ -312,11 +312,6 @@ sub init
     1;
 }
 
-sub _subselect
-{
-    Alzabo::Exception::SQL->throw( error => "MySQL does not support subselects" );
-}
-
 sub select
 {
     my $self = shift;

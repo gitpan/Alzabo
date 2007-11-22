@@ -1,3 +1,21 @@
+0.92
+
+BUG FIXES:
+
+- Reverse engineering with MySQL broke when the tables were returned
+  _without_ the schema name.
+
+- Enable subselects for MySQL, though there's still no good API for
+  subselects.
+
+- Pass any unknown command line options through to Module::Build, for
+  example things like "--install-base". Reported by Lars Dieckow. RT
+  Ticket #28410.
+
+- Fix a possible bug in Alzabo::Config::available_schemas. Reported by
+  Otto Hirr. RT Ticket #28312
+
+
 0.91  Mar 25, 2007
 
 BUG FIXES:
@@ -230,7 +248,7 @@ ENHANCEMENTS:
   THE SAME SCHEMA" section in Alzabo::Intro for details.
 
 - The Alzabo::Runtime::Row->update() method now returns a boolean
-  indicating whether any changes where actually made.  Patch by Eric
+  indicating whether any changes were actually made.  Patch by Eric
   Waters.
 
 
